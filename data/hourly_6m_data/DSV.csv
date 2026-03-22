@@ -1,0 +1,5 @@
+﻿time,open,high,low,close,volume,ticker,llm_text
+2024-06-07 10:00:00,11.0,11.0,11.0,11.0,300,DSV,"At 2024-06-07 10:00:00, the stock DSV opened at 11.00 VND, reached a high of 11.00 VND, a low of 11.00 VND, and closed the hour at 11.00 VND with a trading volume of 300 shares."
+2024-06-10 10:00:00,12.6,12.6,12.6,12.6,100,DSV,"At 2024-06-10 10:00:00, the stock DSV opened at 12.60 VND, reached a high of 12.60 VND, a low of 12.60 VND, and closed the hour at 12.60 VND with a trading volume of 100 shares."
+2024-06-11 13:00:00,14.4,14.4,14.4,14.4,400,DSV,"At 2024-06-11 13:00:00, the stock DSV opened at 14.40 VND, reached a high of 14.40 VND, a low of 14.40 VND, and closed the hour at 14.40 VND with a trading volume of 400 shares."
+2024-06-12 14:00:00,14.4,14.4,14.4,14.4,100,DSV,"At 2024-06-12 14:00:00, the stock DSV opened at 14.40 VND, reached a high of 14.40 VND, a low of 14.40 VND, and closed the hour at 14.40 VND with a trading volume of 100 shares."

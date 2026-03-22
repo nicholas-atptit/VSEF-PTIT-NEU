@@ -1,0 +1,13 @@
+.venv312/
+__pycache__/
+*.pyc
+.git/
+.env
+*.egg-info/
+data/hourly_data_split_data/
+data/hourly/
+*.csv
+*.jsonl
+.gemini/
+tests/
+scripts/_patch_settings.py

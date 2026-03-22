@@ -1,0 +1,5 @@
+﻿time,open,high,low,close,volume,ticker,llm_text
+2024-02-06 14:00:00,3.14,3.14,3.14,3.14,100,SAL,"At 2024-02-06 14:00:00, the stock SAL opened at 3.14 VND, reached a high of 3.14 VND, a low of 3.14 VND, and closed the hour at 3.14 VND with a trading volume of 100 shares."
+2024-03-21 09:00:00,1.91,1.91,1.91,1.91,100,SAL,"At 2024-03-21 09:00:00, the stock SAL opened at 1.91 VND, reached a high of 1.91 VND, a low of 1.91 VND, and closed the hour at 1.91 VND with a trading volume of 100 shares."
+2024-05-28 09:00:00,1.17,1.23,1.17,1.23,400,SAL,"At 2024-05-28 09:00:00, the stock SAL opened at 1.17 VND, reached a high of 1.23 VND, a low of 1.17 VND, and closed the hour at 1.23 VND with a trading volume of 400 shares."
+2025-08-07 09:00:00,1.66,1.66,1.66,1.66,100,SAL,"At 2025-08-07 09:00:00, the stock SAL opened at 1.66 VND, reached a high of 1.66 VND, a low of 1.66 VND, and closed the hour at 1.66 VND with a trading volume of 100 shares."

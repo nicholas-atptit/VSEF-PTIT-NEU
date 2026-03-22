@@ -1,0 +1,3 @@
+﻿time,open,high,low,close,volume,ticker,llm_text
+2024-10-22 10:00:00,3.3,3.3,3.3,3.3,1000,NSS,"At 2024-10-22 10:00:00, the stock NSS opened at 3.30 VND, reached a high of 3.30 VND, a low of 3.30 VND, and closed the hour at 3.30 VND with a trading volume of 1,000 shares."
+2024-10-23 11:00:00,3.7,3.7,3.7,3.7,100,NSS,"At 2024-10-23 11:00:00, the stock NSS opened at 3.70 VND, reached a high of 3.70 VND, a low of 3.70 VND, and closed the hour at 3.70 VND with a trading volume of 100 shares."

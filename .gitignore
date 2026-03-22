@@ -1,0 +1,37 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# ── Virtual Environments ──
+.venv*/
+venv/
+
+# ── Secrets ──
+.env
+*.pem
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Data (large files, regenerated on demand) ──
+data/hourly_data_split_data/
+data/hourly/
+data/prediction_cache/
+
+# ── OS ──
+Thumbs.db
+.DS_Store
+
+# ── Docker ──
+docker-compose.override.yml
+
+# ── Temp ──
+scripts/_patch_settings.py
+.gemini/
