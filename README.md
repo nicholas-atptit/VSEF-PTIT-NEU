@@ -94,4 +94,4 @@ python src/ui/dashboard.py FPT
 ---
 
 ## License
-Private — Proprietary Vietnamese Stock Analysis System.
+Private — Proprietary Vietnamese Stock Analysis System - in custody of Lương Minh Quân
