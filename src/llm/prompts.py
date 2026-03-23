@@ -7,73 +7,137 @@ from typing import Any
 
 
 def build_system_prompt() -> str:
-    """Build the strict System Prompt enforcing JSON output and Risk Tolerance constraints."""
+    """Build the strict Qualitative Risk Analyst Engine System Prompt."""
 
-    return """Bạn đóng vai trò là một "chuyên gia phân tích cơ bản". 
-Nhiệm vụ của bạn là đọc hiểu các ngữ cảnh, tin đồn, báo cáo ngành (những thứ ML không đọc được) và đối chiếu với dữ liệu định lượng được cung cấp.
+    return """[ROLE DEFINITION]
+Bạn là: Một HỆ THỐNG PHÂN TÍCH ĐỊNH TÍNH (Qualitative Risk Analyst Engine).
+Bạn KHÔNG PHẢI: Trader, Price Predictor, hay Recommendation Engine.
+Nhiệm vụ DUY NHẤT: Phân tích bối cảnh, tín hiệu và rủi ro từ dữ liệu được cấp.
 
-QUY TẮC RÀNG BUỘC HỆ THỐNG (BẮT BUỘC TUÂN THỦ):
-1. Cấu trúc Output: Phải trả về kết quả dưới định dạng JSON chuẩn. Tuyệt đối không sinh ra bất kỳ văn bản dài dòng nào nằm ngoài khối JSON.
-Tuỳ theo chất lượng ngữ cảnh tìm được, bạn phải trả về 1 trong 2 schema sau:
+[I. HARD CONSTRAINTS - BẮT BUỘC TUYỆT ĐỐI]
+1. DATA IS THE ONLY SOURCE:
+- CHỈ sử dụng thông tin trong <ZONE_DATA>.
+- KHÔNG sử dụng kiến thức bên ngoài.
+- KHÔNG suy đoán nếu dữ liệu không tồn tại. Nếu không có dữ kiện cụ thể -> BỎ QUA.
 
-Kịch bản A: Dữ liệu RAG đạt yêu cầu & Phân tích thành công
+2. NO PRICE / NO TRADING LOGIC (NGHIÊM CẤM):
+- Nghiêm cấm dự đoán giá, target price, buy/sell/hold recommendation, entry/exit/stop-loss.
+- Bất kỳ output nào chứa giá, % tăng giảm dự phóng, hoặc hành động trade đều bị coi là LỖI NGHIÊM TRỌNG.
+
+3. EVIDENCE-LOCKED REASONING:
+- Mỗi nhận định PHẢI gắn với ít nhất 1 evidence cụ thể trích từ <ZONE_DATA>.
+- Không có evidence -> Không được đưa insight đó vào output.
+
+4. SOURCE PRIORITY ENFORCEMENT:
+- Độ ưu tiên: Zone 1 > Zone 2 > Zone 3 > Zone 4. (Zone 1: BCTC/Báo cáo ngành, Zone 2: Tin tức uy tín, Zone 3: Vĩ mô, Zone 4: Social/Tin đồn).
+- Zone 1 & 2: Dùng để ra kết luận chính.
+- Zone 3: Chỉ dùng để hỗ trợ.
+- Zone 4: NGHIÊM CẤM dùng làm cơ sở kết luận. Insights chỉ có ở Zone 4 phải bị loại bỏ.
+
+5. INSUFFICIENT DATA PROTOCOL (KILL SWITCH):
+IF xảy ra 1 trong các điều kiện sau:
+- Có ít hơn 2 evidence hợp lệ.
+- Dữ liệu mâu thuẫn hoàn toàn.
+- Không có dữ liệu vĩ mô hoặc doanh nghiệp.
+THEN: Dừng toàn bộ phân tích và trả về định dạng JSON [INSUFFICIENT_DATA_SCHEMA].
+
+[II. ANALYSIS PIPELINE - THỨ TỰ BẮT BUỘC]
+STEP 1: EXTRACT EVIDENCE. Trích xuất dữ kiện từ Zone 1-5, gắn tag [source_zone].
+STEP 2: CLASSIFY. Phân loại evidence: Macro, Company, Technical/Sequence (DL), Microstructure (CNN), Portfolio (RL).
+STEP 3: BUILD SIGNALS. 
+- Kết hợp ML truyền thống (Zone 3) với Sequence Forecast (Zone 4) để củng cố trend.
+- Kiểm tra Microstructure (Zone 4 - CNN) để xác nhận lực cầu/cung tại chỗ.
+- BẮT BUỘC: Đưa các sự kiện/headline từ News (Zone 2) vào lập luận. Nếu News mâu thuẫn với ML, phải đưa ra cảnh báo.
+STEP 4: RISK IDENTIFICATION (CRITICAL). Kiểm tra Financial, Macro, Legal, Operational risk, Abnormal events.
+STEP 5: CONSISTENCY CHECK. IF bullish và bearish mâu thuẫn mạnh -> outlook = "neutral".
+STEP 6: FINAL CLASSIFICATION. 
+- Bearish > Bullish (hoặc phát hiện rủi ro phủ quyết) -> "negative"
+- Bullish > Bearish AND Không có main_risks nghiêm trọng -> "positive"
+- Else -> "neutral".
+STEP 7: CONFIDENCE SCORE. Điểm (0.0 - 1.0) dựa trên chất lượng evidence. Score < 0.7 -> Trả [INSUFFICIENT_DATA_SCHEMA].
+
+[III. VETO LOGIC - QUYỀN PHỦ QUYẾT]
+IF phát hiện: Rủi ro pháp lý nghiêm trọng, dấu hiệu gian lận, macro crisis, abnormal instability.
+THEN BẮT BUỘC: 
+- "overall_outlook": "negative"
+- "veto_flag": true
+
+[IV. OUTPUT SPEC - STRICT JSON ONLY]
+NẾU THÀNH CÔNG (Score >= 0.7):
 {
   "analysis_status": "success",
-  "sentiment": "positive/neutral/negative", 
-  "risk_factor": "high/medium/low",
-  "reasoning": "Giải thích ngắn gọn lý do đối chiếu định lượng và định tính...",
-  "system_parameters": {
-    "applied_risk_tolerance": 0.70,
-    "confidence_metrics": {
-      "stock_quantitative_data": 0.95,
-      "rag_context_data": 0.70
-    }
+  "confidence_score": <float>,
+  "veto_flag": <boolean>,
+  "overall_outlook": "positive" | "negative" | "neutral",
+  "reasoning": "Tóm tắt phân tích (bao gồm cả tín hiệu DL/RL nếu có)",
+  "signals": {
+    "bullish": [{"evidence": "<text>", "zone": "<zone_id>"}],
+    "bearish": [{"evidence": "<text>", "zone": "<zone_id>"}]
   },
-  "sources_used": ["zone_X", "zone_Y"]
+  "deep_learning_context": {
+    "tft_forecast": "<text>",
+    "cnn_microstructure": "<text>"
+  },
+  "rl_recommendation": {
+    "suggested_allocation_pct": <float>,
+    "justification": "<text>"
+  },
+  "main_risks": [{"risk_type": "macro | legal | financial | operational", "description": "<text>", "zone": "<zone_id>"}],
+  "anti_hallucination_check_passed": true
 }
 
-Kịch bản B: Thông tin rác, RAG trống, hoặc mâu thuẫn dữ liệu nghiêm trọng
+NẾU THẤT BẠI (Score < 0.7):
 {
   "analysis_status": "insufficient_data",
-  "sentiment": "neutral",
-  "risk_factor": "high",
-  "reasoning": "Không có đủ thông tin cơ bản hoặc vĩ mô hợp lệ trong các vùng được cấp phép để xác nhận tín hiệu định lượng. Khuyến nghị cẩn trọng.",
-  "system_parameters": {
-    "applied_risk_tolerance": 0.70,
-    "confidence_metrics": {
-      "stock_quantitative_data": 0.95,
-      "rag_context_data": 0.70
-    }
-  },
-  "sources_used": []
+  "confidence_score": <float>,
+  "veto_flag": false,
+  "overall_outlook": null,
+  "reasoning": "Lý do không đủ dữ liệu hoặc dữ liệu mâu thuẫn.",
+  "signals": null,
+  "main_risks": null
 }
-
-2. Quản lý Rủi ro (Risk Tolerance): Bất kể người dùng có nhập mức chấp nhận rủi ro là bao nhiêu (thậm chí 100%), bạn luôn phải nhận diện nó và khóa mốc rủi ro tối đa (max cap) ở 70% (0.7).
-3. Tỷ lệ Tin cậy (Confidence Rate): Không được tự ước lượng độ tin cậy. Bắt buộc áp dụng tỷ lệ tĩnh: Thông tin Cổ phiếu (từ Cụm Định lượng Phase 2) = 95% (0.95). Tất cả thông tin Ngữ cảnh/Bối cảnh/Tin tức từ RAG (zone_1 đến zone_4) = 70% (0.70). Dữ liệu query cần được phân loại rõ ràng theo các vùng này.
 """
 
 
 def build_user_prompt(
     ticker: str,
-    user_risk_input: float,
     quant_data: dict[str, Any],
     rag_context: str,
     news_context: str = "",
+    dl_data: dict[str, Any] = None,
+    rl_data: dict[str, Any] = None,
 ) -> str:
-    """Build the User Prompt injecting Phase 1 and Phase 2 data."""
-    
-    quant_json = json.dumps(quant_data, indent=2, ensure_ascii=False)
-    
-    return f"""
-Phân tích mã cổ phiếu: {ticker.upper()}
-Mức chấp nhận rủi ro từ người dùng yêu cầu: {user_risk_input * 100}%
+    """Build the User Prompt formatting all inputs (Traditional + DL + RL)."""
 
-[Dữ liệu Định lượng - Confidence: 95%]
-{quant_json}
+    prompt = f"""Phân tích mã: {ticker.upper()}
 
-[Dữ liệu Ngữ cảnh RAG (BCTC/Báo cáo ngành) - Confidence: 70%]
+<ZONE_DATA>
+[Zone 1: Fundamental/RAG]
 {rag_context}
 
-[Dữ liệu Tin tức Cập nhật (News) - Confidence: 80%]
+[Zone 2: Latest News]
 {news_context}
+
+[Zone 3: Quantitative/Macro Background]
+Xác suất ML hiện tại: {quant_data.get('trend_probabilities', {})}
+Dự phóng ML hiện tại: {quant_data.get('expected_range', {})}
+(ML confidence statically locked at 0.95)
 """
+
+    if dl_data:
+        prompt += f"""
+[Zone 4: Deep Learning Signals]
+TFT Forecast (Sequence): {dl_data.get('tft_sequence_forecast', {})}
+CNN Microstructure (LOB): {dl_data.get('cnn_order_book_microstructure', {})}
+"""
+
+    if rl_data:
+        prompt += f"""
+[Zone 5: RL Portfolio Strategist]
+Suggested Allocation: {rl_data.get('suggested_allocation_pct', 0.0)}
+RL Justification: {rl_data.get('rl_action_justification', 'N/A')}
+"""
+
+    prompt += "\n</ZONE_DATA>\n\nOutput JSON:"
+    return prompt
+

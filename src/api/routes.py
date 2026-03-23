@@ -89,6 +89,11 @@ async def predict(
                     model_output=model_output,
                     risk_tolerance=risk_tolerance,
                 )
+                
+                # Add qualitative analysis if present in cache
+                if cached.get("llm_analysis"):
+                    payload["qualitative_analysis"] = cached["llm_analysis"]
+                    
                 return payload
         except Exception as e:
             logger.debug("kafka_cache_miss", ticker=ticker, error=str(e))

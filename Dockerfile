@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements first for Docker layer caching
 COPY pyproject.toml ./
 RUN pip install --no-cache-dir pip --upgrade && \
-    pip install --no-cache-dir ".[all]" 2>/dev/null || true
+    pip install --no-cache-dir "."
 
 COPY requirements.txt* ./
 RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi

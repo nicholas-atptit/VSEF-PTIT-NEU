@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -63,37 +64,51 @@ class BackdateIngestor:
             start=start.isoformat(),
             end=end.isoformat(),
         )
+        
+        # TUI Priority: Reorder tickers to put active TUI ticker first
+        tui_ticker_path = Path("data/.tui_ticker")
+        if tui_ticker_path.exists():
+            try:
+                prio_ticker = tui_ticker_path.read_text().strip().upper()
+                if prio_ticker in tickers:
+                    tickers.remove(prio_ticker)
+                    tickers.insert(0, prio_ticker)
+                    logger.info("backdate_prioritizing", ticker=prio_ticker)
+            except Exception: pass
 
         # Load progress from DB
         await self._load_progress(tickers)
 
-        for ticker in tickers:
-            ticker_start = self._progress.get(ticker, start)
-            if ticker_start >= end:
-                logger.info("backdate_skip", ticker=ticker, reason="already_complete")
-                continue
+        semaphore = asyncio.Semaphore(3)  # Balanced for speed vs rate limits
 
-            logger.info(
-                "backdate_ticker",
-                ticker=ticker,
-                from_date=ticker_start.isoformat(),
-                to_date=end.isoformat(),
-            )
+        async def _sync_one(ticker):
+            # TUI Priority: Pause background sync if TUI is active
+            lock_path = Path("data/.tui_lock")
+            while lock_path.exists():
+                logger.info("backdate_pause", reason="tui_active_priority")
+                await asyncio.sleep(10)
 
-            try:
-                # 1. Fetch price history (Company profiles are now fetched in bulk beforehand)
-                if ticker_start < end:
-                    await self._fetch_and_store(ticker, ticker_start, end)
+            async with semaphore:
+                try:
+                    ticker_start = self._progress.get(ticker, start)
+                    if ticker_start >= end:
+                        logger.info("backdate_skip", ticker=ticker, reason="already_complete")
+                        return
                     
-                # Strict rate limiting to avoid Vnstock Sponsor limits (300 req/min = 5 req/sec)
-                await asyncio.sleep(0.2)
-            except Exception as e:
-                logger.error("backdate_ticker_error", ticker=ticker, error=str(e))
-                # Even on error, sleep to cool down rate limits
-                await asyncio.sleep(0.2)
-                continue
+                    logger.info("backdate_ticker", ticker=ticker, from_date=ticker_start.isoformat(), to_date=end.isoformat())
+                    df = await self._fetch_ohlc(ticker, ticker_start, end)
+                    if df is not None and not df.empty:
+                        await self._insert_batch(ticker, df)
+                        logger.info("backdate_ticker_done", ticker=ticker, rows=len(df))
+                    
+                    # 1s cooldown per ticker to stay under 300 req/min safely
+                    await asyncio.sleep(1.0)
+                except Exception as e:
+                    logger.error("backdate_ticker_error", ticker=ticker, error=str(e))
 
-        logger.info("backdate_complete")
+        tasks = [asyncio.create_task(_sync_one(t)) for t in tickers]
+        await asyncio.gather(*tasks)
+        logger.info("backdate_complete", ticker_count=len(tickers))
 
     async def _fetch_and_store(
         self,
@@ -128,32 +143,42 @@ class BackdateIngestor:
             rows=total_rows,
         )
 
-    async def _fetch_ohlc(
+    async def _fetch_ohlc(self, ticker: str, start: dt.date, end: dt.date) -> pd.DataFrame | None:
+        """Fetch with Robust Retry & Multi-Source Fallback."""
+        for attempt in range(3):
+            try:
+                # Primary Source: Vnstock Improved
+                df = await self._fetch_via_vnstock_basic(ticker, start, end)
+                if df is not None and not df.empty:
+                    return df
+            except Exception as e:
+                wait = (attempt + 1) * 2
+                logger.warning("fetch_retry", ticker=ticker, attempt=attempt+1, wait=wait, error=str(e))
+                await asyncio.sleep(wait)
+        return None
+
+    async def _fetch_via_vnstock_basic(
         self,
         ticker: str,
         start: dt.date,
         end: dt.date,
     ) -> pd.DataFrame | None:
-        """Fetch OHLC data from available data sources.
-
-        Tries: 1) DNSE API  2) vnstock library
-        """
-        # Try vnstock first (more reliable for historical data)
+        """Fetch historical data using basic vnstock library."""
         try:
-            df = await self._fetch_via_vnstock(ticker, start, end)
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=ticker, source="VCI")
+            df = stock.quote.history(
+                start=start.strftime("%Y-%m-%d"),
+                end=end.strftime("%Y-%m-%d"),
+                interval="1D"
+            )
             if df is not None and not df.empty:
+                # Rename to standard schema
+                df = df.rename(columns={"time": "timestamp"})
+                logger.info("vnstock_basic_fetch_ok", ticker=ticker, rows=len(df))
                 return df
         except Exception as e:
-            logger.warning("vnstock_fetch_failed", ticker=ticker, error=str(e))
-
-        # Try DNSE REST API
-        try:
-            df = await self._fetch_via_dnse(ticker, start, end)
-            if df is not None and not df.empty:
-                return df
-        except Exception as e:
-            logger.warning("dnse_fetch_failed", ticker=ticker, error=str(e))
-
+            logger.debug("vnstock_basic_error", ticker=ticker, error=str(e))
         return None
 
     async def _fetch_via_vnstock(

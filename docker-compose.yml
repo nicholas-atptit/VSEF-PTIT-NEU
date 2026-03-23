@@ -151,6 +151,18 @@ services:
       - ./data:/app/data
     command: python scripts/run_consumers.py
 
+  # ============================================================
+  # Redis — Fast In-Memory Broker for Live Streams
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: algo_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
 volumes:
   timescale_data:
     driver: local
@@ -158,4 +170,5 @@ volumes:
     driver: local
   ollama_models:
     driver: local
-
+  redis_data:
+    driver: local

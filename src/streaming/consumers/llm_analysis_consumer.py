@@ -48,12 +48,10 @@ class LLMAnalysisConsumer:
         timestamp = prediction.get("timestamp", "")
 
         try:
-            # 1. Build quant_data payload (same format as /predict response)
+            # 1. Build quant_data payload
             quant_data = {
-                "quantitative_signals": {
-                    "trend_probabilities": prediction.get("trend_probabilities", {}),
-                    "expected_range": prediction.get("expected_range", {}),
-                }
+                "trend_probabilities": prediction.get("trend_probabilities", {}),
+                "expected_range": prediction.get("expected_range", {}),
             }
 
             # 2. Fetch RAG context
@@ -66,27 +64,48 @@ class LLMAnalysisConsumer:
                 logger.warning("llm_consumer_rag_error", ticker=ticker, error=str(e))
 
             # 3. Fetch latest news
-            news_text = ""
+            news_text = "No recent news found."
+            news_headlines = []
             try:
                 from vnstock3 import Vnstock
                 stock = Vnstock().stock(symbol=ticker, source="VCI")
                 news_df = stock.company.news()
                 if news_df is not None and not news_df.empty:
-                    titles = news_df["news_title"].head(5).tolist()
-                    news_text = "\n".join([f"- {t}" for t in titles])
+                    news_headlines = news_df["news_title"].head(5).tolist()
+                    news_text = "\n".join([f"- {t}" for t in news_headlines])
             except Exception:
                 pass
 
-            # 4. Call LLM Pipeline
+            # 4. Fetch Phase 10 DL/RL Metadata (Simulated)
+            dl_data = {
+                "tft_sequence_forecast": {
+                    "expected_trend": "UP",
+                    "quantiles": {"q10": 0.0, "q50": 0.0, "q90": 0.0}
+                },
+                "cnn_order_book_microstructure": {
+                    "imbalance_state": "NEUTRAL",
+                    "slippage_optimization_flag": False
+                }
+            }
+            rl_data = {
+                "suggested_allocation_pct": 0.35,
+                "rl_action_justification": "Stable market conditions; Sortino-based allocation."
+            }
+
+            # 5. Call LLM Pipeline
             llm_result = await run_qualitative_analysis(
                 ticker=ticker,
                 quant_data=quant_data,
                 rag_context=rag_text,
                 news_context=news_text,
-                user_risk_input=0.70,
+                dl_data=dl_data,
+                rl_data=rl_data,
             )
 
-            # 5. Publish combined result to llm.analysis topic
+            # 6. Inject headlines for TUI display
+            llm_result["news_headlines"] = news_text
+
+            # 7. Publish combined result
             full_event = {
                 "ticker": ticker,
                 "timestamp": timestamp,
@@ -101,10 +120,9 @@ class LLMAnalysisConsumer:
 
 
 if __name__ == "__main__":
-    import logging as _logging
-    _logging.basicConfig(level=_logging.INFO)
+    import asyncio as _asyncio
     consumer = LLMAnalysisConsumer()
     try:
-        asyncio.run(consumer.run_forever())
+        _asyncio.run(consumer.run_forever())
     except KeyboardInterrupt:
         pass

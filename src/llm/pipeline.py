@@ -22,7 +22,8 @@ async def run_qualitative_analysis(
     quant_data: dict[str, Any],
     rag_context: str,
     news_context: str = "",
-    user_risk_input: float = 1.0,
+    dl_data: dict[str, Any] = None,
+    rl_data: dict[str, Any] = None,
 ) -> dict[str, Any]:
     """Execute the local LLM to generate qualitative JSON analysis.
 
@@ -31,11 +32,11 @@ async def run_qualitative_analysis(
         quant_data: Quantitative payload from Phase 2 ML models
         rag_context: Text extracted from Phase 1 Vector DB
         news_context: Latest news headlines from market sources
-        user_risk_input: User's raw requested risk tolerance (0.0 to 1.0)
+        dl_data: Phase 10 Deep Learning signals (TFT, CNN)
+        rl_data: Phase 10 RL Portfolio Manager recommendations
 
     Returns:
-        A dictionary parsed from the LLM's JSON output containing
-        sentiment, risk_factor, and reasoning.
+        A dictionary parsed from the LLM's JSON output.
     """
     settings = get_settings()
     client = get_llm_client()
@@ -43,21 +44,29 @@ async def run_qualitative_analysis(
     system_prompt = build_system_prompt()
     user_prompt = build_user_prompt(
         ticker=ticker,
-        user_risk_input=user_risk_input,
         quant_data=quant_data,
         rag_context=rag_context,
         news_context=news_context,
+        dl_data=dl_data,
+        rl_data=rl_data,
     )
 
-    logger.info(
-        "llm_analysis_started",
-        ticker=ticker,
-        model=settings.llm_model_name,
-    )
+    # ── Resolve Model Name based on Provider ──
+    provider = settings.llm_provider
+    if provider == "openai":
+        model_name = settings.openai_model_name
+    elif provider == "groq":
+        model_name = settings.groq_model_name
+    elif provider == "gemini":
+        model_name = settings.gemini_model_name
+    else:
+        model_name = settings.ollama_model_name
+
+    logger.debug("llm_analysis_started", ticker=ticker, provider=provider, model=model_name)
 
     try:
         response = await client.chat.completions.create(
-            model=settings.llm_model_name,
+            model=model_name,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -65,21 +74,26 @@ async def run_qualitative_analysis(
             response_format={"type": "json_object"},
             temperature=0.0,
             seed=42,
-            timeout=15.0,  # Strict timeout to prevent UI network errors
+            timeout=25.0,  # Increased timeout for complex SOP reasoning
         )
     except Exception as e:
         logger.warning(
-            "llm_timeout_or_error_fallback",
+            "llm_error_fallback",
             error=str(e),
-            msg="Ollama took too long to respond or failed. Falling back to default analysis."
+            ticker=ticker
         )
         return {
-            "sentiment": "NEUTRAL",
-            "risk_factor": "MODERATE",
-            "reasoning": f"Local LLM ({settings.llm_model_name}) is currently overloaded or starting up. Analysis falls back to quantitative signals only.",
+            "analysis_status": "insufficient_data",
+            "confidence_score": 0.0,
+            "veto_flag": False,
+            "overall_outlook": None,
+            "reasoning": f"Local LLM Error: {str(e)}",
+            "signals": None,
+            "deep_learning_context": None,
+            "rl_recommendation": None,
+            "main_risks": None
         }
 
-    # ── Parse LLM response (now correctly outside the except block) ──
     try:
         result_text = response.choices[0].message.content
         if not result_text:
@@ -87,52 +101,45 @@ async def run_qualitative_analysis(
 
         parsed_result = json.loads(result_text)
 
-        # Validate required keys
-        required_keys = {"analysis_status", "sentiment", "risk_factor", "reasoning", "system_parameters", "sources_used"}
-        missing = required_keys - set(parsed_result.keys())
-        if missing:
-            logger.warning("llm_missing_keys", ticker=ticker, missing=list(missing))
+        # ── SOP Validation & Consistency Checks ──
+        status = parsed_result.get("analysis_status", "insufficient_data")
+        score = parsed_result.get("confidence_score", 0.0)
+        
+        # Enforce Kill Switch (SOP Step 7)
+        if score < 0.7:
+            status = "insufficient_data"
+
+        if status == "insufficient_data":
             return {
                 "analysis_status": "insufficient_data",
-                "sentiment": parsed_result.get("sentiment", "neutral"),
-                "risk_factor": parsed_result.get("risk_factor", "high"),
-                "reasoning": f"Fallback: LLM thiếu khóa {missing}. {parsed_result.get('reasoning', '')}",
-                "system_parameters": parsed_result.get("system_parameters", {
-                    "applied_risk_tolerance": min(user_risk_input, 0.70),
-                    "confidence_metrics": {
-                        "stock_quantitative_data": 0.95,
-                        "rag_context_data": 0.70
-                    }
-                }),
-                "sources_used": parsed_result.get("sources_used", [])
+                "confidence_score": score,
+                "veto_flag": False,
+                "overall_outlook": None,
+                "reasoning": parsed_result.get("reasoning", "Dữ liệu không đủ hoặc mâu thuẫn theo SOP."),
+                "signals": None,
+                "deep_learning_context": None,
+                "rl_recommendation": None,
+                "main_risks": None
             }
 
-        logger.info("llm_analysis_completed", ticker=ticker, status=parsed_result["analysis_status"])
+        # Enforce Veto Logic (SOP Section III)
+        veto_triggered = parsed_result.get("veto_flag", False)
+        if veto_triggered:
+            parsed_result["overall_outlook"] = "negative"
+
+        logger.info("llm_analysis_completed", ticker=ticker, status=status, score=score, veto=veto_triggered)
         return parsed_result
 
-    except json.JSONDecodeError as e:
-        logger.error("llm_json_decode_error", ticker=ticker, error=str(e), raw_output=result_text)
-        return {
-            "analysis_status": "insufficient_data",
-            "sentiment": "neutral",
-            "risk_factor": "high",
-            "reasoning": f"Lỗi parse JSON từ LLM: {str(e)}",
-            "system_parameters": {
-                "applied_risk_tolerance": min(user_risk_input, 0.70),
-                "confidence_metrics": {"stock_quantitative_data": 0.95, "rag_context_data": 0.70}
-            },
-            "sources_used": []
-        }
     except Exception as e:
-        logger.error("llm_connection_failed", ticker=ticker, error=str(e))
+        logger.error("llm_parse_failed", ticker=ticker, error=str(e))
         return {
             "analysis_status": "insufficient_data",
-            "sentiment": "neutral",
-            "risk_factor": "high",
-            "reasoning": f"Lỗi kết nối Ollama LLM Local: {str(e)}",
-            "system_parameters": {
-                "applied_risk_tolerance": min(user_risk_input, 0.70),
-                "confidence_metrics": {"stock_quantitative_data": 0.95, "rag_context_data": 0.70}
-            },
-            "sources_used": []
+            "confidence_score": 0.0,
+            "veto_flag": False,
+            "overall_outlook": None,
+            "reasoning": f"Lỗi hệ thống khi xử lý kết quả LLM: {str(e)}",
+            "signals": None,
+            "deep_learning_context": None,
+            "rl_recommendation": None,
+            "main_risks": None
         }

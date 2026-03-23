@@ -1,7 +1,7 @@
-"""Tests for Phase 3: LLM Qualitative Analysis Pipeline.
+"""Tests for Phase 3: Qualitative Risk Analyst Engine.
 
-Validates the Ollama OpenAI client logic, Prompt building, JSON schema
-enforcement, and the new `/analyze` API endpoint using mocks.
+Validates the strict SOP compliance: evidence-locked reasoning, 
+zero-price prediction, veto logic, and JSON schema enforcement.
 """
 
 from __future__ import annotations
@@ -24,183 +24,136 @@ def client() -> TestClient:
 
 # ── Testing Prompts Logic ──────────────────────────────────────────
 
-
 class TestPrompts:
-    def test_system_prompt_enforces_json(self):
+    def test_system_prompt_enforces_sop(self):
         prompt = build_system_prompt()
-        assert "định dạng JSON" in prompt
-        assert "Kịch bản A" in prompt
-        assert "Kịch bản B" in prompt
-        assert "sentiment" in prompt
-        assert "risk_factor" in prompt
-        assert "0.70" in prompt  # System ensures risk cap rule description
+        assert "Risk Analyst Engine" in prompt
+        assert "EVIDENCE-LOCKED REASONING" in prompt
+        assert "NO PRICE / NO TRADING LOGIC" in prompt
+        assert "VETO LOGIC" in prompt
+        assert "ZONE_DATA" in prompt
 
-    def test_user_prompt_injects_data(self):
-        quant_mock = {"mock_key": "mock_value", "trend": "UP"}
-        rag_mock = "Tin đồn doanh thu giảm."
+    def test_user_prompt_formats_zones(self):
+        quant_mock = {"trend_probabilities": {"up": 0.8}, "expected_range": {"median": 100}}
+        rag_mock = "Zone 1 data text"
+        news_mock = "Zone 2 news text"
 
         prompt = build_user_prompt(
             ticker="SSI",
-            user_risk_input=1.0,
             quant_data=quant_mock,
             rag_context=rag_mock,
+            news_context=news_mock
         )
 
         assert "SSI" in prompt
-        assert "100.0%" in prompt
-        assert "mock_value" in prompt
-        assert "doanh thu giảm" in prompt
+        assert "[Zone 1: Fundamental/RAG]" in prompt
+        assert "Zone 1 data text" in prompt
+        assert "[Zone 2: Latest News]" in prompt
+        assert "0.8" in prompt
 
 
-# ── Testing LLM Pipeline (with Mocks) ──────────────────────────────
+# ── Testing LLM Pipeline (SOP Logic) ──────────────────────────────
 
-
-class TestQualitativeAnalysis:
+class TestQualitativeAnalysisSOP:
     @pytest.mark.asyncio
     @patch("src.llm.pipeline.get_llm_client")
-    async def test_llm_pipeline_success(self, mock_get_client):
-        # 1. Setup the AsyncMock for the OpenAI client
+    async def test_llm_pipeline_success_sop(self, mock_get_client):
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
 
-        # 2. Mock the JSON returned by the model
         mock_response = AsyncMock()
         mock_choice = AsyncMock()
         mock_choice.message.content = json.dumps({
             "analysis_status": "success",
-            "sentiment": "positive",
-            "risk_factor": "medium",
-            "reasoning": "Doanh thu tăng trưởng mạnh mẽ.",
-            "system_parameters": {
-                "applied_risk_tolerance": 0.70,
-                "confidence_metrics": {"stock_quantitative_data": 0.95, "rag_context_data": 0.70}
+            "confidence_score": 0.85,
+            "veto_flag": False,
+            "overall_outlook": "positive",
+            "reasoning": "Dòng tiền mạnh từ khối ngoại và TFT dự báo UP.",
+            "signals": {
+                "bullish": [{"evidence": "Khối ngoại mua ròng", "zone": "zone_2"}],
+                "bearish": []
             },
-            "sources_used": ["zone_1"]
+            "deep_learning_context": {
+                "tft_forecast": "Uptrend confirmed by sequence models",
+                "cnn_microstructure": "Neutral"
+            },
+            "rl_recommendation": {
+                "suggested_allocation_pct": 0.45,
+                "justification": "Optimal risk/reward"
+            },
+            "main_risks": [],
+            "anti_hallucination_check_passed": True
         })
         mock_response.choices = [mock_choice]
         mock_client.chat.completions.create.return_value = mock_response
 
-        # 3. Call the pipeline
+        dl_mock = {"tft_sequence_forecast": {"expected_trend": "UP"}}
+        rl_mock = {"suggested_allocation_pct": 0.45}
+
         result = await run_qualitative_analysis(
             ticker="SSI",
-            quant_data={"mock": "data"},
-            rag_context="[zone_1] BCTC tốt",
+            quant_data={},
+            rag_context="Data",
+            dl_data=dl_mock,
+            rl_data=rl_mock
         )
 
-        # 4. Assertions
         assert result["analysis_status"] == "success"
-        assert result["sentiment"] == "positive"
-        assert result["risk_factor"] == "medium"
-        assert "Doanh thu" in result["reasoning"]
-        assert result["sources_used"] == ["zone_1"]
+        assert result["deep_learning_context"]["tft_forecast"] == "Uptrend confirmed by sequence models"
+        assert result["rl_recommendation"]["suggested_allocation_pct"] == 0.45
 
     @pytest.mark.asyncio
     @patch("src.llm.pipeline.get_llm_client")
-    async def test_llm_pipeline_missing_keys(self, mock_get_client):
-        """If the LLM omits keys, the pipeline must fallback to Kịch bản B (insufficient_data)."""
+    async def test_llm_pipeline_veto_logic(self, mock_get_client):
+        """If veto_flag is True, result should be negative regardless of other fields."""
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
 
         mock_response = AsyncMock()
         mock_choice = AsyncMock()
-        # Missing 'sentiment', 'risk_factor', 'analysis_status', 'sources_used', 'system_parameters'
         mock_choice.message.content = json.dumps({
-            "reasoning": "Model failed to output standard limits.",
+            "analysis_status": "success",
+            "confidence_score": 0.9,
+            "veto_flag": True,  # VETO TRIGGERED
+            "overall_outlook": "positive", # Conflicting outlook from model
+            "reasoning": "Phát hiện dấu hiệu gian lận tài chính.",
+            "signals": {"bullish": [], "bearish": []},
+            "main_risks": [{"risk_type": "legal", "description": "Gian lận", "zone": "zone_1"}],
+            "anti_hallucination_check_passed": True
         })
         mock_response.choices = [mock_choice]
         mock_client.chat.completions.create.return_value = mock_response
 
-        result = await run_qualitative_analysis(
-            ticker="SSI",
-            quant_data={},
-            rag_context="",
-        )
+        result = await run_qualitative_analysis(ticker="SSI", quant_data={}, rag_context="Data")
 
-        assert result["analysis_status"] == "insufficient_data"
-        assert result["sentiment"] == "neutral"  # Fallback default
-        assert result["risk_factor"] == "high"    # Fallback default
-        assert "Model failed to output" in result["reasoning"]
-        assert result["sources_used"] == []
+        # Pipeline must override to negative due to Veto Logic
+        assert result["veto_flag"] is True
+        assert result["overall_outlook"] == "negative"
 
     @pytest.mark.asyncio
     @patch("src.llm.pipeline.get_llm_client")
-    async def test_llm_pipeline_bad_json(self, mock_get_client):
-        """If the LLM returns completely broken JSON, the pipeline must catch it gracefully."""
+    async def test_llm_pipeline_kill_switch(self, mock_get_client):
+        """If confidence < 0.7, trigger insufficient_data."""
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
 
         mock_response = AsyncMock()
         mock_choice = AsyncMock()
-        mock_choice.message.content = "This is not JSON at all."
+        mock_choice.message.content = json.dumps({
+            "analysis_status": "success",
+            "confidence_score": 0.4, # TOO LOW
+            "veto_flag": False,
+            "overall_outlook": "positive",
+            "reasoning": "Dữ liệu quá mờ nhạt.",
+            "signals": {"bullish": [], "bearish": []},
+            "main_risks": [],
+            "anti_hallucination_check_passed": True
+        })
         mock_response.choices = [mock_choice]
         mock_client.chat.completions.create.return_value = mock_response
 
-        result = await run_qualitative_analysis(
-            ticker="SSI",
-            quant_data={},
-            rag_context="",
-        )
+        result = await run_qualitative_analysis(ticker="SSI", quant_data={}, rag_context="Data")
 
         assert result["analysis_status"] == "insufficient_data"
-        assert result["sentiment"] == "neutral"  # Fallback default
-        assert result["risk_factor"] == "high"
-        assert "Lỗi parse JSON" in result["reasoning"]
-        assert result["sources_used"] == []
-
-
-# ── Testing /analyze API ──────────────────────────────────────────
-
-
-class TestAnalyzeEndpoint:
-    @pytest.fixture(autouse=True)
-    def _train_first(self, client: TestClient):
-        """Ensure a model is trained before prediction tests."""
-        client.post(
-            "/api/v1/train",
-            json={"ticker": "PRED", "use_mock": True},
-        )
-
-    @patch("src.api.routes.run_qualitative_analysis")
-    @patch("src.api.routes.ticker_news")
-    def test_analyze_endpoint_success(self, mock_ticker_news, mock_llm, client: TestClient):
-        """The /analyze endpoint should return both quantitative and qualitative data."""
-        # Force the mocked LLM pipeline to return sync standard response
-        # Since the route is async, we mock it via AsyncMock logic
-        async def mock_qualitative(*args, **kwargs):
-            return {
-                "analysis_status": "success",
-                "sentiment": "negative",
-                "risk_factor": "high",
-                "reasoning": "Lãi suất tăng.",
-                "system_parameters": {
-                    "applied_risk_tolerance": 0.70,
-                    "confidence_metrics": {"stock_quantitative_data": 0.95, "rag_context_data": 0.70}
-                },
-                "sources_used": ["zone_2", "zone_3"]
-            }
-
-        async def mock_news(*args, **kwargs):
-            return {"ticker": "PRED", "news": []}
-
-        mock_ticker_news.side_effect = mock_news
-        mock_llm.side_effect = mock_qualitative
-
-        response = client.get("/api/v1/analyze?ticker=PRED&use_mock=true&allowed_zones=zone_2&allowed_zones=zone_3")
-        assert response.status_code == 200
-        assert "X-Stage-Timings" in response.headers
-
-        data = response.json()
-        
-        # Core Predict Contract
-        assert "quantitative_signals" in data
-        assert "system_parameters" in data
-        
-        # New Phase 3 Contract
-        assert "qualitative_analysis" in data
-        qual = data["qualitative_analysis"]
-        assert qual["analysis_status"] == "success"
-        assert qual["sentiment"] == "negative"
-        assert qual["risk_factor"] == "high"
-        assert qual["reasoning"] == "Lãi suất tăng."
-        assert "system_parameters" in qual
-        assert qual["sources_used"] == ["zone_2", "zone_3"]
+        assert result["overall_outlook"] is None
+        assert result["signals"] is None

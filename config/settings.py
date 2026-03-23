@@ -98,10 +98,28 @@ class Settings(BaseSettings):
     confidence_stock_quantitative: float = 0.95
     confidence_general_context: float = 0.70
 
-    # ── LLM Pipeline (Phase 3) ───────────────────────────────
+    # ── LLM Pipeline (Phase 3 & 4 Upgrade) ────────────────────
+    llm_provider: Literal["ollama", "openai", "groq", "gemini"] = "ollama"
+    
+    # Ollama (Local)
     ollama_base_url: str = "http://localhost:11434/v1"
-    ollama_api_key: str = "ollama"  # Dummy key required by OpenAI client
-    llm_model_name: str = "qwen3:8b"  # Updated to Qwen 3 8b
+    ollama_api_key: str = "ollama"
+    ollama_model_name: str = "qwen3:8b"
+    
+    # OpenAI
+    openai_api_key: str = ""
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_model_name: str = "gpt-4o"
+    
+    # Groq (Llama 3/3.3)
+    groq_api_key: str = ""
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_model_name: str = "llama-3.3-70b-versatile"
+    
+    # Gemini (via OpenAI-compatible adapter or direct API)
+    gemini_api_key: str = ""
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    gemini_model_name: str = "gemini-1.5-pro"
 
     # ── API (Phase 2 & 3) ────────────────────────────────────
     api_host: str = "0.0.0.0"
