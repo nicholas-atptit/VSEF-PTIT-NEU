@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import json
 import asyncio
 import time
 from enum import Enum
@@ -215,6 +216,19 @@ class SessionStreamingManager:
         try:
             packed_data = msgpack.packb(payload_dict)
             await self._redis.xadd(self._stream_name, {"payload": packed_data})
+            
+            # PHASE 23 FAST-PATH: Update O(1) price cache for TUI
+            if stream_type in ["trade", "ohlc"]:
+                ticker = payload_dict.get("symbol") or payload_dict.get("ticker")
+                if ticker:
+                    price = payload_dict.get("price") or payload_dict.get("close")
+                    if price:
+                        cache_key = f"live_price:{ticker}"
+                        await self._redis.set(cache_key, json.dumps({
+                            "price": float(price),
+                            "ts": payload_dict.get("_recv_ts") or time.time(),
+                            "type": stream_type
+                        }))
         except Exception as e:
             logger.error("redis_stream_push_error", error=str(e), type=stream_type)
 

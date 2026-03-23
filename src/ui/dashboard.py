@@ -47,43 +47,43 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-HAS_VNSTOCK = False
 try:
-    from vnstock import Vnstock
-    HAS_VNSTOCK = True
-    VNSTOCK_CLIENT = Vnstock()
-except ImportError:
-    HAS_VNSTOCK = False
-    VNSTOCK_CLIENT = None
+    from config.settings import get_settings
+    SETTINGS = get_settings()
+except Exception:
+    class MockSettings: 
+        redis_url = "redis://localhost:6379"
+        vnstock_api_key = ""
+        def __init__(self): pass
+    SETTINGS = MockSettings()
 
 # --- LEGACY SYSTEM INTEGRATION ---
 HAS_DB = False
 DB_VERSION = "4.6.0-ULTRA-STABLE"
-# High Performance + 1548 Tickers + Heuristic Analysis
 DB_ERR = "No Driver"
 try:
-    from config.settings import get_settings
-    from src.database.connection import get_session
+    from src.database.connection import get_session, dispose_engine
     from src.models.price import RawPrice
     from src.ml.data_loader import load_ohlcv_from_db
     from src.context.news_crawler import NewsCrawler
     from sqlalchemy import select, desc, text
-    SETTINGS = get_settings()
     HAS_DB = True
 except (ImportError, ModuleNotFoundError) as e:
     DB_ERR = f"DepError: {str(e).split(':')[-1]}"
-    class MockSettings: 
-        redis_url = "redis://localhost:6379"
-        # Try manual .env parse for host machine
-        def __init__(self):
-            env_file = PROJECT_ROOT / ".env"
-            if env_file.exists():
-                with open(env_file) as f:
-                    for line in f:
-                        if "REDIS_URL=" in line: self.redis_url = line.split("=")[1].strip()
-    SETTINGS = MockSettings()
 except Exception as e:
     DB_ERR = f"ConfigError: {str(e).split(':')[-1]}"
+
+# --- VNSTOCK PRO AUTH ---
+HAS_VNSTOCK = False
+try:
+    import os
+    os.environ["VNSTOCK_API_KEY"] = SETTINGS.vnstock_api_key
+    from vnstock import Vnstock
+    HAS_VNSTOCK = True
+    VNSTOCK_CLIENT = Vnstock()
+except Exception:
+    HAS_VNSTOCK = False
+    VNSTOCK_CLIENT = None
 
 class AlgoTradingTUI:
     def __init__(self, start_ticker="FPT"):
@@ -97,8 +97,10 @@ class AlgoTradingTUI:
             "ml_up": 0.0, "ml_down": 0.0, "ml_recommendation": "ANALYZING...",
             "q_bottom": 0.0, "q_median": 0.0, "q_ceiling": 0.0,
             "llm_outlook": "CALCULATING", "llm_reasoning": "Processing local history...",
-            "rl_allocation": 0.0, "status": "BOOTING", "news_headlines": "Fetching Market Context..."
+            "rl_allocation": 0.0, "status": "BOOTING", "news_headlines": "Fetching Market Context...",
+            "last_price_ts": 0, "max_upside": 0.0, "max_downside": 0.0
         }
+        self._redis_client = None
         self._heuristic_cache = {} # Cache for fast switching
         self._lock_path = Path("data/.tui_lock")
         self.running = True
@@ -185,6 +187,10 @@ class AlgoTradingTUI:
         rec = self.data['ml_recommendation']
         rec_color = "green" if "BUY" in rec else "red" if "SELL" in rec else "yellow"
         table.add_row("[bold cyan]ALGO RECOMMEND:[/bold cyan]", f"[bold white on {rec_color}] {rec} [/]")
+        
+        up_p = self.data['max_upside'] * 100
+        down_p = self.data['max_downside'] * 100
+        table.add_row("[bold cyan]MAX FORECAST:[/bold cyan]", f"[bold green]+{up_p:.1f}%[/] / [bold red]{down_p:+.1f}%[/]")
 
         q_table = Table(show_header=True, header_style="bold dim cyan", box=None, expand=True)
         q_table.add_column("Support (10th)", justify="center") ; q_table.add_column("Pivot (50th)", justify="center") ; q_table.add_column("Resistance (90th)", justify="center")
@@ -213,11 +219,16 @@ class AlgoTradingTUI:
                         if cache_data:
                             ml = cache_data.get("ml_prediction", {})
                             llm = cache_data.get("llm_analysis", {})
-                            self.data["news_headlines"] = llm.get("news_headlines", "Fetching news...")
+                            
+                            cache_news = llm.get("news_headlines", "")
+                            if cache_news and "Market context synced" not in cache_news:
+                                self.data["news_headlines"] = cache_news
+                            
                             probs = ml.get("trend_probabilities", {})
                             self.data["ml_up"] = probs.get("up", 0.0) ; self.data["ml_down"] = probs.get("down", 0.0)
                             ranges = ml.get("expected_range", {})
                             self.data["q_bottom"] = ranges.get("bottom_10th", 0.0) ; self.data["q_median"] = ranges.get("median_50th", 0.0) ; self.data["q_ceiling"] = ranges.get("ceiling_90th", 0.0)
+                            self.data["max_upside"] = ml.get("max_upside_pct", 0.0) ; self.data["max_downside"] = ml.get("max_downside_pct", 0.0)
                             self.data["llm_outlook"] = str(llm.get("overall_outlook", "NEUTRAL")).upper()
                             self.data["llm_reasoning"] = llm.get("reasoning", "Analysis loaded.")
                             rl = llm.get("rl_recommendation", {})
@@ -260,6 +271,23 @@ class AlgoTradingTUI:
                     asyncio.create_task(_ingest_task())
         except Exception: pass
 
+    async def _poll_redis(self):
+        """Phase 23: Zero-Latency Price fetch from Redis O(1) cache."""
+        if not HAS_REDIS: return
+        try:
+            if not self._redis_client:
+                self._redis_client = Redis.from_url(SETTINGS.redis_url)
+            
+            raw = await self._redis_client.get(f"live_price:{self.pinned_ticker}")
+            if raw:
+                cached = json.loads(raw)
+                ts = cached.get("ts", 0)
+                if ts >= self.data.get("last_price_ts", 0):
+                    self.data["price"] = float(cached["price"])
+                    self.data["last_price_ts"] = ts
+                    self.data["status"] = "LIVE (Redis)"
+        except Exception: pass
+
     async def _poll_db(self):
         if not HAS_DB: return
         try:
@@ -271,7 +299,10 @@ class AlgoTradingTUI:
                 ), timeout=2.0)
                 rec = res.scalar_one_or_none()
                 if rec:
-                    self.data["price"] = float(rec.close)
+                    ts = rec.timestamp.timestamp()
+                    if ts >= self.data.get("last_price_ts", 0):
+                        self.data["price"] = float(rec.close)
+                        self.data["last_price_ts"] = ts
                     if "LIVE" not in self.data["status"]: self.data["status"] = "LIVE (DB)"
         except Exception: pass
 
@@ -298,7 +329,13 @@ class AlgoTradingTUI:
                     df_m = await loop.run_in_executor(None, lambda: stock.quote.history(interval="1m", count=1))
                     if df_m is not None and not df_m.empty:
                         last_row = df_m.iloc[-1]
-                        self.data["price"] = float(last_row["close"])
+                        price = float(last_row["close"])
+                        ts = last_row["time"].timestamp()
+                        
+                        if ts >= self.data.get("last_price_ts", 0):
+                            self.data["price"] = price
+                            self.data["last_price_ts"] = ts
+                            
                         if self.data.get("ml_up", 0) > 0:
                             self.data["status"] = f"ANALYZED ({src})"
                         else:
@@ -413,6 +450,7 @@ class AlgoTradingTUI:
             # Parallel Polling for Speed
             try:
                 tasks = []
+                if HAS_REDIS: tasks.append(self._poll_redis())
                 if HAS_DB: tasks.append(self._poll_db())
                 if self.news_crawler: tasks.append(self._update_news())
                 if HAS_VNSTOCK: tasks.append(self._poll_rest())
@@ -487,6 +525,7 @@ class AlgoTradingTUI:
                 for t in tasks: t.cancel()
             finally:
                 if self._lock_path.exists(): self._lock_path.unlink()
+                await dispose_engine()
 
 if __name__ == "__main__":
     ticker = "FPT"

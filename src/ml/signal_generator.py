@@ -79,12 +79,18 @@ class SignalGenerator:
         # Enforce system constraints
         system_params = self._build_system_parameters(risk_tolerance)
 
+        # Calculate max range percentages
+        upside_pct = (expected_range["ceiling_90th"] - current_close) / current_close if current_close > 0 else 0.0
+        downside_pct = (expected_range["bottom_10th"] - current_close) / current_close if current_close > 0 else 0.0
+
         payload = {
             "ticker": ticker.upper(),
             "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             "quantitative_signals": {
                 "trend_probabilities": trend_probs,
                 "expected_range": expected_range,
+                "max_upside_pct": round(float(upside_pct), 4),
+                "max_downside_pct": round(float(downside_pct), 4),
                 "action_plan": action_plan,
             },
             "system_parameters": system_params,
