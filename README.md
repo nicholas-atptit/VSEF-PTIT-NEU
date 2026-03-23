@@ -1,53 +1,41 @@
-# 📈 Algo Trading AI — Full Stack (Data + ML + LLM + Kafka)
+# 📈 Algo Trading AI — Professional Stack (v4.6.0)
 
-> **Enterprise-grade Vietnamese stock market analysis system with 1,500 LightGBM models, Ollama LLM, Kafka message broker, and automated AM/PM data ingestion.**
+> **Enterprise-grade Vietnamese stock market analysis system with 1,600+ LightGBM models, Ollama LLM, Kafka message broker, and a High-Performance Terminal UI (TUI) Dashboard.**
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-VNStock API ──11:35 & 15:15──► [market.data.raw] ──► DB Writer (TimescaleDB)
-                                                  ──► ML Consumer (1500 LightGBM)
-                                                        ──► [ml.predictions] ──► LLM Consumer (Ollama)
-                                                                                   ──► [llm.analysis] ──► Cache Writer
-                                                                                                           ──► /predict API (sub-ms)
-News Crawler ──► [market.news.raw] ──► News Embedder (ChromaDB)
+Market Data (vnstock_pro) ──► Redis (Live Cache) ──► TimescaleDB (5-Year History)
+                                                       │
+[Background Sync] ◄────────────────────────────────────┘
+       │
+[ML Feed] ──► Parallel Inferencing (1600+ Tickers) ──► JSON Cache ──► TUI Dashboard (v4.6)
+                                                                       │
+LLM Context (Ollama) ◄─────────────────────────────────────────────────┘
 ```
 
-## 🚀 One-Command Deployment (Server)
+## 🚀 Key Features (v4.6.0 Upgrade)
 
-### Prerequisites
-- Docker + Docker Compose installed
-- NVIDIA GPU drivers (for Ollama LLM acceleration, optional)
+- ✅ **Professional TUI Dashboard**: Real-time monitoring with `Rich` rendering, Market Reality (Heuristics) vs. Psychology (ML) panels.
+- ✅ **5-Year Historical Data**: Instant local bootstrapping for all tickers (2019-2024).
+- ✅ **Live Heartbeat Sync**: Ultra-fast (10s cycle) database updates using `vnstock_data` Pro (300 req/min).
+- ✅ **All-Ticker ML Engine**: Parallel processing of 1,600+ models with intelligent TUI prioritization and incremental caching.
+- ✅ **Max Forecast Metrics**: Probabilistic % Upside/Downside calculations based on 90th percentile ML quantiles.
+- ✅ **Zero-Gap Reliability**: Automatic connection disposal, REST fallbacks, and DB existence validation.
 
-### Start Everything
-```bash
-# Clone the repo on your server
-git clone <repo-url> && cd AI-ML-LLM-Stock
+---
 
-# Start ALL services (DB, Kafka, LLM, API, Consumers)
-docker compose up -d --build
+## 🔧 Service Entry Points
 
-# Pull the LLM model into Ollama
-docker exec algo_ollama ollama pull qwen3:8b
-```
-
-That's it! The system will:
-1. ✅ **Auto-start** TimescaleDB, ChromaDB, Kafka, Zookeeper, Kafka-UI, Ollama
-2. ✅ **Auto-start** FastAPI server on port `8888`
-3. ✅ **Auto-start** all 5 Kafka consumer daemons (with crash auto-restart)
-4. ✅ **Auto-schedule** AM (11:35) and PM (15:15) data ingestion + news crawling
-5. ✅ **Auto-restart** everything on server reboot (`unless-stopped` policy)
-
-### Service Ports
-| Service | Port | URL |
-|---------|------|-----|
-| FastAPI | 8888 | http://localhost:8888/api/v1/health |
-| Kafka UI | 8080 | http://localhost:8080 |
-| ChromaDB | 8000 | http://localhost:8000 |
-| TimescaleDB | 5432 | postgresql://localhost:5432 |
-| Ollama LLM | 11434 | http://localhost:11434 |
+| Script | Command | Description |
+|--------|---------|-------------|
+| **Dashboard** | `python src/ui/dashboard.py <TICKER>` | Start the Professional TUI (v4.6) |
+| **Live Sync** | `python scripts/live_heartbeat_sync.py` | 10s Live DB Heartbeat (Pro) |
+| **ML Engine** | `python scripts/per_session_predict.py --loop 15` | All-ticker ML update (15m cycle) |
+| **Backdate** | `python scripts/run_backdate.py` | Historical data bulk fetcher |
+| **Importer** | `python scripts/local_importer.py` | High-speed CSV -> DB importer |
 
 ---
 
@@ -55,29 +43,21 @@ That's it! The system will:
 
 ```
 ├── data/                          # Persistent Data & Cache
-│   ├── prediction_cache/          # Kafka-populated prediction cache
-│   ├── listing/                   # Market symbols
-│   └── hourly/                    # 1H price datasets
-├── models/                        # 1,584 trained LightGBM models
-├── scripts/                       # Entry Points
-│   ├── run_consumers.py           # ⭐ Kafka Consumer Supervisor (5 daemons)
-│   ├── run_stream.py              # WebSocket stream manager
-│   ├── run_backdate.py            # Historical backfill
-│   └── train_ml_tickers.py        # Model training pipeline
+│   ├── prediction_cache/          # Incremental ML predictions (v4.6)
+│   ├── listing/                   # VIP & Market symbols list
+│   └── .tui_ticker                # Priority lock for background services
+├── models/                        # 1,625 trained LightGBM models (Quantile + Trend)
+├── scripts/                       # High-Performance Entry Points
+│   ├── live_heartbeat_sync.py     # ⭐ Live 10s Heartbeat Service
+│   ├── per_session_predict.py     # ⭐ All-Ticker ML Prediction Engine
+│   └── local_importer.py          # 5-Year Data Bootstrapping
 ├── src/
-│   ├── api/                       # FastAPI endpoints (/predict, /chat, /analyze)
-│   ├── ml/                        # LightGBM models & feature engineering
-│   ├── llm/                       # Ollama LLM pipeline
-│   ├── streaming/                 # Kafka clients, scheduler, producers, consumers
-│   │   ├── kafka_client.py        # KafkaPublisher + KafkaSubscriber
-│   │   ├── scheduler.py           # AM/PM cron scheduler
-│   │   ├── producers/             # Market data + news producers
-│   │   └── consumers/             # 5 consumer daemons
-│   ├── context/                   # RAG, news crawler, ChromaDB
-│   └── historical/                # TimescaleDB services
-├── docker-compose.yml             # ⭐ Full stack (8 services)
-├── Dockerfile                     # Python app container
-└── requirements.txt               # Pinned dependencies
+│   ├── ui/                        # Professional TUI Dashboard (Rich)
+│   ├── ml/                        # DualModelTrainer (v3) + SignalGenerator
+│   ├── llm/                       # Ollama/Groq/Gemini Multi-Provider
+│   ├── streaming/                 # Kafka/Redis Infrastructure
+│   └── historical/                # TimescaleDB Ingestion Logic
+└── docker-compose.yml             # Full Infrastructure Stack
 ```
 
 ---
@@ -87,35 +67,31 @@ That's it! The system will:
 ```bash
 # Setup Python environment
 python -m venv .venv312
-.venv312\Scripts\activate  # Windows
+.venv312\Scripts\activate
 pip install -r requirements.txt
 
-# Start infra only
-docker compose up -d timescaledb chromadb kafka zookeeper kafka-ui ollama
+# Start Infrastructure
+docker compose up -d timescaledb redis chromadb kafka ollama
 
-# Run API locally
-python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8888
+# 1. Bootstrapping (One-time)
+python scripts/local_importer.py  # Load 5-year history
 
-# Run consumer daemons locally
-python scripts/run_consumers.py
+# 2. Start Background Services
+start python scripts/live_heartbeat_sync.py
+start python scripts/per_session_predict.py --loop 15
 
-# Train ML models (one-time)
-python scripts/train_ml_tickers.py
+# 3. Launch TUI
+python src/ui/dashboard.py FPT
 ```
 
 ---
 
-## 📊 API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/predict?ticker=SSI` | ML prediction (cache → live fallback) |
-| GET | `/api/v1/analyze?ticker=SSI` | ML + LLM qualitative analysis |
-| POST | `/api/v1/chat` | Conversational AI with real-time data |
-| GET | `/api/v1/health` | Service health check |
-| GET | `/api/v1/news/{ticker}` | Latest news for a ticker |
+## 📊 TUI Controls
+- `python src/ui/dashboard.py <TICKER>`: Launch with specific symbol.
+- **Auto-Sync**: Background services automatically detect your active ticker and prioritize it.
+- **ML Insights**: Click or switch tickers to see updated quantiles and % max forecast.
 
 ---
 
 ## License
-Private — Internal use only.
+Private — Proprietary Vietnamese Stock Analysis System.
