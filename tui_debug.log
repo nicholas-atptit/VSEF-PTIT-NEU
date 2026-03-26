@@ -572,3 +572,4 @@ connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection re
 2026-03-26 21:27:04.680261: DB Error for SSI: [WinError 1225] The remote computer refused the network connection
 2026-03-26 21:27:19.910665: DB Error for SSI: [WinError 1225] The remote computer refused the network connection
 2026-03-26 21:27:33.878921: DB Error for SSI: [WinError 1225] The remote computer refused the network connection
+2026-03-26 21:27:47.877218: DB Error for SSI: [WinError 1225] The remote computer refused the network connection
