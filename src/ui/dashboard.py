@@ -60,18 +60,30 @@ except Exception:
 from src.utils.logging import get_logger
 _logger = get_logger(__name__)
 
-# --- LEGACY SYSTEM INTEGRATION ---
+# --- DATABASE INTEGRATION ---
 HAS_DB = False
-DB_VERSION = "4.6.0-ULTRA-STABLE"
+DB_VERSION = "5.0.0-AGENTIC"
 DB_ERR = "No Driver"
 try:
-    from src.database.connection import get_session, dispose_engine
+    from src.database.connection import get_session, dispose_engine, get_db
     from src.models.price import RawPrice
     from src.ml.data_loader import load_ohlcv_from_db
-    from src.context.news_crawler import NewsCrawler
-    from src.llm.news_intel import NewsIntelEngine
     from sqlalchemy import select, desc, text
     HAS_DB = True
+except Exception as e:
+    DB_ERR = f"DBError: {str(e).split(':')[-1]}"
+
+# --- AI AGENT INTEGRATION (OPTIONAL) ---
+HAS_AI = False
+try:
+    from src.context.news_crawler import NewsCrawler
+    from src.llm.news_intel import NewsIntelEngine
+    HAS_AI = True
+except Exception as e:
+    _logger.warning("ai_agents_disabled", error=str(e))
+    NewsCrawler = None
+    NewsIntelEngine = None
+    HAS_AI = False
 except (ImportError, ModuleNotFoundError) as e:
     DB_ERR = f"DepError: {str(e).split(':')[-1]}"
 except Exception as e:
@@ -197,10 +209,16 @@ class AlgoTradingTUI:
         grid.add_column(justify="left", ratio=1)
         grid.add_column(justify="center", ratio=1)
         grid.add_column(justify="right", ratio=1)
+        # Health Indicators
+        ai_status = "[bold green]AI: ONLINE[/]" if self.data.get("status") == "success" else "[bold yellow]AI: FALLBACK[/]"
+        risk_data = self.data.get("risk_intel")
+        acc = risk_data.get("model_accuracy_1w", 0.0) if isinstance(risk_data, dict) else 0.0
+        acc_str = f"[bold cyan]Acc: {acc:.0%}[/]" if acc > 0 else "[dim]Acc: --%[/]"
+        
         grid.add_row(
-            f"[bold magenta]AGENTIC TERMINAL v5.0[/bold magenta] [dim](Phase 1)[/dim]\n[bold yellow]{self.pinned_ticker}[/bold yellow] {self._get_sparkline(self.pinned_ticker)}",
+            f"[bold magenta]AGENTIC TERMINAL v5.0[/bold magenta]\n[bold yellow]{self.pinned_ticker}[/bold yellow] {self._get_sparkline(self.pinned_ticker)}",
             f"[bold white]{price_text}[/bold white] [[{change_color}]{self.data['change']:+.2f}%[/]]\n[dim]{time_str}[/dim]",
-            f"Status: [bold {status_color}]{self.data['status']}[/bold {status_color}]\n[dim]Fusion Mode: {SETTINGS.sentiment_enabled and 'ENABLED' or 'OFF'}[/dim]"
+            f"{ai_status} | {acc_str}\nStatus: [bold {status_color}]{self.data['status']}[/bold {status_color}]"
         )
         return Panel(grid, style="white on blue")
 
@@ -291,8 +309,11 @@ class AlgoTradingTUI:
         table.add_row("[bold]Risk Budget:[/bold]", "[green]SAFE (Within Cap)[/]")
         table.add_row("[bold]Risk Veto:[/bold]", veto_status)
         
-        if risk.get("constraints_hit"):
+        if risk and isinstance(risk, dict) and risk.get("constraints_hit"):
             table.add_row("[bold red]Violations:[/bold red]", f"[red]{', '.join(risk['constraints_hit'])}[/red]")
+        
+        acc_1w = risk.get("model_accuracy_1w", 0.0) if isinstance(risk, dict) else 0.0
+        table.add_row("[bold]Running Acc (1W):[/bold]", f"[bold cyan]{acc_1w:.1%}[/bold cyan]" if acc_1w > 0 else "[dim]Insufficient Data[/dim]")
         
         trace = "\n[dim]Rationale Trace:[/dim]\nCombined high tech confidence with neutral-to-positive macro headlines. Sector correlation allows entry."
         

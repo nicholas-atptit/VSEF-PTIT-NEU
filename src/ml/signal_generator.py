@@ -20,6 +20,8 @@ from src.engine.risk import apply_risk_constraints
 from config.settings import get_settings
 from src.utils.logging import get_logger
 from src.llm.news_intel import NewsIntelEngine
+from src.monitoring.drift import DriftMonitor
+from src.monitoring.accuracy import AccuracyMonitor
 
 logger = get_logger(__name__)
 
@@ -52,6 +54,8 @@ class SignalGenerator:
     def __init__(self) -> None:
         self._settings = get_settings()
         self._intel_engine = NewsIntelEngine()
+        self._drift_monitor = DriftMonitor()
+        self._accuracy_monitor = AccuracyMonitor()
 
     async def generate(
         self,
@@ -86,7 +90,14 @@ class SignalGenerator:
 
         # --- Sentiment Agent (Phase 3) ---
         horizon = model_output.get("horizon", "short")
-        sentiment_data = await self._intel_engine.get_latest_intelligence(ticker, horizon=horizon)
+        try:
+            sentiment_data = await self._intel_engine.get_latest_intelligence(ticker, horizon=horizon)
+        except Exception as e:
+            logger.error("sentiment_engine_fallback", ticker=ticker, error=str(e))
+            sentiment_data = None # Trigger fallback payload below
+
+        # --- Phase 5: Monitoring (Accuracy & Drift) ---
+        accuracy_info = self._accuracy_monitor.calculate_recent_accuracy(ticker, horizon)
         
         sentiment_payload = None
         if sentiment_data:
@@ -97,6 +108,14 @@ class SignalGenerator:
                 "source_breakdown": [], # Placeholder for detailed sources
                 "market_psychology_tags": [], # Future enhancement
                 "narrative_risk_flags": [],
+            }
+        else:
+            sentiment_payload = {
+                "sentiment_score": 0.0,
+                "sentiment_regime": "degraded",
+                "sentiment_confidence": 0.0,
+                "narrative_risk_flags": ["SERVICE_UNAVAILABLE"],
+                "status": "FALLBACK"
             }
 
         # --- Phase 4: Decision Fusion (Agent Matrix) ---
@@ -161,10 +180,11 @@ class SignalGenerator:
                 "regime_detected": "trend",
             },
             "risk": {
-                "position_size_suggestion": 0.0,
-                "veto_flag": False,
-                "constraints_hit": [],
+                "position_size_suggestion": float(order_payload.volume) if order_payload else 0.0,
+                "veto_flag": not risk_record.fomo_check_passed,
+                "constraints_hit": ["FOMO"] if not risk_record.fomo_check_passed else [],
                 "risk_budget_consumed": 0.0,
+                "model_accuracy_1w": accuracy_info.get("accuracy", 0.0)
             },
             "run_id": f"run_{int(dt.datetime.now().timestamp())}",
             "status": "success",

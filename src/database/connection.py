@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy import create_engine, Engine
 
 from config.settings import get_settings
 from src.utils.logging import get_logger
@@ -18,6 +19,7 @@ from src.utils.logging import get_logger
 logger = get_logger(__name__)
 
 _engine: AsyncEngine | None = None
+_sync_engine: Engine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
@@ -36,6 +38,15 @@ def get_engine() -> AsyncEngine:
         )
         logger.info("database_engine_created", url=settings.timescale_url.split("@")[-1])
     return _engine
+
+
+def get_db() -> Engine:
+    """Get or create the sync SQLAlchemy engine (for pandas/metrics)."""
+    global _sync_engine
+    if _sync_engine is None:
+        settings = get_settings()
+        _sync_engine = create_engine(settings.timescale_sync_url)
+    return _sync_engine
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
