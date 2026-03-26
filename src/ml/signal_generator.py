@@ -91,6 +91,8 @@ class SignalGenerator:
                 "expected_range": expected_range,
                 "max_upside_pct": round(float(upside_pct), 4),
                 "max_downside_pct": round(float(downside_pct), 4),
+                "horizon": model_output.get("horizon", "short"),
+                "feature_set_version": model_output.get("feature_set_version", "v4.0"),
                 "action_plan": action_plan,
             },
             "system_parameters": system_params,
@@ -113,12 +115,9 @@ class SignalGenerator:
         expected_range: dict[str, float],
         current_close: float,
     ) -> dict[str, Any]:
-        """Map trend probabilities + range to a specific trading action.
+        """Map trend probabilities + range to specific entry/exit zones.
 
-        Rules:
-            P_Up > 60%      → BUY
-            P_Down > 60%    → SELL / STAND ASIDE
-            Otherwise       → RANGE_TRADE (ping-pong)
+        Phase 2 Upgrade: Uses quantile ranges for strict zone definition.
         """
         p_up = trend_probs["up"]
         p_down = trend_probs["down"]
@@ -128,31 +127,45 @@ class SignalGenerator:
         q90 = expected_range["ceiling_90th"]
 
         if p_up > DIRECTIONAL_THRESHOLD:
-            # ── UPTREND: BUY ──
-            stop_loss = round(q10 * (1 - 0.015), 2)  # Q10 - 1.5%
+            # ── BULLISH: BUY ZONE ──
+            # Entry: Between current price and Q10 support
+            entry_low = min(q10, current_close)
+            entry_high = max(q10, current_close)
+            
             return {
                 "recommendation": ACTION_BUY,
-                "entry_zone": [q10, current_close],
-                "stop_loss": stop_loss,
-                "take_profit": q90,
+                "entry_zone": [round(entry_low, 2), round(entry_high, 2)],
+                "exit_zones": {
+                    "take_profit_target": round(q90, 2),
+                    "exit_conservative": round(q50, 2),
+                    "stop_loss_hard": round(q10 * 0.985, 2), # 1.5% buffer below Q10
+                },
+                "rationale": f"Strong bullish conviction ({p_up:.1%}) with target at {q90}"
             }
 
         elif p_down > DIRECTIONAL_THRESHOLD:
-            # ── DOWNTREND: SELL / STAND ASIDE ──
+            # ── BEARISH: SELL / SHORT ZONE ──
             return {
                 "recommendation": ACTION_SELL,
-                "entry_zone": [q90, q90],  # Wait for bounce to Q90
-                "stop_loss": round(q90 * 1.015, 2),  # Above Q90
-                "take_profit": q10,
+                "entry_zone": [round(current_close, 2), round(q90, 2)],
+                "exit_zones": {
+                    "take_profit_target": round(q10, 2),
+                    "exit_conservative": round(q50, 2),
+                    "stop_loss_hard": round(q90 * 1.015, 2),
+                },
+                "rationale": f"Bearish regime detected ({p_down:.1%}). Risk of drop to {q10}"
             }
 
         else:
-            # ── SIDEWAYS: RANGE TRADE ──
+            # ── NEUTRAL: RANGE TRADE ──
             return {
                 "recommendation": ACTION_RANGE_TRADE,
-                "entry_zone": [q10, q90],
-                "stop_loss": round(q10 * (1 - 0.015), 2),
-                "take_profit": q90,
+                "entry_zone": [round(q10, 2), round(q10 * 1.02, 2)], # Buy near support
+                "exit_zones": {
+                    "take_profit_target": round(q90, 2),
+                    "stop_loss_hard": round(q10 * 0.97, 2),
+                },
+                "rationale": "Neutral trend. Buy near lower support (Q10) for range target (Q90)."
             }
 
     # ── System Constraints ────────────────────────────────────

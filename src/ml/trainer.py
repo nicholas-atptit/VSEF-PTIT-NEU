@@ -48,7 +48,7 @@ class DualModelTrainer:
         self,
         ticker: str,
         features_row: np.ndarray | pd.Series | pd.DataFrame,
-        horizon: str = "1w", # Changed default from 1d to 1w
+        horizon: str = "short", # short, mid, long
     ) -> dict[str, Any]:
         """Generate predictions from trained models for a single row.
 
@@ -88,9 +88,12 @@ class DualModelTrainer:
         if X.ndim == 1:
             X = X.reshape(1, -1)
 
-        # Horizon suffix logic (Removed 1d per user request)
-        h_map = {"1w": "_5d", "1m": "_20d", "6m": "_120d"}
-        suffix = h_map.get(horizon.lower(), "")
+        # Horizon suffix logic (short, mid, long)
+        h_map = {"short": "_short", "mid": "_mid", "long": "_long"}
+        # Backward compatibility fallbacks
+        legacy_map = {"1w": "_short", "1m": "_mid", "6m": "_long", "1d": ""}
+        
+        suffix = h_map.get(horizon.lower(), legacy_map.get(horizon.lower(), ""))
 
         # ─── Model A: Trend classification ───
         model_key = f"trend_classifier{suffix}"
@@ -146,6 +149,8 @@ class DualModelTrainer:
         return {
             "trend_probabilities": trend_probs,
             "expected_range": expected_range,
+            "feature_set_version": "v5.0", # Added per Phase 2
+            "horizon": horizon
         }
 
     def _predict_trend(self, model: Any, X: np.ndarray) -> dict[str, float]:

@@ -79,9 +79,8 @@ def build_daily_features(df: pd.DataFrame) -> pd.DataFrame:
     h_raw = df['high'] # Usually high/low are not smoothed
     l_raw = df['low']
     
-    HORIZONS = [5, 20, 120]  # 1W, 1M, 6M (Removed 1D per user request)
-    for h_days in HORIZONS:
-        suffix = f"_{h_days}d" if h_days != 1 else "" 
+    HORIZONS = {5: "_short", 20: "_mid", 120: "_long"}
+    for h_days, suffix in HORIZONS.items():
         # Calculate future return using RAW prices
         # We add a tiny buffer (0.01%) to classify "No change" as 0
         feat_df[f'target_trend{suffix}'] = (c_raw.shift(-h_days) > c_raw * 1.0001).astype(int)
@@ -172,8 +171,8 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
     
     # --- Phase 37: Recursive Importance Pruning ---
     # We only keep features that show some correlation or importance
-    # For now, we take the top 20 based on simple correlation with target
-    corrs = daily_df[all_cols].corrwith(daily_df[f'target_trend_20d']).abs()
+    # For now, we take the top 20 based on simple correlation with mid-term target
+    corrs = daily_df[all_cols].corrwith(daily_df[f'target_trend_mid']).abs()
     feature_cols = corrs.sort_values(ascending=False).head(20).index.tolist()
 
     if len(feature_cols) < 5 or len(daily_df) < MIN_ROWS:
@@ -185,8 +184,8 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
     horizon_metrics = {}
 
     # --- 1. Horizon Loop ---
-    for h_days in [5, 20, 120]: # 1W, 1M, 6M
-        suffix = f"_{h_days}d" if h_days != 1 else ""
+    HORIZONS = {5: "_short", 20: "_mid", 120: "_long"}
+    for h_days, suffix in HORIZONS.items():
         y = daily_df[f'target_trend{suffix}']
         
         current_split = int(len(daily_df) * 0.8)
@@ -342,9 +341,9 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
             # If no elite signals, we might use a lower threshold or just report base
             elite_acc = base_acc 
             
-        horizon_metrics[f"{h_days}d_acc"] = base_acc
-        horizon_metrics[f"{h_days}d_elite_acc"] = elite_acc
-        horizon_metrics[f"{h_days}d_elite_count"] = int(elite_mask.sum())
+        horizon_metrics[f"{suffix.strip('_')}_acc"] = base_acc
+        horizon_metrics[f"{suffix.strip('_')}_elite_acc"] = elite_acc
+        horizon_metrics[f"{suffix.strip('_')}_elite_count"] = int(elite_mask.sum())
 
         # --- 6. Range Quantiles ---
         for target_name, target_col_base in [('high', 'target_high'), ('low', 'target_low')]:
@@ -468,12 +467,12 @@ def main():
         df_report.to_csv(args.report, index=False)
         
         # Calculate averages for report
-        avg_1w_base = df_report.get("5d_acc", pd.Series([0])).mean()
-        avg_1w_elite = df_report.get("5d_elite_acc", pd.Series([0])).mean()
-        avg_1m_base = df_report.get("20d_acc", pd.Series([0])).mean()
-        avg_1m_elite = df_report.get("20d_elite_acc", pd.Series([0])).mean()
-        avg_6m_base = df_report.get("120d_acc", pd.Series([0])).mean()
-        avg_6m_elite = df_report.get("120d_elite_acc", pd.Series([0])).mean()
+        avg_1w_base = df_report.get("short_acc", pd.Series([0])).mean()
+        avg_1w_elite = df_report.get("short_elite_acc", pd.Series([0])).mean()
+        avg_1m_base = df_report.get("mid_acc", pd.Series([0])).mean()
+        avg_1m_elite = df_report.get("mid_elite_acc", pd.Series([0])).mean()
+        avg_6m_base = df_report.get("long_acc", pd.Series([0])).mean()
+        avg_6m_elite = df_report.get("long_elite_acc", pd.Series([0])).mean()
 
         print(f"\n{'='*65}")
         print(f"✅ Hoàn tất! Đã train {len(results)} mô hình (bỏ qua {skipped} mã).")
