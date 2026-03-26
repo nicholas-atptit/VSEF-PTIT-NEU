@@ -9,7 +9,8 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import get_settings
-from src.api.routes import router
+from src.api.routes import router as v1_router
+from src.api.routes_v2 import router as v2_router
 from src.api.tracing import LatencyTracingMiddleware
 from src.utils.logging import get_logger
 
@@ -51,7 +52,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(LatencyTracingMiddleware)
-app.include_router(router)
+app.include_router(v1_router)
+app.include_router(v2_router)
 
 
 @app.get("/", tags=["Root"])

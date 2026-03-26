@@ -9,11 +9,7 @@ from config.settings import get_settings
 from src.models.base import Base
 
 # Import all models so they are registered with Base.metadata
-from src.models.price import RawPrice, AdjustedPrice, CorporateAction  # noqa: F401
-from src.models.watchlist import WatchlistItem, BlacklistItem  # noqa: F401
-from src.models.macro import MacroIndicator  # noqa: F401
-from src.models.signal import SignalEvent  # noqa: F401
-from src.models.company import CompanyProfile  # noqa: F401
+import src.models  # noqa: F401
 
 config = context.config
 

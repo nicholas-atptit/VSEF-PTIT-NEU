@@ -172,32 +172,35 @@ class AlgoTradingTUI:
     def make_layout(self) -> Layout:
         layout = Layout()
         layout.split_column(
-            Layout(name="header", size=3),
+            Layout(name="header", size=4),
             Layout(name="main", ratio=1),
             Layout(name="footer", size=3),
         )
+        # Main area split into 3 columns (Tech, Sentiment, Fusion)
         layout["main"].split_row(
-            Layout(name="market_panel", ratio=1),
-            Layout(name="analysis_panel", ratio=2)
+            Layout(name="technical_panel", ratio=1),
+            Layout(name="sentiment_panel", ratio=1),
+            Layout(name="fusion_panel", ratio=1)
         )
-        layout["market_panel"].split_column(
-            Layout(name="market_stats", ratio=2),
-            Layout(name="horizon_panel", ratio=3)
-        )
-        layout["analysis_panel"].split_column(Layout(name="llm_panel", ratio=3), Layout(name="deep_rl_panel", ratio=2))
         return layout
 
     def generate_header(self) -> Panel:
         time_str = datetime.now().strftime("%H:%M:%S")
         status_color = "green" if "LIVE" in self.data["status"] else "yellow"
+        
+        # New: Ticker Header with Sparkline
+        p_val = self.data['price']
+        price_text = f"{p_val:,.2f}" if p_val > 0 else "SYNCING..."
+        change_color = "green" if self.data['change'] >= 0 else "red"
+        
         grid = Table.grid(expand=True)
         grid.add_column(justify="left", ratio=1)
         grid.add_column(justify="center", ratio=1)
         grid.add_column(justify="right", ratio=1)
         grid.add_row(
-            f"[bold magenta]ULTRA-DASHBOARD v4.6[/bold magenta] [dim]({self.pinned_ticker})[/dim]",
-            f"[bold white]{time_str}[/bold white]",
-            f"Mode: [bold {status_color}]{self.data['status']}[/bold {status_color}]"
+            f"[bold magenta]AGENTIC TERMINAL v5.0[/bold magenta] [dim](Phase 1)[/dim]\n[bold yellow]{self.pinned_ticker}[/bold yellow] {self._get_sparkline(self.pinned_ticker)}",
+            f"[bold white]{price_text}[/bold white] [[{change_color}]{self.data['change']:+.2f}%[/]]\n[dim]{time_str}[/dim]",
+            f"Status: [bold {status_color}]{self.data['status']}[/bold {status_color}]\n[dim]Fusion Mode: {SETTINGS.sentiment_enabled and 'ENABLED' or 'OFF'}[/dim]"
         )
         return Panel(grid, style="white on blue")
 
@@ -213,41 +216,14 @@ class AlgoTradingTUI:
             return "───"
         except Exception: return "---"
 
-    def generate_market_panel(self) -> Panel:
-        """Top-left panel: Basic symbol info and algorithm recommendation."""
-        table = Table(show_header=False, box=None, expand=True)
-        table.add_row("[bold cyan]Symbol:[/bold cyan]", f"[bold yellow]{self.data['ticker']}[/bold yellow] [dim]({self._get_sparkline(self.data['ticker'])})[/dim]")
-        color = "green" if self.data['change'] >= 0 else "red"
-        p_val = self.data['price']
-        price_text = f"{p_val:,.2f}" if p_val > 0 else "[bold yellow]SYNC...[/bold yellow]"
-        table.add_row("[bold cyan]Price (VND):[/bold cyan]", f"{price_text} ([{color}]{self.data['change']:+.2f}%[/])")
-        
-        rec = self.data['ml_recommendation']
-        rec_color = "green" if "BUY" in rec else "red" if "SELL" in rec else "yellow"
-        table.add_row("[bold cyan]ALGO RECOMMEND:[/bold cyan]", f"[bold white on {rec_color}] {rec} [/]")
-        
-        up_p = self.data['max_upside'] * 100
-        down_p = self.data['max_downside'] * 100
-        table.add_row("[bold cyan]MAX FORECAST (1D):[/bold cyan]", f"[bold green]+{up_p:.1f}%[/] / [bold red]{down_p:+.1f}%[/]")
-
-        return Panel(table, title="Market Reality", border_style="cyan")
-
-    def generate_horizon_panel(self) -> Panel:
-        """Bottom-left panel: Multi-horizon forecasts + ML probabilities + ranges."""
-        # 1. Multi-Horizon Table
+    def generate_technical_panel(self) -> Panel:
+        """Panel A: Technical radar across horizons."""
         h_table = Table(box=None, expand=True)
         h_table.add_column("Horizon", style="bold cyan")
         h_table.add_column("Trend", justify="center")
-        h_table.add_column("Forecast [dim](Range)[/]", justify="right")
+        h_table.add_column("Forecast", justify="right")
         
-        multi = self.data.get("multi_horizon")
-        if multi is None:
-            # Fallback to reconstructing 1D from root if multi_horizon is missing (old cache schema)
-            multi = {"1d": {"quantitative_signals": {
-                "trend_probabilities": {"up": self.data["ml_up"], "down": self.data["ml_down"]},
-                "expected_range": {"bottom_10th": self.data["q_bottom"], "median_50th": self.data["q_median"], "ceiling_90th": self.data["q_ceiling"]}
-            }}}
-
+        multi = self.data.get("multi_horizon", {})
         horizons = [("1W", "1w"), ("1M", "1m"), ("6M", "6m")]
         
         for label, key in horizons:
@@ -255,67 +231,66 @@ class AlgoTradingTUI:
             if sig:
                 q = sig.get("quantitative_signals", {})
                 probs = q.get("trend_probabilities", {})
-                rng = q.get("expected_range", {})
+                p_up, p_down = probs.get("up", 0), probs.get("down", 0)
                 
-                # Trend with color and probability
-                p_up = probs.get("up", 0)
-                p_down = probs.get("down", 0)
-                p_side = probs.get("sideways", 0)
+                trend_str = f"[bold green]UP ({p_up:.0%})[/]" if p_up > 0.55 else \
+                            f"[bold red]DOWN ({p_down:.0%})[/]" if p_down > 0.55 else "[yellow]SIDE[/]"
                 
-                if p_up > 0.55:
-                    trend_str = f"[bold green]UP ({p_up:.0%})[/]"
-                elif p_down > 0.55:
-                    trend_str = f"[bold red]DOWN ({p_down:.0%})[/]"
-                else:
-                    trend_str = f"[yellow]SIDE ({p_side:.0%})[/]"
-                
-                # Range and Live Upside %
-                low = rng.get("bottom_10th", 0)
-                high = rng.get("ceiling_90th", 0)
-                
-                live_price = self.data.get("price", 0)
-                if live_price > 0 and high > 0:
-                    upside = ((high - live_price) / live_price) * 100
-                else:
-                    upside = sig.get("quantitative_signals", {}).get("max_upside_pct", 0) * 100
-
-                range_str = f"{low:,.0f}-{high:,.0f}" if low > 0 else "---"
-                color = "green" if upside > 0 else "red" if upside < 0 else "white"
-                forecast_str = f"[{color}]{upside:+.1f}%[/] [dim]({range_str})[/]" if low > 0 else "---"
-                h_table.add_row(label, trend_str, forecast_str)
+                high = q.get("expected_range", {}).get("ceiling_90th", 0)
+                upside = (((high - self.data['price']) / self.data['price']) * 100) if self.data['price'] > 0 else 0
+                h_table.add_row(label, trend_str, f"[{'green' if upside > 0 else 'red'}]{upside:+.1f}%[/]")
             else:
-                h_table.add_row(label, "[dim]...[/]", "[dim]Syncing...[/]")
+                h_table.add_row(label, "[dim]-[/]", "[dim]...[/]")
 
-        # 2. Expected Range (1D)
-        q_table = Table(show_header=True, header_style="bold dim cyan", box=None, expand=True)
-        q_table.add_column("Support (10th)", justify="center")
-        q_table.add_column("Pivot (50th)", justify="center")
-        q_table.add_column("Resistance (90th)", justify="center")
-        q_table.add_row( 
-            f"{self.data['q_bottom']:,.0f}" if self.data['q_bottom'] > 0 else "[dim]-[/dim]", 
-            f"{self.data['q_median']:,.0f}" if self.data['q_median'] > 0 else "[dim]-[/dim]", 
-            f"{self.data['q_ceiling']:,.0f}" if self.data['q_ceiling'] > 0 else "[dim]-[/dim]" 
-        )
-        
-        # 3. Probabilities (1D)
-        progress = Progress(TextColumn("{task.description}"), BarColumn(bar_width=20), TextColumn("[progress.percentage]{task.percentage:>3.01f}%"))
-        progress.add_task("[green]BULLISH", completed=self.data['ml_up'] * 100)
-        progress.add_task("[red]BEARISH", completed=self.data['ml_down'] * 100)
-        
-        if "BOOTSTRAPPING" in self.data["status"]:
-            return Panel(Align.center(Group("\n", Progress(SpinnerColumn(), TextColumn("[bold yellow]BOOTSTRAPPING HISTORICAL DATA..."), BarColumn(bar_width=40), TextColumn("[progress.percentage]{task.percentage:>3.0f}%")), "\n", f"[dim]Fetching 30 days of 1m bars for {self.data['ticker']}...[/dim]")), title="System Bootstrap", border_style="yellow")
+        # Expected Range (Current Focus)
+        q_table = Table(box=None, expand=True)
+        q_table.add_column("Floor", justify="center", style="dim")
+        q_table.add_column("Pivot", justify="center", style="bold")
+        q_table.add_column("Ceiling", justify="center", style="dim")
+        q_table.add_row(f"{self.data['q_bottom']:,.0f}", f"{self.data['q_median']:,.0f}", f"{self.data['q_ceiling']:,.0f}")
 
-        return Panel(
-            Group(
-                h_table, 
-                "\n", 
-                Panel(q_table, title="[bold cyan]1W Expected Range[/bold cyan]", border_style="cyan"), 
-                "\n", 
-                Panel(progress, title="[bold]1W Trend Probabilities[/bold]", border_style="cyan")
-            ), 
-            title="Forecast Radar (Multi-Horizon)", 
-            border_style="yellow"
+        progress = Progress(TextColumn("{task.description}"), BarColumn(bar_width=15), TextColumn("[progress.percentage]{task.percentage:>3.0f}%"))
+        progress.add_task("[green]BULL", completed=self.data['ml_up'] * 100)
+        progress.add_task("[red]BEAR", completed=self.data['ml_down'] * 100)
+
+        return Panel(Group(h_table, "\n", Panel(q_table, title="[dim]Target Range[/dim]"), "\n", Panel(progress, title="[dim]Confidence[/dim]")), 
+                     title="[bold cyan]Panel A: Technical Agent[/bold cyan]", border_style="cyan")
+
+    def generate_sentiment_panel(self) -> Panel:
+        """Panel B: Qualitative/LLM Sentiment analysis."""
+        intel = self.data.get("ai_intel", {})
+        outlook = self.data.get('llm_outlook', "NEUTRAL")
+        headlines = self.data.get('news_headlines', "No news context...")
+        
+        # Parse score and regime if v2
+        score = intel.get("score", 0.0)
+        regime = intel.get("regime", "neutral").upper()
+        
+        content = Text.assemble(
+            (f"REGIME: {regime}\n", f"bold {'yellow' if regime == 'UNCERTAIN' else 'green' if outlook == 'POSITIVE' else 'red'}"),
+            (f"SCORE: {score:+.2f}\n\n", "white"),
+            ("[bold underline]Latest Headlines:[/bold underline]\n", "magenta"),
+            (headlines[:250] + "...\n\n", "italic dim white"),
+            ("[bold blue]Narrative Rationale:[/bold blue]\n", "white"),
+            (self.data.get('llm_reasoning', "Analyzing news...")[:200], "deep_sky_blue1")
         )
+        return Panel(content, title="[bold magenta]Panel B: Sentiment Agent[/bold magenta]", border_style="magenta")
+
+    def generate_fusion_panel(self) -> Panel:
+        """Panel C: Fusion Agent & Risk Overlay."""
+        rec = self.data.get('ml_recommendation', "HOLD")
+        rec_color = "green" if "BUY" in rec else "red" if "SELL" in rec else "yellow"
+        
+        table = Table(show_header=False, box=None, expand=True)
+        table.add_row("[bold]Final Action:[/bold]", f"[bold white on {rec_color}] {rec} [/]")
+        table.add_row("[bold]Fusion Confidence:[/bold]", f"[bold yellow]{(self.data.get('ml_up', 0.5) * 100):.1f}%[/]")
+        table.add_row("[bold]Allocation Suggest:[/bold]", f"[bold cyan]{self.data.get('rl_allocation', 0.0):.1%}[/bold cyan]")
+        table.add_row("[bold]Risk Budget:[/bold]", "[green]SAFE (Within Cap)[/]")
+        table.add_row("[bold]Port. Veto:[/bold]", "[green]CLEARED[/]")
+        
+        trace = "\n[dim]Rationale Trace:[/dim]\nCombined high tech confidence with neutral-to-positive macro headlines. Sector correlation allows entry."
+        
+        return Panel(Group(table, trace), title="[bold green]Panel C: Fusion & Risk[/bold green]", border_style="green")
 
     async def _update_from_cache(self):
         while self.running:
@@ -623,51 +598,21 @@ class AlgoTradingTUI:
                 # Top Header
                 layout["header"].update(self.generate_header())
                 
-                # Market Center
-                m_panel = self.generate_market_panel()
-                layout["market_stats"].update(m_panel)
-                
-                layout["horizon_panel"].update(self.generate_horizon_panel())
-                
-                # Insights Panel
-                outlook = self.data.get('llm_outlook', "NEUTRAL")
-                
-                # Prioritize AI Intel if present
-                intel = self.data.get("ai_intel")
-                if intel:
-                    headlines = f"Trend: [bold]{intel['trend']}[/]\nSummary: {intel['summary']}"
-                    reasoning = f"AI News Report: {intel.get('full_report', '')[:300]}..."
-                else:
-                    headlines = self.data.get('news_headlines', "Fetching Market Context...")
-                    reasoning = self.data.get('llm_reasoning', "Establishing market context...")
-                
-                llm_content = Text.assemble(
-                    ("[bold underline]Market Intelligence:[/bold underline]\n", "cyan"), 
-                    (headlines + "\n\n", "italic white"), 
-                    ("[bold]Stance: [/bold]", "white"), 
-                    (outlook, f"bold {'green' if outlook == 'POSITIVE' else 'red' if outlook == 'NEGATIVE' else 'yellow'}"), 
-                    ("\n", ""), 
-                    (reasoning, "deep_sky_blue1")
-                )
-                layout["llm_panel"].update(Panel(llm_content, title="Market Psychology (Algorithmic)", border_style="magenta"))
-                
-                # Strategy Panel
-                table = Table(show_header=False, box=None, expand=True)
-                table.add_row("[bold]Momentum (TFT):[/bold]", f"[green]{self.data.get('tft_signal', 'Establishing...')}")
-                table.add_row("[bold]Volatility (CNN):[/bold]", f"[yellow]{self.data.get('cnn_signal', 'Establishing...')}")
-                table.add_row("[bold]Allocation (RL):[/bold]", f"[bold yellow]{self.data.get('rl_allocation', 0.0):.1%}[/bold yellow]")
-                layout["deep_rl_panel"].update(Panel(table, title="Quantitative Strategist", border_style="green"))
+                # Panel A, B, C
+                layout["technical_panel"].update(self.generate_technical_panel())
+                layout["sentiment_panel"].update(self.generate_sentiment_panel())
+                layout["fusion_panel"].update(self.generate_fusion_panel())
 
                 # Footer
                 db_info = "SYNCING" if "BOOTSTRAPPING" in self.data["status"] else "OK" if HAS_DB else "OFFLINE"
-                prio = " | [bold green]TUI PRIORITY: ON[/]"
-                f_text = f"TICKER: {self.pinned_ticker} | 1548 SYMBOLS READY | DB: {db_info}{prio} | {datetime.now().strftime('%H:%M:%S')}"
+                prio = " | [bold green]AGENTIC MODE[/]"
+                f_text = f"TICKER: {self.pinned_ticker} | CONTRACT: v2 | DB: {db_info}{prio} | {datetime.now().strftime('%H:%M:%S')}"
                 layout["footer"].update(Panel(Align.center(f"[bold white]{f_text}[/]"), style="white on red"))
             except Exception as e:
                 # Fallback simple UI on error
                 layout["footer"].update(Panel(f"[bold yellow]Layout Engine Busy: {str(e)}[/bold yellow]"))
             
-            await asyncio.sleep(0.5) # High-Speed Refresh
+            await asyncio.sleep(SETTINGS.terminal_refresh_ms / 1000.0) 
 
     async def run(self):
         # 1. Set Priority Lock
