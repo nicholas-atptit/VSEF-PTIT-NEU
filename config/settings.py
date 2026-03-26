@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     # Ollama (Local)
     ollama_base_url: str = "http://localhost:11434/v1"
     ollama_api_key: str = "ollama"
-    ollama_model_name: str = "qwen3:8b"
+    ollama_model_name: str = "qwen2.5:7b"
     
     # OpenAI
     openai_api_key: str = ""
@@ -120,6 +120,21 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     gemini_model_name: str = "gemini-1.5-pro"
+
+    # ── Agentic Architecture (Phase 1 Master Plan) ──────────
+    sentiment_enabled: bool = True
+    fusion_weight_technical: float = 0.6
+    fusion_weight_sentiment: float = 0.4
+    risk_budget_total: float = 1.0  # Max portfolio exposure
+    
+    # Horizon Definitions
+    short_horizon_days: int = 5
+    mid_horizon_days: int = 20
+    long_horizon_days: int = 120
+
+    # ── TUI & Monitoring ─────────────────────────────────────
+    terminal_refresh_ms: int = 500
+    prediction_loop_seconds: int = 15
 
     # ── API (Phase 2 & 3) ────────────────────────────────────
     api_host: str = "0.0.0.0"

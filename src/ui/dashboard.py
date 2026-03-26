@@ -57,6 +57,9 @@ except Exception:
         def __init__(self): pass
     SETTINGS = MockSettings()
 
+from src.utils.logging import get_logger
+_logger = get_logger(__name__)
+
 # --- LEGACY SYSTEM INTEGRATION ---
 HAS_DB = False
 DB_VERSION = "4.6.0-ULTRA-STABLE"
@@ -66,6 +69,7 @@ try:
     from src.models.price import RawPrice
     from src.ml.data_loader import load_ohlcv_from_db
     from src.context.news_crawler import NewsCrawler
+    from src.llm.news_intel import NewsIntelEngine
     from sqlalchemy import select, desc, text
     HAS_DB = True
 except (ImportError, ModuleNotFoundError) as e:
@@ -88,9 +92,11 @@ except Exception:
 class AlgoTradingTUI:
     def __init__(self, start_ticker="FPT"):
         self.pinned_ticker = start_ticker.upper()
-        self.cache_path = PROJECT_ROOT / "data" / "prediction_cache" / "latest_predictions.json"
-        self.news_crawler = NewsCrawler() if HAS_VNSTOCK else None
+        self.cache_path = PROJECT_ROOT / "data" / "latest_predictions.json"
+        self.news_crawler = NewsCrawler() if HAS_DB else None
+        self.news_intel = NewsIntelEngine() if HAS_DB else None
         self._last_news_sync = 0
+        self.logger = _logger
         
         self.data = {
             "ticker": self.pinned_ticker, "price": 0.0, "change": 0.0,
@@ -98,13 +104,18 @@ class AlgoTradingTUI:
             "q_bottom": 0.0, "q_median": 0.0, "q_ceiling": 0.0,
             "llm_outlook": "CALCULATING", "llm_reasoning": "Processing local history...",
             "rl_allocation": 0.0, "status": "BOOTING", "news_headlines": "Fetching Market Context...",
-            "last_price_ts": 0, "max_upside": 0.0, "max_downside": 0.0
+            "last_price_ts": 0, "max_upside": 0.0, "max_downside": 0.0,
+            "ai_intel": None
         }
         self._redis_client = None
         self._heuristic_cache = {} # Cache for fast switching
         self._lock_path = Path("data/.tui_lock")
         self.running = True
-        self._initialize_legacy_baseline()
+        try:
+            self._initialize_legacy_baseline()
+        except Exception as e:
+            self.logger.error("baseline_init_fail", ticker=self.pinned_ticker, error=str(e))
+            self.data["status"] = "ERROR (Check Logs)"
 
     def _initialize_legacy_baseline(self):
         """Phase 11.2: Bootstrapping with existing system data before live sync."""
@@ -122,6 +133,8 @@ class AlgoTradingTUI:
                         self.data["change"] = float((self.data["price"] - prev_c) / prev_c * 100)
                     self.data["status"] = "SYNCED (DB)"
             except Exception as e:
+                with open("tui_debug.log", "a") as f:
+                    f.write(f"{datetime.now()}: DB Init Error: {str(e)}\n")
                 global DB_ERR
                 DB_ERR = f"ConnRefuned: {str(e)[:20]}"
 
@@ -129,15 +142,32 @@ class AlgoTradingTUI:
         if self.data["price"] == 0 and self.cache_path.exists():
             try:
                 with open(self.cache_path, "r", encoding="utf-8") as f:
-                    cache_data = json.load(f).get(self.pinned_ticker)
-                    if cache_data:
-                        ml = cache_data.get("ml_prediction", {})
-                        # Initialize price from the last median used for prediction
-                        p_val = ml.get("expected_range", {}).get("median_50th", 0)
-                        if p_val > 0:
-                            self.data["price"] = float(p_val)
-                            self.data["status"] = "FALLBACK (Cache)"
-            except Exception: pass
+                    cache = json.load(f)
+                    ticker_data = cache.get(self.pinned_ticker, {})
+                    if ticker_data:
+                        # Direct Price Sync
+                        self.data["price"] = ticker_data.get("price", 0.0)
+                        self.data["change"] = ticker_data.get("change", 0.0)
+                        self.data["status"] = "FALLBACK (Cache)"
+                        
+                        # Quantitative/ML Field Sync (v3.8 legacy fields)
+                        # We try to extract from 'quantitative_signals' or 'ml_prediction'
+                        q_sig = ticker_data.get("quantitative_signals", {})
+                        if q_sig:
+                            rng = q_sig.get("expected_range", {})
+                            self.data.update({
+                                "q_bottom": rng.get("bottom_10th", 0.0),
+                                "q_median": rng.get("median_50th", 0.0),
+                                "q_ceiling": rng.get("ceiling_90th", 0.0),
+                                "max_upside": q_sig.get("max_upside_pct", 0.0),
+                                "max_downside": q_sig.get("max_downside_pct", 0.0)
+                            })
+                            probs = q_sig.get("trend_probabilities", {})
+                            self.data["ml_up"] = probs.get("up", 0.0)
+                            self.data["ml_down"] = probs.get("down", 0.0)
+            except Exception as e:
+                with open("tui_debug.log", "a") as f:
+                    f.write(f"{datetime.now()}: Cache Init Error: {str(e)}\n")
 
     def make_layout(self) -> Layout:
         layout = Layout()
@@ -146,7 +176,14 @@ class AlgoTradingTUI:
             Layout(name="main", ratio=1),
             Layout(name="footer", size=3),
         )
-        layout["main"].split_row( Layout(name="market_panel", ratio=1), Layout(name="analysis_panel", ratio=2) )
+        layout["main"].split_row(
+            Layout(name="market_panel", ratio=1),
+            Layout(name="analysis_panel", ratio=2)
+        )
+        layout["market_panel"].split_column(
+            Layout(name="market_stats", ratio=2),
+            Layout(name="horizon_panel", ratio=3)
+        )
         layout["analysis_panel"].split_column(Layout(name="llm_panel", ratio=3), Layout(name="deep_rl_panel", ratio=2))
         return layout
 
@@ -177,6 +214,7 @@ class AlgoTradingTUI:
         except Exception: return "---"
 
     def generate_market_panel(self) -> Panel:
+        """Top-left panel: Basic symbol info and algorithm recommendation."""
         table = Table(show_header=False, box=None, expand=True)
         table.add_row("[bold cyan]Symbol:[/bold cyan]", f"[bold yellow]{self.data['ticker']}[/bold yellow] [dim]({self._get_sparkline(self.data['ticker'])})[/dim]")
         color = "green" if self.data['change'] >= 0 else "red"
@@ -190,24 +228,94 @@ class AlgoTradingTUI:
         
         up_p = self.data['max_upside'] * 100
         down_p = self.data['max_downside'] * 100
-        table.add_row("[bold cyan]MAX FORECAST:[/bold cyan]", f"[bold green]+{up_p:.1f}%[/] / [bold red]{down_p:+.1f}%[/]")
+        table.add_row("[bold cyan]MAX FORECAST (1D):[/bold cyan]", f"[bold green]+{up_p:.1f}%[/] / [bold red]{down_p:+.1f}%[/]")
 
+        return Panel(table, title="Market Reality", border_style="cyan")
+
+    def generate_horizon_panel(self) -> Panel:
+        """Bottom-left panel: Multi-horizon forecasts + ML probabilities + ranges."""
+        # 1. Multi-Horizon Table
+        h_table = Table(box=None, expand=True)
+        h_table.add_column("Horizon", style="bold cyan")
+        h_table.add_column("Trend", justify="center")
+        h_table.add_column("Forecast [dim](Range)[/]", justify="right")
+        
+        multi = self.data.get("multi_horizon")
+        if multi is None:
+            # Fallback to reconstructing 1D from root if multi_horizon is missing (old cache schema)
+            multi = {"1d": {"quantitative_signals": {
+                "trend_probabilities": {"up": self.data["ml_up"], "down": self.data["ml_down"]},
+                "expected_range": {"bottom_10th": self.data["q_bottom"], "median_50th": self.data["q_median"], "ceiling_90th": self.data["q_ceiling"]}
+            }}}
+
+        horizons = [("1W", "1w"), ("1M", "1m"), ("6M", "6m")]
+        
+        for label, key in horizons:
+            sig = multi.get(key, {})
+            if sig:
+                q = sig.get("quantitative_signals", {})
+                probs = q.get("trend_probabilities", {})
+                rng = q.get("expected_range", {})
+                
+                # Trend with color and probability
+                p_up = probs.get("up", 0)
+                p_down = probs.get("down", 0)
+                p_side = probs.get("sideways", 0)
+                
+                if p_up > 0.55:
+                    trend_str = f"[bold green]UP ({p_up:.0%})[/]"
+                elif p_down > 0.55:
+                    trend_str = f"[bold red]DOWN ({p_down:.0%})[/]"
+                else:
+                    trend_str = f"[yellow]SIDE ({p_side:.0%})[/]"
+                
+                # Range and Live Upside %
+                low = rng.get("bottom_10th", 0)
+                high = rng.get("ceiling_90th", 0)
+                
+                live_price = self.data.get("price", 0)
+                if live_price > 0 and high > 0:
+                    upside = ((high - live_price) / live_price) * 100
+                else:
+                    upside = sig.get("quantitative_signals", {}).get("max_upside_pct", 0) * 100
+
+                range_str = f"{low:,.0f}-{high:,.0f}" if low > 0 else "---"
+                color = "green" if upside > 0 else "red" if upside < 0 else "white"
+                forecast_str = f"[{color}]{upside:+.1f}%[/] [dim]({range_str})[/]" if low > 0 else "---"
+                h_table.add_row(label, trend_str, forecast_str)
+            else:
+                h_table.add_row(label, "[dim]...[/]", "[dim]Syncing...[/]")
+
+        # 2. Expected Range (1D)
         q_table = Table(show_header=True, header_style="bold dim cyan", box=None, expand=True)
-        q_table.add_column("Support (10th)", justify="center") ; q_table.add_column("Pivot (50th)", justify="center") ; q_table.add_column("Resistance (90th)", justify="center")
+        q_table.add_column("Support (10th)", justify="center")
+        q_table.add_column("Pivot (50th)", justify="center")
+        q_table.add_column("Resistance (90th)", justify="center")
         q_table.add_row( 
             f"{self.data['q_bottom']:,.0f}" if self.data['q_bottom'] > 0 else "[dim]-[/dim]", 
             f"{self.data['q_median']:,.0f}" if self.data['q_median'] > 0 else "[dim]-[/dim]", 
             f"{self.data['q_ceiling']:,.0f}" if self.data['q_ceiling'] > 0 else "[dim]-[/dim]" 
         )
         
+        # 3. Probabilities (1D)
         progress = Progress(TextColumn("{task.description}"), BarColumn(bar_width=20), TextColumn("[progress.percentage]{task.percentage:>3.01f}%"))
+        progress.add_task("[green]BULLISH", completed=self.data['ml_up'] * 100)
+        progress.add_task("[red]BEARISH", completed=self.data['ml_down'] * 100)
         
         if "BOOTSTRAPPING" in self.data["status"]:
             return Panel(Align.center(Group("\n", Progress(SpinnerColumn(), TextColumn("[bold yellow]BOOTSTRAPPING HISTORICAL DATA..."), BarColumn(bar_width=40), TextColumn("[progress.percentage]{task.percentage:>3.0f}%")), "\n", f"[dim]Fetching 30 days of 1m bars for {self.data['ticker']}...[/dim]")), title="System Bootstrap", border_style="yellow")
 
-        progress.add_task("[green]BULLISH", completed=self.data['ml_up'] * 100)
-        progress.add_task("[red]BEARISH", completed=self.data['ml_down'] * 100)
-        return Panel(Group(table, "\n", Panel(q_table, title="[bold cyan]ML Expected Range[/bold cyan]"), "\n", Panel(progress, title="[bold]Trend Probabilities[/bold]")), title="Market Reality", border_style="cyan")
+        return Panel(
+            Group(
+                h_table, 
+                "\n", 
+                Panel(q_table, title="[bold cyan]1W Expected Range[/bold cyan]", border_style="cyan"), 
+                "\n", 
+                Panel(progress, title="[bold]1W Trend Probabilities[/bold]", border_style="cyan")
+            ), 
+            title="Forecast Radar (Multi-Horizon)", 
+            border_style="yellow"
+        )
 
     async def _update_from_cache(self):
         while self.running:
@@ -217,26 +325,61 @@ class AlgoTradingTUI:
                         all_cache = json.load(f)
                         cache_data = all_cache.get(self.pinned_ticker)
                         if cache_data:
-                            ml = cache_data.get("ml_prediction", {})
+                            # New: Multi-Horizon Logic
+                            self.data["multi_horizon"] = cache_data.get("multi_horizon", {})
+                            
+                            ml = cache_data.get("ml_prediction") or cache_data.get("quantitative_signals")
+                            if not ml: ml = cache_data # Schema fallback
+                            
                             llm = cache_data.get("llm_analysis", {})
                             
                             cache_news = llm.get("news_headlines", "")
-                            if cache_news and "Market context synced" not in cache_news:
-                                self.data["news_headlines"] = cache_news
+                            if cache_news and str(cache_news).lower() != 'nan' and "Market context synced" not in cache_news:
+                                # Further clean out any 'nan' items if it's a list/newline string
+                                lines = [line.strip() for line in str(cache_news).split('\n') if line.strip() and line.strip().lower() != 'nan']
+                                if lines:
+                                    self.data["news_headlines"] = "\n".join(lines)
                             
-                            probs = ml.get("trend_probabilities", {})
-                            self.data["ml_up"] = probs.get("up", 0.0) ; self.data["ml_down"] = probs.get("down", 0.0)
-                            ranges = ml.get("expected_range", {})
-                            self.data["q_bottom"] = ranges.get("bottom_10th", 0.0) ; self.data["q_median"] = ranges.get("median_50th", 0.0) ; self.data["q_ceiling"] = ranges.get("ceiling_90th", 0.0)
-                            self.data["max_upside"] = ml.get("max_upside_pct", 0.0) ; self.data["max_downside"] = ml.get("max_downside_pct", 0.0)
+                            # Probabilities (Handle nested quantitative_signals if necessary)
+                            probs = ml.get("trend_probabilities")
+                            if not probs and "quantitative_signals" in ml:
+                                probs = ml["quantitative_signals"].get("trend_probabilities", {})
+                            
+                            if probs:
+                                self.data["ml_up"] = probs.get("up", 0.0) 
+                                self.data["ml_down"] = probs.get("down", 0.0)
+                                
+                            ranges = ml.get("expected_range")
+                            if not ranges and "quantitative_signals" in ml:
+                                ranges = ml["quantitative_signals"].get("expected_range", {})
+
+                            if ranges:
+                                self.data["q_bottom"] = ranges.get("bottom_10th", 0.0) 
+                                self.data["q_median"] = ranges.get("median_50th", 0.0) 
+                                self.data["q_ceiling"] = ranges.get("ceiling_90th", 0.0)
+                                
+                            # Re-calculate root upside using live price
+                            live_p = self.data.get("price", 0)
+                            q_ceiling = self.data.get("q_ceiling", 0)
+                            q_bottom = self.data.get("q_bottom", 0)
+                            
+                            if live_p > 0 and q_ceiling > 0:
+                                self.data["max_upside"] = (q_ceiling - live_p) / live_p
+                                self.data["max_downside"] = (q_bottom - live_p) / live_p
+                            else:
+                                self.data["max_upside"] = ml.get("max_upside_pct") or ml.get("quantitative_signals", {}).get("max_upside_pct", 0.0)
+                                self.data["max_downside"] = ml.get("max_downside_pct") or ml.get("quantitative_signals", {}).get("max_downside_pct", 0.0)
+                            
                             self.data["llm_outlook"] = str(llm.get("overall_outlook", "NEUTRAL")).upper()
                             self.data["llm_reasoning"] = llm.get("reasoning", "Analysis loaded.")
+                            
                             rl = llm.get("rl_recommendation", {})
                             self.data["rl_allocation"] = rl.get("suggested_allocation_pct") or self.data.get("rl_allocation", 0.0)
+                            
                             dl = llm.get("deep_learning_context", {})
-                            # Only overwrite heuristic if cache has real data
                             if dl.get("tft_forecast"): self.data["tft_signal"] = dl["tft_forecast"]
                             if dl.get("cnn_microstructure"): self.data["cnn_signal"] = dl["cnn_microstructure"]
+
                             if ml.get("action_plan", {}).get("recommendation"):
                                 self.data["ml_recommendation"] = ml["action_plan"]["recommendation"]
                         else:
@@ -440,10 +583,24 @@ class AlgoTradingTUI:
                 headlines = "\n".join([f"• {doc.title[:80]}..." for doc in docs[:3]])
                 self.data["news_headlines"] = headlines
                 self._last_news_sync = now
-                logger.info("news_updated", ticker=self.pinned_ticker, count=len(docs))
+                self.logger.info("news_updated", ticker=self.pinned_ticker, count=len(docs))
         except Exception as e:
             with open("tui_debug.log", "a") as f:
                 f.write(f"{datetime.now()}: News Error: {str(e)}\n")
+
+    async def _update_news_intelligence(self):
+        """Fetch analyzed intelligence from DB."""
+        if not HAS_DB: return
+        try:
+            intel = await self.news_intel.get_latest_intelligence(self.pinned_ticker)
+            if intel:
+                self.data["ai_intel"] = intel
+                # Sync with the rest of the UI
+                self.data.update({
+                    "llm_outlook": intel["trend"].upper(),
+                    "llm_reasoning": intel["summary"],
+                })
+        except Exception: pass
 
     async def _update_live_feeds(self):
         while self.running:
@@ -451,7 +608,9 @@ class AlgoTradingTUI:
             try:
                 tasks = []
                 if HAS_REDIS: tasks.append(self._poll_redis())
-                if HAS_DB: tasks.append(self._poll_db())
+                if HAS_DB: 
+                    tasks.append(self._poll_db())
+                    tasks.append(self._update_news_intelligence())
                 if self.news_crawler: tasks.append(self._update_news())
                 if HAS_VNSTOCK: tasks.append(self._poll_rest())
                 if tasks: await asyncio.gather(*tasks)
@@ -466,16 +625,25 @@ class AlgoTradingTUI:
                 
                 # Market Center
                 m_panel = self.generate_market_panel()
-                layout["market_panel"].update(m_panel)
+                layout["market_stats"].update(m_panel)
+                
+                layout["horizon_panel"].update(self.generate_horizon_panel())
                 
                 # Insights Panel
-                news = self.data.get('news_headlines', "No news context available.")
                 outlook = self.data.get('llm_outlook', "NEUTRAL")
-                reasoning = self.data.get('llm_reasoning', "Establishing market context...")
+                
+                # Prioritize AI Intel if present
+                intel = self.data.get("ai_intel")
+                if intel:
+                    headlines = f"Trend: [bold]{intel['trend']}[/]\nSummary: {intel['summary']}"
+                    reasoning = f"AI News Report: {intel.get('full_report', '')[:300]}..."
+                else:
+                    headlines = self.data.get('news_headlines', "Fetching Market Context...")
+                    reasoning = self.data.get('llm_reasoning', "Establishing market context...")
                 
                 llm_content = Text.assemble(
                     ("[bold underline]Market Intelligence:[/bold underline]\n", "cyan"), 
-                    (news + "\n\n", "italic white"), 
+                    (headlines + "\n\n", "italic white"), 
                     ("[bold]Stance: [/bold]", "white"), 
                     (outlook, f"bold {'green' if outlook == 'POSITIVE' else 'red' if outlook == 'NEGATIVE' else 'yellow'}"), 
                     ("\n", ""), 

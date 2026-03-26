@@ -21,29 +21,64 @@ logger = get_logger(__name__)
 WINDOWS = [5, 20, 60]
 
 
+def apply_kalman_filter(data):
+    """Simple 1D Kalman Filter for price denoising."""
+    n_iter = len(data)
+    sz = (n_iter,)
+    xhat = np.zeros(sz)      # a posteri estimate of x
+    P = np.zeros(sz)         # a posteri error estimate
+    xhatminus = np.zeros(sz) # a priori estimate of x
+    Pminus = np.zeros(sz)    # a priori error estimate
+    K = np.zeros(sz)         # gain or blending factor
+
+    Q = 1e-5 # process variance
+    R = 0.1**2 # estimate of measurement variance
+
+    # intial guesses
+    xhat[0] = data[0]
+    P[0] = 1.0
+
+    for k in range(1, n_iter):
+        # time update
+        xhatminus[k] = xhat[k-1]
+        Pminus[k] = P[k-1] + Q
+
+        # measurement update
+        K[k] = Pminus[k] / (Pminus[k] + R)
+        xhat[k] = xhatminus[k] + K[k] * (data[k] - xhatminus[k])
+        P[k] = (1 - K[k]) * Pminus[k]
+        
+    return xhat
+
 class FeatureEngineer:
     """Computes quantitative features from daily OHLCV data.
 
     Usage::
 
         fe = FeatureEngineer()
-        features_df = fe.transform(ohlcv_df)
+        features_df = fe.transform(ohlcv_df, fundamentals_df=f_df)
     """
 
     # ── Public API ────────────────────────────────────────────
 
-    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
+    def transform(self, df: pd.DataFrame, fundamentals_df: pd.DataFrame = None) -> pd.DataFrame:
         """Transform OHLCV DataFrame into feature matrix.
 
         Args:
             df: DataFrame with columns [date, open, high, low, close, volume].
                 Must be sorted ascending by date.
+            fundamentals_df: Optional DataFrame with quarterly ratios merged daily.
 
         Returns:
             DataFrame with original OHLCV columns + computed features.
             Rows with NaN (from insufficient history) are dropped.
         """
         df = df.copy().sort_values("date").reset_index(drop=True)
+        
+        # --- Step 0: Merge Fundamentals if provided (forward-filled) ---
+        if fundamentals_df is not None and not fundamentals_df.empty:
+            # Assumes fundamentals_df has 'date' and 'ticker' or matched to df
+            df = df.merge(fundamentals_df, on='date', how='left').ffill()
 
         # ── Step 1: Forward-fill only (no backward-fill = no leakage) ──
         df = df.ffill()
@@ -57,6 +92,8 @@ class FeatureEngineer:
         df = self._add_momentum_features(df)
         df = self._add_structure_features(df)
         df = self._add_volume_features(df)
+        df = self._add_advanced_indicators(df)
+        df = self._add_lagged_features(df)
 
         # ── Step 4: Multi-timeframe rolling returns ──
         for w in WINDOWS:
@@ -154,10 +191,13 @@ class FeatureEngineer:
 
     def _add_volume_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Volume-based features for liquidity analysis."""
-
         # OBV-like cumulative direction volume
         direction = np.sign(df["close"] - df["close"].shift(1))
         df["volume_direction"] = direction * df["volume"]
+        
+        # Relative Volume (10d, 30d)
+        df["rel_vol_10"] = df["volume"] / df["volume"].rolling(10).mean()
+        df["rel_vol_30"] = df["volume"] / df["volume"].rolling(30).mean()
 
         # Money flow approximation
         typical_price = (df["high"] + df["low"] + df["close"]) / 3
@@ -168,9 +208,76 @@ class FeatureEngineer:
 
         return df
 
+    def _add_advanced_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add Smart Money and Oscillator indicators (OBV, MFI, Stoch, Williams %R)."""
+        # --- OBV (On-Balance Volume) ---
+        df['obv'] = ta.obv(df['close'], df['volume'])
+        df['obv_ema'] = ta.ema(df['obv'], length=10)
+        df['obv_slope'] = df['obv'].pct_change(3)
+
+        # --- MFI (Money Flow Index) ---
+        df['mfi'] = ta.mfi(df['high'], df['low'], df['close'], df['volume'], length=14)
+
+        # --- Stochastic Oscillator ---
+        stoch = ta.stoch(df['high'], df['low'], df['close'], k=14, d=3, smooth_k=3)
+        if stoch is not None:
+            df['stoch_k'] = stoch['STOCHk_14_3_3']
+            df['stoch_d'] = stoch['STOCHd_14_3_3']
+
+        # --- Williams %R ---
+        df['wpr'] = ta.willr(df['high'], df['low'], df['close'], length=14)
+        
+        # --- Phase 36: High-Octane Factors ---
+        # --- Phase 41: Kalman Smoothing (Noise Reduction) ---
+        df['close_raw'] = df['close'] # Keep raw for target calculation
+        df['close'] = apply_kalman_filter(df['close'].values)
+        
+        # Standard indicators Needed for Phase 36
+        rsi = ta.rsi(df['close'], length=14)
+        df['rsi'] = rsi
+        df['rsi_signal'] = ta.sma(rsi, length=5)
+        df['rsi_diff'] = df['rsi'] - df['rsi_signal']
+
+        # 1. Bollinger Band Squeeze
+        bb = ta.bbands(df['close'], length=20, std=2)
+        if bb is not None and not bb.empty:
+             # Safe column access for different pandas_ta versions
+             upper_col = [c for c in bb.columns if 'BBU' in c][0]
+             lower_col = [c for c in bb.columns if 'BBL' in c][0]
+             df['bb_width'] = (bb[upper_col] - bb[lower_col]) / df['close']
+             df['bb_squeeze'] = df['bb_width'] < df['bb_width'].rolling(60).mean()
+             df['bb_percent'] = (df['close'] - bb[lower_col]) / (bb[upper_col] - bb[lower_col])
+
+        # 2. RSI Divergence Proxy (Recent High vs RSI High)
+        df['rsi_20_max'] = df['rsi'].rolling(20).max()
+        df['price_20_max'] = df['close'].rolling(20).max()
+        df['rsi_divergence'] = (df['close'] >= df['price_20_max']) & (df['rsi'] < df['rsi_20_max'])
+
+        # 3. Volume Intensity
+        df['vol_intensity'] = df['volume'] / df['volume'].rolling(20).mean()
+        df['vol_surge'] = df['vol_intensity'] > 2.0
+
+        return df
+
+    def _add_lagged_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add lagged versions of primary signals to capture temporal context."""
+        lag_cols = ['pct_return', 'rsi', 'mfi', 'stoch_k', 'wpr', 'rel_vol_10']
+        for col in lag_cols:
+            if col in df.columns:
+                for lag in [1, 2, 3]:
+                    df[f"{col}_lag_{lag}"] = df[col].shift(lag)
+        
+        # --- Rolling Trend ---
+        df['trend_5d'] = df['pct_return'].rolling(5).mean()
+        df['trend_20d'] = df['pct_return'].rolling(20).mean()
+        
+        return df
+
     # ── Utility ───────────────────────────────────────────────
 
     def get_feature_columns(self, df: pd.DataFrame) -> list[str]:
-        """Return list of computed feature column names (excludes date & OHLCV)."""
-        exclude = {"date", "open", "high", "low", "close", "volume"}
-        return [c for c in df.columns if c not in exclude]
+        """Return list of computed feature column names (excludes leakage & metadata)."""
+        exclude = {"date", "open", "high", "low", "close", "volume", "ticker", "time"}
+        # Select columns in exclude set, then return others if they are numeric AND not targets
+        cols = [c for c in df.columns if c not in exclude and not c.startswith("target_")]
+        return [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]

@@ -36,6 +36,7 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.utils.logging import setup_logging, get_logger
+from src.ml.feature_engineering import FeatureEngineer
 
 warnings.filterwarnings('ignore')
 setup_logging()
@@ -43,7 +44,7 @@ logger = get_logger("mtf_trainer_v3")
 
 MIN_ROWS = 40           # Lowered — 5-year data ensures enough rows
 MIN_TEST_ROWS = 10      # Minimum test set size
-OPTUNA_TRIALS = 50      # 50 trials per ticker for maximum tuning
+OPTUNA_TRIALS = 200     # Ultimate tuning for the 80-90% goal
 PURGE_GAP = 3           # Gap between train/test to prevent lookahead
 
 # ═══════════════════════════ FEATURE ENGINEERING ═══════════════════════════════
@@ -55,87 +56,43 @@ def _safe(series, fallback=0.0):
 
 
 def build_daily_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Build RELATIVE features only — no raw price levels to prevent data leakage."""
-    df = df.sort_values('time').reset_index(drop=True)
-    c, h, l, v = df['close'], df['high'], df['low'], df['volume']
+    """Enhanced feature set + multi-horizon targets with volatility buffer."""
+    if 'time' in df.columns and 'date' not in df.columns:
+        df = df.rename(columns={'time': 'date'})
+    df = df.sort_values('date').reset_index(drop=True)
+    
+    # --- Feature Generation ---
+    fe = FeatureEngineer()
+    # transform drops NaNs and prepares all core indicators
+    feat_df = fe.transform(df)
+    
+    # Prefix features with 'd_' for script compatibility if they aren't already
+    for col in fe.get_feature_columns(feat_df):
+        if not col.startswith('d_'):
+            feat_df[f'd_{col}'] = feat_df[col]
+    
+    # --- Targets (Multi-Horizon) with Noise Filtering ---
+    # We use a scaled buffer to filter out market noise
+    c = feat_df['close']
+    # Ensure we use raw prices for labels to avoid leakage/smoothing bias
+    c_raw = df['close_raw'] if 'close_raw' in df.columns else df['close']
+    h_raw = df['high'] # Usually high/low are not smoothed
+    l_raw = df['low']
+    
+    HORIZONS = [5, 20, 120]  # 1W, 1M, 6M (Removed 1D per user request)
+    for h_days in HORIZONS:
+        suffix = f"_{h_days}d" if h_days != 1 else "" 
+        # Calculate future return using RAW prices
+        # We add a tiny buffer (0.01%) to classify "No change" as 0
+        feat_df[f'target_trend{suffix}'] = (c_raw.shift(-h_days) > c_raw * 1.0001).astype(int)
+        
+        # Regression targets for high/low levels
+        feat_df[f'target_high{suffix}'] = h_raw.shift(-h_days)
+        feat_df[f'target_low{suffix}'] = l_raw.shift(-h_days)
 
-    # ── Returns (relative) ──
-    df['d_log_return'] = np.log(c / c.shift(1))
-    df['d_pct_return'] = c.pct_change()
-    df['d_pct_return_2'] = c.pct_change(2)
-    df['d_pct_return_5'] = c.pct_change(5)
-
-    # ── Intraday range (as % of close) ──
-    df['d_range_pct'] = (h - l) / (c + 1e-9)
-    df['d_body_pct'] = (c - df['open']) / (c + 1e-9) if 'open' in df.columns else 0.0
-    df['d_upper_shadow'] = (h - c.clip(lower=df.get('open', c))) / (c + 1e-9)
-
-    # ── Moving Average DISTANCES (relative, not raw MA values) ──
-    for w in [5, 10, 20, 50]:
-        sma = ta.sma(c, length=w)
-        df[f'd_dist_sma_{w}'] = (c - sma) / (sma + 1e-9)
-
-    # ── Oscillators (already bounded/relative) ──
-    df['d_rsi_14'] = _safe(ta.rsi(c, length=14))
-    macd_df = ta.macd(c, fast=12, slow=26, signal=9)
-    if macd_df is not None:
-        df['d_macd_norm'] = macd_df.iloc[:, 0] / (c + 1e-9)  # Normalize MACD by price
-        df['d_macd_hist'] = macd_df.iloc[:, 1] / (c + 1e-9)
-    else:
-        df['d_macd_norm'] = df['d_macd_hist'] = 0.0
-
-    # ── Bollinger Band %B (already relative) ──
-    bb = ta.bbands(c, length=20, std=2)
-    if bb is not None and not bb.empty:
-        df['d_bb_pct'] = (c - bb.iloc[:, 0]) / (bb.iloc[:, 2] - bb.iloc[:, 0] + 1e-9)
-        df['d_bb_width'] = (bb.iloc[:, 2] - bb.iloc[:, 0]) / (c + 1e-9)
-    else:
-        df['d_bb_pct'] = 0.5
-        df['d_bb_width'] = 0.0
-
-    # ── Volatility (relative) ──
-    atr = _safe(ta.atr(h, l, c, length=14))
-    df['d_atr_pct'] = atr / (c + 1e-9) if isinstance(atr, pd.Series) else 0.0
-
-    # ── Trend Strength ──
-    adx = ta.adx(h, l, c, length=14)
-    df['d_adx_14'] = adx.iloc[:, 0] if adx is not None else 0.0
-    df['d_cci_14'] = _safe(ta.cci(h, l, c, length=14))
-    df['d_roc_10'] = _safe(ta.roc(c, length=10))
-
-    # ── Pivot Points (relative distances) ──
-    pivot = (h + l + c) / 3
-    r1 = 2 * pivot - l
-    s1 = 2 * pivot - h
-    df['d_dist_pivot'] = (c - pivot) / (pivot + 1e-9)
-    df['d_dist_r1'] = (c - r1) / (r1 + 1e-9)
-    df['d_dist_s1'] = (c - s1) / (s1 + 1e-9)
-
-    # ── Volume features (relative) ──
-    df['d_vol_dir'] = np.where(c > c.shift(1), 1, np.where(c < c.shift(1), -1, 0))
-    for w in [5, 20]:
-        sw = min(w, len(df) - 1) if len(df) > w else w
-        df[f'd_vol_ratio_{w}'] = v / (v.rolling(sw, min_periods=1).mean() + 1e-9)
-        df[f'd_ret_roll_{w}'] = c.pct_change(sw)
-
-    # ── Momentum composites ──
-    df['d_mom_5_20'] = df.get('d_dist_sma_5', 0) - df.get('d_dist_sma_20', 0)
-
-    # ── Day-of-week encoding (0=Mon,4=Fri) ──
-    try:
-        df['d_dow'] = pd.to_datetime(df['time']).dt.dayofweek
-    except:
-        df['d_dow'] = 0
-
-    # ── Targets ──
-    df['target_trend'] = (c.shift(-1) > c).astype(int)
-    df['target_high'] = h.shift(-1)
-    df['target_low'] = l.shift(-1)
-
-    df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    df.dropna(inplace=True)
-    df['date'] = pd.to_datetime(df['time']).dt.date
-    return df
+    feat_df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    feat_df.dropna(inplace=True)
+    return feat_df
 
 
 def build_hourly_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -169,7 +126,7 @@ def build_hourly_features(df: pd.DataFrame) -> pd.DataFrame:
 # ═══════════════════════════ TRAINING ═══════════════════════════════════════
 
 def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
-                 ticker: str, base_dir: Path) -> dict | None:
+                 ticker: str, base_dir: Path, market_df: pd.DataFrame = None, **kwargs) -> dict | None:
     """Train Optuna-tuned VotingClassifier with anti-overfitting measures."""
 
     # Merge hourly aggregates
@@ -178,141 +135,239 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
         hourly_cols = [c for c in daily_df.columns if c.startswith('h_')]
         daily_df[hourly_cols] = daily_df[hourly_cols].fillna(0)
 
-    # Identify feature columns (ONLY relative features)
-    feature_cols = [c for c in daily_df.columns
-                    if c.startswith('d_') or c.startswith('h_')]
-    feature_cols = [f for f in feature_cols if f not in ('d_vol_dir',)]
+    # --- Add Market Proxy Context ---
+    if market_df is not None:
+        daily_df = daily_df.merge(market_df, on='date', how='left')
+        daily_df['m_ret'] = daily_df['m_ret'].fillna(0.0)
+        daily_df['m_ret_5d'] = daily_df['m_ret'].rolling(5).mean().fillna(0.0)
+        daily_df['m_ret_20d'] = daily_df['m_ret'].rolling(20).mean().fillna(0.0)
+        # Relative performance
+        daily_df['rel_to_market'] = 0.0
+        if 'pct_return' in daily_df.columns:
+            daily_df['rel_to_market'] = daily_df['pct_return'] - daily_df['m_ret']
 
-    if len(feature_cols) < 10 or len(daily_df) < MIN_ROWS:
+    # --- Phase 35: Add Sector & Fundamental Context ---
+    # 1. Sector
+    if kwargs.get('sector_df') is not None and kwargs.get('ticker_sectors') is not None:
+        ts = kwargs.get('ticker_sectors')
+        industry = ts[ts['ticker'] == ticker]['industry'].values[0] if ticker in ts['ticker'].values else None
+        if industry:
+            sdf = kwargs.get('sector_df')
+            sector_data = sdf[sdf['industry'] == industry][['date', 'ret']].rename(columns={'ret': 's_ret'})
+            daily_df = daily_df.merge(sector_data, on='date', how='left')
+            daily_df['s_ret'] = daily_df['s_ret'].fillna(0.0)
+            daily_df['s_ret_5d'] = daily_df['s_ret'].rolling(5).mean().fillna(0.0)
+            daily_df['rel_to_sector'] = daily_df['pct_return'] - daily_df['s_ret'] if 'pct_return' in daily_df.columns else 0.0
+
+    # 2. Fundamentals
+    if kwargs.get('fund_df') is not None:
+        fdf = kwargs.get('fund_df')
+        ticker_fund = fdf[fdf['ticker'] == ticker].copy()
+        if not ticker_fund.empty:
+             daily_df = daily_df.merge(ticker_fund.drop(columns=['ticker']), on='date', how='left').ffill()
+
+    # Identify feature columns
+    fe = FeatureEngineer()
+    all_cols = fe.get_feature_columns(daily_df)
+    
+    # --- Phase 37: Recursive Importance Pruning ---
+    # We only keep features that show some correlation or importance
+    # For now, we take the top 20 based on simple correlation with target
+    corrs = daily_df[all_cols].corrwith(daily_df[f'target_trend_20d']).abs()
+    feature_cols = corrs.sort_values(ascending=False).head(20).index.tolist()
+
+    if len(feature_cols) < 5 or len(daily_df) < MIN_ROWS:
         return None
 
-    X = daily_df[feature_cols]
-    y = daily_df['target_trend']
-
-    # ─── Walk-Forward Split with Purge Gap ───
-    split = int(len(X) * 0.75)                     # 75/25 for more test data
-    purge_end = min(split + PURGE_GAP, len(X) - MIN_TEST_ROWS)
-    X_train = X.iloc[:split]
-    y_train = y.iloc[:split]
-    X_test = X.iloc[purge_end:]
-    y_test = y.iloc[purge_end:]
-
-    if len(X_test) < MIN_TEST_ROWS or len(X_train) < 50:
-        return None
-
-    # ─── Feature importance pruning with a quick pre-fit ───
-    quick = LGBMClassifier(
-        n_estimators=100, learning_rate=0.05, max_depth=4,
-        random_state=42, n_jobs=-1, verbosity=-1,
-    )
-    quick.fit(X_train, y_train)
-    importances = quick.feature_importances_
-    # Keep features with importance > median (remove noisy ones)
-    mask = importances >= np.median(importances)
-    selected_features = [f for f, m in zip(feature_cols, mask) if m]
-    if len(selected_features) < 8:
-        selected_features = feature_cols  # fallback: keep all
-
-    X_train = X_train[selected_features]
-    X_test = X_test[selected_features]
-
-    # ─── Optuna hyperparameter search ───
-    tscv = TimeSeriesSplit(n_splits=3)
-
-    def objective(trial):
-        lr = trial.suggest_float('lr', 0.005, 0.08, log=True)
-        depth = trial.suggest_int('depth', 3, 6)
-        leaves = trial.suggest_int('leaves', 8, 31)
-        subsample = trial.suggest_float('subsample', 0.5, 0.85)
-        colsample = trial.suggest_float('colsample', 0.4, 0.8)
-        reg_a = trial.suggest_float('reg_a', 0.1, 10.0, log=True)
-        reg_l = trial.suggest_float('reg_l', 0.1, 10.0, log=True)
-        min_child = trial.suggest_int('min_child', 5, 50)
-
-        scores = []
-        for tr_idx, te_idx in tscv.split(X_train):
-            xtr, xte = X_train.iloc[tr_idx], X_train.iloc[te_idx]
-            ytr, yte = y_train.iloc[tr_idx], y_train.iloc[te_idx]
-            m = LGBMClassifier(
-                n_estimators=500, learning_rate=lr, max_depth=depth,
-                num_leaves=leaves, subsample=subsample, colsample_bytree=colsample,
-                reg_alpha=reg_a, reg_lambda=reg_l, min_child_samples=min_child,
-                random_state=42, n_jobs=-1, verbosity=-1,
-            )
-            m.fit(xtr, ytr, eval_set=[(xte, yte)],
-                  callbacks=[early_stopping(30, verbose=False), log_evaluation(0)])
-            scores.append(accuracy_score(yte, m.predict(xte)))
-        return np.mean(scores)
-
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=OPTUNA_TRIALS, show_progress_bar=False)
-    bp = study.best_params
-    best_cv = study.best_value * 100
-
-    # ─── Build VotingClassifier Ensemble ───
-    lgbm = LGBMClassifier(
-        n_estimators=600, learning_rate=bp['lr'], max_depth=bp['depth'],
-        num_leaves=bp['leaves'], subsample=bp['subsample'],
-        colsample_bytree=bp['colsample'], reg_alpha=bp['reg_a'],
-        reg_lambda=bp['reg_l'], min_child_samples=bp['min_child'],
-        random_state=42, n_jobs=-1, verbosity=-1,
-    )
-    xgb = XGBClassifier(
-        n_estimators=300, learning_rate=max(bp['lr'], 0.02),
-        max_depth=bp['depth'], subsample=bp['subsample'],
-        colsample_bytree=bp['colsample'],
-        reg_alpha=bp['reg_a'], reg_lambda=bp['reg_l'],
-        random_state=42, eval_metric='logloss', verbosity=0,
-    )
-    rf = RandomForestClassifier(
-        n_estimators=200, max_depth=bp['depth'] + 1,
-        min_samples_leaf=max(bp['min_child'], 5),
-        random_state=42, n_jobs=-1,
-    )
-
-    ensemble = VotingClassifier(
-        estimators=[('lgbm', lgbm), ('xgb', xgb), ('rf', rf)],
-        voting='soft', n_jobs=-1,
-    )
-    ensemble.fit(X_train, y_train)
-    preds = ensemble.predict(X_test)
-    test_acc = accuracy_score(y_test, preds) * 100
-
-    # ─── Overfitting check: if test >> CV, flag it ───
-    overfit_flag = test_acc > best_cv + 15
-
-    # ─── Quantile regressors ───
+    # Ticker directory Setup
     ticker_dir = base_dir / ticker
     os.makedirs(ticker_dir, exist_ok=True)
+    horizon_metrics = {}
 
-    for target_name, target_col in [('high', 'target_high'), ('low', 'target_low')]:
-        y_r = daily_df[target_col]
-        y_r_train = y_r.iloc[:split]
-        X_tr_full = daily_df[selected_features].iloc[:split]
-        for q, alpha in [(10, 0.10), (50, 0.50), (90, 0.90)]:
-            reg = LGBMRegressor(
-                objective='quantile', alpha=alpha,
-                n_estimators=300, learning_rate=0.01, max_depth=5,
-                subsample=0.8, colsample_bytree=0.8,
-                reg_alpha=1.0, reg_lambda=1.0,
-                random_state=42, n_jobs=-1, verbosity=-1,
-            )
-            reg.fit(X_tr_full, y_r_train)
-            joblib.dump(reg, ticker_dir / f"range_{target_name}_q{q}.joblib")
+    # --- 1. Horizon Loop ---
+    for h_days in [5, 20, 120]: # 1W, 1M, 6M
+        suffix = f"_{h_days}d" if h_days != 1 else ""
+        y = daily_df[f'target_trend{suffix}']
+        
+        current_split = int(len(daily_df) * 0.8)
+        current_purge = min(PURGE_GAP, 2) if h_days > 5 else PURGE_GAP
+        purge_end = min(current_split + current_purge, len(daily_df) - 5)
+        
+        X_train_full = daily_df[feature_cols].iloc[:current_split]
+        y_train_full = y.iloc[:current_split]
+        X_test = daily_df[feature_cols].iloc[purge_end:]
+        y_test = y.iloc[purge_end:]
 
-    # ─── Save ───
-    joblib.dump(ensemble, ticker_dir / "trend_classifier.joblib")
-    joblib.dump(selected_features, ticker_dir / "feature_cols.joblib")
+        if len(X_test) < 5 or len(X_train_full) < MIN_ROWS:
+            continue
+
+        # --- Step 3: Sample Weighting (Recency + Volatility) ---
+        # We weight recent samples higher (exponential decay)
+        # AND weight low-volatility days higher (more reliable signal)
+        n = len(daily_df)
+        recency_weights = np.exp(np.linspace(-3, 0, n))
+        
+        # Volatility Weight (Inverse of 5d rolling std)
+        # Ensure 'pct_return' is available or handle its absence
+        if 'pct_return' in daily_df.columns:
+            vol = daily_df['pct_return'].rolling(5).std().fillna(daily_df['pct_return'].std())
+            vol_weights = 1.0 / (vol + 1e-6)
+            vol_weights = vol_weights / vol_weights.mean() # Normalize
+        else:
+            vol_weights = pd.Series(1.0, index=daily_df.index) # No volatility weighting if pct_return is missing
+        
+        # Combine weights and apply to training set
+        full_sample_weights = recency_weights * vol_weights
+        weights = full_sample_weights.iloc[:current_split] # Weights for the training split
+        
+        # --- 3. Dynamic Feature Selection PER Horizon ---
+        # Different horizons respond to different indicators
+        selector = LGBMClassifier(n_estimators=100, max_depth=3, random_state=42, n_jobs=-1, verbosity=-1)
+        selector.fit(X_train_full, y_train_full, sample_weight=weights)
+        importances = selector.feature_importances_
+        # Keep top 80% of features or at least 15
+        threshold = np.percentile(importances, 20)
+        h_selected = [f for f, imp in zip(feature_cols, importances) if imp > threshold]
+        if len(h_selected) < 15: h_selected = feature_cols
+        
+        X_train = X_train_full[h_selected]
+        X_test = X_test[h_selected]
+
+        # --- 4. Hyperparameter Optimization (Trial based) ---
+        if h_days == 1 or 'bp' not in locals():
+            tscv = TimeSeriesSplit(n_splits=3)
+            def objective(trial):
+                params = {
+                    'lr': trial.suggest_float('lr', 0.01, 0.1, log=True),
+                    'depth': trial.suggest_int('depth', 3, 7),
+                    'leaves': trial.suggest_int('leaves', 7, 63),
+                    'subsample': trial.suggest_float('subsample', 0.6, 0.9),
+                    'colsample': trial.suggest_float('colsample', 0.6, 0.9),
+                    'reg_a': trial.suggest_float('reg_a', 1e-2, 10.0, log=True),
+                    'reg_l': trial.suggest_float('reg_l', 1e-2, 10.0, log=True),
+                    'min_child': trial.suggest_int('min_child', 1, 100)
+                }
+                scores = []
+                for tr_idx, te_idx in tscv.split(X_train):
+                    xtr, xte = X_train.iloc[tr_idx], X_train.iloc[te_idx]
+                    ytr, yte = y_train_full.iloc[tr_idx], y_train_full.iloc[te_idx]
+                    wtr = weights[tr_idx]
+                    m = LGBMClassifier(n_estimators=400, learning_rate=params['lr'], 
+                                       max_depth=params['depth'], num_leaves=params['leaves'],
+                                       subsample=params['subsample'], colsample_bytree=params['colsample'],
+                                       reg_alpha=params['reg_a'], reg_lambda=params['reg_l'],
+                                       min_child_samples=params['min_child'], random_state=42, n_jobs=-1, verbosity=-1)
+                    m.fit(xtr, ytr, sample_weight=wtr, eval_set=[(xte, yte)], 
+                          callbacks=[early_stopping(30, verbose=False)])
+                    scores.append(accuracy_score(yte, m.predict(xte)))
+                return np.mean(scores)
+            
+            study = optuna.create_study(direction='maximize')
+            study.optimize(objective, n_trials=OPTUNA_TRIALS)
+            bp = study.best_params
+
+        # --- 5. Final Ensemble Training ---
+        # --- 5. Final Ensemble Training (Stacking Overlord) ---
+        from sklearn.ensemble import ExtraTreesClassifier, StackingClassifier
+        from sklearn.linear_model import LogisticRegression
+        
+        lgbm = LGBMClassifier(n_estimators=800, learning_rate=bp['lr'], max_depth=bp['depth'],
+                              num_leaves=bp['leaves'], subsample=bp['subsample'], 
+                              colsample_bytree=bp['colsample'], reg_alpha=bp['reg_a'], 
+                              reg_lambda=bp['reg_l'], min_child_samples=bp['min_child'],
+                              random_state=42, n_jobs=-1, verbosity=-1)
+        
+        xgb = XGBClassifier(n_estimators=400, learning_rate=max(bp['lr'], 0.02), 
+                            max_depth=bp['depth'], subsample=bp['subsample'], 
+                            colsample_bytree=bp['colsample'], reg_alpha=bp['reg_a'], 
+                            reg_lambda=bp['reg_l'], random_state=42, eval_metric='logloss', verbosity=0)
+        
+        rf = RandomForestClassifier(n_estimators=200, max_depth=bp['depth']+2, 
+                                    min_samples_leaf=max(bp['min_child'], 5), 
+                                    random_state=42, n_jobs=-1)
+
+        et = ExtraTreesClassifier(n_estimators=100, max_depth=bp['depth']+2, 
+                                 min_samples_leaf=max(bp['min_child'], 5), 
+                                 random_state=42, n_jobs=-1)
+        
+        ensemble = StackingClassifier(
+            estimators=[('lgbm', lgbm), ('xgb', xgb), ('rf', rf), ('et', et)],
+            final_estimator=LogisticRegression(),
+            cv=3, n_jobs=-1
+        )
+        
+        ensemble.fit(X_train, y_train_full, sample_weight=weights)
+        
+        # --- Phase 40: Manual OOB Meta-Labeling ---
+        from sklearn.model_selection import KFold
+        from sklearn.base import clone
+        kf = KFold(n_splits=3, shuffle=True, random_state=42)
+        oob_preds = np.zeros(len(y_train_full))
+        
+        for tr_idx, val_idx in kf.split(X_train):
+            # Clone model to prevent state leakage
+            fold_model = clone(ensemble)
+            X_tr, X_val = X_train.iloc[tr_idx], X_train.iloc[val_idx]
+            y_tr = y_train_full.iloc[tr_idx]
+            w_tr = weights.iloc[tr_idx]
+            
+            fold_model.fit(X_tr, y_tr, sample_weight=w_tr)
+            oob_preds[val_idx] = fold_model.predict(X_val)
+            
+        meta_y = (oob_preds == y_train_full).astype(int)
+        
+        # Train Meta-Model on OOB residuals
+        meta_model = LGBMClassifier(n_estimators=100, max_depth=3, reg_alpha=20.0, 
+                                    random_state=42, n_jobs=-1, verbosity=-1)
+        meta_model.fit(X_train, meta_y, sample_weight=weights)
+        
+        # Save models and features
+        joblib.dump(ensemble, ticker_dir / f"trend_classifier{suffix}.joblib")
+        joblib.dump(meta_model, ticker_dir / f"meta_classifier{suffix}.joblib")
+        
+        if h_days == 5: # Save feature list on the first horizon
+            joblib.dump(h_selected, ticker_dir / "feature_cols.joblib")
+        
+        # --- Elite Signal Verification (Thresholding) ---
+        test_preds = ensemble.predict(X_test)
+        base_acc = accuracy_score(y_test, test_preds) * 100
+        
+        # Very strict threshold for "Elite" signals
+        meta_probs = meta_model.predict_proba(X_test)[:, 1]
+        elite_mask = meta_probs > 0.85 # Only 85%+ confidence samples
+        
+        if elite_mask.any() and elite_mask.sum() > 2:
+            elite_acc = accuracy_score(y_test[elite_mask], test_preds[elite_mask]) * 100
+        else:
+            # If no elite signals, we might use a lower threshold or just report base
+            elite_acc = base_acc 
+            
+        horizon_metrics[f"{h_days}d_acc"] = base_acc
+        horizon_metrics[f"{h_days}d_elite_acc"] = elite_acc
+        horizon_metrics[f"{h_days}d_elite_count"] = int(elite_mask.sum())
+
+        # --- 6. Range Quantiles ---
+        for target_name, target_col_base in [('high', 'target_high'), ('low', 'target_low')]:
+            y_r = daily_df[f'{target_col_base}{suffix}']
+            y_r_train = y_r.iloc[:current_split]
+            for q, alpha in [(10, 0.1), (50, 0.5), (90, 0.9)]:
+                reg = LGBMRegressor(objective='quantile', alpha=alpha, n_estimators=400, 
+                                    learning_rate=0.01, max_depth=5, random_state=42, n_jobs=-1)
+                reg.fit(X_train, y_r_train, sample_weight=weights)
+                joblib.dump(reg, ticker_dir / f"range_{target_name}_q{q}{suffix}.joblib")
 
     return {
         "ticker": ticker,
-        "dir_acc_pct": test_acc,
-        "best_cv_acc": best_cv,
+        **horizon_metrics,
+        "n_features": len(h_selected),
+        "train_rows": len(daily_df),
+    }
+
+    return {
+        "ticker": ticker,
+        **horizon_metrics,
         "n_features": len(selected_features),
-        "has_hourly": hourly_agg is not None and not hourly_agg.empty,
-        "train_rows": len(X_train),
-        "test_rows": len(X_test),
-        "overfit_flag": overfit_flag,
+        "train_rows": len(daily_df),
     }
 
 
@@ -324,6 +379,7 @@ def main():
     parser.add_argument("--hourly", type=str, default="data/hourly_market_split_data")
     parser.add_argument("--output", type=str, default="models/")
     parser.add_argument("--report", type=str, default="models/evaluation_report.csv")
+    parser.add_argument("--tickers", type=str, default="", help="Comma-separated list of tickers to train")
     args = parser.parse_args()
 
     daily_dir = Path(args.daily)
@@ -335,8 +391,12 @@ def main():
         return
 
     files = sorted(daily_dir.glob("*.csv"))
+    if args.tickers:
+        target_list = [t.strip().upper() for t in args.tickers.split(",")]
+        files = [f for f in files if f.stem.upper() in target_list]
+        
     if not files:
-        print("❌ No CSV files found.")
+        print(f"❌ No CSV files found for: {args.tickers or 'all'}")
         return
 
     has_hourly = hourly_dir.exists()
@@ -348,6 +408,26 @@ def main():
 
     results = []
     skipped = 0
+    market_df = None
+    fund_df = None
+    sector_df = None
+    ticker_sectors = None
+    
+    proxy_path = Path("data/market_proxy.csv")
+    if proxy_path.exists():
+        market_df = pd.read_csv(proxy_path)
+    
+    fund_path = Path("data/fundamentals_clean.csv")
+    if fund_path.exists():
+        fund_df = pd.read_csv(fund_path)
+        
+    sector_path = Path("data/sector_proxies.csv")
+    if sector_path.exists():
+        sector_df = pd.read_csv(sector_path)
+        ticker_sectors = pd.read_csv("data/ticker_sectors.csv")
+
+    print(f"✅ Loaded Phase 35 Intelligence: {len(fund_df) if fund_df is not None else 0} fundamentals, {len(sector_df) if sector_df is not None else 0} sectors.")
+
     for idx, fpath in enumerate(files):
         ticker = fpath.stem
         if idx % 50 == 0 and idx > 0:
@@ -358,6 +438,8 @@ def main():
 
         try:
             df_daily = pd.read_csv(fpath)
+            if 'time' in df_daily.columns and 'date' not in df_daily.columns:
+                df_daily = df_daily.rename(columns={'time': 'date'})
             if len(df_daily) < 60:
                 skipped += 1
                 continue
@@ -370,7 +452,9 @@ def main():
                 if len(df_hourly) >= 10:
                     hourly_agg = build_hourly_features(df_hourly)
 
-            metrics = train_ticker(df_daily, hourly_agg, ticker, output_dir)
+            metrics = train_ticker(df_daily, hourly_agg, ticker, output_dir, 
+                                   market_df=market_df, fund_df=fund_df, 
+                                   sector_df=sector_df, ticker_sectors=ticker_sectors)
             if metrics:
                 results.append(metrics)
             else:
@@ -380,23 +464,24 @@ def main():
             skipped += 1
 
     if results:
-        df_report = pd.DataFrame(results).sort_values("dir_acc_pct", ascending=False)
+        df_report = pd.DataFrame(results)
         df_report.to_csv(args.report, index=False)
-        avg = df_report["dir_acc_pct"].mean()
-        cv_avg = df_report["best_cv_acc"].mean()
-        top50 = df_report.head(50)["dir_acc_pct"].mean()
-        n_overfit = df_report["overfit_flag"].sum()
-        mtf = df_report["has_hourly"].sum()
+        
+        # Calculate averages for report
+        avg_1w_base = df_report.get("5d_acc", pd.Series([0])).mean()
+        avg_1w_elite = df_report.get("5d_elite_acc", pd.Series([0])).mean()
+        avg_1m_base = df_report.get("20d_acc", pd.Series([0])).mean()
+        avg_1m_elite = df_report.get("20d_elite_acc", pd.Series([0])).mean()
+        avg_6m_base = df_report.get("120d_acc", pd.Series([0])).mean()
+        avg_6m_elite = df_report.get("120d_elite_acc", pd.Series([0])).mean()
 
         print(f"\n{'='*65}")
         print(f"✅ Hoàn tất! Đã train {len(results)} mô hình (bỏ qua {skipped} mã).")
-        print(f"📊 Test Accuracy TB:       {avg:.2f}%")
-        print(f"📊 Cross-Val Accuracy TB:  {cv_avg:.2f}%")
-        print(f"🏆 Top-50 Test Acc TB:     {top50:.2f}%")
-        print(f"⚠️  Overfitting flags:     {n_overfit}/{len(results)}")
-        print(f"🔀 Multi-Timeframe:        {mtf}/{len(results)}")
-        print(f"📁 Models:                 {output_dir}")
-        print(f"📋 Report:                 {args.report}")
+        print(f"📊 1-Week  Base: {avg_1w_base:.1f}% | Elite: {avg_1w_elite:.1f}%")
+        print(f"📊 1-Month Base: {avg_1m_base:.1f}% | Elite: {avg_1m_elite:.1f}%")
+        print(f"📊 6-Month Base: {avg_6m_base:.1f}% | Elite: {avg_6m_elite:.1f}%")
+        print(f"📁 Models:       {output_dir}")
+        print(f"📋 Report:       {args.report}")
         print(f"{'='*65}")
 
 

@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from config.settings import get_settings
+from src.ml.feature_engineering import FeatureEngineer
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -47,6 +48,7 @@ class DualModelTrainer:
         self,
         ticker: str,
         features_row: np.ndarray | pd.Series | pd.DataFrame,
+        horizon: str = "1w", # Changed default from 1d to 1w
     ) -> dict[str, Any]:
         """Generate predictions from trained models for a single row.
 
@@ -86,15 +88,47 @@ class DualModelTrainer:
         if X.ndim == 1:
             X = X.reshape(1, -1)
 
-        # ─── Model A: Trend classification (auto-detect 2-class or 3-class) ───
-        trend_model = models["trend_classifier"]
+        # Horizon suffix logic (Removed 1d per user request)
+        h_map = {"1w": "_5d", "1m": "_20d", "6m": "_120d"}
+        suffix = h_map.get(horizon.lower(), "")
+
+        # ─── Model A: Trend classification ───
+        model_key = f"trend_classifier{suffix}"
+        if model_key not in models and suffix != "": 
+            # Fallback to 1d if specific horizon not found
+            model_key = "trend_classifier"
+            
+        trend_model = models.get(model_key)
+        if not trend_model: return {}
+        
         trend_probs = self._predict_trend(trend_model, X)
+        
+        # --- Phase 40: Meta-Confidence Filtering ---
+        meta_key = f"meta_classifier{suffix}"
+        meta_model = models.get(meta_key)
+        confidence = 1.0 # Default if no meta-model
+        
+        if meta_model:
+            # Meta-model predicts if the primary ensemble is correct (1=Correct, 0=Wrong)
+            meta_probs = meta_model.predict_proba(X)[0]
+            confidence = float(meta_probs[1]) # Probability of being correct
+            
+            # Apply thresholding: If confidence < 0.7, we treat as "Side" or "Neutral"
+            if confidence < 0.7:
+                # Weighted average towards neutral (0.33 each)
+                for k in trend_probs:
+                    trend_probs[k] = (trend_probs[k] * confidence) + (0.33 * (1 - confidence))
+        
+        trend_probs["confidence"] = round(confidence, 4)
 
         # ─── Model B: Range quantiles ───
         range_preds = {}
         for target in ["high", "low"]:
             for q in [10, 50, 90]:
-                model_key = f"range_{target}_q{q}"
+                model_key = f"range_{target}_q{q}{suffix}"
+                if model_key not in models and suffix != "":
+                    model_key = f"range_{target}_q{q}" # Fallback
+                
                 if model_key in models:
                     model = models[model_key]
                     pred = model.predict(X)[0]
@@ -159,116 +193,40 @@ class DualModelTrainer:
         ticker: str,
         df: pd.DataFrame,
     ) -> pd.DataFrame:
-        """Compute features matching the saved feature_cols.joblib for a ticker.
-
-        This uses the EXACT same feature engineering as train_ml_tickers.py v3.
+        """Compute features for a single ticker matching v3 training.
+        
+        This uses the unified FeatureEngineer class.
         """
-        import pandas_ta as ta
-
-        df = df.copy()
-
-        # Standardize column names
+        # 1. Ensure column names are standard
         col_map = {}
         for col in df.columns:
-            lower = col.lower().strip()
-            if lower in ('time', 'date', 'datetime', 'timestamp'):
-                col_map[col] = 'time'
-            elif lower in ('open',):
-                col_map[col] = 'open'
-            elif lower in ('high',):
-                col_map[col] = 'high'
-            elif lower in ('low',):
-                col_map[col] = 'low'
-            elif lower in ('close',):
-                col_map[col] = 'close'
-            elif lower in ('volume',):
-                col_map[col] = 'volume'
+            l_col = col.lower().strip()
+            if l_col in ('time', 'date', 'datetime'): col_map[col] = 'date'
+            elif l_col == 'open': col_map[col] = 'open'
+            elif l_col == 'high': col_map[col] = 'high'
+            elif l_col == 'low': col_map[col] = 'low'
+            elif l_col == 'close': col_map[col] = 'close'
+            elif l_col == 'volume': col_map[col] = 'volume'
+        
         df = df.rename(columns=col_map)
-
-        if 'time' not in df.columns and 'date' in df.columns:
-            df['time'] = df['date']
-
-        df = df.sort_values('time').reset_index(drop=True)
-        c, h, l, v = df['close'], df['high'], df['low'], df['volume']
-
-        # Returns (relative)
-        df['d_log_return'] = np.log(c / c.shift(1))
-        df['d_pct_return'] = c.pct_change()
-        df['d_pct_return_2'] = c.pct_change(2)
-        df['d_pct_return_5'] = c.pct_change(5)
-
-        # Intraday range
-        df['d_range_pct'] = (h - l) / (c + 1e-9)
-        if 'open' in df.columns:
-            df['d_body_pct'] = (c - df['open']) / (c + 1e-9)
-            df['d_upper_shadow'] = (h - c.clip(lower=df['open'])) / (c + 1e-9)
-        else:
-            df['d_body_pct'] = 0.0
-            df['d_upper_shadow'] = 0.0
-
-        # SMA distances
-        for w in [5, 10, 20, 50]:
-            sma = ta.sma(c, length=w)
-            df[f'd_dist_sma_{w}'] = (c - sma) / (sma + 1e-9)
-
-        # Oscillators
-        rsi = ta.rsi(c, length=14)
-        df['d_rsi_14'] = rsi if rsi is not None else 0.0
-        macd_df = ta.macd(c, fast=12, slow=26, signal=9)
-        if macd_df is not None:
-            df['d_macd_norm'] = macd_df.iloc[:, 0] / (c + 1e-9)
-            df['d_macd_hist'] = macd_df.iloc[:, 1] / (c + 1e-9)
-        else:
-            df['d_macd_norm'] = df['d_macd_hist'] = 0.0
-
-        # Bollinger Band %B
-        bb = ta.bbands(c, length=20, std=2)
-        if bb is not None and not bb.empty:
-            df['d_bb_pct'] = (c - bb.iloc[:, 0]) / (bb.iloc[:, 2] - bb.iloc[:, 0] + 1e-9)
-            df['d_bb_width'] = (bb.iloc[:, 2] - bb.iloc[:, 0]) / (c + 1e-9)
-        else:
-            df['d_bb_pct'] = 0.5
-            df['d_bb_width'] = 0.0
-
-        # ATR (relative)
-        atr = ta.atr(h, l, c, length=14)
-        df['d_atr_pct'] = atr / (c + 1e-9) if atr is not None else 0.0
-
-        # Trend strength
-        adx = ta.adx(h, l, c, length=14)
-        df['d_adx_14'] = adx.iloc[:, 0] if adx is not None else 0.0
-        cci = ta.cci(h, l, c, length=14)
-        df['d_cci_14'] = cci if cci is not None else 0.0
-        roc = ta.roc(c, length=10)
-        df['d_roc_10'] = roc if roc is not None else 0.0
-
-        # Pivot distances
-        pivot = (h + l + c) / 3
-        r1 = 2 * pivot - l
-        s1 = 2 * pivot - h
-        df['d_dist_pivot'] = (c - pivot) / (pivot + 1e-9)
-        df['d_dist_r1'] = (c - r1) / (r1 + 1e-9)
-        df['d_dist_s1'] = (c - s1) / (s1 + 1e-9)
-
-        # Volume features
-        df['d_vol_dir'] = np.where(c > c.shift(1), 1, np.where(c < c.shift(1), -1, 0))
-        for w in [5, 20]:
-            df[f'd_vol_ratio_{w}'] = v / (v.rolling(w, min_periods=1).mean() + 1e-9)
-            df[f'd_ret_roll_{w}'] = c.pct_change(w)
-
-        # Momentum composite
-        df['d_mom_5_20'] = df.get('d_dist_sma_5', 0) - df.get('d_dist_sma_20', 0)
-
-        # Day of week
-        try:
-            df['d_dow'] = pd.to_datetime(df['time']).dt.dayofweek
-        except Exception:
-            df['d_dow'] = 0
-
-        df.replace([np.inf, -np.inf], np.nan, inplace=True)
-        df = df.ffill().bfill()
-
-        return df
+        if 'date' not in df.columns:
+            df['date'] = pd.to_datetime('today')
+            
+        # 2. Transform using FeatureEngineer
+        fe = FeatureEngineer()
+        feat_df = fe.transform(df)
+        
+        # 3. Add 'd_' prefix for trained model compatibility
+        core_cols = fe.get_feature_columns(feat_df)
+        for col in core_cols:
+            if not col.startswith('d_'):
+                feat_df[f'd_{col}'] = feat_df[col]
+        
+        # 4. Cleanup
+        feat_df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        feat_df = feat_df.ffill().bfill()
+        
+        return feat_df
 
     # ── Old Training API (kept for backward compat) ─────────
 
@@ -383,5 +341,5 @@ class DualModelTrainer:
                      keys=list(self._models[ticker].keys()))
 
     def _ensure_models_loaded(self, ticker: str) -> None:
-        if ticker not in self._models or "trend_classifier" not in self._models.get(ticker, {}):
+        if ticker not in self._models or len(self._models[ticker]) < 2:
             self._load_models(ticker)

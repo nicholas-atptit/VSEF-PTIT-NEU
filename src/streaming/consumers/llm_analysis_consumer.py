@@ -63,17 +63,40 @@ class LLMAnalysisConsumer:
             except Exception as e:
                 logger.warning("llm_consumer_rag_error", ticker=ticker, error=str(e))
 
-            # 3. Fetch latest news
-            news_text = "No recent news found."
-            news_headlines = []
+            # 3. Fetch latest AI News Intelligence
+            news_text = "No recent structural news analysis found."
             try:
-                from vnstock3 import Vnstock
-                stock = Vnstock().stock(symbol=ticker, source="VCI")
-                news_df = stock.company.news()
-                if news_df is not None and not news_df.empty:
-                    news_headlines = news_df["news_title"].head(5).tolist()
-                    news_text = "\n".join([f"- {t}" for t in news_headlines])
-            except Exception:
+                from src.database.connection import get_session
+                from sqlalchemy import text
+                async with get_session() as session:
+                    # Fetch latest analysis for this ticker
+                    query = text("""
+                        SELECT trend, sentiment_score, summary, full_report 
+                        FROM news_intelligence 
+                        WHERE ticker = :t 
+                        ORDER BY timestamp DESC 
+                        LIMIT 1
+                    """)
+                    res = await session.execute(query, {"t": ticker})
+                    row = res.fetchone()
+                    if row:
+                        trend, score, summary, report = row
+                        news_text = (
+                            f"AI Sentiment: {trend} (Score: {score})\n"
+                            f"Summary: {summary}\n"
+                            f"Detailed Report: {report[:2000]}"
+                        )
+                    else:
+                        # Fallback to basic headlines if no AI analysis yet
+                        logger.info("llm_consumer_news_fallback", ticker=ticker)
+                        from vnstock3 import Vnstock
+                        stock = Vnstock().stock(symbol=ticker, source="VCI")
+                        news_df = stock.company.news()
+                        if news_df is not None and not news_df.empty:
+                            headlines = news_df["news_title"].head(5).tolist()
+                            news_text = "Latest Headlines:\n" + "\n".join([f"- {h}" for h in headlines])
+            except Exception as news_e:
+                logger.debug("llm_consumer_news_error", ticker=ticker, err=str(news_e))
                 pass
 
             # 4. Fetch Phase 10 DL/RL Metadata (Simulated)

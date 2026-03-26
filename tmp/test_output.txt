@@ -1,0 +1,48 @@
+2026-03-25 07:23:47 [info     ] models_loaded                  keys=['feature_cols', 'range_high_q10', 'range_high_q10_120d', 'range_high_q10_20d', 'range_high_q10_5d', 'range_high_q50', 'range_high_q50_120d', 'range_high_q50_20d', 'range_high_q50_5d', 'range_high_q90', 'range_high_q90_120d', 'range_high_q90_20d', 'range_high_q90_5d', 'range_low_q10', 'range_low_q10_120d', 'range_low_q10_20d', 'range_low_q10_5d', 'range_low_q50', 'range_low_q50_120d', 'range_low_q50_20d', 'range_low_q50_5d', 'range_low_q90', 'range_low_q90_120d', 'range_low_q90_20d', 'range_low_q90_5d', 'trend_classifier', 'trend_classifier_120d', 'trend_classifier_20d', 'trend_classifier_5d'] path=models\VGI ticker=VGI
+H:\AI-ML-LLM in Stock_march26_PTIT_NEU\.venv312\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMClassifier was fitted with feature names
+  warnings.warn(
+H:\AI-ML-LLM in Stock_march26_PTIT_NEU\.venv312\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but RandomForestClassifier was fitted with feature names
+  warnings.warn(
+H:\AI-ML-LLM in Stock_march26_PTIT_NEU\.venv312\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+H:\AI-ML-LLM in Stock_march26_PTIT_NEU\.venv312\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+H:\AI-ML-LLM in Stock_march26_PTIT_NEU\.venv312\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+H:\AI-ML-LLM in Stock_march26_PTIT_NEU\.venv312\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+H:\AI-ML-LLM in Stock_march26_PTIT_NEU\.venv312\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+H:\AI-ML-LLM in Stock_march26_PTIT_NEU\.venv312\Lib\site-packages\sklearn\utils\validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+Loaded model keys: ['feature_cols', 'range_high_q10', 'range_high_q10_120d', 'range_high_q10_20d', 'range_high_q10_5d', 'range_high_q50', 'range_high_q50_120d', 'range_high_q50_20d', 'range_high_q50_5d', 'range_high_q90', 'range_high_q90_120d', 'range_high_q90_20d', 'range_high_q90_5d', 'range_low_q10', 'range_low_q10_120d', 'range_low_q10_20d', 'range_low_q10_5d', 'range_low_q50', 'range_low_q50_120d', 'range_low_q50_20d', 'range_low_q50_5d', 'range_low_q90', 'range_low_q90_120d', 'range_low_q90_20d', 'range_low_q90_5d', 'trend_classifier', 'trend_classifier_120d', 'trend_classifier_20d', 'trend_classifier_5d']
+
+--- Testing Horizon: 1d ---
+Traceback (most recent call last):
+  File "H:\AI-ML-LLM in Stock_march26_PTIT_NEU\tmp\test_horizons.py", line 42, in main
+    print(f"\u2705 Success: {pred['trend_probabilities']}")
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "H:\AI-ML-LLM in Stock_march26_PTIT_NEU\tmp\test_horizons.py", line 50, in <module>
+    asyncio.run(main())
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "H:\AI-ML-LLM in Stock_march26_PTIT_NEU\tmp\test_horizons.py", line 47, in main
+    print(f"\U0001f4a5 Error: {e}")
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f4a5' in position 0: character maps to <undefined>

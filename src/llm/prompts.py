@@ -141,3 +141,45 @@ RL Justification: {rl_data.get('rl_action_justification', 'N/A')}
     prompt += "\n</ZONE_DATA>\n\nOutput JSON:"
     return prompt
 
+
+def build_news_intelligence_prompt(ticker: str, articles: list[dict]) -> str:
+    """Build a prompt for aggregate news intelligence analysis."""
+    
+    articles_text = ""
+    for idx, art in enumerate(articles):
+        # Handle both CrawledDocument objects and dicts
+        if hasattr(art, 'title') and hasattr(art, 'content'):
+            title = getattr(art, 'title', 'Untitled')
+            content = getattr(art, 'content', '')
+            source = getattr(art, 'source', 'Unknown')
+        elif isinstance(art, dict):
+            title = art.get('title', 'Untitled')
+            content = art.get('content', '')
+            source = art.get('source', 'Unknown')
+        else:
+            continue
+        
+        articles_text += f"\n--- BÀI BÁO #{idx+1} ---\nSource: {source}\nTitle: {title}\nContent: {content[:2000]}\n"
+
+    return f"""[ROLE]
+Bạn là một CHUYÊN GIA PHÂN TÍCH TIN TỨC TÀI CHÍNH cao cấp.
+Nhiệm vụ: Đọc danh sách các bài báo về mã cổ phiếu {ticker.upper()} và trích xuất thông tin định tính chuẩn xác.
+
+[DATA]
+{articles_text}
+
+[YÊU CẦU ĐẦU RA - JSON ONLY]
+Bạn PHẢI trả về định dạng JSON duy nhất như sau:
+{{
+  "ticker": "{ticker.upper()}",
+  "trend": "Bullish" | "Bearish" | "Neutral",
+  "sentiment_score": <float từ -1.0 đến 1.0>,
+  "summary": "Tóm tắt ngắn gọn các ý chính (max 3 câu)",
+  "full_report": "Báo cáo phân tích chuyên sâu tổng hợp từ tất cả các bài báo trên",
+  "key_drivers": ["Danh sách các yếu tố chính thúc đẩy giá"],
+  "risks": ["Danh sách các rủi ro được đề cập"]
+}}
+
+BẮT BUỘC: Không giải thích thêm, chỉ trả về JSON.
+"""
+

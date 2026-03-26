@@ -8,7 +8,13 @@ import asyncio
 import time
 import datetime as dt
 import os
+import sys
+from pathlib import Path
 from sqlalchemy import create_engine, text
+
+# Add project root to sys.path for direct script execution
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from config.settings import get_settings
 from vnstock import Vnstock
 from src.utils.logging import get_logger

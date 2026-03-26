@@ -35,6 +35,7 @@ services:
       - chroma_data:/chroma/chroma
     environment:
       IS_PERSISTENT: "TRUE"
+
   # ============================================================
   # Zookeeper & Kafka — Event Messaging Broker
   # ============================================================
@@ -94,62 +95,6 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-
-  # ============================================================
-  # Python App — FastAPI Prediction Server + Scheduler
-  # ============================================================
-  api:
-    build: .
-    container_name: algo_api
-    restart: unless-stopped
-    ports:
-      - "8888:8888"
-    depends_on:
-      - timescaledb
-      - chromadb
-      - kafka
-      - ollama
-    environment:
-      TIMESCALE_URL: "postgresql+asyncpg://postgres:postgres@timescaledb:5432/algo_trading"
-      TIMESCALE_SYNC_URL: "postgresql+psycopg2://postgres:postgres@timescaledb:5432/algo_trading"
-      CHROMA_HOST: chromadb
-      KAFKA_BROKER_URL: kafka:29092
-      OLLAMA_BASE_URL: "http://ollama:11434/v1"
-    volumes:
-      - ./models:/app/models
-      - ./data:/app/data
-    command: >
-      python -m uvicorn src.api.main:app
-      --host 0.0.0.0 --port 8888
-      --workers 2
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8888/api/v1/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # ============================================================
-  # Kafka Consumer Supervisor — All 5 consumers auto-restart
-  # ============================================================
-  consumers:
-    build: .
-    container_name: algo_consumers
-    restart: unless-stopped
-    depends_on:
-      - kafka
-      - timescaledb
-      - chromadb
-      - ollama
-    environment:
-      TIMESCALE_URL: "postgresql+asyncpg://postgres:postgres@timescaledb:5432/algo_trading"
-      TIMESCALE_SYNC_URL: "postgresql+psycopg2://postgres:postgres@timescaledb:5432/algo_trading"
-      CHROMA_HOST: chromadb
-      KAFKA_BROKER_URL: kafka:29092
-      OLLAMA_BASE_URL: "http://ollama:11434/v1"
-    volumes:
-      - ./models:/app/models
-      - ./data:/app/data
-    command: python scripts/run_consumers.py
 
   # ============================================================
   # Redis — Fast In-Memory Broker for Live Streams

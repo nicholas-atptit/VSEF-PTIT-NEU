@@ -100,5 +100,52 @@ python src/ui/dashboard.py <TICKER>
 
 ---
 
+## 🚀 Quick Update Commands
+
+If you need to manually refresh the system data, use these specialized commands:
+
+### 🔄 1. Cập nhật Toàn bộ (Universal Update)
+Lệnh này là **"Tất cả trong một"**. Nó sẽ thực hiện 3 bước: Cập nhật Giá mới nhất -> Chạy dự báo ML -> Thu thập Tin tức mới:
+```powershell
+.\.venv312\Scripts\python.exe scripts/update_market.py
+```
+
+### 📰 2. Cập nhật Tin tức (Manual News)
+Lệnh này sẽ chủ động quét tin tức mới cho danh mục theo dõi:
+```powershell
+.\.venv312\Scripts\python.exe scripts/update_news.py
+# Hoặc cập nhật riêng cho các mã cụ thể:
+.\.venv312\Scripts\python.exe scripts/update_news.py FPT VGI VHM
+```
+
+### ⌚ 3. Chế độ Chờ Cuối Phiên (Session Standby)
+Để hệ thống tự động dậy và quét dự báo vào lúc 11:35 và 15:15:
+```powershell
+.\.venv312\Scripts\python.exe scripts/per_session_predict.py --session
+```
+
+### 💓 4. Đồng bộ giá thời thực (Live Heartbeat)
+Giữ giá nhảy liên tục trên Dashboard (chu kỳ 10s):
+```powershell
+.\.venv312\Scripts\python.exe scripts/live_heartbeat_sync.py
+```
+
+### ⚡ 5. Manual Update (Full System Refresh)
+Dùng lệnh này để ép hệ thống cập nhập Giá + ML + News bất cứ lúc nào:
+- **Mặc định (Top-10)**:
+  ```powershell
+  .\.venv312\Scripts\python.exe scripts/update_market.py
+  ```
+- **Cập nhật TOÀN BỘ thị trường (1,500+ mã)**:
+  ```powershell
+  .\.venv312\Scripts\python.exe scripts/update_market.py --all
+  ```
+- **Lấp hố dữ liệu cũ (VD: Quét lại 30 ngày qua)**:
+  ```powershell
+  .\.venv312\Scripts\python.exe scripts/update_market.py --all --days 30
+  ```
+
+---
+
 ## License
 Private — Proprietary Vietnamese Stock Analysis System - In custody of Lương Minh Quân.
