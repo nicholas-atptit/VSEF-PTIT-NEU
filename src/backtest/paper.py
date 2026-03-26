@@ -103,7 +103,7 @@ class PaperTradingEngine:
         self._mark_to_market(normalized_ticker, current_price)
 
         ml_started_at = time.perf_counter()
-        quant_payload, features = self._run_quant_pipeline(
+        quant_payload, features = await self._run_quant_pipeline(
             ticker=normalized_ticker,
             current_price=current_price,
             risk_tolerance=applied_risk,
@@ -124,16 +124,30 @@ class PaperTradingEngine:
         latency.news_fetch_ms = (time.perf_counter() - news_started_at) * 1000
 
         llm_started_at = time.perf_counter()
+        # v5.0 payload mapping
+        tech_signals = quant_payload["technical"]["horizons"][0]
+        
         llm_result = await run_qualitative_analysis(
             ticker=normalized_ticker,
-            quant_data=quant_payload["quantitative_signals"],
+            quant_data={
+                "trend_probabilities": tech_signals["trend_probs"],
+                "expected_range": tech_signals["expected_range"],
+            },
             rag_context=rag_context,
             news_context=news_context,
             user_risk_input=applied_risk,
         )
         latency.llm_inference_ms = (time.perf_counter() - llm_started_at) * 1000
 
-        quant_model = QuantitativeSignals(**quant_payload["quantitative_signals"])
+        quant_model = QuantitativeSignals(
+            trend_probabilities=tech_signals["trend_probs"],
+            expected_range=tech_signals["expected_range"],
+            max_upside_pct=0.0, # Handled in fission later
+            max_downside_pct=0.0,
+            horizon="short",
+            feature_set_version="v5.0",
+            action_plan=quant_payload["fusion"] # Fusion contains the action now
+        )
         qual_model = QualitativeAnalysis(**llm_result)
 
         matrix_started_at = time.perf_counter()
@@ -150,7 +164,7 @@ class PaperTradingEngine:
                 action_plan=quant_model.action_plan,
                 real_time_price=current_price,
                 atr_14=max(atr_14, 0.01),
-                applied_risk_tolerance=quant_payload["system_parameters"]["max_risk_tolerance"],
+                applied_risk_tolerance=quant_payload["risk"]["position_size_suggestion"] or applied_risk,
             )
             if risk_override and risk_override.fomo_check_passed is False:
                 decision_action = "CANCEL_ORDER"
@@ -258,7 +272,7 @@ class PaperTradingEngine:
             "open_positions": len(self._open_positions),
         }
 
-    def _run_quant_pipeline(
+    async def _run_quant_pipeline(
         self,
         ticker: str,
         current_price: float,
@@ -281,7 +295,7 @@ class PaperTradingEngine:
             self._trainer.train(ticker=ticker, df=raw_df)
             model_output = self._trainer.predict(ticker, latest_row)
 
-        quant_payload = self._signal_generator.generate(
+        quant_payload = await self._signal_generator.generate(
             ticker=ticker,
             current_close=current_price,
             model_output=model_output,

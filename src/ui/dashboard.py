@@ -223,7 +223,7 @@ class AlgoTradingTUI:
         h_table.add_column("Trend", justify="center")
         h_table.add_column("Forecast", justify="right")
         
-        multi = self.data.get("multi_horizon", {})
+        multi = self.data.get("multi_horizon") or {}
         horizons = [("1W", "1w"), ("1M", "1m"), ("6M", "6m")]
         
         for label, key in horizons:
@@ -250,15 +250,15 @@ class AlgoTradingTUI:
         q_table.add_row(f"{self.data['q_bottom']:,.0f}", f"{self.data['q_median']:,.0f}", f"{self.data['q_ceiling']:,.0f}")
 
         progress = Progress(TextColumn("{task.description}"), BarColumn(bar_width=15), TextColumn("[progress.percentage]{task.percentage:>3.0f}%"))
-        progress.add_task("[green]BULL", completed=self.data['ml_up'] * 100)
-        progress.add_task("[red]BEAR", completed=self.data['ml_down'] * 100)
+        progress.add_task("[green]BULL", completed=(self.data.get('ml_up') or 0.0) * 100)
+        progress.add_task("[red]BEAR", completed=(self.data.get('ml_down') or 0.0) * 100)
 
         return Panel(Group(h_table, "\n", Panel(q_table, title="[dim]Target Range[/dim]"), "\n", Panel(progress, title="[dim]Confidence[/dim]")), 
                      title="[bold cyan]Panel A: Technical Agent[/bold cyan]", border_style="cyan")
 
     def generate_sentiment_panel(self) -> Panel:
         """Panel B: Qualitative/LLM Sentiment analysis."""
-        intel = self.data.get("ai_intel", {})
+        intel = self.data.get("ai_intel") or {}
         outlook = self.data.get('llm_outlook', "NEUTRAL")
         headlines = self.data.get('news_headlines', "No news context...")
         
@@ -281,12 +281,18 @@ class AlgoTradingTUI:
         rec = self.data.get('ml_recommendation', "HOLD")
         rec_color = "green" if "BUY" in rec else "red" if "SELL" in rec else "yellow"
         
+        risk = self.data.get("risk_intel") or {}
+        veto_status = "[red]BLOCKED (VETO)[/]" if risk.get("veto_flag") else "[green]CLEARED[/]"
+        
         table = Table(show_header=False, box=None, expand=True)
         table.add_row("[bold]Final Action:[/bold]", f"[bold white on {rec_color}] {rec} [/]")
-        table.add_row("[bold]Fusion Confidence:[/bold]", f"[bold yellow]{(self.data.get('ml_up', 0.5) * 100):.1f}%[/]")
-        table.add_row("[bold]Allocation Suggest:[/bold]", f"[bold cyan]{self.data.get('rl_allocation', 0.0):.1%}[/bold cyan]")
+        table.add_row("[bold]Fusion Confidence:[/bold]", f"[bold yellow]{((self.data.get('ml_up') or 0.5) * 100):.1f}%[/]")
+        table.add_row("[bold]Allocation (Lots):[/bold]", f"[bold cyan]{(risk.get('position_size_suggestion', 0.0)):,.0f}[/bold cyan]")
         table.add_row("[bold]Risk Budget:[/bold]", "[green]SAFE (Within Cap)[/]")
-        table.add_row("[bold]Port. Veto:[/bold]", "[green]CLEARED[/]")
+        table.add_row("[bold]Risk Veto:[/bold]", veto_status)
+        
+        if risk.get("constraints_hit"):
+            table.add_row("[bold red]Violations:[/bold red]", f"[red]{', '.join(risk['constraints_hit'])}[/red]")
         
         trace = "\n[dim]Rationale Trace:[/dim]\nCombined high tech confidence with neutral-to-positive macro headlines. Sector correlation allows entry."
         
@@ -357,6 +363,39 @@ class AlgoTradingTUI:
 
                             if ml.get("action_plan", {}).get("recommendation"):
                                 self.data["ml_recommendation"] = ml["action_plan"]["recommendation"]
+                                
+                            # --- v5.0 Payload Support ---
+                            if "technical" in cache_data:
+                                tech = cache_data["technical"]
+                                horizons = tech.get("horizons", [])
+                                if horizons:
+                                    h0 = horizons[0]
+                                    probs = h0.get("trend_probs", {})
+                                    self.data["ml_up"] = probs.get("up", 0.0)
+                                    self.data["ml_down"] = probs.get("down", 0.0)
+                                    
+                                    rng = h0.get("expected_range", {})
+                                    self.data["q_bottom"] = rng.get("bottom_10th", 0.0)
+                                    self.data["q_median"] = rng.get("median_50th", 0.0)
+                                    self.data["q_ceiling"] = rng.get("ceiling_90th", 0.0)
+                            
+                            if "sentiment" in cache_data and cache_data["sentiment"]:
+                                sent = cache_data["sentiment"]
+                                self.data["ai_intel"] = {
+                                    "sentiment_score": sent.get("sentiment_score", 0.0),
+                                    "trend": sent.get("sentiment_regime", "neutral"),
+                                    "score": sent.get("sentiment_score", 0.0),
+                                    "regime": sent.get("sentiment_regime", "neutral")
+                                }
+                                self.data["llm_outlook"] = sent.get("sentiment_regime", "neutral").upper()
+                                
+                            if "fusion" in cache_data:
+                                fus = cache_data["fusion"]
+                                self.data["ml_recommendation"] = fus.get("action", "HOLD")
+                                self.data["llm_reasoning"] = fus.get("rationale", "No rationale.")
+                            
+                            if "risk" in cache_data:
+                                self.data["risk_intel"] = cache_data["risk"]
                         else:
                             # Start background analysis if missing
                             if not self.data.get("syncing_analysis"):
@@ -599,9 +638,9 @@ class AlgoTradingTUI:
                 layout["header"].update(self.generate_header())
                 
                 # Panel A, B, C
-                layout["technical_panel"].update(self.generate_technical_panel())
-                layout["sentiment_panel"].update(self.generate_sentiment_panel())
-                layout["fusion_panel"].update(self.generate_fusion_panel())
+                layout["main"]["technical_panel"].update(self.generate_technical_panel())
+                layout["main"]["sentiment_panel"].update(self.generate_sentiment_panel())
+                layout["main"]["fusion_panel"].update(self.generate_fusion_panel())
 
                 # Footer
                 db_info = "SYNCING" if "BOOTSTRAPPING" in self.data["status"] else "OK" if HAS_DB else "OFFLINE"

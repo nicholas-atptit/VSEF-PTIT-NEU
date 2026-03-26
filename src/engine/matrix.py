@@ -12,6 +12,7 @@ from src.api.schemas import MatrixConsensus, QualitativeAnalysis, QuantitativeSi
 def evaluate_decision_matrix(
     quant: QuantitativeSignals,
     qual: QualitativeAnalysis | None = None,
+    weights: dict[str, float] | None = None,
 ) -> tuple[str, MatrixConsensus]:
     """Evaluate signals through the Rule Engine.
 
@@ -41,7 +42,9 @@ def evaluate_decision_matrix(
             veto_triggered=False,
         )
 
-    llm_sentiment = qual.sentiment.upper()  # POSITIVE, NEGATIVE, NEUTRAL
+    llm_sentiment = qual.sentiment.upper() if qual else "NEUTRAL"
+    w_tech = (weights or {}).get("technical", 0.6)
+    w_sent = (weights or {}).get("sentiment", 0.4)
 
     # Handle Neutral LLM sentiment with Neutral ML
     if ml_rec in ("RANGE_TRADE", "STAND_ASIDE"):
@@ -77,6 +80,8 @@ def evaluate_decision_matrix(
         ml_signal=ml_rec,
         llm_sentiment=llm_sentiment,
         veto_triggered=veto,
+        consensus_score=(w_tech * (1.0 if ml_rec == "BUY" else -1.0 if ml_rec == "SELL" else 0.0)) +
+                        (w_sent * (1.0 if llm_sentiment == "POSITIVE" else -1.0 if llm_sentiment == "NEGATIVE" else 0.0))
     )
 
     return decision, consensus

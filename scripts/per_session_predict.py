@@ -62,16 +62,17 @@ async def predict_ticker(trainer, sg, ticker, semaphore):
                     try:
                         pred = trainer.predict(ticker, last_row, horizon=h)
                         if pred:
-                            signal = sg.generate(ticker, current_close, pred)
+                            signal = await sg.generate(ticker, current_close, pred)
                             multi_signals[h] = signal
                     except Exception as e:
                         logger.debug(f"horizon_failed:{h}", ticker=ticker, error=str(e))
                 
                 if not multi_signals: return ticker, None
                 
-                # Combine for TUI (use 1w at root as legacy/default)
+                # --- Unified Agent Payload (Phase 3 Evolution) ---
+                # We use the 'short' horizon as the primary view for the dashboard root
                 final_payload = multi_signals.get("1w", {}).copy()
-                final_payload["multi_horizon"] = multi_signals
+                final_payload["multi_horizon"] = multi_signals # Preserve for TUI 'Forecast Radar'
                 
                 return ticker, final_payload
 

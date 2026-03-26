@@ -50,9 +50,14 @@ def apply_risk_constraints(
 
     if action_plan.recommendation == "BUY":
         order_type = "LIMIT"
-        fomo_threshold = max_entry * 1.015
+        fomo_threshold = max_entry * 1.015 # 1.5% FOMO Buffer
         if real_time_price > fomo_threshold:
             fomo_check_passed = False
+            return None, RiskManagementOverride(
+                original_stop_loss_pct=0.0,
+                applied_stop_loss_pct=0.0,
+                fomo_check_passed=False,
+            )
 
     elif action_plan.recommendation == "SELL":
         order_type = "MARKET"
@@ -91,11 +96,15 @@ def apply_risk_constraints(
     volume = 0
     if fomo_check_passed and order_type != "STANDBY":
         raw_volume = risk_budget / risk_per_share
-        # Round down to nearest 100 shares (common board lot size)
+        
+        # Board lot size for VNSC/HSX is 100
         volume = math.floor(raw_volume / 100) * 100
+        
+        # Max Position Cap: 20% of Portfolio value to avoid concentration risk
+        max_lot_cap = (portfolio_risk_capital * 2.0) / (real_time_price or 1.0)
+        volume = min(volume, math.floor(max_lot_cap / 100) * 100)
 
         if volume <= 0:
-            # Not enough risk capital to buy 1 lot
             fomo_check_passed = False
 
     override_record = RiskManagementOverride(

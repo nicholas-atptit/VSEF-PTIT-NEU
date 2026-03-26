@@ -83,7 +83,7 @@ async def predict(
                     "trend_probabilities": ml_pred.get("trend_probabilities", {}),
                     "expected_range": ml_pred.get("expected_range", {}),
                 }
-                payload = _signal_gen.generate(
+                payload = await _signal_gen.generate(
                     ticker=ticker,
                     current_close=current_close,
                     model_output=model_output,
@@ -147,7 +147,7 @@ async def predict(
 
         with trace_stage(request, "quant_model_inference"):
             model_output = _trainer.predict(ticker, latest_row)
-            payload = _signal_gen.generate(
+            payload = await _signal_gen.generate(
                 ticker=ticker,
                 current_close=current_close,
                 model_output=model_output,

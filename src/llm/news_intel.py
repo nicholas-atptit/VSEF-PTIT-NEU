@@ -25,7 +25,7 @@ class NewsIntelEngine:
         self.settings = get_settings()
         self.client = get_llm_client()
 
-    async def analyze_ticker_news(self, ticker: str, articles: list[Any]) -> dict[str, Any] | None:
+    async def analyze_ticker_news(self, ticker: str, articles: list[Any], horizon: str = "short") -> dict[str, Any] | None:
         """Run LLM analysis on a batch of articles for a ticker."""
         if not articles:
             return None
@@ -34,7 +34,7 @@ class NewsIntelEngine:
         logger.info("news_intel_analyzing", ticker=ticker, article_count=len(articles))
 
         # 1. Build Prompt
-        prompt = build_news_intelligence_prompt(ticker, articles)
+        prompt = build_news_intelligence_prompt(ticker, articles, horizon=horizon)
 
         # 2. Call LLM (Ollama)
         try:
@@ -53,7 +53,7 @@ class NewsIntelEngine:
             intel = json.loads(result_text)
             
             # 3. Store in Database
-            await self._store_intelligence(ticker, intel, articles)
+            await self._store_intelligence(ticker, intel, articles, horizon=horizon)
             
             return intel
 
@@ -63,7 +63,7 @@ class NewsIntelEngine:
             logger.error("news_intel_failed", ticker=ticker, error=str(e))
             return None
 
-    async def _store_intelligence(self, ticker: str, intel: dict, articles: list[Any]) -> None:
+    async def _store_intelligence(self, ticker: str, intel: dict, articles: list[Any], horizon: str = "short") -> None:
         """Persist analysis result to TimescaleDB."""
         try:
             article_ids = [getattr(a, 'url', '') for a in articles]
@@ -72,9 +72,9 @@ class NewsIntelEngine:
             async with get_session() as session:
                 query = text("""
                     INSERT INTO news_intelligence (
-                        ticker, trend, sentiment_score, summary, full_report, article_ids, source_sites
+                        ticker, trend, sentiment_score, summary, full_report, article_ids, source_sites, horizon
                     ) VALUES (
-                        :ticker, :trend, :sentiment, :summary, :report, :article_ids, :source_sites
+                        :ticker, :trend, :sentiment, :summary, :report, :article_ids, :source_sites, :horizon
                     )
                 """)
                 await session.execute(query, {
@@ -84,24 +84,25 @@ class NewsIntelEngine:
                     "summary": intel.get("summary", ""),
                     "report": intel.get("full_report", ""),
                     "article_ids": article_ids,
-                    "source_sites": source_sites
+                    "source_sites": source_sites,
+                    "horizon": horizon
                 })
                 await session.commit()
                 logger.info("news_intel_stored", ticker=ticker)
         except Exception as e:
             logger.error("news_intel_db_error", ticker=ticker, error=str(e))
 
-    async def get_latest_intelligence(self, ticker: str) -> dict | None:
+    async def get_latest_intelligence(self, ticker: str, horizon: str = "short") -> dict | None:
         """Retrieve the most recent analysis for a ticker."""
         try:
             async with get_session() as session:
                 res = await session.execute(text("""
                     SELECT trend, sentiment_score, summary, full_report, timestamp
                     FROM news_intelligence
-                    WHERE ticker = :t
+                    WHERE ticker = :t AND horizon = :h
                     ORDER BY timestamp DESC
                     LIMIT 1
-                """), {"t": ticker.upper()})
+                """), {"t": ticker.upper(), "h": horizon})
                 row = res.fetchone()
                 if row:
                     return {

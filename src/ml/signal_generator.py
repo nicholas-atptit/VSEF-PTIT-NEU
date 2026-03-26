@@ -14,8 +14,12 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from src.api.schemas_v2 import TerminalPayload, SentimentForecast
+from src.engine.matrix import evaluate_decision_matrix
+from src.engine.risk import apply_risk_constraints
 from config.settings import get_settings
 from src.utils.logging import get_logger
+from src.llm.news_intel import NewsIntelEngine
 
 logger = get_logger(__name__)
 
@@ -47,15 +51,16 @@ class SignalGenerator:
 
     def __init__(self) -> None:
         self._settings = get_settings()
+        self._intel_engine = NewsIntelEngine()
 
-    def generate(
+    async def generate(
         self,
         ticker: str,
         current_close: float,
         model_output: dict[str, Any],
         risk_tolerance: float | None = None,
     ) -> dict[str, Any]:
-        """Generate full prediction payload matching the JSON API contract.
+        """Generate full prediction payload matching the TerminalPayload (v5.0) contract.
 
         Args:
             ticker: Stock symbol.
@@ -79,30 +84,98 @@ class SignalGenerator:
         # Enforce system constraints
         system_params = self._build_system_parameters(risk_tolerance)
 
-        # Calculate max range percentages
-        upside_pct = (expected_range["ceiling_90th"] - current_close) / current_close if current_close > 0 else 0.0
-        downside_pct = (expected_range["bottom_10th"] - current_close) / current_close if current_close > 0 else 0.0
+        # --- Sentiment Agent (Phase 3) ---
+        horizon = model_output.get("horizon", "short")
+        sentiment_data = await self._intel_engine.get_latest_intelligence(ticker, horizon=horizon)
+        
+        sentiment_payload = None
+        if sentiment_data:
+            sentiment_payload = {
+                "sentiment_score": float(sentiment_data["sentiment_score"]),
+                "sentiment_regime": sentiment_data["trend"].lower(),
+                "sentiment_confidence": 0.85, # Default confidence for LLM analysis
+                "source_breakdown": [], # Placeholder for detailed sources
+                "market_psychology_tags": [], # Future enhancement
+                "narrative_risk_flags": [],
+            }
 
-        payload = {
-            "ticker": ticker.upper(),
+        # --- Phase 4: Decision Fusion (Agent Matrix) ---
+        from src.api.schemas import QuantitativeSignals, QualitativeAnalysis
+        
+        # Adapt v5.0 inputs for compat with matrix.py
+        quant_model = QuantitativeSignals(
+            trend_probabilities=trend_probs,
+            expected_range=expected_range,
+            max_upside_pct=0.0,
+            max_downside_pct=0.0,
+            horizon="short",
+            feature_set_version="v5.0",
+            action_plan={"recommendation": "STAND_ASIDE", "entry_zone": [], "stop_loss": 0, "take_profit": 0}
+        )
+        # Handle recommendation from raw trend_probs for matrix
+        if trend_probs.get("up", 0) > 0.6: quant_model.action_plan.recommendation = "BUY"
+        elif trend_probs.get("down", 0) > 0.6: quant_model.action_plan.recommendation = "SELL"
+        
+        qual_model = QualitativeAnalysis(
+            ticker=ticker,
+            sentiment=sentiment_payload["sentiment_regime"] if sentiment_payload else "neutral", # Use actual sentiment
+            confidence=sentiment_payload["sentiment_confidence"] if sentiment_payload else 0.5, # Use actual confidence
+            analysis_status="success",
+            reasoning="Phase 3 Intelligence"
+        )
+        
+        matrix_decision, consensus = evaluate_decision_matrix(
+            quant=quant_model,
+            qual=qual_model,
+            weights={"technical": 0.6, "sentiment": 0.4}
+        )
+        
+        # --- Phase 4: Risk Overlay ---
+        # Placeholder ATR (In production this would come from the live feature stream)
+        mock_atr = current_close * 0.03 # 3% daily volatility approx
+        
+        order_payload, risk_record = apply_risk_constraints(
+            ticker=ticker,
+            action_plan=quant_model.action_plan,
+            real_time_price=current_close,
+            atr_14=mock_atr,
+            applied_risk_tolerance=min(risk_tolerance if risk_tolerance is not None else 0.0, 0.70)
+        )
+        
+        # --- Terminal Payload (Standard Contract v5.0) ---
+        return {
+            "ticker": ticker,
             "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            "quantitative_signals": {
-                "trend_probabilities": trend_probs,
-                "expected_range": expected_range,
-                "max_upside_pct": round(float(upside_pct), 4),
-                "max_downside_pct": round(float(downside_pct), 4),
-                "horizon": model_output.get("horizon", "short"),
-                "feature_set_version": model_output.get("feature_set_version", "v4.0"),
-                "action_plan": action_plan,
+            "technical": {
+                "horizons": [{
+                    "horizon": "1w",
+                    "trend_probs": trend_probs,
+                    "expected_range": expected_range,
+                    "model_confidence": 0.85
+                }],
+                "agent_weights": {"technical": 0.6, "sentiment": 0.4},
+                "regime_detected": "trend"
             },
-            "system_parameters": system_params,
+            "sentiment": sentiment_payload, # Use the raw sentiment_payload
+            "fusion": {
+                "regime_detected": "trend",
+            },
+            "risk": {
+                "position_size_suggestion": 0.0,
+                "veto_flag": False,
+                "constraints_hit": [],
+                "risk_budget_consumed": 0.0,
+            },
+            "run_id": f"run_{int(dt.datetime.now().timestamp())}",
+            "status": "success",
         }
 
         logger.info(
-            "signal_generated",
+            "signal_generated_v5",
             ticker=ticker,
             action=action_plan["recommendation"],
-            p_up=trend_probs["up"],
+            horizon=horizon,
+            has_sentiment=bool(sentiment_payload),
         )
 
         return payload

@@ -142,9 +142,17 @@ RL Justification: {rl_data.get('rl_action_justification', 'N/A')}
     return prompt
 
 
-def build_news_intelligence_prompt(ticker: str, articles: list[dict]) -> str:
+def build_news_intelligence_prompt(ticker: str, articles: list[dict], horizon: str = "short") -> str:
     """Build a prompt for aggregate news intelligence analysis."""
     
+    # Horizon goal descriptions
+    horizon_goals = {
+        "short": "Tập trung vào các chất xúc tác cực ngắn hạn (1-7 ngày): Tin tức sự kiện, tin đồn thị trường, lệnh mua/bán lô lớn, hoặc các yếu tố gây biến động mạnh.",
+        "mid": "Tập trung vào xu hướng trung hạn (2-4 tuần): Tiến độ dự án, kết quả kinh doanh sơ bộ, thay đổi nhân sự cấp cao hoặc báo cáo phân tích mới.",
+        "long": "Tập trung vào triển vọng dài hạn (3-6 tháng): Vị thế ngành, lợi thế cạnh tranh bền vững, thay đổi cấu trúc cổ đông hoặc kế hoạch tăng vốn."
+    }
+    goal = horizon_goals.get(horizon.lower(), horizon_goals["short"])
+
     articles_text = ""
     for idx, art in enumerate(articles):
         # Handle both CrawledDocument objects and dicts
@@ -163,7 +171,10 @@ def build_news_intelligence_prompt(ticker: str, articles: list[dict]) -> str:
 
     return f"""[ROLE]
 Bạn là một CHUYÊN GIA PHÂN TÍCH TIN TỨC TÀI CHÍNH cao cấp.
-Nhiệm vụ: Đọc danh sách các bài báo về mã cổ phiếu {ticker.upper()} và trích xuất thông tin định tính chuẩn xác.
+Nhiệm vụ: Đọc danh sách các bài báo về mã cổ phiếu {ticker.upper()} và trích xuất thông tin định tính chuẩn xác cho TẦM NHÌN {horizon.upper()}.
+
+[GOAL FOR {horizon.upper()}]
+{goal}
 
 [DATA]
 {articles_text}
@@ -172,6 +183,7 @@ Nhiệm vụ: Đọc danh sách các bài báo về mã cổ phiếu {ticker.upp
 Bạn PHẢI trả về định dạng JSON duy nhất như sau:
 {{
   "ticker": "{ticker.upper()}",
+  "horizon": "{horizon}",
   "trend": "Bullish" | "Bearish" | "Neutral",
   "sentiment_score": <float từ -1.0 đến 1.0>,
   "summary": "Tóm tắt ngắn gọn các ý chính (max 3 câu)",

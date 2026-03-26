@@ -45,6 +45,7 @@ class ZonedRAGService:
         query_text: str | None = None,
         n_results: int | None = None,
         as_of: dt.datetime | None = None,
+        horizon: str = "short", # short, mid, long
     ) -> str:
         """Return formatted context text ready for LLM injection."""
         normalized_ticker = ticker.upper().strip()
@@ -55,6 +56,7 @@ class ZonedRAGService:
             query_text=query_text,
             n_results=n_results,
             as_of=cutoff_dt,
+            horizon=horizon,
         )
 
         if not results_by_zone:
@@ -80,6 +82,7 @@ class ZonedRAGService:
         query_text: str | None = None,
         n_results: int | None = None,
         as_of: dt.datetime | None = None,
+        horizon: str = "short",
     ) -> dict[str, list[dict[str, Any]]]:
         """Return raw ChromaDB matches grouped by zone."""
         normalized_ticker = ticker.upper().strip()
@@ -89,7 +92,16 @@ class ZonedRAGService:
 
         cutoff_dt = self._normalize_datetime(as_of)
         effective_top_k = n_results or self._settings.rag_top_k_per_zone
-        lookback_dt = cutoff_dt - dt.timedelta(days=self._settings.rag_news_lookback_days)
+        
+        # Horizon-aware lookback
+        lookback_map = {
+            "short": self._settings.short_horizon_days or 7,
+            "mid": self._settings.mid_horizon_days or 30,
+            "long": self._settings.long_horizon_days or 180
+        }
+        lookback_days = lookback_map.get(horizon.lower(), self._settings.rag_news_lookback_days)
+        
+        lookback_dt = cutoff_dt - dt.timedelta(days=lookback_days)
         results_by_zone: dict[str, list[dict[str, Any]]] = {}
 
         for zone in normalized_zones:

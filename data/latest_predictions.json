@@ -180749,143 +180749,187 @@
     },
     "HPG": {
         "ticker": "HPG",
-        "timestamp": "2026-03-25T16:34:00.367084+00:00",
-        "quantitative_signals": {
-            "trend_probabilities": {
-                "up": 0.5889,
-                "sideways": 0.137,
-                "down": 0.2741,
-                "confidence": 0.7199
-            },
-            "expected_range": {
-                "bottom_10th": 20.68,
-                "median_50th": 21.43,
-                "ceiling_90th": 24.72
-            },
-            "max_upside_pct": -0.0619,
-            "max_downside_pct": -0.2152,
-            "action_plan": {
-                "recommendation": "RANGE_TRADE",
-                "entry_zone": [
-                    20.68,
-                    24.72
-                ],
-                "stop_loss": 20.37,
-                "take_profit": 24.72
-            }
+        "timestamp": "2026-03-26T14:50:50.742322+00:00",
+        "technical": {
+            "ticker": "HPG",
+            "timestamp": "2026-03-26T14:50:50.742322+00:00",
+            "horizons": [
+                {
+                    "horizon": "1w",
+                    "trend_probs": {
+                        "up": 0.3603,
+                        "sideways": 0.1802,
+                        "down": 0.4595,
+                        "confidence": 1.0
+                    },
+                    "expected_range": {
+                        "bottom_10th": 20.75,
+                        "median_50th": 21.54,
+                        "ceiling_90th": 24.77
+                    },
+                    "confidence": 0.95,
+                    "indicators": {}
+                }
+            ],
+            "feature_set_version": "v5.0"
         },
-        "system_parameters": {
-            "max_risk_tolerance": 0.7,
-            "confidence_metrics": {
-                "stock_quantitative_data": 0.95,
-                "general_market_context": 0.7
-            }
+        "sentiment": null,
+        "fusion": {
+            "action": "RANGE_TRADE",
+            "confidence": 0.7,
+            "rationale": "Neutral trend. Buy near lower support (Q10) for range target (Q90).",
+            "agent_weights": {
+                "technical": 0.6,
+                "sentiment": 0.4
+            },
+            "regime_detected": "trend"
         },
+        "risk": {
+            "position_size_suggestion": 0.0,
+            "veto_flag": false,
+            "constraints_hit": [],
+            "risk_budget_consumed": 0.0
+        },
+        "run_id": "run_1774536650",
+        "status": "success",
         "multi_horizon": {
             "1w": {
                 "ticker": "HPG",
-                "timestamp": "2026-03-25T16:34:00.367084+00:00",
-                "quantitative_signals": {
-                    "trend_probabilities": {
-                        "up": 0.5889,
-                        "sideways": 0.137,
-                        "down": 0.2741,
-                        "confidence": 0.7199
-                    },
-                    "expected_range": {
-                        "bottom_10th": 20.68,
-                        "median_50th": 21.43,
-                        "ceiling_90th": 24.72
-                    },
-                    "max_upside_pct": -0.0619,
-                    "max_downside_pct": -0.2152,
-                    "action_plan": {
-                        "recommendation": "RANGE_TRADE",
-                        "entry_zone": [
-                            20.68,
-                            24.72
-                        ],
-                        "stop_loss": 20.37,
-                        "take_profit": 24.72
-                    }
+                "timestamp": "2026-03-26T14:50:50.742322+00:00",
+                "technical": {
+                    "ticker": "HPG",
+                    "timestamp": "2026-03-26T14:50:50.742322+00:00",
+                    "horizons": [
+                        {
+                            "horizon": "1w",
+                            "trend_probs": {
+                                "up": 0.3603,
+                                "sideways": 0.1802,
+                                "down": 0.4595,
+                                "confidence": 1.0
+                            },
+                            "expected_range": {
+                                "bottom_10th": 20.75,
+                                "median_50th": 21.54,
+                                "ceiling_90th": 24.77
+                            },
+                            "confidence": 0.95,
+                            "indicators": {}
+                        }
+                    ],
+                    "feature_set_version": "v5.0"
                 },
-                "system_parameters": {
-                    "max_risk_tolerance": 0.7,
-                    "confidence_metrics": {
-                        "stock_quantitative_data": 0.95,
-                        "general_market_context": 0.7
-                    }
-                }
+                "sentiment": null,
+                "fusion": {
+                    "action": "RANGE_TRADE",
+                    "confidence": 0.7,
+                    "rationale": "Neutral trend. Buy near lower support (Q10) for range target (Q90).",
+                    "agent_weights": {
+                        "technical": 0.6,
+                        "sentiment": 0.4
+                    },
+                    "regime_detected": "trend"
+                },
+                "risk": {
+                    "position_size_suggestion": 0.0,
+                    "veto_flag": false,
+                    "constraints_hit": [],
+                    "risk_budget_consumed": 0.0
+                },
+                "run_id": "run_1774536650",
+                "status": "success"
             },
             "1m": {
                 "ticker": "HPG",
-                "timestamp": "2026-03-25T16:34:00.426821+00:00",
-                "quantitative_signals": {
-                    "trend_probabilities": {
-                        "up": 0.5698,
-                        "sideways": 0.1434,
-                        "down": 0.2868,
-                        "confidence": 0.9028
-                    },
-                    "expected_range": {
-                        "bottom_10th": 20.94,
-                        "median_50th": 21.85,
-                        "ceiling_90th": 23.63
-                    },
-                    "max_upside_pct": -0.1032,
-                    "max_downside_pct": -0.2053,
-                    "action_plan": {
-                        "recommendation": "RANGE_TRADE",
-                        "entry_zone": [
-                            20.94,
-                            23.63
-                        ],
-                        "stop_loss": 20.63,
-                        "take_profit": 23.63
-                    }
+                "timestamp": "2026-03-26T14:50:50.925236+00:00",
+                "technical": {
+                    "ticker": "HPG",
+                    "timestamp": "2026-03-26T14:50:50.925236+00:00",
+                    "horizons": [
+                        {
+                            "horizon": "1m",
+                            "trend_probs": {
+                                "up": 0.3603,
+                                "sideways": 0.1802,
+                                "down": 0.4595,
+                                "confidence": 1.0
+                            },
+                            "expected_range": {
+                                "bottom_10th": 20.75,
+                                "median_50th": 21.54,
+                                "ceiling_90th": 24.77
+                            },
+                            "confidence": 0.95,
+                            "indicators": {}
+                        }
+                    ],
+                    "feature_set_version": "v5.0"
                 },
-                "system_parameters": {
-                    "max_risk_tolerance": 0.7,
-                    "confidence_metrics": {
-                        "stock_quantitative_data": 0.95,
-                        "general_market_context": 0.7
-                    }
-                }
+                "sentiment": null,
+                "fusion": {
+                    "action": "RANGE_TRADE",
+                    "confidence": 0.7,
+                    "rationale": "Neutral trend. Buy near lower support (Q10) for range target (Q90).",
+                    "agent_weights": {
+                        "technical": 0.6,
+                        "sentiment": 0.4
+                    },
+                    "regime_detected": "trend"
+                },
+                "risk": {
+                    "position_size_suggestion": 0.0,
+                    "veto_flag": false,
+                    "constraints_hit": [],
+                    "risk_budget_consumed": 0.0
+                },
+                "run_id": "run_1774536650",
+                "status": "success"
             },
             "6m": {
                 "ticker": "HPG",
-                "timestamp": "2026-03-25T16:34:00.483019+00:00",
-                "quantitative_signals": {
-                    "trend_probabilities": {
-                        "up": 0.5909,
-                        "sideways": 0.1364,
-                        "down": 0.2727,
-                        "confidence": 0.9227
-                    },
-                    "expected_range": {
-                        "bottom_10th": 21.3,
-                        "median_50th": 22.39,
-                        "ceiling_90th": 23.26
-                    },
-                    "max_upside_pct": -0.1173,
-                    "max_downside_pct": -0.1917,
-                    "action_plan": {
-                        "recommendation": "RANGE_TRADE",
-                        "entry_zone": [
-                            21.3,
-                            23.26
-                        ],
-                        "stop_loss": 20.98,
-                        "take_profit": 23.26
-                    }
+                "timestamp": "2026-03-26T14:50:51.093675+00:00",
+                "technical": {
+                    "ticker": "HPG",
+                    "timestamp": "2026-03-26T14:50:51.093675+00:00",
+                    "horizons": [
+                        {
+                            "horizon": "6m",
+                            "trend_probs": {
+                                "up": 0.3603,
+                                "sideways": 0.1802,
+                                "down": 0.4595,
+                                "confidence": 1.0
+                            },
+                            "expected_range": {
+                                "bottom_10th": 20.75,
+                                "median_50th": 21.54,
+                                "ceiling_90th": 24.77
+                            },
+                            "confidence": 0.95,
+                            "indicators": {}
+                        }
+                    ],
+                    "feature_set_version": "v5.0"
                 },
-                "system_parameters": {
-                    "max_risk_tolerance": 0.7,
-                    "confidence_metrics": {
-                        "stock_quantitative_data": 0.95,
-                        "general_market_context": 0.7
-                    }
-                }
+                "sentiment": null,
+                "fusion": {
+                    "action": "RANGE_TRADE",
+                    "confidence": 0.7,
+                    "rationale": "Neutral trend. Buy near lower support (Q10) for range target (Q90).",
+                    "agent_weights": {
+                        "technical": 0.6,
+                        "sentiment": 0.4
+                    },
+                    "regime_detected": "trend"
+                },
+                "risk": {
+                    "position_size_suggestion": 0.0,
+                    "veto_flag": false,
+                    "constraints_hit": [],
+                    "risk_budget_consumed": 0.0
+                },
+                "run_id": "run_1774536651",
+                "status": "success"
             }
         }
     },
@@ -191211,143 +191255,187 @@
     },
     "SSI": {
         "ticker": "SSI",
-        "timestamp": "2026-03-25T16:34:02.497407+00:00",
-        "quantitative_signals": {
-            "trend_probabilities": {
-                "up": 0.6103,
-                "sideways": 0.1299,
-                "down": 0.2598,
-                "confidence": 0.7478
-            },
-            "expected_range": {
-                "bottom_10th": 15.38,
-                "median_50th": 19.23,
-                "ceiling_90th": 25.04
-            },
-            "max_upside_pct": -0.0674,
-            "max_downside_pct": -0.4272,
-            "action_plan": {
-                "recommendation": "BUY",
-                "entry_zone": [
-                    15.38,
-                    26.85
-                ],
-                "stop_loss": 15.15,
-                "take_profit": 25.04
-            }
+        "timestamp": "2026-03-26T14:50:50.836023+00:00",
+        "technical": {
+            "ticker": "SSI",
+            "timestamp": "2026-03-26T14:50:50.836023+00:00",
+            "horizons": [
+                {
+                    "horizon": "1w",
+                    "trend_probs": {
+                        "up": 0.4035,
+                        "sideways": 0.1988,
+                        "down": 0.3977,
+                        "confidence": 1.0
+                    },
+                    "expected_range": {
+                        "bottom_10th": 15.96,
+                        "median_50th": 19.26,
+                        "ceiling_90th": 24.59
+                    },
+                    "confidence": 0.95,
+                    "indicators": {}
+                }
+            ],
+            "feature_set_version": "v5.0"
         },
-        "system_parameters": {
-            "max_risk_tolerance": 0.7,
-            "confidence_metrics": {
-                "stock_quantitative_data": 0.95,
-                "general_market_context": 0.7
-            }
+        "sentiment": null,
+        "fusion": {
+            "action": "RANGE_TRADE",
+            "confidence": 0.7,
+            "rationale": "Neutral trend. Buy near lower support (Q10) for range target (Q90).",
+            "agent_weights": {
+                "technical": 0.6,
+                "sentiment": 0.4
+            },
+            "regime_detected": "trend"
         },
+        "risk": {
+            "position_size_suggestion": 0.0,
+            "veto_flag": false,
+            "constraints_hit": [],
+            "risk_budget_consumed": 0.0
+        },
+        "run_id": "run_1774536650",
+        "status": "success",
         "multi_horizon": {
             "1w": {
                 "ticker": "SSI",
-                "timestamp": "2026-03-25T16:34:02.497407+00:00",
-                "quantitative_signals": {
-                    "trend_probabilities": {
-                        "up": 0.6103,
-                        "sideways": 0.1299,
-                        "down": 0.2598,
-                        "confidence": 0.7478
-                    },
-                    "expected_range": {
-                        "bottom_10th": 15.38,
-                        "median_50th": 19.23,
-                        "ceiling_90th": 25.04
-                    },
-                    "max_upside_pct": -0.0674,
-                    "max_downside_pct": -0.4272,
-                    "action_plan": {
-                        "recommendation": "BUY",
-                        "entry_zone": [
-                            15.38,
-                            26.85
-                        ],
-                        "stop_loss": 15.15,
-                        "take_profit": 25.04
-                    }
+                "timestamp": "2026-03-26T14:50:50.836023+00:00",
+                "technical": {
+                    "ticker": "SSI",
+                    "timestamp": "2026-03-26T14:50:50.836023+00:00",
+                    "horizons": [
+                        {
+                            "horizon": "1w",
+                            "trend_probs": {
+                                "up": 0.4035,
+                                "sideways": 0.1988,
+                                "down": 0.3977,
+                                "confidence": 1.0
+                            },
+                            "expected_range": {
+                                "bottom_10th": 15.96,
+                                "median_50th": 19.26,
+                                "ceiling_90th": 24.59
+                            },
+                            "confidence": 0.95,
+                            "indicators": {}
+                        }
+                    ],
+                    "feature_set_version": "v5.0"
                 },
-                "system_parameters": {
-                    "max_risk_tolerance": 0.7,
-                    "confidence_metrics": {
-                        "stock_quantitative_data": 0.95,
-                        "general_market_context": 0.7
-                    }
-                }
+                "sentiment": null,
+                "fusion": {
+                    "action": "RANGE_TRADE",
+                    "confidence": 0.7,
+                    "rationale": "Neutral trend. Buy near lower support (Q10) for range target (Q90).",
+                    "agent_weights": {
+                        "technical": 0.6,
+                        "sentiment": 0.4
+                    },
+                    "regime_detected": "trend"
+                },
+                "risk": {
+                    "position_size_suggestion": 0.0,
+                    "veto_flag": false,
+                    "constraints_hit": [],
+                    "risk_budget_consumed": 0.0
+                },
+                "run_id": "run_1774536650",
+                "status": "success"
             },
             "1m": {
                 "ticker": "SSI",
-                "timestamp": "2026-03-25T16:34:02.573698+00:00",
-                "quantitative_signals": {
-                    "trend_probabilities": {
-                        "up": 0.5678,
-                        "sideways": 0.1441,
-                        "down": 0.2881,
-                        "confidence": 0.9056
-                    },
-                    "expected_range": {
-                        "bottom_10th": 13.52,
-                        "median_50th": 21.18,
-                        "ceiling_90th": 24.2
-                    },
-                    "max_upside_pct": -0.0987,
-                    "max_downside_pct": -0.4965,
-                    "action_plan": {
-                        "recommendation": "RANGE_TRADE",
-                        "entry_zone": [
-                            13.52,
-                            24.2
-                        ],
-                        "stop_loss": 13.32,
-                        "take_profit": 24.2
-                    }
+                "timestamp": "2026-03-26T14:50:51.011400+00:00",
+                "technical": {
+                    "ticker": "SSI",
+                    "timestamp": "2026-03-26T14:50:51.011400+00:00",
+                    "horizons": [
+                        {
+                            "horizon": "1m",
+                            "trend_probs": {
+                                "up": 0.4035,
+                                "sideways": 0.1988,
+                                "down": 0.3977,
+                                "confidence": 1.0
+                            },
+                            "expected_range": {
+                                "bottom_10th": 15.96,
+                                "median_50th": 19.26,
+                                "ceiling_90th": 24.59
+                            },
+                            "confidence": 0.95,
+                            "indicators": {}
+                        }
+                    ],
+                    "feature_set_version": "v5.0"
                 },
-                "system_parameters": {
-                    "max_risk_tolerance": 0.7,
-                    "confidence_metrics": {
-                        "stock_quantitative_data": 0.95,
-                        "general_market_context": 0.7
-                    }
-                }
+                "sentiment": null,
+                "fusion": {
+                    "action": "RANGE_TRADE",
+                    "confidence": 0.7,
+                    "rationale": "Neutral trend. Buy near lower support (Q10) for range target (Q90).",
+                    "agent_weights": {
+                        "technical": 0.6,
+                        "sentiment": 0.4
+                    },
+                    "regime_detected": "trend"
+                },
+                "risk": {
+                    "position_size_suggestion": 0.0,
+                    "veto_flag": false,
+                    "constraints_hit": [],
+                    "risk_budget_consumed": 0.0
+                },
+                "run_id": "run_1774536651",
+                "status": "success"
             },
             "6m": {
                 "ticker": "SSI",
-                "timestamp": "2026-03-25T16:34:02.659457+00:00",
-                "quantitative_signals": {
-                    "trend_probabilities": {
-                        "up": 0.3773,
-                        "sideways": 0.1886,
-                        "down": 0.4341,
-                        "confidence": 0.9045
-                    },
-                    "expected_range": {
-                        "bottom_10th": 17.17,
-                        "median_50th": 23.45,
-                        "ceiling_90th": 22.53
-                    },
-                    "max_upside_pct": -0.1609,
-                    "max_downside_pct": -0.3605,
-                    "action_plan": {
-                        "recommendation": "RANGE_TRADE",
-                        "entry_zone": [
-                            17.17,
-                            22.53
-                        ],
-                        "stop_loss": 16.91,
-                        "take_profit": 22.53
-                    }
+                "timestamp": "2026-03-26T14:50:51.093675+00:00",
+                "technical": {
+                    "ticker": "SSI",
+                    "timestamp": "2026-03-26T14:50:51.093675+00:00",
+                    "horizons": [
+                        {
+                            "horizon": "6m",
+                            "trend_probs": {
+                                "up": 0.4035,
+                                "sideways": 0.1988,
+                                "down": 0.3977,
+                                "confidence": 1.0
+                            },
+                            "expected_range": {
+                                "bottom_10th": 15.96,
+                                "median_50th": 19.26,
+                                "ceiling_90th": 24.59
+                            },
+                            "confidence": 0.95,
+                            "indicators": {}
+                        }
+                    ],
+                    "feature_set_version": "v5.0"
                 },
-                "system_parameters": {
-                    "max_risk_tolerance": 0.7,
-                    "confidence_metrics": {
-                        "stock_quantitative_data": 0.95,
-                        "general_market_context": 0.7
-                    }
-                }
+                "sentiment": null,
+                "fusion": {
+                    "action": "RANGE_TRADE",
+                    "confidence": 0.7,
+                    "rationale": "Neutral trend. Buy near lower support (Q10) for range target (Q90).",
+                    "agent_weights": {
+                        "technical": 0.6,
+                        "sentiment": 0.4
+                    },
+                    "regime_detected": "trend"
+                },
+                "risk": {
+                    "position_size_suggestion": 0.0,
+                    "veto_flag": false,
+                    "constraints_hit": [],
+                    "risk_budget_consumed": 0.0
+                },
+                "run_id": "run_1774536651",
+                "status": "success"
             }
         }
     },
