@@ -26,7 +26,14 @@ class NewsIntelEngine:
         self.settings = get_settings()
         self.client = get_llm_client()
 
-    async def analyze_ticker_news(self, ticker: str, articles: list[Any], horizon: str = "short", _retry_count: int = 0) -> dict[str, Any] | None:
+    async def analyze_ticker_news(
+        self,
+        ticker: str,
+        articles: list[Any],
+        horizon: str = "short",
+        _retry_count: int = 0,
+        _model_override: str | None = None,
+    ) -> dict[str, Any] | None:
         """Run LLM analysis on a batch of articles for a ticker."""
         if not articles:
             return None
@@ -40,7 +47,9 @@ class NewsIntelEngine:
         # 2. Call LLM
         try:
             provider = self.settings.llm_provider
-            model = self.settings.gemini_model_name if provider == "gemini" else self.settings.openai_model_name
+            model = _model_override or (
+                self.settings.gemini_model_name if provider == "gemini" else self.settings.openai_model_name
+            )
             
             if provider == "gemini":
                 # --- Native Gemini Flow ---
@@ -98,14 +107,16 @@ class NewsIntelEngine:
             
             if "404" in str(e) or "not found" in str(e).lower():
                 logger.error("model_not_found", ticker=ticker, model=model, error=str(e))
-                # Fallback to 1.5-flash if 2.0 or 3.1 is not available
-                if "gemini-1.5-flash" not in model:
+                # Fallback to 1.5-flash if higher Gemini model is not available.
+                if provider == "gemini" and "gemini-1.5-flash" not in model:
                     logger.info("falling_back_to_gemini_1.5_flash", ticker=ticker)
-                    old_model = self.settings.gemini_model_name
-                    self.settings.gemini_model_name = "gemini-1.5-flash"
-                    res = await self.analyze_ticker_news(ticker, articles, horizon, _retry_count)
-                    self.settings.gemini_model_name = old_model
-                    return res
+                    return await self.analyze_ticker_news(
+                        ticker=ticker,
+                        articles=articles,
+                        horizon=horizon,
+                        _retry_count=_retry_count,
+                        _model_override="gemini-1.5-flash",
+                    )
             
             import traceback
             traceback.print_exc()
