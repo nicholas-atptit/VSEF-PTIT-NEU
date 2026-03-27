@@ -35,3 +35,6 @@ docker-compose.override.yml
 # ── Temp ──
 scripts/_patch_settings.py
 .gemini/
+tui_debug.log
+temp_articles.csv
+data/.tui_lock
