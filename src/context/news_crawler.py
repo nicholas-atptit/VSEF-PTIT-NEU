@@ -106,6 +106,7 @@ class NewsCrawler:
     async def crawl_ticker(self, ticker: str, count: int = 10, **kwargs) -> list[CrawledDocument]:
         """Crawl news for a specific ticker with strict timeout."""
         try:
+            count = max(1, int(count))
             return await asyncio.wait_for(self._crawl_ticker_internal(ticker, count, **kwargs), timeout=30.0)
         except asyncio.TimeoutError:
             logger.warning("news_crawl_timeout", ticker=ticker)
@@ -122,9 +123,20 @@ class NewsCrawler:
             
         async with self._semaphore:
             try:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 stock = await loop.run_in_executor(None, lambda: self.vn.stock(symbol=ticker.upper(), source='VCI'))
-                news_df = await loop.run_in_executor(None, lambda: stock.company.news())
+
+                # Prefer stock.news() (stable API), then fallback to stock.company.news().
+                def _fetch_news_df():
+                    try:
+                        return stock.news()
+                    except Exception:
+                        company = getattr(stock, "company", None)
+                        if company is None:
+                            raise
+                        return company.news()
+
+                news_df = await loop.run_in_executor(None, _fetch_news_df)
                 
                 docs = []
                 if news_df is not None and not news_df.empty:

@@ -36,13 +36,25 @@ def evaluate_decision_matrix(
 
     # Rule 3: Null Rule - missing data or insufficient data
     if not qual or qual.analysis_status != "success":
+        llm_fallback = "N/A"
+        if qual:
+            llm_fallback = (
+                getattr(qual, "overall_outlook", None)
+                or getattr(qual, "sentiment", None)
+                or "N/A"
+            )
         return "STANDBY", MatrixConsensus(
             ml_signal=ml_rec,
-            llm_sentiment="N/A" if not qual else qual.sentiment,
+            llm_sentiment=str(llm_fallback).upper(),
             veto_triggered=False,
         )
 
-    llm_sentiment = qual.sentiment.upper() if qual else "NEUTRAL"
+    llm_sentiment = (
+        getattr(qual, "overall_outlook", None)
+        or getattr(qual, "sentiment", None)
+        or "NEUTRAL"
+    )
+    llm_sentiment = str(llm_sentiment).upper()
     w_tech = (weights or {}).get("technical", 0.6)
     w_sent = (weights or {}).get("sentiment", 0.4)
 

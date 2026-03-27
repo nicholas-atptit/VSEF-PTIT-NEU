@@ -126,6 +126,8 @@ class AlgoTradingTUI:
         self._redis_client = None
         self.agent = SignalGenerator() if HAS_AI else None
         self._last_agent_run = 0
+        self._agent_task: asyncio.Task | None = None
+        self._cache_lock = asyncio.Lock()
         self._heuristic_cache = {} 
         self._lock_path = Path("data/.tui_lock")
         self.running = True
@@ -151,8 +153,7 @@ class AlgoTradingTUI:
                         self.data["change"] = float((self.data["price"] - prev_c) / prev_c * 100)
                     self.data["status"] = "SYNCED (DB)"
             except Exception as e:
-                with open("tui_debug.log", "a") as f:
-                    f.write(f"{datetime.now()}: DB Init Error: {str(e)}\n")
+                self.logger.error("tui_db_init_error", ticker=self.pinned_ticker, error=str(e))
                 global DB_ERR
                 DB_ERR = f"ConnRefuned: {str(e)[:20]}"
 
@@ -184,8 +185,7 @@ class AlgoTradingTUI:
                             self.data["ml_up"] = probs.get("up", 0.0)
                             self.data["ml_down"] = probs.get("down", 0.0)
             except Exception as e:
-                with open("tui_debug.log", "a") as f:
-                    f.write(f"{datetime.now()}: Cache Init Error: {str(e)}\n")
+                self.logger.error("tui_cache_init_error", ticker=self.pinned_ticker, error=str(e))
 
     def make_layout(self) -> Layout:
         layout = Layout()
@@ -445,13 +445,14 @@ class AlgoTradingTUI:
                         now = time.time()
                         has_intel = self.data.get("sentiment_intel") and len(self.data["sentiment_intel"]) > 1
                         
-                        if HAS_AI and self.agent and (not has_intel) and (now - self._last_agent_run > 60):
+                        has_running_agent_task = self._agent_task is not None and not self._agent_task.done()
+                        if HAS_AI and self.agent and (not has_intel) and (now - self._last_agent_run > 60) and not has_running_agent_task:
                             self.data["news_headlines"] = f"[yellow]Agent Analysis PENDING for {self.pinned_ticker}...[/yellow]"
                             self._last_agent_run = now
-                            asyncio.create_task(self._run_agent_on_demand())
+                            self._agent_task = asyncio.create_task(self._run_agent_on_demand())
                         
                         # Start background analysis info
-                        if not self.data.get("syncing_analysis") and not has_intel:
+                        elif not self.data.get("syncing_analysis") and not has_intel:
                             self.data["news_headlines"] = f"[yellow]Syncing Analysis for {self.pinned_ticker}...[/yellow]"
             except Exception as e:
                 self.logger.error("update_from_cache_error", error=str(e))
@@ -460,8 +461,10 @@ class AlgoTradingTUI:
     async def _run_agent_on_demand(self):
         """Phase 5 Pro-feature: Live Agent fallback in TUI."""
         try:
-            with open("tui_debug.log", "a") as f:
-                f.write(f"{datetime.now()}: agent_on_demand_start for {self.pinned_ticker}\n")
+            if not self.agent:
+                self.logger.warning("agent_on_demand_skipped", reason="agent_unavailable")
+                return
+            self.logger.info("agent_on_demand_start", ticker=self.pinned_ticker)
             
             # Mark as pending for UI
             self.data["sentiment_intel"] = {"status": "PENDING"}
@@ -496,25 +499,23 @@ class AlgoTradingTUI:
                 self.data["llm_outlook"] = sent.get("sentiment_regime", "neutral").upper()
                 
                 # Write back to global cache file to share with other tools
-                if self.cache_path.exists():
-                    try:
-                        with open(self.cache_path, "r", encoding="utf-8") as f:
-                            all_cache = json.load(f)
+                try:
+                    async with self._cache_lock:
+                        all_cache = {}
+                        if self.cache_path.exists():
+                            with open(self.cache_path, "r", encoding="utf-8") as f:
+                                all_cache = json.load(f)
                         all_cache[self.pinned_ticker] = res
                         with open(self.cache_path, "w", encoding="utf-8") as f:
                             json.dump(all_cache, f, indent=4)
-                    except Exception as e:
-                        self.logger.error("cache_write_error", error=str(e))
+                except Exception as e:
+                    self.logger.error("cache_write_error", error=str(e))
 
-                with open("tui_debug.log", "a") as f:
-                    f.write(f"{datetime.now()}: agent_on_demand_success for {self.pinned_ticker}\n")
+                self.logger.info("agent_on_demand_success", ticker=self.pinned_ticker)
             else:
-                with open("tui_debug.log", "a") as f:
-                    f.write(f"{datetime.now()}: agent_on_demand_empty_result for {self.pinned_ticker}\n")
+                self.logger.warning("agent_on_demand_empty_result", ticker=self.pinned_ticker)
 
         except Exception as e:
-            with open("tui_debug.log", "a") as f:
-                f.write(f"{datetime.now()}: agent_on_demand_error for {self.pinned_ticker}: {str(e)}\n")
             self.logger.error("agent_on_demand_failed", error=str(e))
         finally:
             self._last_agent_run = time.time()
@@ -653,8 +654,7 @@ class AlgoTradingTUI:
                     self.data["status"] = f"DB_EMPTY:{self.pinned_ticker}"
         except Exception as e:
             self.data["status"] = f"DB_ERR:{str(e)[:10]}"
-            with open("tui_debug.log", "a") as f:
-                f.write(f"{datetime.now()}: DB Error for {self.pinned_ticker}: {str(e)}\n")
+            self.logger.error("db_heuristics_error", ticker=self.pinned_ticker, error=str(e))
 
     def _compute_heuristics(self, stock):
         """REST-based history fetch."""
@@ -697,8 +697,7 @@ class AlgoTradingTUI:
             self.data.update(h_data)
             self._heuristic_cache[self.pinned_ticker] = (time.time(), h_data)
         except Exception as e:
-            with open("tui_debug.log", "a") as f:
-                f.write(f"{datetime.now()}: Process Heuristic Error: {str(e)}\n")
+            self.logger.error("heuristics_process_error", ticker=self.pinned_ticker, error=str(e))
 
     async def _update_news(self):
         """Fetch real-time news via crawler."""
@@ -715,8 +714,7 @@ class AlgoTradingTUI:
                 self._last_news_sync = now
                 self.logger.info("news_updated", ticker=self.pinned_ticker, count=len(docs))
         except Exception as e:
-            with open("tui_debug.log", "a") as f:
-                f.write(f"{datetime.now()}: News Error: {str(e)}\n")
+            self.logger.error("news_update_error", ticker=self.pinned_ticker, error=str(e))
 
     async def _update_news_intelligence(self):
         """Fetch analyzed intelligence from DB."""

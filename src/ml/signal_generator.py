@@ -119,6 +119,7 @@ class SignalGenerator:
                 "sentiment_score": float(sentiment_data["sentiment_score"]),
                 "sentiment_regime": sentiment_data["trend"].lower(),
                 "sentiment_confidence": 0.85,
+                "summary": sentiment_data.get("summary", ""),
                 "status": "SUCCESS"
             }
         elif sentiment_error:
@@ -138,6 +139,11 @@ class SignalGenerator:
                 "status": "PENDING"
             }
 
+        regime_for_matrix = (sentiment_payload.get("sentiment_regime", "neutral") if sentiment_payload else "neutral").lower()
+        if regime_for_matrix not in {"positive", "negative", "neutral"}:
+            regime_for_matrix = "neutral"
+        analysis_status = "success" if sentiment_payload and sentiment_payload.get("status") == "SUCCESS" else "insufficient_data"
+
         # --- Phase 4: Decision Fusion (Agent Matrix) ---
         from src.api.schemas import QuantitativeSignals, QualitativeAnalysis
         
@@ -152,11 +158,10 @@ class SignalGenerator:
         elif trend_probs.get("down", 0) > 0.6: quant_model.action_plan.recommendation = "SELL"
         
         qual_model = QualitativeAnalysis(
-            ticker=ticker,
-            sentiment=sentiment_payload["sentiment_regime"] if sentiment_payload else "neutral", # Use actual sentiment
-            confidence=sentiment_payload["sentiment_confidence"] if sentiment_payload else 0.5, # Use actual confidence
-            analysis_status="success",
-            reasoning="Phase 3 Intelligence"
+            analysis_status=analysis_status,
+            confidence_score=sentiment_payload["sentiment_confidence"] if sentiment_payload else 0.0,
+            overall_outlook=regime_for_matrix,
+            reasoning="Phase 3 Intelligence",
         )
         
         matrix_decision, consensus = evaluate_decision_matrix(
@@ -194,6 +199,11 @@ class SignalGenerator:
             "sentiment": sentiment_payload, # Use the raw sentiment_payload
             "fusion": {
                 "regime_detected": "trend",
+                "action": matrix_decision,
+                "rationale": (
+                    f"ml={consensus.ml_signal}, llm={consensus.llm_sentiment}, "
+                    f"veto={consensus.veto_triggered}"
+                ),
             },
             "risk": {
                 "position_size_suggestion": float(order_payload.volume) if order_payload else 0.0,
@@ -205,16 +215,6 @@ class SignalGenerator:
             "run_id": f"run_{int(dt.datetime.now().timestamp())}",
             "status": "success",
         }
-
-        logger.info(
-            "signal_generated_v5",
-            ticker=ticker,
-            action=action_plan["recommendation"],
-            horizon=horizon,
-            has_sentiment=bool(sentiment_payload),
-        )
-
-        return payload
 
     # ── Action Plan Logic ─────────────────────────────────────
 
