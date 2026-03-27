@@ -79,6 +79,12 @@ class SystemParameters(BaseModel):
     confidence_metrics: ConfidenceMetrics
 
 
+class MainRisk(BaseModel):
+    """Specific risk identified by the Analyst."""
+    risk_type: str = Field(..., description="macro, legal, financial, or operational")
+    description: str
+    zone: str | None = None
+
 class QualitativeSignalEvidence(BaseModel):
     """Evidence linked to a specific zone."""
     evidence: str

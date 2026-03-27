@@ -36,8 +36,14 @@ class CrawledDocument:
         self.source = source
         self.published_at = published_at or dt.datetime.now()
         self.tickers = tickers or []
+        self.primary_ticker = self.tickers[0] if self.tickers else ""
         self.doc_type = doc_type
         self.doc_id = hashlib.sha256(url.encode()).hexdigest()[:16]
+
+    @property
+    def published_date(self) -> dt.datetime:
+        """Alias for backward compatibility."""
+        return self.published_at
 
     @property
     def metadata(self) -> dict:
@@ -97,15 +103,32 @@ class NewsCrawler:
         self.vn = Vnstock()
         self._semaphore = asyncio.Semaphore(concurrency)
 
-    async def crawl_ticker(self, ticker: str, count: int = 10) -> list[CrawledDocument]:
-        """Crawl news for a specific ticker."""
+    async def crawl_ticker(self, ticker: str, count: int = 10, **kwargs) -> list[CrawledDocument]:
+        """Crawl news for a specific ticker with strict timeout."""
+        try:
+            return await asyncio.wait_for(self._crawl_ticker_internal(ticker, count, **kwargs), timeout=30.0)
+        except asyncio.TimeoutError:
+            logger.warning("news_crawl_timeout", ticker=ticker)
+            return []
+        except Exception as e:
+            logger.error("news_crawl_fatal", ticker=ticker, error=str(e))
+            return []
+
+    async def _crawl_ticker_internal(self, ticker: str, count: int = 10, **kwargs) -> list[CrawledDocument]:
+        if "max_pages" in kwargs:
+            count = kwargs["max_pages"] * 5
+        elif "max_pages_per_ticker" in kwargs:
+            count = kwargs["max_pages_per_ticker"] * 5
+            
         async with self._semaphore:
             try:
-                stock = self.vn.stock(symbol=ticker.upper(), source='VCI')
-                news_df = stock.news()
+                loop = asyncio.get_event_loop()
+                stock = await loop.run_in_executor(None, lambda: self.vn.stock(symbol=ticker.upper(), source='VCI'))
+                news_df = await loop.run_in_executor(None, lambda: stock.company.news())
                 
                 docs = []
                 if news_df is not None and not news_df.empty:
+                    logger.info("news_fetch_success", ticker=ticker, rows=len(news_df))
                     for _, row in news_df.head(count).iterrows():
                         docs.append(CrawledDocument(
                             url=row.get('link', ''),
@@ -119,3 +142,10 @@ class NewsCrawler:
             except Exception as e:
                 logger.error("news_crawl_failed", ticker=ticker, error=str(e))
                 return []
+
+    async def crawl_watchlist(self, tickers: list[str], **kwargs) -> list[CrawledDocument]:
+        """Backward compatibility for bulk crawling."""
+        tasks = [self.crawl_ticker(t, **kwargs) for t in tickers]
+        results = await asyncio.gather(*tasks)
+        # Flatten list of lists
+        return [doc for sublist in results for doc in sublist]

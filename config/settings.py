@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+load_dotenv()
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -99,7 +101,7 @@ class Settings(BaseSettings):
     confidence_general_context: float = 0.70
 
     # ── LLM Pipeline (Phase 3 & 4 Upgrade) ────────────────────
-    llm_provider: Literal["ollama", "openai", "groq", "gemini"] = "ollama"
+    llm_provider: Literal["ollama", "openai", "groq", "gemini"] = "gemini"
     
     # Ollama (Local)
     ollama_base_url: str = "http://localhost:11434/v1"
@@ -118,8 +120,8 @@ class Settings(BaseSettings):
     
     # Gemini (via OpenAI-compatible adapter or direct API)
     gemini_api_key: str = ""
-    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    gemini_model_name: str = "gemini-1.5-pro"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+    gemini_model_name: str = "gemini-2.0-flash"
 
     # ── Agentic Architecture (Phase 1 Master Plan) ──────────
     sentiment_enabled: bool = True

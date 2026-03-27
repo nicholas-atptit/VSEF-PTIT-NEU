@@ -63,7 +63,7 @@ async def main(tickers=None, update_all=False, limit=None):
     for ticker in tickers:
         print(f"\n📡 Processing {ticker}...")
         # 1. Extraction (Upgraded to 10 sources)
-        articles = await crawler.crawl_ticker(ticker, max_pages=3)
+        articles = await crawler.crawl_ticker(ticker, count=10)
         if not articles:
             print(f"   ⚠️ No recent news found for {ticker}.")
             continue

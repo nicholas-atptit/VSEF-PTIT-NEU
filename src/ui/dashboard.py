@@ -14,10 +14,12 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from decimal import Decimal
+from typing import Any
 import pandas as pd
 
 # --- Robust Imports ---
+from dotenv import load_dotenv
+load_dotenv()
 HAS_MSGPACK = False
 try:
     import msgpack
@@ -78,11 +80,13 @@ HAS_AI = False
 try:
     from src.context.news_crawler import NewsCrawler
     from src.llm.news_intel import NewsIntelEngine
+    from src.ml.signal_generator import SignalGenerator
     HAS_AI = True
 except Exception as e:
     _logger.warning("ai_agents_disabled", error=str(e))
     NewsCrawler = None
     NewsIntelEngine = None
+    SignalGenerator = None
     HAS_AI = False
 except (ImportError, ModuleNotFoundError) as e:
     DB_ERR = f"DepError: {str(e).split(':')[-1]}"
@@ -105,8 +109,8 @@ class AlgoTradingTUI:
     def __init__(self, start_ticker="FPT"):
         self.pinned_ticker = start_ticker.upper()
         self.cache_path = PROJECT_ROOT / "data" / "latest_predictions.json"
-        self.news_crawler = NewsCrawler() if HAS_DB else None
-        self.news_intel = NewsIntelEngine() if HAS_DB else None
+        self.news_crawler = NewsCrawler() if (HAS_DB and NewsCrawler is not None) else None
+        self.news_intel = NewsIntelEngine() if (HAS_DB and NewsIntelEngine is not None) else None
         self._last_news_sync = 0
         self.logger = _logger
         
@@ -120,7 +124,9 @@ class AlgoTradingTUI:
             "ai_intel": None
         }
         self._redis_client = None
-        self._heuristic_cache = {} # Cache for fast switching
+        self.agent = SignalGenerator() if HAS_AI else None
+        self._last_agent_run = 0
+        self._heuristic_cache = {} 
         self._lock_path = Path("data/.tui_lock")
         self.running = True
         try:
@@ -210,8 +216,16 @@ class AlgoTradingTUI:
         grid.add_column(justify="center", ratio=1)
         grid.add_column(justify="right", ratio=1)
         # Health Indicators
-        ai_status = "[bold green]AI: ONLINE[/]" if self.data.get("status") == "success" else "[bold yellow]AI: FALLBACK[/]"
-        risk_data = self.data.get("risk_intel")
+        risk_data = self.data.get("risk_intel") or {}
+        sent_data = self.data.get("sentiment_intel") or {}
+        
+        # AI is ONLINE if sentiment data exists or it is currently PENDING
+        is_pending = sent_data.get("status") == "PENDING"
+        ai_online = (len(sent_data) > 0 and sent_data.get("ticker")) or is_pending
+        ai_status = "[bold green]AI: ONLINE[/]" if ai_online else "[bold yellow]AI: FALLBACK[/]"
+        if is_pending:
+            ai_status = "[bold blue]AI: PENDING...[/]"
+        
         acc = risk_data.get("model_accuracy_1w", 0.0) if isinstance(risk_data, dict) else 0.0
         acc_str = f"[bold cyan]Acc: {acc:.0%}[/]" if acc > 0 else "[dim]Acc: --%[/]"
         
@@ -255,8 +269,13 @@ class AlgoTradingTUI:
                             f"[bold red]DOWN ({p_down:.0%})[/]" if p_down > 0.55 else "[yellow]SIDE[/]"
                 
                 high = q.get("expected_range", {}).get("ceiling_90th", 0)
-                upside = (((high - self.data['price']) / self.data['price']) * 100) if self.data['price'] > 0 else 0
-                h_table.add_row(label, trend_str, f"[{'green' if upside > 0 else 'red'}]{upside:+.1f}%[/]")
+                if high > 0 and self.data['price'] > 0:
+                    upside = (((high - self.data['price']) / self.data['price']) * 100)
+                    upside_str = f"[{'green' if upside > 0 else 'red'}]{upside:+.1f}%[/]"
+                else:
+                    upside_str = "[dim]---[/dim]"
+                
+                h_table.add_row(label, trend_str, upside_str)
             else:
                 h_table.add_row(label, "[dim]-[/]", "[dim]...[/]")
 
@@ -276,9 +295,11 @@ class AlgoTradingTUI:
 
     def generate_sentiment_panel(self) -> Panel:
         """Panel B: Qualitative/LLM Sentiment analysis."""
-        intel = self.data.get("ai_intel") or {}
+        intel = self.data.get("sentiment_intel") or {}
         outlook = self.data.get('llm_outlook', "NEUTRAL")
-        headlines = self.data.get('news_headlines', "No news context...")
+        headlines = self.data.get('news_headlines')
+        if not headlines or "Syncing" in headlines:
+            headlines = intel.get("summary", "Fetching Market Context......")
         
         # Parse score and regime if v2
         score = intel.get("score", 0.0)
@@ -402,6 +423,7 @@ class AlgoTradingTUI:
                             
                             if "sentiment" in cache_data and cache_data["sentiment"]:
                                 sent = cache_data["sentiment"]
+                                self.data["sentiment_intel"] = sent
                                 self.data["ai_intel"] = {
                                     "sentiment_score": sent.get("sentiment_score", 0.0),
                                     "trend": sent.get("sentiment_regime", "neutral"),
@@ -409,6 +431,8 @@ class AlgoTradingTUI:
                                     "regime": sent.get("sentiment_regime", "neutral")
                                 }
                                 self.data["llm_outlook"] = sent.get("sentiment_regime", "neutral").upper()
+                                if sent.get("summary"):
+                                    self.data["news_headlines"] = sent["summary"]
                                 
                             if "fusion" in cache_data:
                                 fus = cache_data["fusion"]
@@ -417,12 +441,83 @@ class AlgoTradingTUI:
                             
                             if "risk" in cache_data:
                                 self.data["risk_intel"] = cache_data["risk"]
-                        else:
-                            # Start background analysis if missing
-                            if not self.data.get("syncing_analysis"):
-                                self.data["news_headlines"] = f"[yellow]Syncing Analysis for {self.pinned_ticker}...[/yellow]"
-            except Exception: pass
+                        # Trigger On-Demand Agent if missing or stale (>10 min)
+                        now = time.time()
+                        has_intel = self.data.get("sentiment_intel") and len(self.data["sentiment_intel"]) > 1
+                        
+                        if HAS_AI and self.agent and (not has_intel) and (now - self._last_agent_run > 60):
+                            self.data["news_headlines"] = f"[yellow]Agent Analysis PENDING for {self.pinned_ticker}...[/yellow]"
+                            self._last_agent_run = now
+                            asyncio.create_task(self._run_agent_on_demand())
+                        
+                        # Start background analysis info
+                        if not self.data.get("syncing_analysis") and not has_intel:
+                            self.data["news_headlines"] = f"[yellow]Syncing Analysis for {self.pinned_ticker}...[/yellow]"
+            except Exception as e:
+                self.logger.error("update_from_cache_error", error=str(e))
             await asyncio.sleep(2)
+
+    async def _run_agent_on_demand(self):
+        """Phase 5 Pro-feature: Live Agent fallback in TUI."""
+        try:
+            with open("tui_debug.log", "a") as f:
+                f.write(f"{datetime.now()}: agent_on_demand_start for {self.pinned_ticker}\n")
+            
+            # Mark as pending for UI
+            self.data["sentiment_intel"] = {"status": "PENDING"}
+            
+            # Prepare minimal model_output if we don't have one
+            curr_price = self.data.get("price", 0.0)
+            mock_output = {
+                "horizon": "short",
+                "trend_probabilities": {"up": 0.33, "sideways": 0.33, "down": 0.34},
+                "expected_range": {
+                    "bottom_10th": curr_price * 0.95,
+                    "median_50th": curr_price,
+                    "ceiling_90th": curr_price * 1.05
+                }
+            }
+            res = await self.agent.generate(
+                self.pinned_ticker, 
+                current_close=self.data.get('price', 0.0),
+                model_output=mock_output,
+                active_analysis=True
+            )
+            
+            if res:
+                # Update local cache immediately
+                self.data["risk_intel"] = res.get("risk") or {}
+                self.data["sentiment_intel"] = res.get("sentiment") or {}
+                self.data["ml_recommendation"] = res.get("fusion", {}).get("action", "HOLD")
+                
+                # Fetch summary from sentiment payload
+                sent = res.get("sentiment", {})
+                self.data["news_headlines"] = sent.get("summary") or "Analysis complete (No news found)."
+                self.data["llm_outlook"] = sent.get("sentiment_regime", "neutral").upper()
+                
+                # Write back to global cache file to share with other tools
+                if self.cache_path.exists():
+                    try:
+                        with open(self.cache_path, "r", encoding="utf-8") as f:
+                            all_cache = json.load(f)
+                        all_cache[self.pinned_ticker] = res
+                        with open(self.cache_path, "w", encoding="utf-8") as f:
+                            json.dump(all_cache, f, indent=4)
+                    except Exception as e:
+                        self.logger.error("cache_write_error", error=str(e))
+
+                with open("tui_debug.log", "a") as f:
+                    f.write(f"{datetime.now()}: agent_on_demand_success for {self.pinned_ticker}\n")
+            else:
+                with open("tui_debug.log", "a") as f:
+                    f.write(f"{datetime.now()}: agent_on_demand_empty_result for {self.pinned_ticker}\n")
+
+        except Exception as e:
+            with open("tui_debug.log", "a") as f:
+                f.write(f"{datetime.now()}: agent_on_demand_error for {self.pinned_ticker}: {str(e)}\n")
+            self.logger.error("agent_on_demand_failed", error=str(e))
+        finally:
+            self._last_agent_run = time.time()
 
     async def _trigger_on_demand_sync(self):
         """Trigger historical ingestion if DB is empty for this ticker."""
@@ -612,7 +707,7 @@ class AlgoTradingTUI:
             now = time.time()
             if now - self._last_news_sync < 300: return # Rate limit 5m
             
-            docs = await self.news_crawler.crawl_ticker(self.pinned_ticker, max_pages=3)
+            docs = await self.news_crawler.crawl_ticker(self.pinned_ticker, count=5)
             if docs:
                 # Format headlines for the TUI panel
                 headlines = "\n".join([f"• {doc.title[:80]}..." for doc in docs[:3]])
@@ -649,7 +744,8 @@ class AlgoTradingTUI:
                 if self.news_crawler: tasks.append(self._update_news())
                 if HAS_VNSTOCK: tasks.append(self._poll_rest())
                 if tasks: await asyncio.gather(*tasks)
-            except Exception: pass
+            except Exception as e:
+                 self.logger.error("live_feeds_loop_error", error=str(e))
             await asyncio.sleep(5)
 
     async def _update_ui(self, layout: Layout):

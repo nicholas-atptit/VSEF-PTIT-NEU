@@ -20,6 +20,7 @@ from src.engine.risk import apply_risk_constraints
 from config.settings import get_settings
 from src.utils.logging import get_logger
 from src.llm.news_intel import NewsIntelEngine
+from src.context.news_crawler import NewsCrawler
 from src.monitoring.drift import DriftMonitor
 from src.monitoring.accuracy import AccuracyMonitor
 
@@ -54,6 +55,7 @@ class SignalGenerator:
     def __init__(self) -> None:
         self._settings = get_settings()
         self._intel_engine = NewsIntelEngine()
+        self._crawler = NewsCrawler()
         self._drift_monitor = DriftMonitor()
         self._accuracy_monitor = AccuracyMonitor()
 
@@ -63,6 +65,7 @@ class SignalGenerator:
         current_close: float,
         model_output: dict[str, Any],
         risk_tolerance: float | None = None,
+        active_analysis: bool = False,
     ) -> dict[str, Any]:
         """Generate full prediction payload matching the TerminalPayload (v5.0) contract.
 
@@ -90,11 +93,22 @@ class SignalGenerator:
 
         # --- Sentiment Agent (Phase 3) ---
         horizon = model_output.get("horizon", "short")
+        sentiment_data = None
+        sentiment_error = False
         try:
             sentiment_data = await self._intel_engine.get_latest_intelligence(ticker, horizon=horizon)
+            
+            # --- Active Mode (Phase 5) ---
+            if not sentiment_data and active_analysis:
+                logger.info("triggering_active_analysis", ticker=ticker)
+                articles = await self._crawler.crawl_ticker(ticker, count=10)
+                logger.info("active_analysis_crawl_result", ticker=ticker, count=len(articles) if articles else 0)
+                if articles:
+                    sentiment_data = await self._intel_engine.analyze_ticker_news(ticker, articles, horizon=horizon)
+                    logger.info("active_analysis_intel_result", ticker=ticker, success=sentiment_data is not None)
         except Exception as e:
-            logger.error("sentiment_engine_fallback", ticker=ticker, error=str(e))
-            sentiment_data = None # Trigger fallback payload below
+            logger.error("sentiment_engine_error", ticker=ticker, error=str(e))
+            sentiment_error = True
 
         # --- Phase 5: Monitoring (Accuracy & Drift) ---
         accuracy_info = self._accuracy_monitor.calculate_recent_accuracy(ticker, horizon)
@@ -104,18 +118,24 @@ class SignalGenerator:
             sentiment_payload = {
                 "sentiment_score": float(sentiment_data["sentiment_score"]),
                 "sentiment_regime": sentiment_data["trend"].lower(),
-                "sentiment_confidence": 0.85, # Default confidence for LLM analysis
-                "source_breakdown": [], # Placeholder for detailed sources
-                "market_psychology_tags": [], # Future enhancement
-                "narrative_risk_flags": [],
+                "sentiment_confidence": 0.85,
+                "status": "SUCCESS"
             }
-        else:
+        elif sentiment_error:
             sentiment_payload = {
                 "sentiment_score": 0.0,
                 "sentiment_regime": "degraded",
                 "sentiment_confidence": 0.0,
                 "narrative_risk_flags": ["SERVICE_UNAVAILABLE"],
                 "status": "FALLBACK"
+            }
+        else:
+            sentiment_payload = {
+                "sentiment_score": 0.0,
+                "sentiment_regime": "neutral",
+                "sentiment_confidence": 0.0,
+                "narrative_risk_flags": ["NO_DATA_YET"],
+                "status": "PENDING"
             }
 
         # --- Phase 4: Decision Fusion (Agent Matrix) ---
@@ -125,11 +145,7 @@ class SignalGenerator:
         quant_model = QuantitativeSignals(
             trend_probabilities=trend_probs,
             expected_range=expected_range,
-            max_upside_pct=0.0,
-            max_downside_pct=0.0,
-            horizon="short",
-            feature_set_version="v5.0",
-            action_plan={"recommendation": "STAND_ASIDE", "entry_zone": [], "stop_loss": 0, "take_profit": 0}
+            action_plan={"recommendation": "STAND_ASIDE", "entry_zone": [0.0, 0.0], "stop_loss": 0, "take_profit": 0}
         )
         # Handle recommendation from raw trend_probs for matrix
         if trend_probs.get("up", 0) > 0.6: quant_model.action_plan.recommendation = "BUY"
