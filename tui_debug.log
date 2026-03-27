@@ -2614,3 +2614,1468 @@ confidence_score
 confidence_score
   Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
     For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:19:57.351820: agent_on_demand_start for SSI
+2026-03-27 15:20:00.028621: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:21:01.228769: agent_on_demand_start for SSI
+2026-03-27 15:21:03.061558: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:22:05.032160: agent_on_demand_start for SSI
+2026-03-27 15:22:06.989363: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:23:08.873807: agent_on_demand_start for SSI
+2026-03-27 15:23:10.743410: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:24:12.687695: agent_on_demand_start for SSI
+2026-03-27 15:24:14.704246: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:25:16.611812: agent_on_demand_start for SSI
+2026-03-27 15:25:19.697898: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:26:20.573344: agent_on_demand_start for SSI
+2026-03-27 15:26:24.055271: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:27:24.482523: agent_on_demand_start for SSI
+2026-03-27 15:27:26.650881: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:28:28.451130: agent_on_demand_start for SSI
+2026-03-27 15:28:30.765730: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:29:32.385293: agent_on_demand_start for SSI
+2026-03-27 15:29:34.866196: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:30:36.255961: agent_on_demand_start for SSI
+2026-03-27 15:30:38.259116: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:31:40.121707: agent_on_demand_start for SSI
+2026-03-27 15:31:41.990933: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:32:44.024974: agent_on_demand_start for SSI
+2026-03-27 15:32:46.011331: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:33:47.896698: agent_on_demand_start for SSI
+2026-03-27 15:33:50.940272: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:34:51.848660: agent_on_demand_start for SSI
+2026-03-27 15:34:53.830638: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:35:55.665733: agent_on_demand_start for SSI
+2026-03-27 15:35:57.620671: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:36:59.426427: agent_on_demand_start for SSI
+2026-03-27 15:37:02.410881: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:38:03.388040: agent_on_demand_start for SSI
+2026-03-27 15:38:05.314970: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:39:07.178812: agent_on_demand_start for SSI
+2026-03-27 15:39:10.905306: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:40:11.133178: agent_on_demand_start for SSI
+2026-03-27 15:40:12.926582: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:41:13.079312: agent_on_demand_start for SSI
+2026-03-27 15:41:14.896380: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:42:15.064160: agent_on_demand_start for SSI
+2026-03-27 15:42:16.994665: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:43:17.031222: agent_on_demand_start for SSI
+2026-03-27 15:43:18.908100: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:44:20.923342: agent_on_demand_start for SSI
+2026-03-27 15:44:22.700784: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:45:22.916704: agent_on_demand_start for SSI
+2026-03-27 15:45:24.908012: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:46:26.841929: agent_on_demand_start for SSI
+2026-03-27 15:46:28.741567: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:47:28.763508: agent_on_demand_start for SSI
+2026-03-27 15:47:30.608597: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:48:30.621665: agent_on_demand_start for SSI
+2026-03-27 15:48:32.613542: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:49:34.584617: agent_on_demand_start for SSI
+2026-03-27 15:49:36.585023: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:50:38.549096: agent_on_demand_start for SSI
+2026-03-27 15:50:40.960010: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:51:42.501568: agent_on_demand_start for SSI
+2026-03-27 15:51:44.912338: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:52:46.456464: agent_on_demand_start for SSI
+2026-03-27 15:52:49.013172: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:53:50.507941: agent_on_demand_start for SSI
+2026-03-27 15:53:52.977668: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:54:54.676280: agent_on_demand_start for SSI
+2026-03-27 15:54:56.982114: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:55:58.801071: agent_on_demand_start for SSI
+2026-03-27 15:56:00.616499: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:57:00.881142: agent_on_demand_start for SSI
+2026-03-27 15:57:02.775326: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:58:02.873395: agent_on_demand_start for SSI
+2026-03-27 15:58:04.768549: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 15:59:04.803508: agent_on_demand_start for SSI
+2026-03-27 15:59:07.603153: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:00:08.872359: agent_on_demand_start for SSI
+2026-03-27 16:00:10.709677: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:01:10.905980: agent_on_demand_start for SSI
+2026-03-27 16:01:12.812456: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:02:12.858939: agent_on_demand_start for SSI
+2026-03-27 16:02:14.773316: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:03:14.951297: agent_on_demand_start for SSI
+2026-03-27 16:03:16.737095: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:04:16.952520: agent_on_demand_start for SSI
+2026-03-27 16:04:18.711241: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:05:18.991692: agent_on_demand_start for SSI
+2026-03-27 16:05:20.950882: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:06:21.001870: agent_on_demand_start for SSI
+2026-03-27 16:06:23.404112: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:07:24.967510: agent_on_demand_start for SSI
+2026-03-27 16:07:27.903725: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:08:29.043245: agent_on_demand_start for SSI
+2026-03-27 16:08:31.450133: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:09:32.900956: agent_on_demand_start for SSI
+2026-03-27 16:09:35.842421: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:10:36.823134: agent_on_demand_start for SSI
+2026-03-27 16:10:38.688064: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:11:40.731440: agent_on_demand_start for SSI
+2026-03-27 16:11:44.038144: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:12:44.900671: agent_on_demand_start for SSI
+2026-03-27 16:12:46.837216: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:13:46.928630: agent_on_demand_start for SSI
+2026-03-27 16:13:48.771786: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:14:48.948962: agent_on_demand_start for SSI
+2026-03-27 16:14:50.771592: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:15:50.793185: agent_on_demand_start for SSI
+2026-03-27 16:15:52.483104: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:16:52.789669: agent_on_demand_start for SSI
+2026-03-27 16:16:54.475808: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:17:54.734905: agent_on_demand_start for SSI
+2026-03-27 16:17:58.053776: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:18:58.931333: agent_on_demand_start for SSI
+2026-03-27 16:19:02.907152: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:20:03.106263: agent_on_demand_start for SSI
+2026-03-27 16:20:05.571821: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:21:07.301721: agent_on_demand_start for SSI
+2026-03-27 16:21:09.896022: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:22:11.460458: agent_on_demand_start for SSI
+2026-03-27 16:22:13.267453: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:23:13.401376: agent_on_demand_start for SSI
+2026-03-27 16:23:15.318113: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:24:17.346123: agent_on_demand_start for SSI
+2026-03-27 16:24:19.163439: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:25:19.399110: agent_on_demand_start for SSI
+2026-03-27 16:25:21.173656: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:26:21.414304: agent_on_demand_start for SSI
+2026-03-27 16:26:24.333399: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:27:25.471079: agent_on_demand_start for SSI
+2026-03-27 16:27:27.401557: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:28:27.521265: agent_on_demand_start for SSI
+2026-03-27 16:28:29.238915: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:29:29.561456: agent_on_demand_start for SSI
+2026-03-27 16:29:32.045421: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:30:33.637804: agent_on_demand_start for SSI
+2026-03-27 16:30:35.947325: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:31:37.785231: agent_on_demand_start for SSI
+2026-03-27 16:31:39.765626: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:32:41.789264: agent_on_demand_start for SSI
+2026-03-27 16:32:43.532149: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:33:43.982261: agent_on_demand_start for SSI
+2026-03-27 16:33:46.013284: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:34:48.025343: agent_on_demand_start for SSI
+2026-03-27 16:34:49.807261: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:35:50.085571: agent_on_demand_start for SSI
+2026-03-27 16:35:52.006605: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:36:52.106359: agent_on_demand_start for SSI
+2026-03-27 16:36:55.135168: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:37:56.109662: agent_on_demand_start for SSI
+2026-03-27 16:37:58.918116: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:39:00.108679: agent_on_demand_start for SSI
+2026-03-27 16:39:03.292831: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:40:04.095906: agent_on_demand_start for SSI
+2026-03-27 16:40:06.387183: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:41:08.098394: agent_on_demand_start for SSI
+2026-03-27 16:41:10.500376: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:42:12.044462: agent_on_demand_start for SSI
+2026-03-27 16:42:14.669467: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:43:16.043327: agent_on_demand_start for SSI
+2026-03-27 16:43:18.348885: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:44:20.023786: agent_on_demand_start for SSI
+2026-03-27 16:44:22.341161: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:45:24.050394: agent_on_demand_start for SSI
+2026-03-27 16:45:26.969269: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:46:27.935293: agent_on_demand_start for SSI
+2026-03-27 16:46:29.909246: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:47:31.964119: agent_on_demand_start for SSI
+2026-03-27 16:47:33.639136: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:48:33.786974: agent_on_demand_start for SSI
+2026-03-27 16:48:35.632290: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:49:35.778973: agent_on_demand_start for SSI
+2026-03-27 16:49:37.691109: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:50:37.714681: agent_on_demand_start for SSI
+2026-03-27 16:50:39.592988: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:51:41.604985: agent_on_demand_start for SSI
+2026-03-27 16:51:43.364408: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:52:43.573273: agent_on_demand_start for SSI
+2026-03-27 16:52:45.542006: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:53:47.549184: agent_on_demand_start for SSI
+2026-03-27 16:53:49.347120: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:54:49.404442: agent_on_demand_start for SSI
+2026-03-27 16:54:51.346491: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:55:51.469800: agent_on_demand_start for SSI
+2026-03-27 16:55:52.810540: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:56:53.427314: agent_on_demand_start for SSI
+2026-03-27 16:56:56.850573: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:57:57.403549: agent_on_demand_start for SSI
+2026-03-27 16:58:00.761667: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 16:59:01.443055: agent_on_demand_start for SSI
+2026-03-27 16:59:04.800365: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:00:05.500936: agent_on_demand_start for SSI
+2026-03-27 17:00:08.841633: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:01:09.658226: agent_on_demand_start for SSI
+2026-03-27 17:01:13.204516: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:02:13.838958: agent_on_demand_start for SSI
+2026-03-27 17:02:17.249486: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:03:18.058385: agent_on_demand_start for SSI
+2026-03-27 17:03:21.386789: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:04:22.296490: agent_on_demand_start for SSI
+2026-03-27 17:04:25.632163: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:05:26.349741: agent_on_demand_start for SSI
+2026-03-27 17:05:28.675414: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:06:30.351287: agent_on_demand_start for SSI
+2026-03-27 17:06:32.236810: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:07:34.312818: agent_on_demand_start for SSI
+2026-03-27 17:07:36.272192: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:08:38.263967: agent_on_demand_start for SSI
+2026-03-27 17:08:41.054633: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:09:42.346929: agent_on_demand_start for SSI
+2026-03-27 17:09:44.131014: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:10:44.381377: agent_on_demand_start for SSI
+2026-03-27 17:10:47.815180: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:11:48.411414: agent_on_demand_start for SSI
+2026-03-27 17:11:51.614472: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:12:52.448428: agent_on_demand_start for SSI
+2026-03-27 17:12:55.770294: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:13:56.576785: agent_on_demand_start for SSI
+2026-03-27 17:14:00.112622: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:15:00.601354: agent_on_demand_start for SSI
+2026-03-27 17:15:03.918674: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:16:04.681339: agent_on_demand_start for SSI
+2026-03-27 17:16:07.109179: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:17:08.734382: agent_on_demand_start for SSI
+2026-03-27 17:17:11.134721: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:18:12.680376: agent_on_demand_start for SSI
+2026-03-27 17:18:15.135143: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:19:16.827574: agent_on_demand_start for SSI
+2026-03-27 17:19:19.152686: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:20:20.803339: agent_on_demand_start for SSI
+2026-03-27 17:20:25.034191: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:21:25.114103: agent_on_demand_start for SSI
+2026-03-27 17:21:28.506859: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:22:29.103439: agent_on_demand_start for SSI
+2026-03-27 17:22:32.498535: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:23:33.002120: agent_on_demand_start for SSI
+2026-03-27 17:23:35.459010: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:24:37.095672: agent_on_demand_start for SSI
+2026-03-27 17:24:39.487013: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:25:41.084752: agent_on_demand_start for SSI
+2026-03-27 17:25:43.508350: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:26:45.005397: agent_on_demand_start for SSI
+2026-03-27 17:26:48.867541: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:27:48.883399: agent_on_demand_start for SSI
+2026-03-27 17:27:51.192124: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:28:52.907260: agent_on_demand_start for SSI
+2026-03-27 17:28:54.811306: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:29:55.031575: agent_on_demand_start for SSI
+2026-03-27 17:29:56.873548: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:30:57.130109: agent_on_demand_start for SSI
+2026-03-27 17:30:58.965490: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:31:59.237840: agent_on_demand_start for SSI
+2026-03-27 17:32:01.075755: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:33:01.178768: agent_on_demand_start for SSI
+2026-03-27 17:33:03.244369: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:34:05.282948: agent_on_demand_start for SSI
+2026-03-27 17:34:08.673451: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:35:09.303594: agent_on_demand_start for SSI
+2026-03-27 17:35:12.642266: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:36:13.318277: agent_on_demand_start for SSI
+2026-03-27 17:36:17.085558: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:37:17.403024: agent_on_demand_start for SSI
+2026-03-27 17:37:21.604056: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:38:21.654015: agent_on_demand_start for SSI
+2026-03-27 17:38:23.991024: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:39:25.694729: agent_on_demand_start for SSI
+2026-03-27 17:39:28.005783: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:40:29.633267: agent_on_demand_start for SSI
+2026-03-27 17:40:32.770578: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:41:33.547822: agent_on_demand_start for SSI
+2026-03-27 17:41:36.096450: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:42:37.731993: agent_on_demand_start for SSI
+2026-03-27 17:42:40.496653: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:43:41.940764: agent_on_demand_start for SSI
+2026-03-27 17:43:43.665807: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:44:43.967788: agent_on_demand_start for SSI
+2026-03-27 17:44:45.769759: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:45:45.979304: agent_on_demand_start for SSI
+2026-03-27 17:45:49.333623: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:46:50.105170: agent_on_demand_start for SSI
+2026-03-27 17:46:53.298973: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:47:54.218314: agent_on_demand_start for SSI
+2026-03-27 17:47:58.582379: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:49:00.399620: agent_on_demand_start for SSI
+2026-03-27 17:49:02.399783: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:50:02.420537: agent_on_demand_start for SSI
+2026-03-27 17:50:04.378734: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:51:06.429201: agent_on_demand_start for SSI
+2026-03-27 17:51:08.294803: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:52:08.587133: agent_on_demand_start for SSI
+2026-03-27 17:52:10.496882: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:53:10.706378: agent_on_demand_start for SSI
+2026-03-27 17:53:12.695707: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:54:12.754011: agent_on_demand_start for SSI
+2026-03-27 17:54:14.612113: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:55:14.997618: agent_on_demand_start for SSI
+2026-03-27 17:55:16.848621: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:56:17.265457: agent_on_demand_start for SSI
+2026-03-27 17:56:19.467106: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:57:21.485423: agent_on_demand_start for SSI
+2026-03-27 17:57:23.431037: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:58:23.748637: agent_on_demand_start for SSI
+2026-03-27 17:58:25.590183: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 17:59:25.743549: agent_on_demand_start for SSI
+2026-03-27 17:59:27.398761: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:00:27.833807: agent_on_demand_start for SSI
+2026-03-27 18:00:29.825350: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:01:31.871546: agent_on_demand_start for SSI
+2026-03-27 18:01:35.461768: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:02:35.994726: agent_on_demand_start for SSI
+2026-03-27 18:02:40.819585: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:03:42.028558: agent_on_demand_start for SSI
+2026-03-27 18:03:45.392321: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:04:46.111122: agent_on_demand_start for SSI
+2026-03-27 18:04:48.654649: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:05:50.148006: agent_on_demand_start for SSI
+2026-03-27 18:05:51.998497: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:06:52.252070: agent_on_demand_start for SSI
+2026-03-27 18:06:54.609920: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:07:56.380586: agent_on_demand_start for SSI
+2026-03-27 18:07:58.696562: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:09:00.463380: agent_on_demand_start for SSI
+2026-03-27 18:09:02.456704: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:10:02.477844: agent_on_demand_start for SSI
+2026-03-27 18:10:04.447038: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:11:06.486842: agent_on_demand_start for SSI
+2026-03-27 18:11:08.282703: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:12:08.671784: agent_on_demand_start for SSI
+2026-03-27 18:12:10.569235: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:13:10.837999: agent_on_demand_start for SSI
+2026-03-27 18:13:13.166130: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:14:15.096896: agent_on_demand_start for SSI
+2026-03-27 18:14:17.436670: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:15:19.261204: agent_on_demand_start for SSI
+2026-03-27 18:15:21.682850: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:16:23.292814: agent_on_demand_start for SSI
+2026-03-27 18:16:25.585435: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:17:27.539433: agent_on_demand_start for SSI
+2026-03-27 18:17:30.917986: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:18:31.636003: agent_on_demand_start for SSI
+2026-03-27 18:18:34.998403: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:19:35.766670: agent_on_demand_start for SSI
+2026-03-27 18:19:39.090288: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:20:39.900087: agent_on_demand_start for SSI
+2026-03-27 18:20:43.331680: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:21:44.024652: agent_on_demand_start for SSI
+2026-03-27 18:21:45.826437: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:22:46.135108: agent_on_demand_start for SSI
+2026-03-27 18:22:47.942931: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:23:48.256790: agent_on_demand_start for SSI
+2026-03-27 18:23:50.259571: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:24:50.352702: agent_on_demand_start for SSI
+2026-03-27 18:24:52.185288: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:25:52.516179: agent_on_demand_start for SSI
+2026-03-27 18:25:54.331942: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:26:54.655388: agent_on_demand_start for SSI
+2026-03-27 18:26:56.461013: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:27:56.708009: agent_on_demand_start for SSI
+2026-03-27 18:27:58.952269: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:28:58.971587: agent_on_demand_start for SSI
+2026-03-27 18:29:02.281209: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:30:03.119575: agent_on_demand_start for SSI
+2026-03-27 18:30:05.009221: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:31:05.066716: agent_on_demand_start for SSI
+2026-03-27 18:31:06.982825: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:32:07.082116: agent_on_demand_start for SSI
+2026-03-27 18:32:12.005182: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:33:13.244429: agent_on_demand_start for SSI
+2026-03-27 18:33:16.508378: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:34:17.347515: agent_on_demand_start for SSI
+2026-03-27 18:34:19.676635: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:35:21.458139: agent_on_demand_start for SSI
+2026-03-27 18:35:23.953397: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:36:25.449889: agent_on_demand_start for SSI
+2026-03-27 18:36:27.748558: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:37:29.539015: agent_on_demand_start for SSI
+2026-03-27 18:37:31.854237: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:38:33.681187: agent_on_demand_start for SSI
+2026-03-27 18:38:36.010032: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:39:37.630513: agent_on_demand_start for SSI
+2026-03-27 18:39:41.029022: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:40:41.554570: agent_on_demand_start for SSI
+2026-03-27 18:40:44.847832: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:41:45.527752: agent_on_demand_start for SSI
+2026-03-27 18:41:48.888348: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:42:49.602806: agent_on_demand_start for SSI
+2026-03-27 18:42:53.006731: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:43:53.638791: agent_on_demand_start for SSI
+2026-03-27 18:43:57.635943: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:44:57.674443: agent_on_demand_start for SSI
+2026-03-27 18:45:00.392743: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:46:01.762663: agent_on_demand_start for SSI
+2026-03-27 18:46:05.254986: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:47:05.832666: agent_on_demand_start for SSI
+2026-03-27 18:47:08.253781: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:48:09.861123: agent_on_demand_start for SSI
+2026-03-27 18:48:15.936663: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:49:15.985174: agent_on_demand_start for SSI
+2026-03-27 18:49:18.752388: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:50:20.180312: agent_on_demand_start for SSI
+2026-03-27 18:50:23.128862: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:51:24.220583: agent_on_demand_start for SSI
+2026-03-27 18:51:27.285571: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:52:28.452715: agent_on_demand_start for SSI
+2026-03-27 18:52:32.042490: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:53:32.623260: agent_on_demand_start for SSI
+2026-03-27 18:53:35.501732: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:54:36.802403: agent_on_demand_start for SSI
+2026-03-27 18:54:41.612971: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:55:42.807268: agent_on_demand_start for SSI
+2026-03-27 18:55:44.557515: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:56:44.790598: agent_on_demand_start for SSI
+2026-03-27 18:56:46.618225: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:57:46.841878: agent_on_demand_start for SSI
+2026-03-27 18:57:48.647119: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:58:48.838874: agent_on_demand_start for SSI
+2026-03-27 18:58:50.801162: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 18:59:50.923299: agent_on_demand_start for SSI
+2026-03-27 18:59:52.821567: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:00:53.009795: agent_on_demand_start for SSI
+2026-03-27 19:00:55.346785: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:01:57.087952: agent_on_demand_start for SSI
+2026-03-27 19:01:59.615043: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:03:01.167797: agent_on_demand_start for SSI
+2026-03-27 19:03:03.645841: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:04:05.214756: agent_on_demand_start for SSI
+2026-03-27 19:04:08.326016: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:05:09.250368: agent_on_demand_start for SSI
+2026-03-27 19:05:11.571791: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:06:13.392470: agent_on_demand_start for SSI
+2026-03-27 19:06:15.715515: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:07:17.474467: agent_on_demand_start for SSI
+2026-03-27 19:07:19.701273: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:08:19.825292: agent_on_demand_start for SSI
+2026-03-27 19:08:22.132495: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:09:23.857844: agent_on_demand_start for SSI
+2026-03-27 19:09:26.162073: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:10:27.820701: agent_on_demand_start for SSI
+2026-03-27 19:10:30.245666: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:11:32.007173: agent_on_demand_start for SSI
+2026-03-27 19:11:34.324334: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:12:36.012180: agent_on_demand_start for SSI
+2026-03-27 19:12:38.340517: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:13:40.037200: agent_on_demand_start for SSI
+2026-03-27 19:13:43.694489: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:14:44.134693: agent_on_demand_start for SSI
+2026-03-27 19:14:47.012690: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:15:48.171319: agent_on_demand_start for SSI
+2026-03-27 19:15:50.092959: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:16:50.197270: agent_on_demand_start for SSI
+2026-03-27 19:16:52.096221: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:17:54.099558: agent_on_demand_start for SSI
+2026-03-27 19:17:56.074724: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:18:58.125745: agent_on_demand_start for SSI
+2026-03-27 19:19:00.027770: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:20:00.249468: agent_on_demand_start for SSI
+2026-03-27 19:20:02.755586: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:21:04.454875: agent_on_demand_start for SSI
+2026-03-27 19:21:06.794609: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:22:08.428193: agent_on_demand_start for SSI
+2026-03-27 19:22:11.328225: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:23:12.385604: agent_on_demand_start for SSI
+2026-03-27 19:23:14.521907: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:24:16.524422: agent_on_demand_start for SSI
+2026-03-27 19:24:18.389373: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:25:18.412706: agent_on_demand_start for SSI
+2026-03-27 19:25:20.339076: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:26:20.357977: agent_on_demand_start for SSI
+2026-03-27 19:26:25.801585: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:27:26.787261: agent_on_demand_start for SSI
+2026-03-27 19:27:30.288871: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:28:30.863290: agent_on_demand_start for SSI
+2026-03-27 19:28:34.191894: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:29:34.997663: agent_on_demand_start for SSI
+2026-03-27 19:29:37.306816: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:30:39.071923: agent_on_demand_start for SSI
+2026-03-27 19:30:41.171587: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:31:41.211835: agent_on_demand_start for SSI
+2026-03-27 19:31:43.193587: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:32:45.244441: agent_on_demand_start for SSI
+2026-03-27 19:32:47.117608: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:33:47.174246: agent_on_demand_start for SSI
+2026-03-27 19:33:49.082466: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:34:49.176969: agent_on_demand_start for SSI
+2026-03-27 19:34:51.576660: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:35:53.231461: agent_on_demand_start for SSI
+2026-03-27 19:35:55.253702: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:36:57.318096: agent_on_demand_start for SSI
+2026-03-27 19:36:59.259911: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:37:59.344733: agent_on_demand_start for SSI
+2026-03-27 19:38:02.817013: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:39:03.502372: agent_on_demand_start for SSI
+2026-03-27 19:39:06.884763: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:40:07.673748: agent_on_demand_start for SSI
+2026-03-27 19:40:11.317126: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:41:11.740019: agent_on_demand_start for SSI
+2026-03-27 19:41:13.583340: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:42:13.674330: agent_on_demand_start for SSI
+2026-03-27 19:42:15.498678: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:43:15.623239: agent_on_demand_start for SSI
+2026-03-27 19:43:17.617662: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:44:19.613078: agent_on_demand_start for SSI
+2026-03-27 19:44:21.502594: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:45:21.745060: agent_on_demand_start for SSI
+2026-03-27 19:45:26.114970: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:46:27.930826: agent_on_demand_start for SSI
+2026-03-27 19:46:31.240786: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:47:31.899507: agent_on_demand_start for SSI
+2026-03-27 19:47:35.384880: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:48:35.921647: agent_on_demand_start for SSI
+2026-03-27 19:48:39.346734: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:49:40.098944: agent_on_demand_start for SSI
+2026-03-27 19:49:43.427421: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:50:44.146490: agent_on_demand_start for SSI
+2026-03-27 19:50:47.751041: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:51:48.105003: agent_on_demand_start for SSI
+2026-03-27 19:51:51.448080: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:52:52.073375: agent_on_demand_start for SSI
+2026-03-27 19:52:55.666599: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:53:56.122241: agent_on_demand_start for SSI
+2026-03-27 19:54:00.505621: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:55:02.262696: agent_on_demand_start for SSI
+2026-03-27 19:55:05.643020: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:56:06.317587: agent_on_demand_start for SSI
+2026-03-27 19:56:09.755510: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:57:10.458143: agent_on_demand_start for SSI
+2026-03-27 19:57:12.770777: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:58:14.541633: agent_on_demand_start for SSI
+2026-03-27 19:58:17.467913: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 19:59:18.671766: agent_on_demand_start for SSI
+2026-03-27 19:59:21.078766: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:00:22.814552: agent_on_demand_start for SSI
+2026-03-27 20:00:25.216495: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:01:26.861915: agent_on_demand_start for SSI
+2026-03-27 20:01:29.207215: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:02:30.955777: agent_on_demand_start for SSI
+2026-03-27 20:02:33.278410: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:03:35.171543: agent_on_demand_start for SSI
+2026-03-27 20:03:37.532424: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:04:39.350367: agent_on_demand_start for SSI
+2026-03-27 20:04:41.669860: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:05:43.266735: agent_on_demand_start for SSI
+2026-03-27 20:05:45.907139: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:06:47.453205: agent_on_demand_start for SSI
+2026-03-27 20:06:49.615878: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:07:49.636146: agent_on_demand_start for SSI
+2026-03-27 20:07:51.545225: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:08:51.622045: agent_on_demand_start for SSI
+2026-03-27 20:08:53.399612: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:09:53.645834: agent_on_demand_start for SSI
+2026-03-27 20:09:55.482706: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:10:55.646649: agent_on_demand_start for SSI
+2026-03-27 20:10:57.757711: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:11:59.791561: agent_on_demand_start for SSI
+2026-03-27 20:12:01.716820: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:13:01.746585: agent_on_demand_start for SSI
+2026-03-27 20:13:03.885170: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:14:03.966092: agent_on_demand_start for SSI
+2026-03-27 20:14:06.021667: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:15:08.056720: agent_on_demand_start for SSI
+2026-03-27 20:15:09.819751: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:16:09.979385: agent_on_demand_start for SSI
+2026-03-27 20:16:12.026095: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:17:12.050986: agent_on_demand_start for SSI
+2026-03-27 20:17:14.113949: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:18:16.056280: agent_on_demand_start for SSI
+2026-03-27 20:18:18.254207: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:19:20.223386: agent_on_demand_start for SSI
+2026-03-27 20:19:22.258325: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:20:22.268615: agent_on_demand_start for SSI
+2026-03-27 20:20:24.250188: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:21:24.276598: agent_on_demand_start for SSI
+2026-03-27 20:21:26.319872: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:22:28.264365: agent_on_demand_start for SSI
+2026-03-27 20:22:30.108512: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:23:30.187019: agent_on_demand_start for SSI
+2026-03-27 20:23:32.127907: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:24:34.080540: agent_on_demand_start for SSI
+2026-03-27 20:24:37.013988: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:25:38.186823: agent_on_demand_start for SSI
+2026-03-27 20:25:40.064917: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:26:40.249984: agent_on_demand_start for SSI
+2026-03-27 20:26:42.119266: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:27:42.180167: agent_on_demand_start for SSI
+2026-03-27 20:27:44.641822: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+2026-03-27 20:28:46.273438: agent_on_demand_start for SSI
+2026-03-27 20:28:48.711378: agent_on_demand_error for SSI: 1 validation error for QualitativeAnalysis
+confidence_score
+  Field required [type=missing, input_value={'ticker': 'SSI', 'sentim... 'Phase 3 Intelligence'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
