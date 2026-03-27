@@ -119,6 +119,7 @@ class SignalGenerator:
                 "sentiment_score": float(sentiment_data["sentiment_score"]),
                 "sentiment_regime": sentiment_data["trend"].lower(),
                 "sentiment_confidence": 0.85,
+                "summary": sentiment_data.get("summary", ""),
                 "status": "SUCCESS"
             }
         elif sentiment_error:
@@ -155,7 +156,7 @@ class SignalGenerator:
             ticker=ticker,
             sentiment=sentiment_payload["sentiment_regime"] if sentiment_payload else "neutral", # Use actual sentiment
             confidence=sentiment_payload["sentiment_confidence"] if sentiment_payload else 0.5, # Use actual confidence
-            analysis_status="success",
+            analysis_status=(sentiment_payload.get("status", "PENDING").lower() if sentiment_payload else "pending"),
             reasoning="Phase 3 Intelligence"
         )
         
@@ -194,6 +195,11 @@ class SignalGenerator:
             "sentiment": sentiment_payload, # Use the raw sentiment_payload
             "fusion": {
                 "regime_detected": "trend",
+                "action": matrix_decision,
+                "rationale": (
+                    f"ml={consensus.ml_signal}, llm={consensus.llm_sentiment}, "
+                    f"veto={consensus.veto_triggered}"
+                ),
             },
             "risk": {
                 "position_size_suggestion": float(order_payload.volume) if order_payload else 0.0,
@@ -205,16 +211,6 @@ class SignalGenerator:
             "run_id": f"run_{int(dt.datetime.now().timestamp())}",
             "status": "success",
         }
-
-        logger.info(
-            "signal_generated_v5",
-            ticker=ticker,
-            action=action_plan["recommendation"],
-            horizon=horizon,
-            has_sentiment=bool(sentiment_payload),
-        )
-
-        return payload
 
     # ── Action Plan Logic ─────────────────────────────────────
 
