@@ -30,3 +30,5 @@ openai>=1.12
 langchain-text-splitters>=0.2
 rich>=13.7.0
 pandas-ta
+gymnasium
+stable-baselines3

@@ -1,0 +1,43 @@
+# Benchmark Harness Configuration v1
+# Tương thích với Multi-Agent Orchestrater và FinRL-X weights
+
+benchmark_session:
+  name: "MultiAgent-Vs-SingleAgent"
+  version: "1.0.0"
+
+environments:
+  - name: "Local_Ollama"
+    provider: "ollama"
+    model: "qwen2.5:7b"
+    max_concurrent_agents: 4
+
+market_regimes:
+  uptrend:
+    start_date: "2023-01-01"
+    end_date: "2023-06-30"
+  downtrend:
+    start_date: "2022-04-01"
+    end_date: "2022-11-15"
+  sideway_high_vol:
+    start_date: "2023-07-01"
+    end_date: "2023-12-31"
+
+horizons:
+  - "intraday"
+  - "swing_T3"
+
+universes:
+  VN30:
+    description: "Rổ cổ phiếu thanh khoản cao nhất"
+    tickers: ["SSI", "HPG", "FPT", "VIC", "VHM", "VPB", "MBB"]
+  Midcap:
+    description: "Nhóm thanh khoản trung bình, biến động mạnh"
+    tickers: ["DGW", "VND", "DIG", "KBC"]
+
+metrics_tracking:
+  performance: ["CAGR", "Sharpe", "MaxDD", "Turnover", "FeeAdjusted_PnL"]
+  agent_quality: ["contradiction_rate", "decision_latency_sec", "abstain_rate"]
+
+allocators_baseline:
+  - "EqualWeight"
+  - "MultiAgent_RiskOverlay"
