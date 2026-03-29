@@ -11,8 +11,9 @@ from datetime import datetime
 
 # Attempt to load vnstock
 try:
+    import vnstock 
     from vnstock import Vnstock
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     Vnstock = None
 
 from config.settings import get_settings

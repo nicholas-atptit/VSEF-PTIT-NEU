@@ -79,12 +79,32 @@ python scripts/sync_predictions_to_db.py
 ### Bước 4: Vận hành Dashboard
 Khởi động Terminal Dashboard để xem tín hiệu trực tiếp:
 ```powershell
-python src/ui/dashboard.py VGI
+python src/ui/dashboard.py <TICKER>
+
+# 6. Tương tác với AI Agent (Q&A)
+Gửi câu hỏi trực tiếp cho hệ thống qua API (hoặc tích hợp vào Chat Terminal):
+```bash
+# Sử dụng Curl để hỏi về mã VGI
+curl -X POST http://127.0.0.1:8005/api/v2/chat `
+     -H "Content-Type: application/json" `
+     -d '{"message": "Hãy phân tích tin tức và kỹ thuật mã VGI", "history": []}'
 ```
 
 ---
 
-## 📁 Cấu Trúc Thư Mục (Project Structure)
+## 💬 Hệ thống Phân tích Tương tác (AI Agent Q&A)
+
+Điểm nâng cấp của Phase 5 là hệ thống **RAG-based Chat**. AI Agent không chỉ trả lời dựa trên kiến thức chung mà còn truy vấn trực tiếp cơ sở dữ liệu để đưa ra thông tin thực tế:
+
+- **Tự động nhận diện Ticker**: Khi bạn hỏi về một mã (VD: "SSI có tốt không?"), Agent tự động nhận diện `SSI`.
+- **Truy vấn Đa tầng**:
+    - **Tầng 1 (News)**: Lấy tóm tắt tin tức và điểm Sentiment mới nhất từ bảng `news_intelligence`.
+    - **Tầng 2 (Quant)**: Lấy dự báo kỹ thuật và giá mục tiêu từ bảng `agent_predictions`.
+- **Context Fusion**: Agent tổng hợp hai luồng thông tin trên để đưa ra lời khuyên "Hybrid" chuẩn xác nhất.
+
+---
+
+## 📂 Cấu Trúc Thư Mục (Project Structure)
 
 ```
 ├── data/                          # Data Cache & Sentiment Features
