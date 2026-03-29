@@ -1,4 +1,4 @@
-# 📈 Algo Trading AI — Hybrid Agentic Intelligence (v5.0.0)
+# 📈 Algo Trading AI — Hybrid Agentic Intelligence (v5.3.1)
 
 > **Hệ thống giao dịch lai (Hybrid) thế hệ mới, tích hợp Tin tức (Sentiment) và Kỹ thuật (Quant) cho 104 mã (VN100 + Viettel Group). Sử dụng kiến trúc Multi-Agent Debate và Parkinson + Yang-Zhang Volatility Alpha.**
 
