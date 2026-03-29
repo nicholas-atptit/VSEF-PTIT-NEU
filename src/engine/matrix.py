@@ -54,13 +54,18 @@ def evaluate_decision_matrix(
             veto_triggered=False,
         )
 
-    # Rule 1 & 2 logic execution
+    # Rule 1 & 2 logic execution with Probabilistic Thresholds
     decision = "STANDBY"
     veto = False
+    
+    # Calculate weighted numeric consensus
+    # Tech (0.6) + Sent (0.4)
+    raw_score = (w_tech * (1.0 if ml_rec == "BUY" else -1.0 if ml_rec == "SELL" else 0.0)) + \
+                (w_sent * (1.0 if llm_sentiment == "POSITIVE" else -1.0 if llm_sentiment == "NEGATIVE" else 0.0))
 
     if ml_rec == "BUY":
         if llm_sentiment == "POSITIVE":
-            decision = "EXECUTE_BUY"
+            decision = "EXECUTE_BUY" if raw_score < 0.8 else "STRONG_BUY"
         elif llm_sentiment == "NEGATIVE":
             decision = "CANCEL_ORDER"
             veto = True
@@ -69,7 +74,7 @@ def evaluate_decision_matrix(
 
     elif ml_rec == "SELL":
         if llm_sentiment == "NEGATIVE":
-            decision = "EXECUTE_SELL"
+            decision = "EXECUTE_SELL" if raw_score > -0.8 else "STRONG_SELL"
         elif llm_sentiment == "POSITIVE":
             decision = "CANCEL_ORDER"
             veto = True
@@ -80,8 +85,7 @@ def evaluate_decision_matrix(
         ml_signal=ml_rec,
         llm_sentiment=llm_sentiment,
         veto_triggered=veto,
-        consensus_score=(w_tech * (1.0 if ml_rec == "BUY" else -1.0 if ml_rec == "SELL" else 0.0)) +
-                        (w_sent * (1.0 if llm_sentiment == "POSITIVE" else -1.0 if llm_sentiment == "NEGATIVE" else 0.0))
+        consensus_score=raw_score
     )
 
     return decision, consensus

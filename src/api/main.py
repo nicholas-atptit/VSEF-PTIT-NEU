@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+import sys
+import os
+
+print(f"DEBUG: ROOT_FILE={__file__}")
+print(f"DEBUG: CWD={os.getcwd()}")
+print(f"DEBUG: SYS_PATH_0={sys.path[0]}")
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware

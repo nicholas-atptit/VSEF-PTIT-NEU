@@ -626,6 +626,36 @@ class AlgoTradingTUI:
                     self.data["status"] = "LIVE (Redis)"
         except Exception: pass
 
+    async def _get_hybrid_market_pulse(self):
+        """Fetch the new v4 Hybrid Market Summary from the API."""
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                res = await client.get("http://127.0.0.1:8005/api/v2/market/summary", timeout=2.0)
+                if res.status_code == 200:
+                    self.data["market_pulse"] = res.json()
+        except Exception:
+            self.data["market_pulse"] = {"status": "Syncing 104..."}
+
+    def generate_footer(self) -> Panel:
+        pulse = self.data.get("market_pulse", {})
+        sent_24h = pulse.get("sentiment_24h", 0.0)
+        sent_color = "green" if sent_24h > 0.1 else "red" if sent_24h < -0.1 else "yellow"
+        
+        dist = pulse.get("prediction_distribution", {})
+        up_count = dist.get("UP", 0)
+        
+        pulse_str = f"| [bold]MARKET 104:[/] Sent: [{sent_color}]{sent_24h:+.2f}[/] | Bullish: [cyan]{up_count}[/] mã"
+        if not dist:
+            pulse_str = "| [dim]Hybrid Training v4: Active (104 Tickers)...[/dim]"
+            
+        footer_text = Text.assemble(
+            (f" Ticker: {self.pinned_ticker} ", "bold white on magenta"),
+            (f"  {pulse_str}  ", "white"),
+            (f"  DB: {DB_VERSION} | Status: {DB_ERR if not HAS_DB else 'READY'} ", "dim cyan")
+        )
+        return Panel(footer_text, style="white on black")
+
     async def _poll_db(self):
         if not HAS_DB: return
         try:
@@ -808,6 +838,9 @@ class AlgoTradingTUI:
                     tasks.append(self._update_news_intelligence())
                 if self.news_crawler: tasks.append(self._update_news())
                 if HAS_VNSTOCK: tasks.append(self._poll_rest())
+                # New Phase 42 Hybrid Sync
+                tasks.append(self._get_hybrid_market_pulse())
+                
                 if tasks: await asyncio.gather(*tasks)
             except Exception as e:
                  self.logger.error("live_feeds_loop_error", error=str(e))
@@ -824,11 +857,8 @@ class AlgoTradingTUI:
                 layout["main"]["sentiment_panel"].update(self.generate_sentiment_panel())
                 layout["main"]["fusion_panel"].update(self.generate_fusion_panel())
 
-                # Footer
-                db_info = "SYNCING" if "BOOTSTRAPPING" in self.data["status"] else "OK" if HAS_DB else "OFFLINE"
-                prio = " | [bold green]AGENTIC MODE[/]"
-                f_text = f"TICKER: {self.pinned_ticker} | CONTRACT: v2 | DB: {db_info}{prio} | {datetime.now().strftime('%H:%M:%S')}"
-                layout["footer"].update(Panel(Align.center(f"[bold white]{f_text}[/]"), style="white on red"))
+                # Footer - Now using the specialized 104-Pulse generator
+                layout["footer"].update(self.generate_footer())
             except Exception as e:
                 # Fallback simple UI on error
                 layout["footer"].update(Panel(f"[bold yellow]Layout Engine Busy: {str(e)}[/bold yellow]"))

@@ -40,7 +40,45 @@ _orchestrator = TradingOrchestrator(use_llm_provider=os.getenv('LLM_PROVIDER', '
 
 router = APIRouter(prefix="/api/v2", tags=["Phase 1 — Agentic Master Plan"])
 
-# Shared instances
+@router.get("/market/summary")
+async def get_market_summary():
+    """Domain D: Universal Market Intelligence Overview (104 Tickers)."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy import text
+    from config.settings import get_settings
+    conf = get_settings()
+    
+    try:
+        engine = create_async_engine(conf.timescale_url)
+        async with engine.connect() as conn:
+            # 1. Prediction Stats
+            pred_query = text("SELECT prediction_label, COUNT(*) FROM agent_predictions GROUP BY prediction_label")
+            pred_res = await conn.execute(pred_query)
+            predictions = {row[0]: row[1] for row in pred_res.fetchall()}
+            
+            # 2. Sentiment Average
+            sent_query = text("SELECT AVG(sentiment_score) FROM news_intelligence WHERE timestamp > NOW() - INTERVAL '24 hours'")
+            sent_res = await conn.execute(sent_query)
+            avg_sentiment = sent_res.scalar() or 0.0
+            
+            # 3. Top Buzz Tickers
+            buzz_query = text("SELECT ticker, COUNT(*) as news_count FROM news_intelligence WHERE timestamp > NOW() - INTERVAL '24 hours' GROUP BY ticker ORDER BY news_count DESC LIMIT 5")
+            buzz_res = await conn.execute(buzz_query)
+            top_buzz = [{"ticker": row[0], "count": row[1]} for row in buzz_res.fetchall()]
+            
+        await engine.dispose()
+        
+        return {
+            "total_tracked": 104,
+            "sentiment_24h": float(avg_sentiment),
+            "prediction_distribution": predictions,
+            "top_buzz": top_buzz,
+            "status": "Hybrid Training v4 Active"
+        }
+    except Exception as e:
+        logger.error("market_summary_error", error=str(e))
+        return {"error": str(e), "status": "Initializing"}
+
 _trainer = DualModelTrainer()
 _fe = FeatureEngineer()
 _signal_gen = SignalGenerator()
@@ -182,6 +220,7 @@ async def chat_interactive(req: ChatRequest):
         from config.settings import get_settings
         client = get_llm_client()
         conf = get_settings()
+        logger.info("chat_request_debug", provider=conf.llm_provider, model=conf.ollama_model_name)
         
         system_prompt = "Bạn là trợ lý AI Trading chuyên sâu về chứng khoán Việt Nam (VN30/VN100). Đưa ra phân tích súc tích, chuyên nghiệp."
         
@@ -195,22 +234,46 @@ async def chat_interactive(req: ChatRequest):
             ticker_to_use = ticker_to_use.upper().strip()
             context_str = f"Cảnh báo: Người dùng đang hỏi về mã {ticker_to_use}.\n"
             
-            # Kéo dữ liệu thật từ DB ra cho AI đọc
-            latest_cards = _decision_repo.get_decisions_by_ticker(ticker_to_use)
-            if latest_cards:
-                latest_card = latest_cards[-1]  # Lấy cái mới nhất
-                news = latest_card.get('news_summary', 'Chưa có tin tức mới')
-                tech = latest_card.get('tech_summary', {})
-                price = tech.get('price', 'N/A')
-                trend = tech.get('trend', 'N/A')
-                
-                context_str += f"[Dữ liệu Market Real-time cho {ticker_to_use}]:\n"
-                context_str += f"- Giá hiện tại: {price}\n"
-                context_str += f"- Xu hướng kỹ thuật: {trend}\n"
-                context_str += f"- Tóm tắt Tin Tức gần nhất: {news}\n"
-                context_str += "Hãy dựa vào đúng các dữ liệu thực tế này để trả lời, không được tự bịa ra thông tin. Tính toán theo [Dữ liệu Market].\n"
+            # 1. Thử lấy từ Database (News Intelligence)
+            try:
+                from sqlalchemy.ext.asyncio import create_async_engine
+                from sqlalchemy import text
+                engine = create_async_engine(conf.timescale_url)
+                async with engine.connect() as conn:
+                    # Lấy tin tức đã phân tích (Đã sửa column name: summary, timestamp)
+                    news_query = text("SELECT summary, sentiment_score, trend FROM news_intelligence WHERE ticker = :t ORDER BY timestamp DESC LIMIT 1")
+                    news_res = await conn.execute(news_query, {"t": ticker_to_use})
+                    news_row = news_res.fetchone()
+                    
+                    if news_row:
+                        context_str += f"[Phân tích Tin tức cho {ticker_to_use}]:\n"
+                        context_str += f"- Tóm tắt: {news_row[0]}\n"
+                        context_str += f"- Điểm Sentiment: {news_row[1]}\n"
+                        context_str += f"- Xu hướng tin tức: {news_row[2]}\n"
+                    
+                    # Lấy dự báo kỹ thuật (nếu có)
+                    quant_query = text("SELECT prediction_label, confidence, target_price FROM agent_predictions WHERE ticker = :t ORDER BY created_at DESC LIMIT 1")
+                    quant_res = await conn.execute(quant_query, {"t": ticker_to_use})
+                    quant_row = quant_res.fetchone()
+                    
+                    if quant_row:
+                        context_str += f"[Phân tích Kỹ thuật cho {ticker_to_use}]:\n"
+                        context_str += f"- Dự báo: {quant_row[0]}\n"
+                        context_str += f"- Độ tin cậy: {quant_row[1]}\n"
+                        context_str += f"- Giá mục tiêu: {quant_row[2]}\n"
+                await engine.dispose()
+            except Exception as db_err:
+                logger.warning("db_context_error", error=str(db_err))
+                # Fallback to file-based legacy
+                latest_cards = _decision_repo.get_decisions_by_ticker(ticker_to_use)
+                if latest_cards:
+                    latest_card = latest_cards[-1]
+                    context_str += f"[Dữ liệu Replay]: {latest_card.get('news_summary')}\n"
+
+            if context_str == f"Cảnh báo: Người dùng đang hỏi về mã {ticker_to_use}.\n":
+                context_str += f"Hệ thống hiện chưa có dữ liệu phân tích chi tiết cho mã {ticker_to_use}. Hãy trả lời dựa trên kiến thức chung của bạn.\n"
             else:
-                context_str += f"Hệ thống hiện chưa có Decision Card cho mã {ticker_to_use} trong phiên hôm nay. Hãy phân tích dựa trên kiến thức thị trường chung của bạn.\n"
+                context_str += "Hãy dựa vào đúng các dữ liệu thực tế (Phân tích Tin tức/Kỹ thuật) phía trên để trả lời, không được tự bịa ra thông tin.\n"
 
             
         messages = [{"role": "system", "content": system_prompt + context_str}]
@@ -222,7 +285,7 @@ async def chat_interactive(req: ChatRequest):
 
         # Bỏ qua Gemini trong POC này vì Gemini API deprecation, dùng OpenAI tương thích Ollama
         response = await client.chat.completions.create(
-            model=conf.ollama_model_name, # or whatever default
+            model="qwen2.5:7b", # FORCE FOR DEBUG
             messages=messages,
             temperature=0.3
         )

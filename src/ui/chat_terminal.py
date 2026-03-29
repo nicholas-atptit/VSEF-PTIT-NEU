@@ -13,7 +13,7 @@ except ImportError:
     sys.exit(1)
 
 console = Console()
-API_URL = "http://127.0.0.1:8000/api/v2/chat"
+API_URL = "http://127.0.0.1:8005/api/v2/chat"
 
 async def chat_loop():
     console.print(Panel("[bold magenta]AGENTIC TERMINAL CHAT REPL[/bold magenta]\n[dim]Type 'quit' or 'exit' to end.[/dim]", width=60))

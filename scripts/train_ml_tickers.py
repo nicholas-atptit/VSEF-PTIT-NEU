@@ -55,7 +55,7 @@ def _safe(series, fallback=0.0):
     return series
 
 
-def build_daily_features(df: pd.DataFrame) -> pd.DataFrame:
+def build_daily_features(df: pd.DataFrame, sentiment_df: pd.DataFrame = None) -> pd.DataFrame:
     """Enhanced feature set + multi-horizon targets with volatility buffer."""
     if 'time' in df.columns and 'date' not in df.columns:
         df = df.rename(columns={'time': 'date'})
@@ -64,7 +64,7 @@ def build_daily_features(df: pd.DataFrame) -> pd.DataFrame:
     # --- Feature Generation ---
     fe = FeatureEngineer()
     # transform drops NaNs and prepares all core indicators
-    feat_df = fe.transform(df)
+    feat_df = fe.transform(df, sentiment_df=sentiment_df)
     
     # Prefix features with 'd_' for script compatibility if they aren't already
     for col in fe.get_feature_columns(feat_df):
@@ -411,6 +411,7 @@ def main():
     fund_df = None
     sector_df = None
     ticker_sectors = None
+    sentiment_df = None
     
     proxy_path = Path("data/market_proxy.csv")
     if proxy_path.exists():
@@ -424,6 +425,11 @@ def main():
     if sector_path.exists():
         sector_df = pd.read_csv(sector_path)
         ticker_sectors = pd.read_csv("data/ticker_sectors.csv")
+
+    sentiment_path = Path("data/sentiment_features.csv")
+    if sentiment_path.exists():
+        sentiment_df = pd.read_csv(sentiment_path)
+        print("✅ Hybrid Sentiment Intelligence loaded.")
 
     print(f"✅ Loaded Phase 35 Intelligence: {len(fund_df) if fund_df is not None else 0} fundamentals, {len(sector_df) if sector_df is not None else 0} sectors.")
 
@@ -442,7 +448,13 @@ def main():
             if len(df_daily) < 60:
                 skipped += 1
                 continue
-            df_daily = build_daily_features(df_daily)
+            
+            # Filter sentiment for this ticker if available
+            ticker_sentiment = None
+            if sentiment_df is not None:
+                ticker_sentiment = sentiment_df[sentiment_df['ticker'] == ticker]
+
+            df_daily = build_daily_features(df_daily, sentiment_df=ticker_sentiment)
 
             hourly_agg = None
             hourly_file = hourly_dir / f"{ticker}.csv"

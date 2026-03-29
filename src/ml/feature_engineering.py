@@ -61,26 +61,33 @@ class FeatureEngineer:
 
     # ── Public API ────────────────────────────────────────────
 
-    def transform(self, df: pd.DataFrame, fundamentals_df: pd.DataFrame = None) -> pd.DataFrame:
+    def transform(self, df: pd.DataFrame, fundamentals_df: pd.DataFrame = None, sentiment_df: pd.DataFrame = None) -> pd.DataFrame:
         """Transform OHLCV DataFrame into feature matrix.
 
         Args:
             df: DataFrame with columns [date, open, high, low, close, volume].
                 Must be sorted ascending by date.
             fundamentals_df: Optional DataFrame with quarterly ratios merged daily.
+            sentiment_df: Optional DataFrame with [ticker, date, sentiment_avg, ...]
 
         Returns:
-            DataFrame with original OHLCV columns + computed features.
-            Rows with NaN (from insufficient history) are dropped.
+            DataFrame with original OHLCV columns + computed features + sentiment features.
         """
         df = df.copy().sort_values("date").reset_index(drop=True)
+        # Convert date to standard format for merging
+        df['date'] = pd.to_datetime(df['date']).dt.date
         
-        # --- Step 0: Merge Fundamentals if provided (forward-filled) ---
+        # --- Step 0: Merge Fundamentals if provided ---
         if fundamentals_df is not None and not fundamentals_df.empty:
-            # Assumes fundamentals_df has 'date' and 'ticker' or matched to df
             df = df.merge(fundamentals_df, on='date', how='left').ffill()
 
-        # ── Step 1: Forward-fill only (no backward-fill = no leakage) ──
+        # --- Step 0.5: Merge Sentiment if provided ---
+        if sentiment_df is not None and not sentiment_df.empty:
+            # Ensure sentiment_df date is standard
+            sentiment_df['date'] = pd.to_datetime(sentiment_df['date']).dt.date
+            df = df.merge(sentiment_df, on='date', how='left').fillna(0) # 0 for no newsdays
+
+        # ── Step 1: Forward-fill OHLCV ──
         df = df.ffill()
 
         # ── Step 2: Base returns ──
@@ -113,23 +120,53 @@ class FeatureEngineer:
     # ── Volatility Features ───────────────────────────────────
 
     def _add_volatility_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """ATR-14, Historical Volatility (HV-20), Bollinger Bandwidth."""
+        """ATR-14, Historical Volatility, Parkinson Volatility, Bollinger Bandwidth."""
 
         # --- ATR (Average True Range, 14-day) ---
-        # Using pandas-ta library correctly
         atr_col = df.ta.atr(length=14)
         if atr_col is not None:
             df["atr_14"] = atr_col
         else:
             df["atr_14"] = 0.0
 
-        # --- Historical Volatility (annualized) ---
-        # HV = σ(log_return) × √252,  rolling 20-day
+        # --- Historical Volatility (Standard Std Dev) ---
         df["hv_20"] = df["log_return"].rolling(20).std() * np.sqrt(252)
+
+        # --- Parkinson Volatility (High-Low Range-based) ---
+        # Formula: sqrt( (1 / (4 * n * ln(2))) * sum( ln(H/L)^2 ) ) * sqrt(252)
+        window = 20
+        hl_term = np.log(df["high"] / df["low"])**2
+        park_vol = np.sqrt(hl_term.rolling(window).mean() / (4 * np.log(2))) * np.sqrt(252)
+        df["park_vol_20"] = park_vol
+
+        # --- Rogers-Satchell Volatility ---
+        # Formula: Sum( ln(H/C)*ln(H/O) + ln(L/C)*ln(L/O) )
+        rs_term = np.log(df['high']/df['close']) * np.log(df['high']/df['open']) + \
+                  np.log(df['low']/df['close']) * np.log(df['low']/df['open'])
+        rs_vol = np.sqrt(rs_term.rolling(window).mean()) * np.sqrt(252)
+        df["rs_vol_20"] = rs_vol
+
+        # --- Yang-Zhang Volatility (Combining Overnight, Open-to-Close, and RS) ---
+        # Formula: sqrt(sigma_o^2 + k*sigma_c^2 + (1-k)*sigma_rs^2)
+        # where k = 0.34 / (1.34 + (n+1)/(n-1))
+        k = 0.34 / (1.34 + (window + 1) / (window - 1))
+        
+        # Overnight Vol (log(O_t / C_{t-1}))
+        overnight_ret = np.log(df['open'] / df['close'].shift(1))
+        overnight_vol_sq = overnight_ret.rolling(window).var()
+        
+        # Open-to-Close Vol (log(C_t / O_t))
+        open_to_close_ret = np.log(df['close'] / df['open'])
+        open_to_close_vol_sq = open_to_close_ret.rolling(window).var()
+        
+        # Rogers-Satchell Vol Squre (already computed in rs_term)
+        rs_vol_sq = rs_term.rolling(window).mean()
+        
+        yz_vol = np.sqrt(overnight_vol_sq + k * open_to_close_vol_sq + (1 - k) * rs_vol_sq) * np.sqrt(252)
+        df["yz_vol_20"] = yz_vol
 
         # --- Bollinger Bandwidth ---
         for w in WINDOWS:
-            # ta.bbands returns lower, mid, upper, bandwidth, percent
             bb = df.ta.bbands(length=w, std=2.0)
             if bb is not None:
                 bb_col = f"BBB_{w}_2.0"
