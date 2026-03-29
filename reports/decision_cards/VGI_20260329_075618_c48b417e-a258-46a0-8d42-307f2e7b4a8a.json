@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "decision_id": "c48b417e-a258-46a0-8d42-307f2e7b4a8a",
+    "ticker": "VGI",
+    "timestamp": "2026-03-29T00:56:18.827858",
+    "provider": "gemini",
+    "model_version": "qwen2.5:7b",
+    "latency_sec": 0.8
+  },
+  "tech_summary": {
+    "agent": "Technical Agent",
+    "ticker": "VGI",
+    "trend": "BULLISH",
+    "rsi": 45.0,
+    "support": 30.5,
+    "resistance": 35.0,
+    "confidence": 0.75
+  },
+  "news_summary": {
+    "agent": "News & Macro Agent",
+    "ticker": "VGI",
+    "sentiment_score": 0.6,
+    "key_drivers": [
+      "Ngân hàng nhà nước hỗ trợ thanh khoản",
+      "Triển vọng nới lỏng tiền tệ"
+    ],
+    "confidence": 0.8
+  },
+  "evidence_ids": [
+    "TECH-1774745778.0235415",
+    "NEWS-1774745778.0235415"
+  ],
+  "consensus_score": 0.5457,
+  "regime_label": "sideways",
+  "dynamic_confidence_threshold": 0.75,
+  "bull_thesis": "Lỗi gọi LLM: Error code: 404 - {'error': {'message': \"model 'gemma-2-27b-it' not found\", 'type': 'not_found_error', 'param': None, 'code': None}}",
+  "bear_thesis": "Lỗi gọi LLM: Error code: 404 - {'error': {'message': \"model 'gemma-2-27b-it' not found\", 'type': 'not_found_error', 'param': None, 'code': None}}",
+  "risk_veto": false,
+  "risk_reason": "Chưa ghi nhận biến động vol shock lớn hoặc low confidence.",
+  "action": "BUY",
+  "target_weight": 0.05,
+  "execution_shares": 1000,
+  "rationale": "Tranh luận nghiên vị thế Bull hợp lý, rủi ro trong kiểm soát.",
+  "confidence": 0.8
+}

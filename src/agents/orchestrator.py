@@ -43,11 +43,21 @@ class TradingOrchestrator:
             "ticker": ticker
         }
 
-        # 2. Debate (Parallel Bull/Bear phase)
-        # Trong bản đồ thực tế có thể có nhiều vòng, ở đây V1 chỉ 1 vòng
-        bull_task = asyncio.create_task(self.bull.analyze(context_data))
-        bear_task = asyncio.create_task(self.bear.analyze(context_data))
-        bull_res, bear_res = await asyncio.gather(bull_task, bear_task)
+        # 2. Debate Round 1
+        bull_task_r1 = asyncio.create_task(self.bull.analyze(context_data))
+        bear_task_r1 = asyncio.create_task(self.bear.analyze(context_data))
+        bull_res_r1, bear_res_r1 = await asyncio.gather(bull_task_r1, bear_task_r1)
+
+        # 3. Debate Round 2 (Injecting history)
+        context_data_bull_r2 = context_data.copy()
+        context_data_bull_r2["previous_round"] = {"bear_thesis": bear_res_r1["thesis"]}
+        
+        context_data_bear_r2 = context_data.copy()
+        context_data_bear_r2["previous_round"] = {"bull_thesis": bull_res_r1["thesis"]}
+
+        bull_task_r2 = asyncio.create_task(self.bull.analyze(context_data_bull_r2))
+        bear_task_r2 = asyncio.create_task(self.bear.analyze(context_data_bear_r2))
+        bull_res, bear_res = await asyncio.gather(bull_task_r2, bear_task_r2)
 
         debate_context = {
             "bull_thesis": bull_res,
@@ -55,13 +65,33 @@ class TradingOrchestrator:
             "evidence": context_data
         }
 
-        # 3. Risk Veto
+        # 4. Risk Veto
         risk_res = await self.risk.analyze(debate_context)
         
-        # 4. Portfolio Allocation / Final Decision
+        # 5. Accuracy Layer Calculation
+        from src.accuracy.regime_detector import RegimeDetector
+        from src.accuracy.signal_consensus import SignalConsensus
+        from src.accuracy.decision_thresholds import DecisionThresholds
+        
+        regime_label = RegimeDetector.detect_regime(tech_res)
+        threshold = DecisionThresholds.get_dynamic_threshold(regime_label)
+        
+        # Giả lập extract điểm số cho SignalConsensus từ response
+        tech_score = tech_res.get("score", 0.5) if isinstance(tech_res, dict) else 0.5
+        news_score = news_res.get("sentiment_score", 0.5) if isinstance(news_res, dict) else 0.5
+        
+        consensus_score = SignalConsensus.calculate_consensus(
+            tech_score=tech_score,
+            news_score=news_score,
+            risk_veto=risk_res.get("veto", False)
+        )
+        
+        # 6. Portfolio Allocation / Final Decision
         portfolio_context = {
             "debate": debate_context,
-            "risk_decision": risk_res
+            "risk_decision": risk_res,
+            "threshold": threshold,
+            "consensus": consensus_score
         }
         final_res = await self.portfolio.analyze(portfolio_context)
         
@@ -75,6 +105,10 @@ class TradingOrchestrator:
             "provider": self.provider,
             "tech_summary": tech_res,
             "news_summary": news_res,
+            "evidence_ids": [f"TECH-{start_time}", f"NEWS-{start_time}"],
+            "consensus_score": consensus_score,
+            "regime_label": regime_label,
+            "dynamic_confidence_threshold": threshold,
             "bull_thesis": bull_res["thesis"],
             "bear_thesis": bear_res["thesis"],
             "risk_veto": risk_res["veto"],
@@ -82,7 +116,8 @@ class TradingOrchestrator:
             "action": final_res["action"],
             "target_weight": final_res["target_weight"],
             "rationale": final_res["rationale"],
-            "latency_sec": round(end_time - start_time, 2)
+            "latency_sec": round(end_time - start_time, 2),
+            "confidence": getattr(final_res, "confidence", 0.8)
         }
         
         return decision_card

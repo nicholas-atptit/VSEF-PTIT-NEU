@@ -16,12 +16,29 @@ class NewsMacroAgent(BaseAgent):
         """
         ticker = data.get("ticker", "UNKNOWN")
         
-        # NOTE: Kết nối với DB Vector (Chroma) để lấy news sentiment.
-        # Mock sentiment
+        try:
+            from src.llm.news_intel import NewsIntelEngine
+            engine = NewsIntelEngine()
+            latest = await engine.get_latest_intelligence(ticker)
+        except Exception as e:
+            latest = None
+            
+        if latest:
+            return {
+                "agent": self.name,
+                "ticker": ticker,
+                "sentiment_score": latest.get("sentiment_score", 0.5),
+                "trend": latest.get("trend", "Neutral"),
+                "summary": latest.get("summary", "Không có tin tức"),
+                "confidence": 0.85
+            }
+            
+        # Fallback if no news in DB
         return {
             "agent": self.name,
             "ticker": ticker,
-            "sentiment_score": 0.6,
-            "key_drivers": ["Ngân hàng nhà nước hỗ trợ thanh khoản", "Triển vọng nới lỏng tiền tệ"],
-            "confidence": 0.8
+            "sentiment_score": 0.5,
+            "trend": "Neutral",
+            "summary": "Không có dữ liệu tin tức cập nhật trong CSDL.",
+            "confidence": 0.3
         }

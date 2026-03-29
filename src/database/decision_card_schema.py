@@ -22,6 +22,12 @@ class DecisionCard(BaseModel):
     tech_summary: Dict[str, Any]
     news_summary: Dict[str, Any]
     
+    # Accuracy Module Info
+    evidence_ids: List[str] = Field(default_factory=list)
+    consensus_score: float = 0.0
+    regime_label: str = "sideways"
+    dynamic_confidence_threshold: float = 0.75
+    
     # Theses
     bull_thesis: str
     bear_thesis: str
@@ -33,5 +39,7 @@ class DecisionCard(BaseModel):
     # Final Action
     action: str = Field(description="BUY | SELL | HOLD")
     target_weight: float = Field(description="% Portfolio Allocation")
+    execution_shares: int = Field(default=0, description="Rounded lot shares for execution API")
     rationale: str
     confidence: float = 0.0
+

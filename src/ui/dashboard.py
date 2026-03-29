@@ -17,6 +17,21 @@ from pathlib import Path
 from typing import Any
 import pandas as pd
 
+import sys
+# Suppress Google Generative AI deprecation text output to stderr breaking TUI
+import warnings
+warnings.filterwarnings("ignore")
+class DummyStream: 
+    def write(self, *x): pass
+    def flush(self): pass
+try:
+    old_stderr = sys.stderr
+    sys.stderr = DummyStream()
+    import google.generativeai
+    sys.stderr = old_stderr
+except:
+    sys.stderr = old_stderr
+
 # --- Robust Imports ---
 from dotenv import load_dotenv
 load_dotenv()
@@ -224,6 +239,9 @@ class AlgoTradingTUI:
         ai_status = "[bold green]AI: ONLINE[/]" if ai_online else "[bold yellow]AI: FALLBACK[/]"
         if is_pending:
             ai_status = "[bold blue]AI: PENDING...[/]"
+            
+        regime_str = self.data.get("regime_label", "UNKNOWN").upper()
+        ai_status += f" | REGIME: [bold cyan]{regime_str}[/bold cyan]"
         
         acc = risk_data.get("model_accuracy_1w", 0.0) if isinstance(risk_data, dict) else 0.0
         acc_str = f"[bold cyan]Acc: {acc:.0%}[/]" if acc > 0 else "[dim]Acc: --%[/]"
@@ -324,8 +342,9 @@ class AlgoTradingTUI:
         
         table = Table(show_header=False, box=None, expand=True)
         table.add_row("[bold]Final Action:[/bold]", f"[bold white on {rec_color}] {rec} [/]")
-        table.add_row("[bold]Fusion Confidence:[/bold]", f"[bold yellow]{((self.data.get('ml_up') or 0.5) * 100):.1f}%[/]")
-        table.add_row("[bold]Allocation (Lots):[/bold]", f"[bold cyan]{(risk.get('position_size_suggestion', 0.0)):,.0f}[/bold cyan]")
+        table.add_row("[bold]Agent Consensus Score:[/bold]", f"[bold magenta]{self.data.get('consensus_score', 0.0):.3f}[/bold magenta]")
+        table.add_row("[bold]Dynamic Threshold:[/bold]", f"[bold white]{self.data.get('dynamic_confidence_threshold', 0.0):.2f}[/bold white]")
+        table.add_row("[bold]Allocation (Lots):[/bold]", f"[bold cyan]{(self.data.get('execution_shares', 0)):,.0f} shares[/bold cyan]")
         table.add_row("[bold]Risk Budget:[/bold]", "[green]SAFE (Within Cap)[/]")
         table.add_row("[bold]Risk Veto:[/bold]", veto_status)
         
@@ -338,6 +357,38 @@ class AlgoTradingTUI:
         trace = "\n[dim]Rationale Trace:[/dim]\nCombined high tech confidence with neutral-to-positive macro headlines. Sector correlation allows entry."
         
         return Panel(Group(table, trace), title="[bold green]Panel C: Fusion & Risk[/bold green]", border_style="green")
+
+    async def _update_from_decision_cards(self):
+        """Poll the reports/decision_cards directory for the latest debate output."""
+        cards_dir = PROJECT_ROOT / "reports" / "decision_cards"
+        while self.running:
+            try:
+                if cards_dir.exists():
+                    files = list(cards_dir.glob(f"{self.pinned_ticker}_*.json"))
+                    if files:
+                        latest_file = sorted(files)[-1]
+                        import json
+                        with open(latest_file, "r", encoding="utf-8") as f:
+                            card = json.load(f)
+                            
+                        self.data["consensus_score"] = card.get("consensus_score", 0.0)
+                        self.data["regime_label"] = card.get("regime_label", "UNKNOWN")
+                        self.data["dynamic_confidence_threshold"] = card.get("dynamic_confidence_threshold", 0.0)
+                        self.data["execution_shares"] = card.get("execution_shares", 0)
+                        
+                        if card.get("action"):
+                            self.data["ml_recommendation"] = card["action"]
+                        if card.get("rationale"):
+                            self.data["llm_reasoning"] = card["rationale"]
+                            self.data["_has_decision_card"] = True
+                            
+                        # Satisfy the agent intel check to prevent endless fallback loops
+                        if not self.data.get("sentiment_intel"):
+                            self.data["sentiment_intel"] = {"status": "LIVE (Card)"}
+                            
+            except Exception as e:
+                self.logger.error("update_from_cards_error", error=str(e))
+            await asyncio.sleep(5)
 
     async def _update_from_cache(self):
         while self.running:
@@ -392,9 +443,9 @@ class AlgoTradingTUI:
                                 self.data["max_upside"] = ml.get("max_upside_pct") or ml.get("quantitative_signals", {}).get("max_upside_pct", 0.0)
                                 self.data["max_downside"] = ml.get("max_downside_pct") or ml.get("quantitative_signals", {}).get("max_downside_pct", 0.0)
                             
-                            self.data["llm_outlook"] = str(llm.get("overall_outlook", "NEUTRAL")).upper()
-                            self.data["llm_reasoning"] = llm.get("reasoning", "Analysis loaded.")
-                            
+                            if not self.data.get("_has_decision_card"):
+                                self.data["llm_reasoning"] = llm.get("reasoning", "Analysis loaded.")
+                                
                             rl = llm.get("rl_recommendation", {})
                             self.data["rl_allocation"] = rl.get("suggested_allocation_pct") or self.data.get("rl_allocation", 0.0)
                             
@@ -433,7 +484,7 @@ class AlgoTradingTUI:
                                 if sent.get("summary"):
                                     self.data["news_headlines"] = sent["summary"]
                                 
-                            if "fusion" in cache_data:
+                            if "fusion" in cache_data and not self.data.get("_has_decision_card"):
                                 fus = cache_data["fusion"]
                                 self.data["ml_recommendation"] = fus.get("action", "HOLD")
                                 self.data["llm_reasoning"] = fus.get("rationale", "No rationale.")
@@ -446,7 +497,9 @@ class AlgoTradingTUI:
                         
                         has_running_agent_task = self._agent_task is not None and not self._agent_task.done()
                         if HAS_AI and self.agent and (not has_intel) and (now - self._last_agent_run > 60) and not has_running_agent_task:
-                            self.data["news_headlines"] = f"[yellow]Agent Analysis PENDING for {self.pinned_ticker}...[/yellow]"
+                            # Only set pending if we don't have ANY intel
+                            if not self.data.get("sentiment_intel"):
+                                self.data["news_headlines"] = f"[yellow]Agent Analysis PENDING for {self.pinned_ticker}...[/yellow]"
                             self._last_agent_run = now
                             self._agent_task = asyncio.create_task(self._run_agent_on_demand())
                         
@@ -479,11 +532,14 @@ class AlgoTradingTUI:
                     "ceiling_90th": curr_price * 1.05
                 }
             }
-            res = await self.agent.generate(
-                self.pinned_ticker, 
-                current_close=self.data.get('price', 0.0),
-                model_output=mock_output,
-                active_analysis=True
+            res = await asyncio.wait_for(
+                self.agent.generate(
+                    self.pinned_ticker, 
+                    current_close=self.data.get('price', 0.0),
+                    model_output=mock_output,
+                    active_analysis=True
+                ), 
+                timeout=35.0
             )
             
             if res:
@@ -511,9 +567,20 @@ class AlgoTradingTUI:
                 self.logger.info("agent_on_demand_success", ticker=self.pinned_ticker)
             else:
                 self.logger.warning("agent_on_demand_empty_result", ticker=self.pinned_ticker)
+                # Cleanup pending status if empty
+                if self.data.get("sentiment_intel", {}).get("status") == "PENDING":
+                    self.data["sentiment_intel"] = {"status": "FALLBACK"}
+                    self.data["news_headlines"] = "[yellow]AI API Offline - Analysis halted.[/yellow]"
 
+        except asyncio.TimeoutError:
+            self.logger.error("agent_on_demand_timeout", ticker=self.pinned_ticker)
+            if self.data.get("sentiment_intel", {}).get("status") == "PENDING":
+                self.data["sentiment_intel"] = {"status": "TIMEOUT"}
+                self.data["news_headlines"] = "[red]AI Request Timed Out (Local model hanging?)[/red]"
         except Exception as e:
             self.logger.error("agent_on_demand_failed", error=str(e))
+            if self.data.get("sentiment_intel", {}).get("status") == "PENDING":
+                self.data["sentiment_intel"] = {"status": "ERROR"}
         finally:
             self._last_agent_run = time.time()
 
@@ -684,10 +751,12 @@ class AlgoTradingTUI:
                 "q_bottom": p * (1 - 2*std), "q_median": p, "q_ceiling": p * (1 + 2*std),
                 "tft_signal": "Trend " + trend, "cnn_signal": "Vol " + ("High" if std > 0.02 else "Low"),
                 "llm_outlook": "POSITIVE" if final_bull > 0.6 else "NEGATIVE" if final_bull < 0.4 else "NEUTRAL",
-                "llm_reasoning": f"Algorithmic ({source}): {trend} trend, RSI={rsi:.1f}. Vol={std:.1%}.",
                 "ml_recommendation": f"{trend} TREND (Analytic)",
                 "price": p, "change": change_pct
             }
+            if not self.data.get("_has_decision_card"):
+                h_data["llm_reasoning"] = f"Algorithmic ({source}): {trend} trend, RSI={rsi:.1f}. Vol={std:.1%}."
+            
             if self.data.get("rl_allocation", 0) == 0:
                 h_data["rl_allocation"] = 0.05 if trend == "UP" else 0.01
 
@@ -707,7 +776,8 @@ class AlgoTradingTUI:
             if docs:
                 # Format headlines for the TUI panel
                 headlines = "\n".join([f"• {doc.title[:80]}..." for doc in docs[:3]])
-                self.data["news_headlines"] = headlines
+                if headlines.strip():
+                    self.data["news_headlines"] = headlines
                 self._last_news_sync = now
                 self.logger.info("news_updated", ticker=self.pinned_ticker, count=len(docs))
         except Exception as e:
@@ -779,6 +849,7 @@ class AlgoTradingTUI:
             tasks = [
                 asyncio.create_task(self._update_ui(layout)),
                 asyncio.create_task(self._update_from_cache()),
+                asyncio.create_task(self._update_from_decision_cards()),
                 asyncio.create_task(self._update_live_feeds())
             ]
             try:

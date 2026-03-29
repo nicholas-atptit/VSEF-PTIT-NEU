@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "decision_id": "843e6a60-183a-4993-9bf5-c6e3fde8dafa",
+    "ticker": "SSI",
+    "timestamp": "2026-03-28T21:45:27.921347",
+    "provider": "gemini",
+    "model_version": "qwen2.5:7b",
+    "latency_sec": 0.65
+  },
+  "tech_summary": {
+    "agent": "Technical Agent",
+    "ticker": "SSI",
+    "trend": "BULLISH",
+    "rsi": 45.0,
+    "support": 30.5,
+    "resistance": 35.0,
+    "confidence": 0.75
+  },
+  "news_summary": {
+    "agent": "News & Macro Agent",
+    "ticker": "SSI",
+    "sentiment_score": 0.6,
+    "key_drivers": [
+      "Ngân hàng nhà nước hỗ trợ thanh khoản",
+      "Triển vọng nới lỏng tiền tệ"
+    ],
+    "confidence": 0.8
+  },
+  "evidence_ids": [
+    "TECH-1774734327.2737546",
+    "NEWS-1774734327.2737546"
+  ],
+  "consensus_score": 0.5457,
+  "regime_label": "sideways",
+  "dynamic_confidence_threshold": 0.75,
+  "bull_thesis": "Lỗi gọi LLM: Error code: 404 - {'error': {'message': \"model 'gemma-2-27b-it' not found\", 'type': 'not_found_error', 'param': None, 'code': None}}",
+  "bear_thesis": "Lỗi gọi LLM: Error code: 404 - {'error': {'message': \"model 'gemma-2-27b-it' not found\", 'type': 'not_found_error', 'param': None, 'code': None}}",
+  "risk_veto": false,
+  "risk_reason": "Chưa ghi nhận biến động vol shock lớn hoặc low confidence.",
+  "action": "BUY",
+  "target_weight": 0.05,
+  "rationale": "Tranh luận nghiên vị thế Bull hợp lý, rủi ro trong kiểm soát.",
+  "confidence": 0.8
+}

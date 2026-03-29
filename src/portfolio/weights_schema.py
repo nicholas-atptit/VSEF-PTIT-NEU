@@ -20,10 +20,19 @@ class PortfolioTarget(BaseModel):
     allocator_name: str = "MultiAgent_RiskOverlay"
     assets: List[AssetWeight]
     cash_weight: float = Field(default=1.0, description="Tỷ lệ tiền mặt còn lại")
+    max_exposure_per_asset: float = 0.5   # Cap at 50% per asset
+    liquidity_cap: float = 1.0            # Placeholder
     
     def validate_weights(self):
-        """Đảm bảo tổng trọng số + tiền mặt = 1.0."""
-        total_asset_weight = sum(a.target_weight for a in self.assets)
+        """Đảm bảo tổng trọng số + tiền mặt = 1.0 và tuân thủ constraints."""
+        total_asset_weight = 0.0
+        for a in self.assets:
+            if a.target_weight > self.max_exposure_per_asset:
+                a.target_weight = self.max_exposure_per_asset
+            if a.target_weight > self.liquidity_cap:
+                a.target_weight = self.liquidity_cap
+            total_asset_weight += a.target_weight
+            
         if total_asset_weight > 1.0:
             raise ValueError("Tổng trọng số tài sản lớn hơn vốn khả dụng (1.0).")
         self.cash_weight = round(1.0 - total_asset_weight, 4)

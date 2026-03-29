@@ -1,0 +1,21 @@
+{
+    "config": {
+        "profile": "local_ollama",
+        "model": "qwen2.5:7b",
+        "regime": "uptrend",
+        "horizon": "swing"
+    },
+    "financial_metrics": {
+        "cagr": 0.1332,
+        "sharpe": 1.98,
+        "max_drawdown": -0.2375,
+        "turnover_rate": 0.16,
+        "fee_adjusted_pnl": 16.13
+    },
+    "agent_quality": {
+        "total_decisions_made": 543,
+        "veto_rate": 0.0,
+        "avg_latency_sec": 0.34,
+        "contradiction_rate": 0.218
+    }
+}

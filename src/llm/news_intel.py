@@ -63,8 +63,7 @@ class NewsIntelEngine:
                     m_id = model
                 
                 native_model = genai.GenerativeModel(
-                    model_name=m_id,
-                    generation_config={"response_mime_type": "application/json"}
+                    model_name=m_id
                 )
                 
                 response = await native_model.generate_content_async(prompt)
@@ -108,15 +107,23 @@ class NewsIntelEngine:
             if "404" in str(e) or "not found" in str(e).lower():
                 logger.error("model_not_found", ticker=ticker, model=model, error=str(e))
                 # Fallback to 1.5-flash if higher Gemini model is not available.
-                if provider == "gemini" and "gemini-1.5-flash" not in model:
-                    logger.info("falling_back_to_gemini_1.5_flash", ticker=ticker)
-                    return await self.analyze_ticker_news(
-                        ticker=ticker,
-                        articles=articles,
-                        horizon=horizon,
-                        _retry_count=_retry_count,
-                        _model_override="gemini-1.5-flash",
+                if provider == "gemini":
+                    logger.info("falling_back_to_ollama_local", ticker=ticker)
+                    
+                    # Manual retry via Ollama endpoint since Gemini is inaccessible
+                    response = await self.client.chat.completions.create(
+                        model=self.settings.ollama_model_name,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.1,
+                        timeout=60.0,
                     )
+                    result_text = response.choices[0].message.content
+                    if not result_text: return None
+                    if "```json" in result_text:
+                        result_text = result_text.split("```json")[1].split("```")[0].strip()
+                    intel = json.loads(result_text)
+                    await self._store_intelligence(ticker, intel, articles, horizon=horizon)
+                    return intel
             
             import traceback
             traceback.print_exc()

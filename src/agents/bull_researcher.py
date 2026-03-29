@@ -19,15 +19,22 @@ class BullResearcherAgent(BaseAgent):
         Output: Lập luận Bull.
         """
         # Gọi tới LLM với prompt đóng vai "BULL"
+        # Gắn thêm lịch sử tranh luận từ vòng trước nếu có (Round 2+)
+        prev_round_text = ""
+        if "previous_round" in data:
+            prev_round_text = f"Lịch sử tranh luận vòng trước:\n- Phe Đối Lập (Bear): {data['previous_round'].get('bear_thesis', 'Không có')}\nHãy phản bác lại lập luận của Bear và củng cố thêm thesis của bạn.\n"
+
         prompt = f"""
         Theo thông tin thị trường sau đây của {data.get("ticker", "UNKNOWN")}:
         - Kỹ thuật: {json.dumps(data.get("technical", {}), ensure_ascii=False)}
         - Tin tức: {json.dumps(data.get("news", {}), ensure_ascii=False)}
         
+        {prev_round_text}
+        
         Nhiệm vụ: Bạn là một chuyên gia đầu tư theo phe "BÒ TÓT" cực kỳ lạc quan.
         Hãy tìm mọi lập luận từ số liệu kỹ thuật và tin tức ở trên để chứng minh giá cổ phiếu này SẼ TĂNG.
         
-        Trả về JSON với cấu trúc:
+        Trả về JSON với cấu trúc (lưu ý không dùng code block, chỉ trả object):
         {{
             "thesis": "Lập luận chính (khoảng 3-4 câu)",
             "confidence": 0.0 - 1.0 (mức độ tự tin của bạn)
@@ -38,8 +45,9 @@ class BullResearcherAgent(BaseAgent):
         settings = get_settings()
         
         try:
+            model_name = getattr(settings, f"{settings.llm_provider}_model_name")
             response = await client.chat.completions.create(
-                model=settings.llm_model_name,
+                model=model_name,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
                 response_format={"type": "json_object"}

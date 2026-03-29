@@ -1,0 +1,27 @@
+{
+  "config": {
+    "profile": "local_ollama",
+    "model": "qwen2.5:7b",
+    "regime": "uptrend",
+    "horizon": "swing"
+  },
+  "financial_metrics": {
+    "cagr": 0.1791,
+    "sharpe": 2.42,
+    "max_drawdown": -0.0562,
+    "turnover_rate": 0.98,
+    "fee_adjusted_pnl": 12.98,
+    "allocators_comparison": {
+      "EW": 0.0,
+      "MVO": 0.0,
+      "DRL": 0.0,
+      "Agent_RiskOverlay": 0.0
+    }
+  },
+  "model_metrics": {
+    "total_decisions_made": 543,
+    "veto_rate": 0.0,
+    "avg_latency_sec": 0.67,
+    "contradiction_rate": 0.252
+  }
+}
