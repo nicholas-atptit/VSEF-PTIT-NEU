@@ -20,10 +20,11 @@ from src.api.schemas import (
     ChatResponse,
     ChatMessage,
 )
+from src.api.schemas_v2 import TerminalPayload
 from src.engine.matrix import evaluate_decision_matrix
 from src.engine.risk import apply_risk_constraints
 from src.api.tracing import trace_stage
-from src.llm.pipeline import run_qualitative_analysis
+from src.ml.llm.pipeline import run_qualitative_analysis
 from src.ml.data_loader import generate_mock_data, load_ohlcv_from_db, load_ohlcv_from_vnstock
 from src.ml.feature_engineering import FeatureEngineer
 from src.ml.signal_generator import SignalGenerator
@@ -43,7 +44,7 @@ _signal_gen = SignalGenerator()
 # ── Prediction Endpoint ──────────────────────────────────────
 
 
-@router.get("/predict", response_model=PredictionResponse)
+@router.get("/predict", response_model=TerminalPayload)
 async def predict(
     request: Request,
     ticker: str = Query(..., description="Stock ticker symbol (e.g., SSI, HPG)"),
@@ -72,7 +73,7 @@ async def predict(
     # ── Try Kafka pre-computed cache first (sub-ms response) ──
     if not use_mock:
         try:
-            from src.streaming.consumers.cache_writer_consumer import CacheWriterConsumer
+            from src.api.streaming.consumers.cache_writer_consumer import CacheWriterConsumer
             cached = CacheWriterConsumer.read_cache(ticker)
             if cached and cached.get("ml_prediction"):
                 logger.info("predict_from_kafka_cache", ticker=ticker)
@@ -749,7 +750,7 @@ async def paper_trade(
     Executes: Fetch Price → ML → RAG → LLM → Matrix → Risk → Virtual Order
     Returns full latency profile and portfolio status.
     """
-    from src.backtest.paper import PaperTradingEngine
+    from src.ml.backtest.paper import PaperTradingEngine
     
     engine = PaperTradingEngine()
     with trace_stage(request, "paper_trading_cycle"):
@@ -773,7 +774,7 @@ async def chat_interaction(
     context, injecting these into the LLM's system prompt so the bot
     can answer questions about the stock based on real-time data.
     """
-    from src.llm.client import get_llm_client
+    from src.ml.llm.client import get_llm_client
     from config.settings import get_settings
     from src.api.schemas import ChatResponse, ChatRequest
     import json

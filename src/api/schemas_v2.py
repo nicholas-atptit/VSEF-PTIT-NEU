@@ -18,12 +18,14 @@ class TechnicalHorizon(BaseModel):
     horizon: str = Field(..., description="short, mid, long")
     trend_probs: Dict[str, float] = Field(..., description="up, sideways, down")
     expected_range: Dict[str, float] = Field(..., description="bottom_10th, median_50th, ceiling_90th")
-    confidence: float = Field(..., ge=0.0, le=1.0)
+    volatility_score: Optional[float] = Field(default=None, description="Model-predicted volatility for this horizon")
+    confidence: float = Field(default=0.85, ge=0.0, le=1.0)
     indicators: Dict[str, Any] = Field(default_factory=dict, description="Key TA values like RSI, MACD")
 
 class TechnicalForecast(BaseModel):
     ticker: str
     timestamp: dt.datetime
+    current_price: Optional[float] = Field(default=None, description="Actual price at prediction time")
     horizons: List[TechnicalHorizon]
     feature_set_version: str = "v4.0"
 

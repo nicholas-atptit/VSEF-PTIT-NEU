@@ -1,13 +1,20 @@
-"""Module 1: Advanced Feature Engineering — OHLCV → Feature Vectors.
+"""Module 1: Advanced Feature Engineering — OHLCV -> Feature Vectors.
 
 Transforms raw daily OHLCV data into a rich feature matrix suitable for
 ML model training and inference.  All features use only past data via
 rolling windows to prevent data leakage.
 
 Rolling windows: 5 (short), 20 (medium), 60 (long) sessions.
+
+VN100 Extensions:
+    Added ``_add_vn100_daily_features`` for daily prediction features
+    required by the VN100 batch pipeline.  See ``VN100_DAILY_FEATURES``
+    for the canonical list.
 """
 
 from __future__ import annotations
+
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -19,6 +26,36 @@ logger = get_logger(__name__)
 
 # Rolling window sizes for multi-timeframe analysis
 WINDOWS = [5, 20, 60]
+
+# ── VN100 Daily Feature Catalogue ────────────────────────────────────────
+# Canonical names for features required by the VN100 daily prediction
+# pipeline.  Features marked "(alias)" are pointers to pre-existing
+# columns computed by the legacy pipeline.
+VN100_DAILY_FEATURES: List[str] = [
+    # Price-level / return features
+    "prev_close",
+    "close_to_close_return_1d",   # alias -> pct_return
+    "open_to_close_return_1d",
+    "overnight_return_1d",
+    "high_low_range_pct",
+    "true_range",
+    "atr_14",                     # already computed by legacy pipeline
+    "return_3d",
+    "return_5d",                  # alias -> return_roll_5
+    "return_10d",
+    "return_20d",                 # alias -> return_roll_20
+    # Volume features
+    "volume_ma_5",
+    "volume_ma_20",
+    "volume_ratio_5",             # already computed by legacy pipeline
+    "volume_ratio_20",            # already computed by legacy pipeline
+    # Value (turnover) features
+    "value_ratio_5",
+    "value_ratio_20",
+    # Volatility features
+    "rolling_volatility_5",
+    "rolling_volatility_20",
+]
 
 
 def apply_kalman_filter(data):
@@ -106,6 +143,9 @@ class FeatureEngineer:
         for w in WINDOWS:
             df[f"return_roll_{w}"] = df["close"].pct_change(w)
             df[f"volume_ratio_{w}"] = df["volume"] / df["volume"].rolling(w).mean()
+
+        # ── Step 5: VN100 daily prediction features ──
+        df = self._add_vn100_daily_features(df)
 
         # Drop rows where features couldn't be computed
         df = df.dropna().reset_index(drop=True)
@@ -310,11 +350,134 @@ class FeatureEngineer:
         
         return df
 
+    # ── VN100 Daily Prediction Features ──────────────────────
+
+    def _add_vn100_daily_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add standardised daily features for the VN100 prediction pipeline.
+
+        This method only creates features that do not already exist as
+        named columns.  Where the legacy pipeline computes an equivalent
+        value under a different name (e.g. ``pct_return`` ≡
+        ``close_to_close_return_1d``), an alias is created.
+
+        All features are time-safe: they use only current-row or past
+        data via ``.shift()`` / ``.rolling()`` — no look-ahead.
+
+        Feature groups:
+            1. Price-level / return features
+            2. Volume features
+            3. Value (turnover) features
+            4. Volatility features
+        """
+        # ── 1. Price-level / return features ─────────────────
+
+        # Previous session close
+        if "prev_close" not in df.columns:
+            df["prev_close"] = df["close"].shift(1)
+
+        # Close-to-close 1-day return  (alias for pct_return)
+        if "close_to_close_return_1d" not in df.columns:
+            if "pct_return" in df.columns:
+                df["close_to_close_return_1d"] = df["pct_return"]
+            else:
+                df["close_to_close_return_1d"] = df["close"].pct_change()
+
+        # Open-to-close intraday return
+        if "open_to_close_return_1d" not in df.columns:
+            df["open_to_close_return_1d"] = (df["close"] - df["open"]) / df["open"]
+
+        # Overnight return (gap: open_t vs close_{t-1})
+        if "overnight_return_1d" not in df.columns:
+            _prev_close = df["prev_close"] if "prev_close" in df.columns else df["close"].shift(1)
+            df["overnight_return_1d"] = (df["open"] - _prev_close) / _prev_close
+
+        # High-low range as percentage of close
+        if "high_low_range_pct" not in df.columns:
+            df["high_low_range_pct"] = (df["high"] - df["low"]) / df["close"]
+
+        # True Range (scalar, not averaged)
+        if "true_range" not in df.columns:
+            _prev_close = df["close"].shift(1)
+            tr_hl = df["high"] - df["low"]
+            tr_hc = (df["high"] - _prev_close).abs()
+            tr_lc = (df["low"] - _prev_close).abs()
+            df["true_range"] = pd.concat([tr_hl, tr_hc, tr_lc], axis=1).max(axis=1)
+
+        # atr_14 — already computed by _add_volatility_features; skip.
+
+        # Multi-day returns
+        if "return_3d" not in df.columns:
+            df["return_3d"] = df["close"].pct_change(3)
+
+        if "return_5d" not in df.columns:
+            # Alias for return_roll_5 if it exists
+            if "return_roll_5" in df.columns:
+                df["return_5d"] = df["return_roll_5"]
+            else:
+                df["return_5d"] = df["close"].pct_change(5)
+
+        if "return_10d" not in df.columns:
+            df["return_10d"] = df["close"].pct_change(10)
+
+        if "return_20d" not in df.columns:
+            if "return_roll_20" in df.columns:
+                df["return_20d"] = df["return_roll_20"]
+            else:
+                df["return_20d"] = df["close"].pct_change(20)
+
+        # ── 2. Volume features ───────────────────────────────
+
+        # Volume moving averages (raw values, useful for downstream)
+        if "volume_ma_5" not in df.columns:
+            df["volume_ma_5"] = df["volume"].rolling(5).mean()
+
+        if "volume_ma_20" not in df.columns:
+            df["volume_ma_20"] = df["volume"].rolling(20).mean()
+
+        # volume_ratio_5 / volume_ratio_20 — already computed in Step 4; skip.
+
+        # ── 3. Value (turnover) features ─────────────────────
+
+        # Turnover proxy = close × volume  (approximation for daily value)
+        _turnover = df["close"] * df["volume"]
+
+        if "value_ratio_5" not in df.columns:
+            _turnover_ma_5 = _turnover.rolling(5).mean()
+            df["value_ratio_5"] = _turnover / _turnover_ma_5
+
+        if "value_ratio_20" not in df.columns:
+            _turnover_ma_20 = _turnover.rolling(20).mean()
+            df["value_ratio_20"] = _turnover / _turnover_ma_20
+
+        # ── 4. Volatility features ───────────────────────────
+
+        # Rolling volatility (std of pct_return over window)
+        _ret = df["pct_return"] if "pct_return" in df.columns else df["close"].pct_change()
+
+        if "rolling_volatility_5" not in df.columns:
+            df["rolling_volatility_5"] = _ret.rolling(5).std()
+
+        if "rolling_volatility_20" not in df.columns:
+            df["rolling_volatility_20"] = _ret.rolling(20).std()
+
+        # ── Logging ──────────────────────────────────────────
+        vn100_present = [f for f in VN100_DAILY_FEATURES if f in df.columns]
+        logger.info(
+            "vn100_daily_features_added",
+            features_added=len(vn100_present),
+            total_requested=len(VN100_DAILY_FEATURES),
+        )
+
+        return df
+
     # ── Utility ───────────────────────────────────────────────
 
     def get_feature_columns(self, df: pd.DataFrame) -> list[str]:
         """Return list of computed feature column names (excludes leakage & metadata)."""
-        exclude = {"date", "open", "high", "low", "close", "volume", "ticker", "time"}
+        exclude = {
+            "date", "open", "high", "low", "close", "close_raw",
+            "volume", "ticker", "time",
+        }
         # Select columns in exclude set, then return others if they are numeric AND not targets
         cols = [c for c in df.columns if c not in exclude and not c.startswith("target_")]
         return [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]

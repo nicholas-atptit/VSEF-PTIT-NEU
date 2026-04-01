@@ -13,8 +13,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.main import app
-from src.llm.pipeline import run_qualitative_analysis
-from src.llm.prompts import build_system_prompt, build_user_prompt
+from src.ml.llm.pipeline import run_qualitative_analysis
+from src.ml.llm.prompts import build_system_prompt, build_user_prompt
 
 
 @pytest.fixture

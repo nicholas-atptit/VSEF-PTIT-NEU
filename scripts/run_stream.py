@@ -1,6 +1,6 @@
 """Main entry point: Starts the streaming pipeline.
 
-Initializes: SessionStreamingManager → FilterEngine → RealtimeIngestor
+Initializes: SessionStreamingManager -> FilterEngine -> RealtimeIngestor
 Sets up scheduler and signal handlers for graceful shutdown.
 """
 
@@ -15,11 +15,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
-from src.filtering.engine import FilterEngine
-from src.historical.ingestor import RealtimeIngestor
-from src.streaming.fallback import FallbackFiller
-from src.streaming.scheduler import TradingSessionScheduler
-from src.streaming.session_manager import SessionStreamingManager
+from src.engine.filtering.engine import FilterEngine
+from src.data.historical.ingestor import RealtimeIngestor
+from src.api.streaming.fallback import FallbackFiller
+from src.api.streaming.scheduler import TradingSessionScheduler
+from src.api.streaming.session_manager import SessionStreamingManager
 from src.utils.logging import setup_logging, get_logger
 
 

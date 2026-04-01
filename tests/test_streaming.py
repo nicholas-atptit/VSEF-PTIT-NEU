@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.streaming.session_manager import ConnectionState, SessionStreamingManager
+from src.api.streaming.session_manager import ConnectionState, SessionStreamingManager
 
 
 class TestSessionStreamingManager:
@@ -84,7 +84,7 @@ class TestSchedulerIntegration:
 
     def test_scheduler_creation(self):
         """Scheduler should be creatable with stream manager."""
-        from src.streaming.scheduler import TradingSessionScheduler
+        from src.api.streaming.scheduler import TradingSessionScheduler
 
         mgr = SessionStreamingManager()
         scheduler = TradingSessionScheduler(mgr)
@@ -92,7 +92,7 @@ class TestSchedulerIntegration:
 
     def test_scheduler_stops_cleanly(self):
         """Scheduler should stop without errors."""
-        from src.streaming.scheduler import TradingSessionScheduler
+        from src.api.streaming.scheduler import TradingSessionScheduler
 
         mgr = SessionStreamingManager()
         scheduler = TradingSessionScheduler(mgr)
@@ -104,14 +104,14 @@ class TestFallbackFiller:
 
     def test_initial_no_gaps(self):
         """Should start with no pending gaps."""
-        from src.streaming.fallback import FallbackFiller
+        from src.api.streaming.fallback import FallbackFiller
 
         filler = FallbackFiller()
         assert len(filler.pending_gaps) == 0
 
     def test_on_disconnect_records_gap(self):
         """Disconnect should record gap timestamp."""
-        from src.streaming.fallback import FallbackFiller
+        from src.api.streaming.fallback import FallbackFiller
 
         filler = FallbackFiller()
 
@@ -124,7 +124,7 @@ class TestFallbackFiller:
 
     def test_clear_gaps(self):
         """Clear should remove all pending gaps."""
-        from src.streaming.fallback import FallbackFiller
+        from src.api.streaming.fallback import FallbackFiller
 
         filler = FallbackFiller()
 

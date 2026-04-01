@@ -49,11 +49,11 @@ async def _run_with_restart(name: str, consumer_factory, max_retries: int = -1):
 
 async def main():
     """Start all 5 consumer daemons concurrently."""
-    from src.streaming.consumers.db_writer_consumer import DatabaseWriterConsumer
-    from src.streaming.consumers.ml_prediction_consumer import MLPredictionConsumer
-    from src.streaming.consumers.llm_analysis_consumer import LLMAnalysisConsumer
-    from src.streaming.consumers.news_embedder_consumer import NewsEmbedderConsumer
-    from src.streaming.consumers.cache_writer_consumer import CacheWriterConsumer
+    from src.api.streaming.consumers.db_writer_consumer import DatabaseWriterConsumer
+    from src.api.streaming.consumers.ml_prediction_consumer import MLPredictionConsumer
+    from src.api.streaming.consumers.llm_analysis_consumer import LLMAnalysisConsumer
+    from src.api.streaming.consumers.news_embedder_consumer import NewsEmbedderConsumer
+    from src.api.streaming.consumers.cache_writer_consumer import CacheWriterConsumer
 
     consumers = [
         ("DB-Writer",         lambda: DatabaseWriterConsumer()),

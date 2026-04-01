@@ -19,10 +19,10 @@ from src.engine.matrix import evaluate_decision_matrix
 from src.engine.risk import apply_risk_constraints
 from config.settings import get_settings
 from src.utils.logging import get_logger
-from src.llm.news_intel import NewsIntelEngine
+from src.ml.llm.news_intel import NewsIntelEngine
 from src.context.news_crawler import NewsCrawler
-from src.monitoring.drift import DriftMonitor
-from src.monitoring.accuracy import AccuracyMonitor
+from src.utils.monitoring.drift import DriftMonitor
+from src.utils.monitoring.accuracy import AccuracyMonitor
 
 logger = get_logger(__name__)
 
@@ -66,6 +66,8 @@ class SignalGenerator:
         model_output: dict[str, Any],
         risk_tolerance: float | None = None,
         active_analysis: bool = False,
+        sentiment_override: dict[str, Any] | None = None,
+        volatility_score: float | None = None,
     ) -> dict[str, Any]:
         """Generate full prediction payload matching the TerminalPayload (v5.0) contract.
 
@@ -74,61 +76,30 @@ class SignalGenerator:
             current_close: Latest closing price.
             model_output: Output from DualModelTrainer.predict().
             risk_tolerance: Requested risk tolerance (will be capped at 0.70).
+            active_analysis: Whether to perform live sentiment analysis (Phase 3).
+            sentiment_override: Pre-defined sentiment data (useful for tests/scenarios).
+            volatility_score: Predicted volatility for this ticker/horizon.
 
         Returns:
             Complete JSON-serializable payload for the API response.
         """
-        trend_probs = model_output["trend_probabilities"]
-        expected_range = model_output["expected_range"]
-
-        # Generate action plan based on dominant trend
-        action_plan = self._generate_action_plan(
-            trend_probs=trend_probs,
-            expected_range=expected_range,
-            current_close=current_close,
-        )
-
-        # Enforce system constraints
-        system_params = self._build_system_parameters(risk_tolerance)
-
-        # --- Sentiment Agent (Phase 3) ---
-        horizon = model_output.get("horizon", "short")
-        sentiment_data = None
-        sentiment_error = False
-        try:
-            sentiment_data = await self._intel_engine.get_latest_intelligence(ticker, horizon=horizon)
-            
-            # --- Active Mode (Phase 5) ---
-            if not sentiment_data and active_analysis:
-                logger.info("triggering_active_analysis", ticker=ticker)
-                articles = await self._crawler.crawl_ticker(ticker, count=10)
-                logger.info("active_analysis_crawl_result", ticker=ticker, count=len(articles) if articles else 0)
-                if articles:
-                    sentiment_data = await self._intel_engine.analyze_ticker_news(ticker, articles, horizon=horizon)
-                    logger.info("active_analysis_intel_result", ticker=ticker, success=sentiment_data is not None)
-        except Exception as e:
-            logger.error("sentiment_engine_error", ticker=ticker, error=str(e))
-            sentiment_error = True
-
-        # --- Phase 5: Monitoring (Accuracy & Drift) ---
-        accuracy_info = self._accuracy_monitor.calculate_recent_accuracy(ticker, horizon)
+        ticker = ticker.upper().strip()
         
-        sentiment_payload = None
-        if sentiment_data:
+        # --- Phase 5: Signal Generation & TUI Standardization ---
+        trend_probs = model_output.get("trend_probabilities", {})
+        expected_range = model_output.get("expected_range", {})
+        
+        # Use provided volatility or from model_output
+        vol_val = volatility_score if volatility_score is not None else model_output.get("volatility")
+
+        # Default sentiment data or override
+        if sentiment_override:
             sentiment_payload = {
-                "sentiment_score": float(sentiment_data["sentiment_score"]),
-                "sentiment_regime": sentiment_data["trend"].lower(),
-                "sentiment_confidence": 0.85,
-                "summary": sentiment_data.get("summary", ""),
-                "status": "SUCCESS"
-            }
-        elif sentiment_error:
-            sentiment_payload = {
-                "sentiment_score": 0.0,
-                "sentiment_regime": "degraded",
-                "sentiment_confidence": 0.0,
-                "narrative_risk_flags": ["SERVICE_UNAVAILABLE"],
-                "status": "FALLBACK"
+                "sentiment_score": sentiment_override.get("sentiment_score", 0.0),
+                "sentiment_regime": sentiment_override.get("sentiment_regime", "neutral"),
+                "sentiment_confidence": sentiment_override.get("sentiment_confidence", 0.8),
+                "narrative_risk_flags": sentiment_override.get("narrative_risk_flags", []),
+                "status": sentiment_override.get("status", "success")
             }
         else:
             sentiment_payload = {
@@ -136,16 +107,77 @@ class SignalGenerator:
                 "sentiment_regime": "neutral",
                 "sentiment_confidence": 0.0,
                 "narrative_risk_flags": ["NO_DATA_YET"],
-                "status": "PENDING"
+                "status": "success"
             }
+
+        # Enforce system constraints
+        system_params = self._build_system_parameters(risk_tolerance)
+
+        # --- Phase 5: Monitoring (Accuracy & Drift) ---
+        horizon = model_output.get("horizon", "short")
+        accuracy_info = self._accuracy_monitor.calculate_recent_accuracy(ticker, horizon)
+
+        # --- Sentiment Agent (Phase 3) ---
+        if not sentiment_override:
+            sentiment_data = None
+            sentiment_error = False
+            try:
+                sentiment_data = await self._intel_engine.get_latest_intelligence(ticker, horizon=horizon)
+                
+                # --- Active Mode (Phase 5) ---
+                if not sentiment_data and active_analysis:
+                    logger.info("triggering_active_analysis", ticker=ticker)
+                    articles = await self._crawler.crawl_ticker(ticker, count=10)
+                    if articles:
+                        sentiment_data = await self._intel_engine.analyze_ticker_news(ticker, articles, horizon=horizon)
+            except Exception as e:
+                logger.error("sentiment_engine_error", ticker=ticker, error=str(e))
+                sentiment_error = True
+
+            if sentiment_data:
+                sentiment_payload = {
+                    "sentiment_score": float(sentiment_data["sentiment_score"]),
+                    "sentiment_regime": sentiment_data["trend"].lower(),
+                    "sentiment_confidence": 0.85,
+                    "summary": sentiment_data.get("summary", ""),
+                    "status": "SUCCESS"
+                }
+            elif sentiment_error:
+                sentiment_payload = {
+                    "sentiment_score": 0.0,
+                    "sentiment_regime": "degraded",
+                    "sentiment_confidence": 0.0,
+                    "narrative_risk_flags": ["SERVICE_UNAVAILABLE"],
+                    "status": "FALLBACK"
+                }
+            else:
+                sentiment_payload = {
+                    "sentiment_score": 0.0,
+                    "sentiment_regime": "neutral",
+                    "sentiment_confidence": 0.0,
+                    "narrative_risk_flags": ["NO_DATA_YET"],
+                    "status": "success"
+                }
 
         # --- Phase 4: Decision Fusion (Agent Matrix) ---
         from src.api.schemas import QuantitativeSignals, QualitativeAnalysis
         
+        # Ensure default values for trend_probs and expected_range to satisfy Pydantic
+        trend_probs_safe = {
+            "up": trend_probs.get("up", 0.0),
+            "down": trend_probs.get("down", 0.0),
+            "sideways": trend_probs.get("sideways", 1.0) if not trend_probs else 1.0
+        }
+        expected_range_safe = {
+            "bottom_10th": expected_range.get("bottom_10th", current_close * 0.95),
+            "median_50th": expected_range.get("median_50th", current_close),
+            "ceiling_90th": expected_range.get("ceiling_90th", current_close * 1.05)
+        }
+
         # Adapt v5.0 inputs for compat with matrix.py
         quant_model = QuantitativeSignals(
-            trend_probabilities=trend_probs,
-            expected_range=expected_range,
+            trend_probabilities=trend_probs_safe,
+            expected_range=expected_range_safe,
             action_plan={"recommendation": "STAND_ASIDE", "entry_zone": [0.0, 0.0], "stop_loss": 0, "take_profit": 0}
         )
         # Handle recommendation from raw trend_probs for matrix
@@ -153,11 +185,12 @@ class SignalGenerator:
         elif trend_probs.get("down", 0) > 0.6: quant_model.action_plan.recommendation = "SELL"
         
         qual_model = QualitativeAnalysis(
-            ticker=ticker,
-            sentiment=sentiment_payload["sentiment_regime"] if sentiment_payload else "neutral", # Use actual sentiment
-            confidence=sentiment_payload["sentiment_confidence"] if sentiment_payload else 0.5, # Use actual confidence
-            analysis_status=(sentiment_payload.get("status", "PENDING").lower() if sentiment_payload else "pending"),
-            reasoning="Phase 3 Intelligence"
+            analysis_status=sentiment_payload["status"].lower(),
+            confidence_score=sentiment_payload["sentiment_confidence"],
+            overall_outlook=sentiment_payload["sentiment_regime"],
+            reasoning="Phase 3 Intelligence",
+            veto_flag=False,
+            anti_hallucination_check_passed=True
         )
         
         matrix_decision, consensus = evaluate_decision_matrix(
@@ -178,28 +211,38 @@ class SignalGenerator:
             applied_risk_tolerance=min(risk_tolerance if risk_tolerance is not None else 0.0, 0.70)
         )
         
-        # --- Terminal Payload (Standard Contract v5.0) ---
+        # --- Terminal Payload (Standard Contract v5.1) ---
         return {
             "ticker": ticker,
             "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             "technical": {
+                "ticker": ticker,
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+                "current_price": current_close,
                 "horizons": [{
-                    "horizon": "1w",
-                    "trend_probs": trend_probs,
-                    "expected_range": expected_range,
-                    "model_confidence": 0.85
+                    "horizon": horizon,
+                    "trend_probs": trend_probs_safe,
+                    "expected_range": expected_range_safe,
+                    "volatility_score": vol_val,
+                    "confidence": 0.85
                 }],
                 "agent_weights": {"technical": 0.6, "sentiment": 0.4},
                 "regime_detected": "trend"
             },
-            "sentiment": sentiment_payload, # Use the raw sentiment_payload
+            "sentiment": {
+                **sentiment_payload,
+                "source_breakdown": [],
+                "market_psychology_tags": [],
+            },
             "fusion": {
                 "regime_detected": "trend",
                 "action": matrix_decision,
+                "confidence": 0.85,
                 "rationale": (
                     f"ml={consensus.ml_signal}, llm={consensus.llm_sentiment}, "
                     f"veto={consensus.veto_triggered}"
                 ),
+                "agent_weights": {"technical": 0.6, "sentiment": 0.4},
             },
             "risk": {
                 "position_size_suggestion": float(order_payload.volume) if order_payload else 0.0,
@@ -286,8 +329,8 @@ class SignalGenerator:
             even if the client requests a higher value.
 
         Confidence Routing:
-            stock_quantitative_data  → 0.95 (model-derived)
-            general_market_context   → 0.70 (default for context/metadata)
+            stock_quantitative_data  -> 0.95 (model-derived)
+            general_market_context   -> 0.70 (default for context/metadata)
         """
         max_risk = self._settings.max_risk_tolerance
 

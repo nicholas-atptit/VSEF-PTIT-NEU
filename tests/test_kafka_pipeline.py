@@ -17,7 +17,7 @@ from datetime import datetime
 # Add the root directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.streaming.kafka_client import KafkaPublisher, KafkaSubscriber
+from src.api.streaming.kafka_client import KafkaPublisher, KafkaSubscriber
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)

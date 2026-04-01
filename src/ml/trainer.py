@@ -73,34 +73,48 @@ class DualModelTrainer:
                 missing = set(feature_cols) - set(features_row.columns)
                 for col in missing:
                     features_row[col] = 0.0
-                features_row = features_row[feature_cols]
-            X = features_row.values
+                X = features_row[feature_cols]
+            else:
+                X = features_row
         elif isinstance(features_row, pd.Series):
             if feature_cols:
                 row_dict = features_row.to_dict()
-                aligned = [row_dict.get(f, 0.0) for f in feature_cols]
-                X = np.array(aligned).reshape(1, -1)
+                aligned = {f: row_dict.get(f, 0.0) for f in feature_cols}
+                X = pd.DataFrame([aligned])
             else:
-                X = features_row.values.reshape(1, -1)
+                X = pd.DataFrame([features_row])
         else:
-            X = features_row.reshape(1, -1)
+            # If it's already a numpy array, we have no choice but to pass it
+            # though it might still trigger a warning if feature_cols exists.
+            # Best we can do is wrap it in a DataFrame if feature_cols is known.
+            if feature_cols:
+                X = pd.DataFrame(features_row.reshape(1, -1), columns=feature_cols)
+            else:
+                X = features_row.reshape(1, -1)
 
-        if X.ndim == 1:
+        if isinstance(X, np.ndarray) and X.ndim == 1:
             X = X.reshape(1, -1)
 
-        # Horizon suffix logic (short, mid, long)
-        h_map = {"short": "_short", "mid": "_mid", "long": "_long"}
-        # Backward compatibility fallbacks
-        legacy_map = {"1w": "_short", "1m": "_mid", "6m": "_long", "1d": ""}
+        # Multi-stage suffix lookup
+        suffixes = []
+        if horizon.lower() in ["short", "1w"]: suffixes = ["_5d", "_short"]
+        elif horizon.lower() in ["mid", "1m"]: suffixes = ["_20d", "_mid"]
+        elif horizon.lower() in ["long", "6m"]: suffixes = ["_120d", "_long"]
+        else: suffixes = [horizon.lower()] # Fallback for custom suffixes
         
-        suffix = h_map.get(horizon.lower(), legacy_map.get(horizon.lower(), ""))
+        # Determine active suffix by checking what was loaded
+        suffix = ""
+        for s in suffixes:
+            if f"trend_classifier{s}" in models:
+                suffix = s
+                break
+        
+        if suffix == "" and horizon.lower() not in ["1d", ""]:
+            # Last resort fallback to first suffix if nothing loaded (for error reporting later)
+            suffix = suffixes[0] if suffixes else ""
 
         # ─── Model A: Trend classification ───
         model_key = f"trend_classifier{suffix}"
-        if model_key not in models and suffix != "": 
-            # Fallback to 1d if specific horizon not found
-            model_key = "trend_classifier"
-            
         trend_model = models.get(model_key)
         if not trend_model: return {}
         
@@ -146,9 +160,24 @@ class DualModelTrainer:
             "ceiling_90th": range_preds.get("high_q90", 0),
         }
 
+        # ─── Model C: Volatility ───
+        vol_key = f"volatility_regressor{suffix}"
+        if vol_key not in models and suffix != "":
+            vol_key = "volatility_regressor" # Fallback
+        
+        volatility_score = None
+        if vol_key in models:
+            try:
+                vol_model = models[vol_key]
+                vol_pred = vol_model.predict(X)[0]
+                volatility_score = float(round(vol_pred, 4))
+            except Exception as e:
+                logger.debug("volatility_predict_failed", ticker=ticker, error=str(e))
+
         return {
             "trend_probabilities": trend_probs,
             "expected_range": expected_range,
+            "volatility": volatility_score,
             "feature_set_version": "v5.0", # Added per Phase 2
             "horizon": horizon
         }
@@ -227,8 +256,18 @@ class DualModelTrainer:
             if not col.startswith('d_'):
                 feat_df[f'd_{col}'] = feat_df[col]
         
-        # 4. Cleanup
-        feat_df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        # 4. Filter to exact columns used in training if feature_cols is available
+        if "feature_cols" in self._models.get(ticker, {}):
+            feat_cols = self._models[ticker]["feature_cols"]
+            try:
+                feat_df = feat_df[feat_cols]
+            except KeyError as e:
+                # If some columns are missing, we log it but don't fail immediately
+                # (might be handled by ffill/bfill earlier)
+                logger.warning("feature_mismatch_during_filter", ticker=ticker, error=str(e))
+        
+        # 5. Cleanup
+        feat_df = feat_df.replace([np.inf, -np.inf], np.nan)
         feat_df = feat_df.ffill().bfill()
         
         return feat_df
@@ -274,6 +313,13 @@ class DualModelTrainer:
         df["label"] = np.select(conditions, [0, 2], default=1)
         train_df = df.dropna(subset=["future_return"]).reset_index(drop=True)
         X, y = train_df[feature_cols].values, train_df["label"].values.astype(int)
+
+        unique_classes = np.unique(y)
+        if len(unique_classes) < 2:
+            logger.warning("insufficient_class_variety", ticker=ticker, classes=unique_classes.tolist())
+            # For the purposes of the test suite and stability, we won't crash the whole process
+            # But we will return a failure metric so the user knows training was incomplete
+            return {"cv_accuracy": 0.0, "error": "one_class_only"}
 
         tscv = TimeSeriesSplit(n_splits=5)
         cv_scores = []

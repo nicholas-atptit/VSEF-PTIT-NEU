@@ -7,7 +7,7 @@ import pandas as pd
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 
-from src.training_pipeline.rl_env_portfolio import PortfolioVn30Env
+from src.ml.training_pipeline.rl_env_portfolio import PortfolioVn30Env
 
 def main():
     print("=== Khởi tạo Baseline PPO (Stable-Baselines3) cho VN30 ===")

@@ -129,6 +129,7 @@ class MatrixConsensus(BaseModel):
     ml_signal: str = Field(..., description="BUY, SELL, RANGE_TRADE, STAND_ASIDE")
     llm_sentiment: str = Field(..., description="positive, neutral, negative, N/A")
     veto_triggered: bool = Field(..., description="True if LLM vetoed an ML signal")
+    consensus_score: float = Field(default=0.0, description="Weighted numeric score Tech+Sent")
 
 
 class RiskManagementOverride(BaseModel):

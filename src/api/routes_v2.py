@@ -26,9 +26,9 @@ from src.ml.trainer import DualModelTrainer
 from src.ml.feature_engineering import FeatureEngineer
 from src.ml.signal_generator import SignalGenerator
 from src.utils.logging import get_logger
-from src.agents.orchestrator import TradingOrchestrator
-from src.database.decision_repository import DecisionRepository
-from src.database.decision_card_schema import DecisionCard
+from src.engine.agents.orchestrator import TradingOrchestrator
+from src.data.database.decision_repository import DecisionRepository
+from src.data.database.decision_card_schema import DecisionCard
 import os
 
 logger = get_logger(__name__)
@@ -39,6 +39,117 @@ _decision_repo = DecisionRepository()
 _orchestrator = TradingOrchestrator(use_llm_provider=os.getenv('LLM_PROVIDER', 'ollama'))
 
 router = APIRouter(prefix="/api/v2", tags=["Phase 1 — Agentic Master Plan"])
+
+# In-memory price cache: { ticker: { price, change, source, ts } }
+import time as _time
+_price_cache: dict = {}
+_PRICE_CACHE_TTL = 5  # seconds
+
+# ── Lightweight Price Endpoint (for 100ms web dashboard polling) ──
+@router.get("/price", tags=["Real-time Price"])
+async def get_price(ticker: str = "FPT"):
+    """Ultra-fast price lookup for the web dashboard (no ML pipeline).
+    
+    Uses a 5-second in-memory cache to avoid flooding the DB/VNStock
+    with requests during 100ms polling from the frontend.
+    """
+    ticker = ticker.upper().strip()
+    now = _time.time()
+    
+    # Check in-memory cache first (instant, <1ms)
+    cached = _price_cache.get(ticker)
+    if cached and (now - cached["ts"]) < _PRICE_CACHE_TTL:
+        return {"ticker": ticker, "price": cached["price"], "change": cached["change"], "source": cached["source"]}
+    
+    price = 0.0
+    change = 0.0
+    source = "none"
+    
+    # 1. Try Redis (fastest)
+    try:
+        import json
+        from redis.asyncio import Redis
+        from config.settings import get_settings
+        conf = get_settings()
+        r = Redis.from_url(conf.redis_url)
+        raw = await r.get(f"live_price:{ticker}")
+        await r.close()
+        if raw:
+            data = json.loads(raw)
+            price = float(data.get("price", 0))
+            change = float(data.get("change", 0))
+            source = "redis"
+    except Exception:
+        pass
+    
+    # 2. Try Database
+    if price == 0:
+        try:
+            from sqlalchemy.ext.asyncio import create_async_engine
+            from sqlalchemy import text
+            from config.settings import get_settings
+            conf = get_settings()
+            engine = create_async_engine(conf.timescale_url)
+            async with engine.connect() as conn:
+                res = await conn.execute(
+                    text("SELECT close FROM raw_prices WHERE ticker = :t ORDER BY timestamp DESC LIMIT 2"),
+                    {"t": ticker}
+                )
+                rows = res.fetchall()
+                if rows:
+                    price = float(rows[0][0])
+                    source = "db"
+                    if len(rows) >= 2:
+                        prev = float(rows[1][0])
+                        change = ((price - prev) / prev * 100) if prev > 0 else 0.0
+            await engine.dispose()
+        except Exception:
+            pass
+    
+    # 3. Try VNStock REST (slowest fallback)
+    if price == 0:
+        try:
+            from vnstock import Vnstock
+            import os
+            from config.settings import get_settings
+            conf = get_settings()
+            os.environ["VNSTOCK_API_KEY"] = conf.vnstock_api_key
+            vn = Vnstock()
+            stock = vn.stock(symbol=ticker, source='VCI')
+            df = stock.quote.history(symbol=ticker, start='2025-01-01', interval='1D')
+            if df is not None and not df.empty:
+                price = float(df.iloc[-1]['close'])
+                source = "vnstock"
+                if len(df) >= 2:
+                    prev = float(df.iloc[-2]['close'])
+                    change = ((price - prev) / prev * 100) if prev > 0 else 0.0
+        except Exception:
+            pass
+
+    # 4. JSON cache fallback
+    if price == 0:
+        try:
+            import json
+            from pathlib import Path
+            cache_path = Path("data/latest_predictions.json")
+            if cache_path.exists():
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    file_cache = json.load(f)
+                td = file_cache.get(ticker, {})
+                if td:
+                    tech = td.get("technical", {})
+                    horizons = tech.get("horizons", [])
+                    if horizons:
+                        price = horizons[0].get("expected_range", {}).get("median_50th", 0)
+                    source = "cache"
+        except Exception:
+            pass
+    
+    # Store in memory cache
+    _price_cache[ticker] = {"price": price, "change": change, "source": source, "ts": now}
+    
+    return {"ticker": ticker, "price": price, "change": change, "source": source}
+
 
 @router.get("/market/summary")
 async def get_market_summary():
@@ -216,7 +327,7 @@ async def chat_interactive(req: ChatRequest):
     Sử dụng context từ mã chứng khoán (nếu có).
     """
     try:
-        from src.llm.client import get_llm_client
+        from src.ml.llm.client import get_llm_client
         from config.settings import get_settings
         client = get_llm_client()
         conf = get_settings()
@@ -285,7 +396,7 @@ async def chat_interactive(req: ChatRequest):
 
         # Bỏ qua Gemini trong POC này vì Gemini API deprecation, dùng OpenAI tương thích Ollama
         response = await client.chat.completions.create(
-            model="qwen2.5:7b", # FORCE FOR DEBUG
+            model="qwen3:8b", # User-requested model
             messages=messages,
             temperature=0.3
         )

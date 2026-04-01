@@ -5,12 +5,14 @@ from __future__ import annotations
 import datetime as dt
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
 import pytest
 
 from src.context.bctc_loader import BCTCLoader
 from src.context.embedder import DocumentEmbedder
 from src.context.ingestion_pipeline import IngestionPipeline
 from src.context.news_crawler import CrawledDocument, NewsCrawler
+
 
 
 class TestCrawledDocument:
@@ -22,7 +24,7 @@ class TestCrawledDocument:
             url="https://example.com/article-1",
             title="HPG Q4 Results",
             content="HPG reported strong Q4 earnings...",
-            published_date=dt.datetime(2024, 1, 15),
+            published_at=dt.datetime(2024, 1, 15),
             source="cafef",
             tickers=["HPG"],
         )
@@ -58,63 +60,31 @@ class TestCrawledDocument:
 class TestNewsCrawler:
     """Test news crawler."""
 
-    def test_sources_configured(self):
-        """Crawler should have predefined sources."""
-        assert "cafef" in NewsCrawler.SOURCES
-        assert "vnexpress" in NewsCrawler.SOURCES
+    def test_initialization(self):
+        """Crawler should initialize with concurrency semaphore."""
+        crawler = NewsCrawler(concurrency=10)
+        assert crawler._semaphore._value == 10
 
-    def test_extract_article_links(self):
-        """Should extract article-like links from HTML."""
-        from bs4 import BeautifulSoup
-
-        html = """
-        <div>
-            <a href="/stock/HPG-analysis.chn">Analysis</a>
-            <a href="/news/markets.htm">Markets</a>
-            <a href="/about">About</a>
-        </div>
-        """
-        soup = BeautifulSoup(html, "lxml")
-        links = NewsCrawler._extract_article_links(soup, "https://cafef.vn")
-
-        assert len(links) == 2  # .chn and .htm links
-        assert any("analysis.chn" in l for l in links)
-
-    def test_extract_content(self):
-        """Should extract main article content."""
-        from bs4 import BeautifulSoup
-
-        html = """
-        <div class="detail-content">
-            <p>This is the article content.</p>
-            <p>Second paragraph.</p>
-            <script>alert('skip');</script>
-        </div>
-        """
-        soup = BeautifulSoup(html, "lxml")
-        content = NewsCrawler._extract_content(soup)
-
-        assert "article content" in content
-        assert "Second paragraph" in content
-        assert "alert" not in content  # Scripts removed
-
-    def test_detect_tickers(self):
-        """Should detect stock ticker mentions in text."""
-        content = "HPG reported strong results. VIC and VNM also performed well."
-        tickers = NewsCrawler._detect_tickers(content, ["HPG"])
-
-        assert "HPG" in tickers
-        assert "VIC" in tickers
-        assert "VNM" in tickers
-
-    def test_detect_tickers_excludes_common_words(self):
-        """Should not detect common English words as tickers."""
-        content = "THE market HAS been volatile FOR investors."
-        tickers = NewsCrawler._detect_tickers(content, [])
-
-        assert "THE" not in tickers
-        assert "HAS" not in tickers
-        assert "FOR" not in tickers
+    @pytest.mark.asyncio
+    async def test_crawl_ticker_mock(self):
+        """Should call vnstock and return documents."""
+        with patch("src.context.news_crawler.Vnstock") as mock_vn:
+            # Mock the stock().news() chain
+            mock_stock = MagicMock()
+            mock_stock.news.return_value = pd.DataFrame([{
+                "title": "Mock Title",
+                "description": "Mock Content",
+                "link": "https://mock.com",
+                "source": "Mock Source"
+            }])
+            mock_vn.return_value.stock.return_value = mock_stock
+            
+            # Instantiate INSIDE the patch
+            crawler = NewsCrawler()
+            docs = await crawler.crawl_ticker("HPG", count=1)
+            assert len(docs) == 1
+            assert docs[0].title == "Mock Title"
+            assert docs[0].primary_ticker == "HPG"
 
 
 class TestDocumentEmbedder:
@@ -136,7 +106,6 @@ class TestDocumentEmbedder:
     def test_chunk_large_document(self):
         """Large document should produce multiple chunks."""
         embedder = DocumentEmbedder(chunk_size=100, chunk_overlap=20)
-
         long_content = "\n".join([f"Paragraph {i} with some content." for i in range(50)])
         doc = {
             "doc_id": "large_doc",
@@ -214,23 +183,23 @@ class TestIngestionPipeline:
     def test_filter_recent_news(self):
         """Only documents inside the lookback window should be embedded."""
         cutoff = dt.datetime(2026, 3, 15, tzinfo=dt.UTC)
+        # Recent: Cutoff is March 15. Doc is March 16 (Recent).
         recent_doc = CrawledDocument(
             url="https://example.com/recent",
             title="Recent",
             content="Recent content " * 10,
-            published_date=cutoff - dt.timedelta(days=30),
+            published_at=cutoff + dt.timedelta(days=1),
             source="cafef",
             tickers=["HPG"],
-            primary_ticker="HPG",
         )
+        # Stale: Doc is Jan 2026 (Stale).
         stale_doc = CrawledDocument(
             url="https://example.com/stale",
             title="Old",
             content="Old content " * 10,
-            published_date=cutoff - dt.timedelta(days=1500),
+            published_at=cutoff - dt.timedelta(days=60),
             source="cafef",
             tickers=["HPG"],
-            primary_ticker="HPG",
         )
 
         recent_docs, stale_count = IngestionPipeline._filter_recent_news(

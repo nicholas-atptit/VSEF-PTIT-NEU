@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
-from src.historical.hourly_service import fetch_hourly_data, format_row_to_text
+from src.data.historical.hourly_service import fetch_hourly_data, format_row_to_text
 from src.utils.logging import setup_logging, get_logger
 from vnstock_data import Listing
 

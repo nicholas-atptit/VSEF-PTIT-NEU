@@ -1,0 +1,296 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\luong\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: H:\AI-ML-LLM in Stock_march26_PTIT_NEU
+configfile: pyproject.toml
+plugins: anyio-4.12.1, langsmith-0.7.22, asyncio-1.3.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 12 items
+
+tests/test_api.py::TestHealthEndpoint::test_health_ok PASSED             [  8%]
+tests/test_api.py::TestHealthEndpoint::test_health_phase PASSED          [ 16%]
+tests/test_api.py::TestRootEndpoint::test_root PASSED                    [ 25%]
+tests/test_api.py::TestTrainEndpoint::test_train_with_mock PASSED        [ 33%]
+tests/test_api.py::TestPredictEndpoint::test_predict_success FAILED      [ 41%]
+tests/test_api.py::TestPredictEndpoint::test_predict_json_contract FAILED [ 50%]
+tests/test_api.py::TestPredictEndpoint::test_predict_has_trend_probabilities FAILED [ 58%]
+tests/test_api.py::TestPredictEndpoint::test_predict_has_expected_range FAILED [ 66%]
+tests/test_api.py::TestPredictEndpoint::test_predict_has_action_plan FAILED [ 75%]
+tests/test_api.py::TestPredictEndpoint::test_predict_risk_payload FAILED [ 83%]
+tests/test_api.py::TestPredictErrors::test_predict_missing_ticker PASSED [ 91%]
+tests/test_api.py::TestPredictErrors::test_predict_untrained_ticker PASSED [100%]
+
+================================== FAILURES ===================================
+__________________ TestPredictEndpoint.test_predict_success ___________________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x000001FCB982E8D0>
+client = <starlette.testclient.TestClient object at 0x000001FCB982D2E0>
+
+    def test_predict_success(self, client: TestClient):
+        """Predict should return 200 with valid JSON."""
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\test_api.py:81: AssertionError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 23:13:11 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:11 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:11 [warning  ] insufficient_class_variety     classes=[1] ticker=PRED
+2026-03-29 23:13:12 [info     ] models_saved                   path=models\PRED ticker=PRED
+2026-03-29 23:13:12 [info     ] request_latency                latency_ms=446.8 method=POST path=/api/v1/train stages={} status=200 trace_id=4f425a3b41f4
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 23:13:12 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:12 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:12 [info     ] database_engine_created        url=localhost:5432/algo_trading
+2026-03-29 23:13:12 [error    ] predict_error                  error='6 validation errors for QuantitativeSignals\ntrend_probabilities.up\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.down\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.sideways\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.bottom_10th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.median_50th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.ceiling_90th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing' ticker=PRED
+2026-03-29 23:13:12 [info     ] request_latency                latency_ms=324.4 method=GET path=/api/v1/predict stages={'quant_data_load': 9.3, 'quant_feature_engineering': 27.8, 'quant_model_inference': 285.6} status=500 trace_id=67d4f72a058c
+_______________ TestPredictEndpoint.test_predict_json_contract ________________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x000001FCB982EBA0>
+client = <starlette.testclient.TestClient object at 0x000001FCB98557C0>
+
+    def test_predict_json_contract(self, client: TestClient):
+        """Response must match the TerminalPayload schema."""
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        data = response.json()
+    
+        # Validate with Pydantic model
+>       parsed = TerminalPayload(**data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 4 validation errors for TerminalPayload
+E       ticker
+E         Field required [type=missing, input_value={'detail': 'Prediction fa...tic.dev/2.12/v/missing'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       timestamp
+E         Field required [type=missing, input_value={'detail': 'Prediction fa...tic.dev/2.12/v/missing'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       technical
+E         Field required [type=missing, input_value={'detail': 'Prediction fa...tic.dev/2.12/v/missing'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       run_id
+E         Field required [type=missing, input_value={'detail': 'Prediction fa...tic.dev/2.12/v/missing'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+tests\test_api.py:89: ValidationError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 23:13:12 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:12 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:12 [warning  ] insufficient_class_variety     classes=[1] ticker=PRED
+2026-03-29 23:13:13 [info     ] models_saved                   path=models\PRED ticker=PRED
+2026-03-29 23:13:13 [info     ] request_latency                latency_ms=495.8 method=POST path=/api/v1/train stages={} status=200 trace_id=f4ba3ada8f4d
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 23:13:13 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:13 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:13 [error    ] predict_error                  error='6 validation errors for QuantitativeSignals\ntrend_probabilities.up\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.down\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.sideways\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.bottom_10th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.median_50th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.ceiling_90th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing' ticker=PRED
+2026-03-29 23:13:13 [info     ] request_latency                latency_ms=91.5 method=GET path=/api/v1/predict stages={'quant_data_load': 9.5, 'quant_feature_engineering': 27.8, 'quant_model_inference': 53.8} status=500 trace_id=7830615cee60
+------------------------------ Captured log call ------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:377 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x000001FCBBA6F7A0>>
+Traceback (most recent call last):
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\pool\base.py", line 373, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 1127, in do_terminate
+    dbapi_connection.terminate()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\connectors\asyncio.py", line 402, in terminate
+    self.await_(asyncio.shield(self._terminate_graceful_close()))  # type: ignore[attr-defined] # noqa: E501
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 912, in _terminate_graceful_close
+    await self._connection.close(timeout=2)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1513, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 617, in close
+  File "asyncpg/protocol/protocol.pyx", line 650, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1682, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 455, in create_task
+    self._check_closed()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+__________ TestPredictEndpoint.test_predict_has_trend_probabilities ___________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x000001FCB982EE70>
+client = <starlette.testclient.TestClient object at 0x000001FCBCABF920>
+
+    def test_predict_has_trend_probabilities(self, client: TestClient):
+        """Response must include up/down/sideways probabilities."""
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        data = response.json()
+>       probs = data["technical"]["horizons"][0]["trend_probs"]
+                ^^^^^^^^^^^^^^^^^
+E       KeyError: 'technical'
+
+tests\test_api.py:96: KeyError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 23:13:13 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:13 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:13 [warning  ] insufficient_class_variety     classes=[1] ticker=PRED
+2026-03-29 23:13:14 [info     ] models_saved                   path=models\PRED ticker=PRED
+2026-03-29 23:13:14 [info     ] request_latency                latency_ms=630.7 method=POST path=/api/v1/train stages={} status=200 trace_id=3f2b9e7f3935
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 23:13:14 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:14 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:14 [error    ] predict_error                  error='6 validation errors for QuantitativeSignals\ntrend_probabilities.up\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.down\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.sideways\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.bottom_10th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.median_50th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.ceiling_90th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing' ticker=PRED
+2026-03-29 23:13:14 [info     ] request_latency                latency_ms=133.6 method=GET path=/api/v1/predict stages={'quant_data_load': 17.9, 'quant_feature_engineering': 29.4, 'quant_model_inference': 85.8} status=500 trace_id=52fe1051b4e9
+_____________ TestPredictEndpoint.test_predict_has_expected_range _____________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x000001FCB982F1A0>
+client = <starlette.testclient.TestClient object at 0x000001FCBCB84FE0>
+
+    def test_predict_has_expected_range(self, client: TestClient):
+        """Response must include quantile price ranges."""
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        data = response.json()
+>       rng = data["technical"]["horizons"][0]["expected_range"]
+              ^^^^^^^^^^^^^^^^^
+E       KeyError: 'technical'
+
+tests\test_api.py:108: KeyError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 23:13:14 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:14 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:14 [warning  ] insufficient_class_variety     classes=[1] ticker=PRED
+2026-03-29 23:13:14 [info     ] models_saved                   path=models\PRED ticker=PRED
+2026-03-29 23:13:14 [info     ] request_latency                latency_ms=468.0 method=POST path=/api/v1/train stages={} status=200 trace_id=8f7db480bc45
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 23:13:14 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:14 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:14 [error    ] predict_error                  error='6 validation errors for QuantitativeSignals\ntrend_probabilities.up\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.down\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.sideways\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.bottom_10th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.median_50th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.ceiling_90th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing' ticker=PRED
+2026-03-29 23:13:14 [info     ] request_latency                latency_ms=110.0 method=GET path=/api/v1/predict stages={'quant_data_load': 18.3, 'quant_feature_engineering': 40.1, 'quant_model_inference': 51.2} status=500 trace_id=8ecedd7cdb83
+------------------------------ Captured log call ------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:377 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x000001FCBCAD23F0>>
+Traceback (most recent call last):
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\pool\base.py", line 373, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 1127, in do_terminate
+    dbapi_connection.terminate()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\connectors\asyncio.py", line 402, in terminate
+    self.await_(asyncio.shield(self._terminate_graceful_close()))  # type: ignore[attr-defined] # noqa: E501
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 912, in _terminate_graceful_close
+    await self._connection.close(timeout=2)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1513, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 617, in close
+  File "asyncpg/protocol/protocol.pyx", line 650, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1682, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 455, in create_task
+    self._check_closed()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+______________ TestPredictEndpoint.test_predict_has_action_plan _______________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x000001FCB982F4A0>
+client = <starlette.testclient.TestClient object at 0x000001FCBCB97470>
+
+    def test_predict_has_action_plan(self, client: TestClient):
+        """Response must include a fusion decision."""
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        data = response.json()
+>       fusion = data["fusion"]
+                 ^^^^^^^^^^^^^^
+E       KeyError: 'fusion'
+
+tests\test_api.py:119: KeyError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 23:13:14 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:14 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:14 [warning  ] insufficient_class_variety     classes=[1] ticker=PRED
+2026-03-29 23:13:15 [info     ] models_saved                   path=models\PRED ticker=PRED
+2026-03-29 23:13:15 [info     ] request_latency                latency_ms=460.4 method=POST path=/api/v1/train stages={} status=200 trace_id=8794d7364183
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 23:13:15 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:15 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:15 [error    ] predict_error                  error='6 validation errors for QuantitativeSignals\ntrend_probabilities.up\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.down\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.sideways\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.bottom_10th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.median_50th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.ceiling_90th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing' ticker=PRED
+2026-03-29 23:13:15 [info     ] request_latency                latency_ms=134.1 method=GET path=/api/v1/predict stages={'quant_data_load': 17.8, 'quant_feature_engineering': 39.2, 'quant_model_inference': 76.7} status=500 trace_id=031361da64e2
+________________ TestPredictEndpoint.test_predict_risk_payload ________________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x000001FCB982F7A0>
+client = <starlette.testclient.TestClient object at 0x000001FCBCBA9940>
+
+    def test_predict_risk_payload(self, client: TestClient):
+        """Response must include risk monitoring."""
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        data = response.json()
+>       risk = data["risk"]
+               ^^^^^^^^^^^^
+E       KeyError: 'risk'
+
+tests\test_api.py:127: KeyError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 23:13:15 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:15 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:15 [warning  ] insufficient_class_variety     classes=[1] ticker=PRED
+2026-03-29 23:13:15 [info     ] models_saved                   path=models\PRED ticker=PRED
+2026-03-29 23:13:15 [info     ] request_latency                latency_ms=506.5 method=POST path=/api/v1/train stages={} status=200 trace_id=4779e3a03ef3
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 23:13:16 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 23:13:16 [info     ] features_computed              features=79 rows=540
+2026-03-29 23:13:16 [error    ] predict_error                  error='6 validation errors for QuantitativeSignals\ntrend_probabilities.up\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.down\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntrend_probabilities.sideways\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.bottom_10th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.median_50th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nexpected_range.ceiling_90th\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing' ticker=PRED
+2026-03-29 23:13:16 [info     ] request_latency                latency_ms=119.0 method=GET path=/api/v1/predict stages={'quant_data_load': 21.4, 'quant_feature_engineering': 49.5, 'quant_model_inference': 47.7} status=500 trace_id=82d176d6b5cf
+------------------------------ Captured log call ------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:377 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x000001FCBCBD5220>>
+Traceback (most recent call last):
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\pool\base.py", line 373, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 1127, in do_terminate
+    dbapi_connection.terminate()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\connectors\asyncio.py", line 402, in terminate
+    self.await_(asyncio.shield(self._terminate_graceful_close()))  # type: ignore[attr-defined] # noqa: E501
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 912, in _terminate_graceful_close
+    await self._connection.close(timeout=2)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1513, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 617, in close
+  File "asyncpg/protocol/protocol.pyx", line 650, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1682, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 455, in create_task
+    self._check_closed()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+============================== warnings summary ===============================
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas_ta\__init__.py:37
+  The 'mode.copy_on_write' option is deprecated. Copy-on-Write can no longer be disabled (it is always enabled with pandas >= 3.0), and setting the option has no impact. This option will be removed in pandas 4.0.
+
+tests/test_api.py::TestPredictEndpoint::test_predict_has_action_plan
+tests/test_api.py::TestPredictErrors::test_predict_untrained_ticker
+  coroutine 'Connection._cancel' was never awaited
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_success - assert ...
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_json_contract - p...
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_has_trend_probabilities
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_has_expected_range
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_has_action_plan
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_risk_payload - Ke...
+=================== 6 failed, 6 passed, 3 warnings in 8.75s ===================

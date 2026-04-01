@@ -18,7 +18,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.streaming.kafka_client import KafkaPublisher, KafkaSubscriber
+from src.api.streaming.kafka_client import KafkaPublisher, KafkaSubscriber
 
 
 async def run_full_chain_test():
@@ -103,7 +103,7 @@ async def run_full_chain_test():
         print(f"   -> Received & verified: FPT analysis intact!")
         
         # Write to cache manually to verify API can read it
-        from src.streaming.consumers.cache_writer_consumer import CacheWriterConsumer, CACHE_DIR, CACHE_FILE
+        from src.api.streaming.consumers.cache_writer_consumer import CacheWriterConsumer, CACHE_DIR, CACHE_FILE
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         cache = {}
         cache["FPT"] = {

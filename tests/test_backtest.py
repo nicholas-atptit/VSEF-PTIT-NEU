@@ -10,9 +10,9 @@ import datetime as dt
 
 import pytest
 
-from src.backtest.event_driven import get_safe_rag_context, simulate_execution_cost, walk_forward_chunks
-from src.backtest.metrics import calculate_risk_adjusted_returns, calculate_veto_standby_rates
-from src.backtest.paper import PaperTradingEngine, LatencyProfile, track_execution_slippage, validate_latency
+from src.ml.backtest.event_driven import get_safe_rag_context, simulate_execution_cost, walk_forward_chunks
+from src.ml.backtest.metrics import calculate_risk_adjusted_returns, calculate_veto_standby_rates
+from src.ml.backtest.paper import PaperTradingEngine, LatencyProfile, track_execution_slippage, validate_latency
 
 
 class TestEventDriven:

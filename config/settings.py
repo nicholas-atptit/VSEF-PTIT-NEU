@@ -87,18 +87,22 @@ class Settings(BaseSettings):
 
     # ── Embedding Model (Module 4) ───────────────────────────
     embedding_model: str = "all-MiniLM-L6-v2"
-    bctc_data_dir: str = "data/bctc"
+    bctc_data_dir: str = str(PROJECT_ROOT / "data/bctc")
     rag_top_k_per_zone: int = 5
     rag_news_lookback_days: int = 1095
     latency_sla_seconds: float = 5.0
 
     # ── ML Pipeline (Phase 2) ────────────────────────────────
-    model_dir: str = "models"
+    model_dir: str = str(PROJECT_ROOT / "models")
     trend_threshold_pct: float = 2.0
     trend_lookahead_days: int = 3
     max_risk_tolerance: float = 0.70
     confidence_stock_quantitative: float = 0.95
     confidence_general_context: float = 0.70
+
+    # ── Label Engineering ────────────────────────────────────
+    label_cls_1d_threshold: float = 0.01   # ±1 % for 1-day 3-class
+    label_cls_5d_threshold: float = 0.02   # ±2 % for 5-day 3-class
 
     # ── LLM Pipeline (Phase 3 & 4 Upgrade) ────────────────────
     llm_provider: Literal["ollama", "openai", "groq", "gemini"] = "gemini"

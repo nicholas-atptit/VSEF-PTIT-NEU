@@ -17,7 +17,7 @@ except (ImportError, ModuleNotFoundError):
     Vnstock = None
 
 from config.settings import get_settings
-from src.llm.news_intel import NewsIntelEngine
+from src.ml.llm.news_intel import NewsIntelEngine
 
 class CrawledArticle:
     def __init__(self, title, content, source, date_str):
@@ -38,7 +38,7 @@ def crawl_google_news(ticker, query, start_year=2021):
     print(f"[{ticker}] Fetching Google News RSS with ADVANCED QUERY: {query[:100]}...")
     feed = feedparser.parse(url)
     
-    for entry in feed.entries[:30]: 
+    for entry in feed.entries[:100]:  # Increased from 30 to capture more data
         title = entry.get('title', '')
         summary = entry.get('summary', title)
         published = entry.get('published', '')
@@ -94,7 +94,7 @@ def crawl_vnstock_news(ticker, start_year=2021):
     except Exception as e:
         print(f"[{ticker}] Lỗi khi chạy vnstock: {e}")
         
-    return articles[:50] 
+    return articles  # No cap — push 100% to LLM
 
 async def process_ticker(ticker, query_news, negative_list=None):
     print(f"=== Bắt đầu Crawl tin tức mã: {ticker} ===")
@@ -119,16 +119,15 @@ async def process_ticker(ticker, query_news, negative_list=None):
         filtered_articles = all_articles
 
     # 3. Phân tích qua LLM (NewsIntelEngine)
-    selected_articles = filtered_articles[:20] 
-    if not selected_articles:
+    if not filtered_articles:
         print(f"[{ticker}] Không tìm thấy tin tức nào sau khi lọc.")
         return
         
-    print(f"[{ticker}] Đẩy {len(selected_articles)} bài vào LLM để phân tích (Ollama qwen3)...")
+    print(f"[{ticker}] Đẩy 100% ({len(filtered_articles)} bài) vào LLM để phân tích (Ollama qwen3)...")
     engine = NewsIntelEngine()
     
     art_dicts = []
-    for a in selected_articles:
+    for a in filtered_articles:
          art_dicts.append({
              "title": a.title,
              "content": a.content,

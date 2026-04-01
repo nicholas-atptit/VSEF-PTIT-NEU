@@ -38,11 +38,12 @@ def evaluate_decision_matrix(
     if not qual or qual.analysis_status != "success":
         return "STANDBY", MatrixConsensus(
             ml_signal=ml_rec,
-            llm_sentiment="N/A" if not qual else qual.sentiment,
+            llm_sentiment="N/A" if not qual else (qual.overall_outlook or "NEUTRAL"),
             veto_triggered=False,
+            consensus_score=0.0
         )
 
-    llm_sentiment = qual.sentiment.upper() if qual else "NEUTRAL"
+    llm_sentiment = (qual.overall_outlook or "NEUTRAL").upper()
     w_tech = (weights or {}).get("technical", 0.6)
     w_sent = (weights or {}).get("sentiment", 0.4)
 

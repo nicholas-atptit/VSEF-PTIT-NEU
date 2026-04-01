@@ -11,7 +11,7 @@ from typing import List
 
 from src.context.news_crawler import NewsCrawler, CrawledDocument
 from src.context.embedder import DocumentEmbedder
-from src.llm.news_intel import NewsIntelEngine
+from src.ml.llm.news_intel import NewsIntelEngine
 from src.utils.logging import get_logger
 from config.settings import get_settings
 

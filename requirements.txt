@@ -1,4 +1,5 @@
 # Core Dependencies (Corrected from pyproject.toml)
+# google-generativeai==0.8.6  # Legacy - Optional Cloud Provider
 dnse>=0.1.0
 sqlalchemy[asyncio]>=2.0
 asyncpg>=0.29.0

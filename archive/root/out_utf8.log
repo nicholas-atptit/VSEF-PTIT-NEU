@@ -1,0 +1,12 @@
+﻿Starting ML prediction cycle...
+2026-04-01 11:21:05 [info     ] vn100_data_loader_init         csv_dir='H:\\AI-ML-LLM in Stock_march26_PTIT_NEU\\data\\daily_market_split_data' prefer_source=csv
+2026-04-01 11:21:05 [debug    ] ohlcv_loaded_from_csv          rows=198 ticker=ABS
+2026-04-01 11:21:05 [debug    ] single_ticker_loaded           rows=198 source=csv ticker=ABS
+2026-04-01 11:21:05 [debug    ] market_proxy_loaded            rows=198
+2026-04-01 11:21:05 [debug    ] market_proxy_joined            market_rows=198
+2026-04-01 11:21:05 [error    ] prediction_failed              error="'charmap' codec can't encode character '\\u2192' in position 86: character maps to <undefined>" ticker=ABS
+2026-04-01 11:21:05 [warning  ] prediction_failed_or_skipped   ticker=ABS
+DEBUG: Progress 1/1 - Cache Updated.
+
+Cycle complete. Processed 1 tickers in 0.0s.
+Batch Report saved to: H:\AI-ML-LLM in Stock_march26_PTIT_NEU\data\processed\batch_inference_20260401_112105.json

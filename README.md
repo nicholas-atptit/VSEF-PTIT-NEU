@@ -65,10 +65,11 @@ python scripts/run_news_crawler.py
 ```
 
 ### Bước 2: Huấn luyện Mô hình Lai (Hybrid Training)
-Huấn luyện 104 mã với bộ tham số tối ưu Alpha:
+Huấn luyện **toàn bộ** mã trong thư mục data bằng 1 lệnh duy nhất:
 ```powershell
-python scripts/train_ml_tickers.py --tickers "AAA,ACB,VGI,..." --optuna
+python scripts/train_ml_tickers.py --all --optuna
 ```
+> Hoặc chỉ train một vài mã cụ thể: `python scripts/train_ml_tickers.py --tickers "SSI,HPG,VGI"`
 
 ### Bước 3: Đồng bộ kết quả (Sync to DB)
 Đẩy kết quả huấn luyện từ file models vào Dashboard API:

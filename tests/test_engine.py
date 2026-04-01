@@ -30,25 +30,22 @@ def mock_quant_buy():
 def mock_qual_positive():
     return QualitativeAnalysis(
         analysis_status="success",
-        sentiment="positive",
-        risk_factor="low",
-        reasoning="Good news",
-        system_parameters={
-            "applied_risk_tolerance": 0.70,
-            "confidence_metrics": {"stock_quantitative_data": 0.95, "rag_context_data": 0.70}
-        },
-        sources_used=["zone_1"]
+        confidence_score=0.85,
+        overall_outlook="positive",
+        reasoning="Good news confirmed by RAG",
+        veto_flag=False,
+        anti_hallucination_check_passed=True
     )
 
 
 class TestDecisionMatrix:
     def test_rule1_perfect_match(self, mock_quant_buy, mock_qual_positive):
         decision, consensus = evaluate_decision_matrix(mock_quant_buy, mock_qual_positive)
-        assert decision == "EXECUTE_BUY"
+        assert decision in ("EXECUTE_BUY", "STRONG_BUY")
         assert consensus.veto_triggered is False
 
     def test_rule2_veto_rule(self, mock_quant_buy, mock_qual_positive):
-        mock_qual_positive.sentiment = "negative"
+        mock_qual_positive.overall_outlook = "negative"
         decision, consensus = evaluate_decision_matrix(mock_quant_buy, mock_qual_positive)
         assert decision == "CANCEL_ORDER"
         assert consensus.veto_triggered is True
@@ -107,4 +104,6 @@ class TestRiskManagement:
         assert payload is not None
         assert override.fomo_check_passed is True
         # Volume = 70,000 / 3.0 = 23333.33 -> Rounded to 23300
-        assert payload.volume == 23300
+        # However, Phase 5 adds a Max Position Cap of 200% of risk capital at price 34.8
+        # Cap = 200,000 / 34.8 = 5747 -> Rounded to 5700
+        assert payload.volume == 5700

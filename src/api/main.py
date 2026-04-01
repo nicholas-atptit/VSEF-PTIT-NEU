@@ -13,6 +13,9 @@ print(f"DEBUG: SYS_PATH_0={sys.path[0]}")
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
+from pathlib import Path
 
 from config.settings import get_settings
 from src.api.routes import router as v1_router
@@ -61,6 +64,11 @@ app.add_middleware(LatencyTracingMiddleware)
 app.include_router(v1_router)
 app.include_router(v2_router)
 
+# Mount web dashboard static files
+_web_dir = Path(__file__).resolve().parent.parent.parent / "web"
+if _web_dir.exists():
+    app.mount("/web", StaticFiles(directory=str(_web_dir), html=True), name="web-dashboard")
+
 
 @app.get("/", tags=["Root"])
 async def root() -> dict:
@@ -80,6 +88,12 @@ async def root() -> dict:
             "ingest_bctc": "POST /api/v1/ingest-bctc",
         },
     }
+
+
+@app.get("/dashboard", include_in_schema=False)
+async def dashboard_redirect():
+    """Redirect to the web dashboard."""
+    return RedirectResponse(url="/web/index.html")
 
 
 @app.get("/favicon.ico", include_in_schema=False)

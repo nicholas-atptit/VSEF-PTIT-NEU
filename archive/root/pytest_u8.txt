@@ -1,0 +1,1064 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\luong\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: H:\AI-ML-LLM in Stock_march26_PTIT_NEU
+configfile: pyproject.toml
+plugins: anyio-4.12.1, langsmith-0.7.22, asyncio-1.3.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 12 items
+
+tests/test_api.py::TestHealthEndpoint::test_health_ok PASSED             [  8%]
+tests/test_api.py::TestHealthEndpoint::test_health_phase PASSED          [ 16%]
+tests/test_api.py::TestRootEndpoint::test_root PASSED                    [ 25%]
+tests/test_api.py::TestTrainEndpoint::test_train_with_mock FAILED        [ 33%]
+tests/test_api.py::TestPredictEndpoint::test_predict_success FAILED      [ 41%]
+tests/test_api.py::TestPredictEndpoint::test_predict_json_contract FAILED [ 50%]
+tests/test_api.py::TestPredictEndpoint::test_predict_has_trend_probabilities FAILED [ 58%]
+tests/test_api.py::TestPredictEndpoint::test_predict_has_expected_range FAILED [ 66%]
+tests/test_api.py::TestPredictEndpoint::test_predict_has_action_plan FAILED [ 75%]
+tests/test_api.py::TestPredictEndpoint::test_predict_risk_payload FAILED [ 83%]
+tests/test_api.py::TestPredictErrors::test_predict_missing_ticker PASSED [ 91%]
+tests/test_api.py::TestPredictErrors::test_predict_untrained_ticker FAILED [100%]
+
+================================== FAILURES ===================================
+___________________ TestTrainEndpoint.test_train_with_mock ____________________
+
+self = <tests.test_api.TestTrainEndpoint object at 0x0000020E867227B0>
+client = <starlette.testclient.TestClient object at 0x0000020E86740D40>
+
+    def test_train_with_mock(self, client: TestClient):
+        """Training with mock data should succeed."""
+        response = client.post(
+            "/api/v1/train",
+            json={"ticker": "TEST", "use_mock": True},
+        )
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\test_api.py:60: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 22:53:17 [info     ] mock_data_generated            rows=600 ticker=TEST
+2026-03-29 22:53:17 [info     ] features_computed              features=79 rows=540
+2026-03-29 22:53:18 [error    ] train_error                    error='Invalid classes inferred from unique values of `y`.  Expected: [0], got [1]' ticker=TEST
+2026-03-29 22:53:18 [info     ] request_latency                latency_ms=300.6 method=POST path=/api/v1/train stages={} status=500 trace_id=5cd663291523
+__________________ TestPredictEndpoint.test_predict_success ___________________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x0000020E86722AB0>
+client = <starlette.testclient.TestClient object at 0x0000020E86743740>
+
+    def test_predict_success(self, client: TestClient):
+        """Predict should return 200 with valid JSON."""
+>       response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_api.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:473: in get
+    return super().get(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:445: in request
+    return super().request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:348: in handle_request
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:334: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:259: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:1160: in __call__
+    await super().__call__(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:191: in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:158: in __exit__
+    self.gen.throw(value)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py:87: in collapse_excgroups
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:193: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\api\tracing.py:65: in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:168: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:144: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py:87: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:736: in app
+    await route.handle(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:290: in handle
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:130: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:116: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:691: in app
+    content = await serialize_response(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def serialize_response(
+        *,
+        field: ModelField | None = None,
+        response_content: Any,
+        include: IncEx | None = None,
+        exclude: IncEx | None = None,
+        by_alias: bool = True,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        is_coroutine: bool = True,
+        endpoint_ctx: EndpointContext | None = None,
+        dump_json: bool = False,
+    ) -> Any:
+        if field:
+            if is_coroutine:
+                value, errors = field.validate(response_content, {}, loc=("response",))
+            else:
+                value, errors = await run_in_threadpool(
+                    field.validate, response_content, {}, loc=("response",)
+                )
+            if errors:
+                ctx = endpoint_ctx or EndpointContext()
+>               raise ResponseValidationError(
+                    errors=errors,
+                    body=response_content,
+                    endpoint_ctx=ctx,
+                )
+E               fastapi.exceptions.ResponseValidationError: 7 validation errors:
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'ticker'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'timestamp'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'horizons', 0, 'confidence'), 'msg': 'Field required', 'input': {'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'source_breakdown'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'market_psychology_tags'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'confidence'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'agent_weights'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E               
+E                 File "H:\AI-ML-LLM in Stock_march26_PTIT_NEU\src\api\routes.py", line 47, in predict
+E                   GET /api/v1/predict
+
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:296: ResponseValidationError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 22:53:18 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:18 [info     ] features_computed              features=79 rows=540
+2026-03-29 22:53:18 [error    ] train_error                    error='Invalid classes inferred from unique values of `y`.  Expected: [0], got [1]' ticker=PRED
+2026-03-29 22:53:18 [info     ] request_latency                latency_ms=33.4 method=POST path=/api/v1/train stages={} status=500 trace_id=2f310ea20387
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 22:53:18 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:18 [info     ] models_loaded                  keys=['feature_cols', 'range_high_q10', 'range_high_q50', 'range_high_q90', 'range_low_q10', 'range_low_q50', 'range_low_q90', 'trend_classifier'] path=models\PRED ticker=PRED
+2026-03-29 22:53:18 [info     ] features_computed              features=79 rows=540
+2026-03-29 22:53:18 [info     ] database_engine_created        url=localhost:5432/algo_trading
+_______________ TestPredictEndpoint.test_predict_json_contract ________________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x0000020E86722D80>
+client = <starlette.testclient.TestClient object at 0x0000020E889DBDA0>
+
+    def test_predict_json_contract(self, client: TestClient):
+        """Response must match the TerminalPayload schema."""
+>       response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_api.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:473: in get
+    return super().get(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:445: in request
+    return super().request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:348: in handle_request
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:334: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:259: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:1160: in __call__
+    await super().__call__(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:191: in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:158: in __exit__
+    self.gen.throw(value)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py:87: in collapse_excgroups
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:193: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\api\tracing.py:65: in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:168: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:144: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py:87: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:736: in app
+    await route.handle(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:290: in handle
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:130: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:116: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:691: in app
+    content = await serialize_response(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def serialize_response(
+        *,
+        field: ModelField | None = None,
+        response_content: Any,
+        include: IncEx | None = None,
+        exclude: IncEx | None = None,
+        by_alias: bool = True,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        is_coroutine: bool = True,
+        endpoint_ctx: EndpointContext | None = None,
+        dump_json: bool = False,
+    ) -> Any:
+        if field:
+            if is_coroutine:
+                value, errors = field.validate(response_content, {}, loc=("response",))
+            else:
+                value, errors = await run_in_threadpool(
+                    field.validate, response_content, {}, loc=("response",)
+                )
+            if errors:
+                ctx = endpoint_ctx or EndpointContext()
+>               raise ResponseValidationError(
+                    errors=errors,
+                    body=response_content,
+                    endpoint_ctx=ctx,
+                )
+E               fastapi.exceptions.ResponseValidationError: 7 validation errors:
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'ticker'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'timestamp'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'horizons', 0, 'confidence'), 'msg': 'Field required', 'input': {'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'source_breakdown'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'market_psychology_tags'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'confidence'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'agent_weights'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E               
+E                 File "H:\AI-ML-LLM in Stock_march26_PTIT_NEU\src\api\routes.py", line 47, in predict
+E                   GET /api/v1/predict
+
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:296: ResponseValidationError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 22:53:19 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:19 [info     ] features_computed              features=79 rows=540
+2026-03-29 22:53:19 [error    ] train_error                    error='Invalid classes inferred from unique values of `y`.  Expected: [0], got [1]' ticker=PRED
+2026-03-29 22:53:19 [info     ] request_latency                latency_ms=32.1 method=POST path=/api/v1/train stages={} status=500 trace_id=a2d57c2ac594
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 22:53:19 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:19 [info     ] features_computed              features=79 rows=540
+------------------------------ Captured log call ------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:377 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x0000020E889BD310>>
+Traceback (most recent call last):
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\pool\base.py", line 373, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 1127, in do_terminate
+    dbapi_connection.terminate()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\connectors\asyncio.py", line 402, in terminate
+    self.await_(asyncio.shield(self._terminate_graceful_close()))  # type: ignore[attr-defined] # noqa: E501
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 912, in _terminate_graceful_close
+    await self._connection.close(timeout=2)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1513, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 617, in close
+  File "asyncpg/protocol/protocol.pyx", line 650, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1682, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 455, in create_task
+    self._check_closed()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+__________ TestPredictEndpoint.test_predict_has_trend_probabilities ___________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x0000020E86723050>
+client = <starlette.testclient.TestClient object at 0x0000020E887013A0>
+
+    def test_predict_has_trend_probabilities(self, client: TestClient):
+        """Response must include up/down/sideways probabilities."""
+>       response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_api.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:473: in get
+    return super().get(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:445: in request
+    return super().request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:348: in handle_request
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:334: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:259: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:1160: in __call__
+    await super().__call__(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:191: in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:158: in __exit__
+    self.gen.throw(value)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py:87: in collapse_excgroups
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:193: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\api\tracing.py:65: in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:168: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:144: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py:87: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:736: in app
+    await route.handle(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:290: in handle
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:130: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:116: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:691: in app
+    content = await serialize_response(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def serialize_response(
+        *,
+        field: ModelField | None = None,
+        response_content: Any,
+        include: IncEx | None = None,
+        exclude: IncEx | None = None,
+        by_alias: bool = True,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        is_coroutine: bool = True,
+        endpoint_ctx: EndpointContext | None = None,
+        dump_json: bool = False,
+    ) -> Any:
+        if field:
+            if is_coroutine:
+                value, errors = field.validate(response_content, {}, loc=("response",))
+            else:
+                value, errors = await run_in_threadpool(
+                    field.validate, response_content, {}, loc=("response",)
+                )
+            if errors:
+                ctx = endpoint_ctx or EndpointContext()
+>               raise ResponseValidationError(
+                    errors=errors,
+                    body=response_content,
+                    endpoint_ctx=ctx,
+                )
+E               fastapi.exceptions.ResponseValidationError: 7 validation errors:
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'ticker'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'timestamp'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'horizons', 0, 'confidence'), 'msg': 'Field required', 'input': {'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'source_breakdown'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'market_psychology_tags'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'confidence'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'agent_weights'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E               
+E                 File "H:\AI-ML-LLM in Stock_march26_PTIT_NEU\src\api\routes.py", line 47, in predict
+E                   GET /api/v1/predict
+
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:296: ResponseValidationError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 22:53:19 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:19 [info     ] features_computed              features=79 rows=540
+2026-03-29 22:53:19 [error    ] train_error                    error='Invalid classes inferred from unique values of `y`.  Expected: [0], got [1]' ticker=PRED
+2026-03-29 22:53:19 [info     ] request_latency                latency_ms=31.7 method=POST path=/api/v1/train stages={} status=500 trace_id=983e272d0c91
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 22:53:19 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:19 [info     ] features_computed              features=79 rows=540
+_____________ TestPredictEndpoint.test_predict_has_expected_range _____________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x0000020E86723380>
+client = <starlette.testclient.TestClient object at 0x0000020E998E2810>
+
+    def test_predict_has_expected_range(self, client: TestClient):
+        """Response must include quantile price ranges."""
+>       response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_api.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:473: in get
+    return super().get(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:445: in request
+    return super().request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:348: in handle_request
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:334: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:259: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:1160: in __call__
+    await super().__call__(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:191: in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:158: in __exit__
+    self.gen.throw(value)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py:87: in collapse_excgroups
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:193: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\api\tracing.py:65: in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:168: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:144: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py:87: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:736: in app
+    await route.handle(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:290: in handle
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:130: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:116: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:691: in app
+    content = await serialize_response(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def serialize_response(
+        *,
+        field: ModelField | None = None,
+        response_content: Any,
+        include: IncEx | None = None,
+        exclude: IncEx | None = None,
+        by_alias: bool = True,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        is_coroutine: bool = True,
+        endpoint_ctx: EndpointContext | None = None,
+        dump_json: bool = False,
+    ) -> Any:
+        if field:
+            if is_coroutine:
+                value, errors = field.validate(response_content, {}, loc=("response",))
+            else:
+                value, errors = await run_in_threadpool(
+                    field.validate, response_content, {}, loc=("response",)
+                )
+            if errors:
+                ctx = endpoint_ctx or EndpointContext()
+>               raise ResponseValidationError(
+                    errors=errors,
+                    body=response_content,
+                    endpoint_ctx=ctx,
+                )
+E               fastapi.exceptions.ResponseValidationError: 7 validation errors:
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'ticker'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'timestamp'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'horizons', 0, 'confidence'), 'msg': 'Field required', 'input': {'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'source_breakdown'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'market_psychology_tags'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'confidence'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'agent_weights'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E               
+E                 File "H:\AI-ML-LLM in Stock_march26_PTIT_NEU\src\api\routes.py", line 47, in predict
+E                   GET /api/v1/predict
+
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:296: ResponseValidationError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 22:53:19 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:19 [info     ] features_computed              features=79 rows=540
+2026-03-29 22:53:19 [error    ] train_error                    error='Invalid classes inferred from unique values of `y`.  Expected: [0], got [1]' ticker=PRED
+2026-03-29 22:53:19 [info     ] request_latency                latency_ms=31.2 method=POST path=/api/v1/train stages={} status=500 trace_id=7218f6926482
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 22:53:19 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:19 [info     ] features_computed              features=79 rows=540
+------------------------------ Captured log call ------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:377 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x0000020E99889A90>>
+Traceback (most recent call last):
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\pool\base.py", line 373, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 1127, in do_terminate
+    dbapi_connection.terminate()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\connectors\asyncio.py", line 402, in terminate
+    self.await_(asyncio.shield(self._terminate_graceful_close()))  # type: ignore[attr-defined] # noqa: E501
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 912, in _terminate_graceful_close
+    await self._connection.close(timeout=2)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1513, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 617, in close
+  File "asyncpg/protocol/protocol.pyx", line 650, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1682, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 455, in create_task
+    self._check_closed()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+______________ TestPredictEndpoint.test_predict_has_action_plan _______________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x0000020E86723680>
+client = <starlette.testclient.TestClient object at 0x0000020E9985B290>
+
+    def test_predict_has_action_plan(self, client: TestClient):
+        """Response must include a fusion decision."""
+>       response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_api.py:117: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:473: in get
+    return super().get(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:445: in request
+    return super().request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:348: in handle_request
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:334: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:259: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:1160: in __call__
+    await super().__call__(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:191: in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:158: in __exit__
+    self.gen.throw(value)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py:87: in collapse_excgroups
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:193: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\api\tracing.py:65: in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:168: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:144: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py:87: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:736: in app
+    await route.handle(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:290: in handle
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:130: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:116: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:691: in app
+    content = await serialize_response(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def serialize_response(
+        *,
+        field: ModelField | None = None,
+        response_content: Any,
+        include: IncEx | None = None,
+        exclude: IncEx | None = None,
+        by_alias: bool = True,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        is_coroutine: bool = True,
+        endpoint_ctx: EndpointContext | None = None,
+        dump_json: bool = False,
+    ) -> Any:
+        if field:
+            if is_coroutine:
+                value, errors = field.validate(response_content, {}, loc=("response",))
+            else:
+                value, errors = await run_in_threadpool(
+                    field.validate, response_content, {}, loc=("response",)
+                )
+            if errors:
+                ctx = endpoint_ctx or EndpointContext()
+>               raise ResponseValidationError(
+                    errors=errors,
+                    body=response_content,
+                    endpoint_ctx=ctx,
+                )
+E               fastapi.exceptions.ResponseValidationError: 7 validation errors:
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'ticker'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'timestamp'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'horizons', 0, 'confidence'), 'msg': 'Field required', 'input': {'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'source_breakdown'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'market_psychology_tags'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'confidence'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'agent_weights'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E               
+E                 File "H:\AI-ML-LLM in Stock_march26_PTIT_NEU\src\api\routes.py", line 47, in predict
+E                   GET /api/v1/predict
+
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:296: ResponseValidationError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 22:53:19 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:19 [info     ] features_computed              features=79 rows=540
+2026-03-29 22:53:19 [error    ] train_error                    error='Invalid classes inferred from unique values of `y`.  Expected: [0], got [1]' ticker=PRED
+2026-03-29 22:53:19 [info     ] request_latency                latency_ms=32.2 method=POST path=/api/v1/train stages={} status=500 trace_id=7409d6108f59
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 22:53:19 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:19 [info     ] features_computed              features=79 rows=540
+________________ TestPredictEndpoint.test_predict_risk_payload ________________
+
+self = <tests.test_api.TestPredictEndpoint object at 0x0000020E86723980>
+client = <starlette.testclient.TestClient object at 0x0000020E99851C10>
+
+    def test_predict_risk_payload(self, client: TestClient):
+        """Response must include risk monitoring."""
+>       response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_api.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:473: in get
+    return super().get(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1053: in get
+    return self.request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:445: in request
+    return super().request(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:348: in handle_request
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\testclient.py:345: in handle_request
+    portal.call(self.app, scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:334: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\anyio\from_thread.py:259: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:1160: in __call__
+    await super().__call__(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\applications.py:107: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:191: in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\contextlib.py:158: in __exit__
+    self.gen.throw(value)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_utils.py:87: in collapse_excgroups
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:193: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\api\tracing.py:65: in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:168: in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\base.py:144: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\cors.py:87: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:716: in __call__
+    await self.middleware_stack(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:736: in app
+    await route.handle(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\routing.py:290: in handle
+    await self.app(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:130: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:116: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:691: in app
+    content = await serialize_response(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def serialize_response(
+        *,
+        field: ModelField | None = None,
+        response_content: Any,
+        include: IncEx | None = None,
+        exclude: IncEx | None = None,
+        by_alias: bool = True,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        is_coroutine: bool = True,
+        endpoint_ctx: EndpointContext | None = None,
+        dump_json: bool = False,
+    ) -> Any:
+        if field:
+            if is_coroutine:
+                value, errors = field.validate(response_content, {}, loc=("response",))
+            else:
+                value, errors = await run_in_threadpool(
+                    field.validate, response_content, {}, loc=("response",)
+                )
+            if errors:
+                ctx = endpoint_ctx or EndpointContext()
+>               raise ResponseValidationError(
+                    errors=errors,
+                    body=response_content,
+                    endpoint_ctx=ctx,
+                )
+E               fastapi.exceptions.ResponseValidationError: 7 validation errors:
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'ticker'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'timestamp'), 'msg': 'Field required', 'input': {'horizons': [{'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}], 'agent_weights': {'technical': 0.6, 'sentiment': 0.4}, 'regime_detected': 'trend'}}
+E                 {'type': 'missing', 'loc': ('response', 'technical', 'horizons', 0, 'confidence'), 'msg': 'Field required', 'input': {'horizon': '1w', 'trend_probs': {'up': 0.8939999938011169, 'sideways': 0.05460000038146973, 'down': 0.05139999836683273, 'confidence': 1.0}, 'expected_range': {'bottom_10th': 26.63, 'median_50th': 27.18, 'ceiling_90th': 28.39}, 'model_confidence': 0.85}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'source_breakdown'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'sentiment', 'market_psychology_tags'), 'msg': 'Field required', 'input': {'sentiment_score': 0.0, 'sentiment_regime': 'neutral', 'sentiment_confidence': 0.0, 'narrative_risk_flags': ['NO_DATA_YET'], 'status': 'PENDING'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'confidence'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E                 {'type': 'missing', 'loc': ('response', 'fusion', 'agent_weights'), 'msg': 'Field required', 'input': {'regime_detected': 'trend', 'action': 'STANDBY', 'rationale': 'ml=BUY, llm=neutral, veto=False'}}
+E               
+E                 File "H:\AI-ML-LLM in Stock_march26_PTIT_NEU\src\api\routes.py", line 47, in predict
+E                   GET /api/v1/predict
+
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py:296: ResponseValidationError
+---------------------------- Captured stdout setup ----------------------------
+2026-03-29 22:53:20 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:20 [info     ] features_computed              features=79 rows=540
+2026-03-29 22:53:20 [error    ] train_error                    error='Invalid classes inferred from unique values of `y`.  Expected: [0], got [1]' ticker=PRED
+2026-03-29 22:53:20 [info     ] request_latency                latency_ms=31.6 method=POST path=/api/v1/train stages={} status=500 trace_id=826ad0c84cdf
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 22:53:20 [info     ] mock_data_generated            rows=600 ticker=PRED
+2026-03-29 22:53:20 [info     ] features_computed              features=79 rows=540
+------------------------------ Captured log call ------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:377 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x0000020E997AAD50>>
+Traceback (most recent call last):
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\pool\base.py", line 373, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 1127, in do_terminate
+    dbapi_connection.terminate()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\connectors\asyncio.py", line 402, in terminate
+    self.await_(asyncio.shield(self._terminate_graceful_close()))  # type: ignore[attr-defined] # noqa: E501
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 912, in _terminate_graceful_close
+    await self._connection.close(timeout=2)
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1513, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 617, in close
+  File "asyncpg/protocol/protocol.pyx", line 650, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\asyncpg\connection.py", line 1682, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 455, in create_task
+    self._check_closed()
+  File "C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+_______________ TestPredictErrors.test_predict_untrained_ticker _______________
+
+self = <tests.test_api.TestPredictErrors object at 0x0000020E86723230>
+client = <starlette.testclient.TestClient object at 0x0000020E99814560>
+
+    def test_predict_untrained_ticker(self, client: TestClient):
+        """Untrained ticker without mock should return 404."""
+        response = client.get("/api/v1/predict?ticker=NONEXISTENT_TICKER_XYZ")
+>       assert response.status_code in (404, 500)
+E       assert 422 in (404, 500)
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+tests\test_api.py:144: AssertionError
+---------------------------- Captured stdout call -----------------------------
+2026-03-29 22:53:20 [info     ] ohlcv_loaded_from_db           rows=0 ticker=NONEXISTENT_TICKER_XYZ
+2026-03-29 22:53:20 [info     ] request_latency                latency_ms=272.9 method=GET path=/api/v1/predict stages={'quant_data_load': 246.0} status=422 trace_id=2645a95b6a5b
+============================== warnings summary ===============================
+C:\Users\luong\AppData\Local\Programs\Python\Python312\Lib\site-packages\pandas_ta\__init__.py:37
+  The 'mode.copy_on_write' option is deprecated. Copy-on-Write can no longer be disabled (it is always enabled with pandas >= 3.0), and setting the option has no impact. This option will be removed in pandas 4.0.
+
+tests/test_api.py: 36 warnings
+  X does not have valid feature names, but LGBMRegressor was fitted with feature names
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_api.py::TestTrainEndpoint::test_train_with_mock - assert 50...
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_success - fastapi...
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_json_contract - f...
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_has_trend_probabilities
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_has_expected_range
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_has_action_plan
+FAILED tests/test_api.py::TestPredictEndpoint::test_predict_risk_payload - fa...
+FAILED tests/test_api.py::TestPredictErrors::test_predict_untrained_ticker - ...
+================== 8 failed, 4 passed, 37 warnings in 6.12s ===================

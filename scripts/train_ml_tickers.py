@@ -37,15 +37,22 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.utils.logging import setup_logging, get_logger
 from src.ml.feature_engineering import FeatureEngineer
+from src.ml.labels.training_adapter import resolve_label_config, LabelTrainingConfig
+from src.ml.experiment_tracker import ExperimentTracker
+from src.validators.data_quality import DataQualityValidator
 
 warnings.filterwarnings('ignore')
 setup_logging()
 logger = get_logger("mtf_trainer_v3")
 
+from src.data.universe import get_vn100_universe
+
 MIN_ROWS = 40           # Lowered — 5-year data ensures enough rows
 MIN_TEST_ROWS = 10      # Minimum test set size
 OPTUNA_TRIALS = 200     # Ultimate tuning for the 80-90% goal
 PURGE_GAP = 3           # Gap between train/test to prevent lookahead
+
+# Configuration constants
 
 # ═══════════════════════════ FEATURE ENGINEERING ═══════════════════════════════
 
@@ -55,7 +62,7 @@ def _safe(series, fallback=0.0):
     return series
 
 
-def build_daily_features(df: pd.DataFrame, sentiment_df: pd.DataFrame = None) -> pd.DataFrame:
+def build_daily_features(df: pd.DataFrame, sentiment_df: pd.DataFrame = None, label_config: LabelTrainingConfig = None) -> pd.DataFrame:
     """Enhanced feature set + multi-horizon targets with volatility buffer."""
     if 'time' in df.columns and 'date' not in df.columns:
         df = df.rename(columns={'time': 'date'})
@@ -70,24 +77,27 @@ def build_daily_features(df: pd.DataFrame, sentiment_df: pd.DataFrame = None) ->
     for col in fe.get_feature_columns(feat_df):
         if not col.startswith('d_'):
             feat_df[f'd_{col}'] = feat_df[col]
-    
-    # --- Targets (Multi-Horizon) with Noise Filtering ---
-    # We use a scaled buffer to filter out market noise
-    c = feat_df['close']
-    # Ensure we use raw prices for labels to avoid leakage/smoothing bias
-    c_raw = df['close_raw'] if 'close_raw' in df.columns else df['close']
-    h_raw = df['high'] # Usually high/low are not smoothed
-    l_raw = df['low']
-    
-    HORIZONS = {5: "_short", 20: "_mid", 120: "_long"}
-    for h_days, suffix in HORIZONS.items():
-        # Calculate future return using RAW prices
-        # We add a tiny buffer (0.01%) to classify "No change" as 0
-        feat_df[f'target_trend{suffix}'] = (c_raw.shift(-h_days) > c_raw * 1.0001).astype(int)
+            
+    if label_config:
+        # Generate custom label, bypassing the multi-horizon hardcoded logic
+        feat_df = label_config.generator.generate(feat_df)
+    else:
+        # --- Targets (Multi-Horizon) with Noise Filtering ---
+        # We use a scaled buffer to filter out market noise
+        c = feat_df['close']
+        c_raw = df['close_raw'] if 'close_raw' in df.columns else df['close']
+        h_raw = df['high'] # Usually high/low are not smoothed
+        l_raw = df['low']
         
-        # Regression targets for high/low levels
-        feat_df[f'target_high{suffix}'] = h_raw.shift(-h_days)
-        feat_df[f'target_low{suffix}'] = l_raw.shift(-h_days)
+        HORIZONS = {5: "_short", 20: "_mid", 120: "_long"}
+        for h_days, suffix in HORIZONS.items():
+            # Calculate future return using RAW prices
+            # We add a tiny buffer (0.01%) to classify "No change" as 0
+            feat_df[f'target_trend{suffix}'] = (c_raw.shift(-h_days) > c_raw * 1.0001).astype(int)
+            
+            # Regression targets for high/low levels
+            feat_df[f'target_high{suffix}'] = h_raw.shift(-h_days)
+            feat_df[f'target_low{suffix}'] = l_raw.shift(-h_days)
 
     feat_df.replace([np.inf, -np.inf], np.nan, inplace=True)
     feat_df.dropna(inplace=True)
@@ -124,8 +134,70 @@ def build_hourly_features(df: pd.DataFrame) -> pd.DataFrame:
 
 # ═══════════════════════════ TRAINING ═══════════════════════════════════════
 
+def _train_custom_label(daily_df: pd.DataFrame, ticker: str, ticker_dir: Path, feature_cols: list[str], label_config: LabelTrainingConfig) -> dict:
+    """Train a single model for the requested custom label."""
+    y = daily_df[label_config.label_column]
+    
+    current_split = int(len(daily_df) * 0.8)
+    purge_end = min(current_split + PURGE_GAP, len(daily_df) - 5)
+    
+    X_train_full = daily_df[feature_cols].iloc[:current_split]
+    y_train_full = y.iloc[:current_split]
+    X_test = daily_df[feature_cols].iloc[purge_end:]
+    y_test = y.iloc[purge_end:]
+    
+    if len(X_test) < 5 or len(X_train_full) < MIN_ROWS:
+        return {}
+        
+    n = len(daily_df)
+    recency_weights = np.exp(np.linspace(-3, 0, n))
+    vol_weights = pd.Series(1.0, index=daily_df.index)
+    if 'pct_return' in daily_df.columns:
+        vol = daily_df['pct_return'].rolling(5).std().fillna(daily_df['pct_return'].std())
+        vol_weights = 1.0 / (vol + 1e-6)
+        vol_weights = vol_weights / vol_weights.mean()
+    weights = (recency_weights * vol_weights).iloc[:current_split]
+    
+    # Feature Selection
+    selector = LGBMClassifier(n_estimators=100, max_depth=3, random_state=42, n_jobs=-1, verbosity=-1) if label_config.task_type == "classification" else LGBMRegressor(n_estimators=100, max_depth=3, random_state=42, n_jobs=-1, verbosity=-1)
+    selector.fit(X_train_full, y_train_full, sample_weight=weights)
+    importances = selector.feature_importances_
+    threshold = np.percentile(importances, 20)
+    h_selected = [f for f, imp in zip(feature_cols, importances) if imp > threshold]
+    if len(h_selected) < 5: h_selected = feature_cols
+    
+    X_train = X_train_full[h_selected]
+    X_test = X_test[h_selected]
+    
+    logger.info("training_custom_label", ticker=ticker, mode=label_config.mode, max_rows=len(X_train))
+    
+    if label_config.task_type == "classification":
+        model = LGBMClassifier(n_estimators=400, learning_rate=0.05, max_depth=5, random_state=42, n_jobs=-1, verbosity=-1)
+        model.fit(X_train, y_train_full, sample_weight=weights)
+        test_preds = model.predict(X_test)
+        metric_val = accuracy_score(y_test, test_preds) * 100
+        metric_name = f"{label_config.mode}_acc"
+        model_name = f"trend_classifier_{label_config.mode}.joblib"
+    else:
+        model = LGBMRegressor(n_estimators=400, learning_rate=0.05, max_depth=5, random_state=42, n_jobs=-1, verbosity=-1)
+        model.fit(X_train, y_train_full, sample_weight=weights)
+        from sklearn.metrics import mean_absolute_error
+        test_preds = model.predict(X_test)
+        metric_val = mean_absolute_error(y_test, test_preds)
+        metric_name = f"{label_config.mode}_mae"
+        model_name = f"regressor_{label_config.mode}.joblib"
+        
+    joblib.dump(model, ticker_dir / model_name)
+    joblib.dump(h_selected, ticker_dir / f"feature_cols_{label_config.mode}.joblib")
+    
+    return {
+        metric_name: metric_val,
+        "n_features": len(h_selected)
+    }
+
 def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
-                 ticker: str, base_dir: Path, market_df: pd.DataFrame = None, **kwargs) -> dict | None:
+                 ticker: str, base_dir: Path, market_df: pd.DataFrame = None, 
+                 label_config: LabelTrainingConfig = None, **kwargs) -> dict | None:
     """Train Optuna-tuned VotingClassifier with anti-overfitting measures."""
 
     # Merge hourly aggregates
@@ -169,10 +241,12 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
     fe = FeatureEngineer()
     all_cols = fe.get_feature_columns(daily_df)
     
-    # --- Phase 37: Recursive Importance Pruning ---
-    # We only keep features that show some correlation or importance
-    # For now, we take the top 20 based on simple correlation with mid-term target
-    corrs = daily_df[all_cols].corrwith(daily_df[f'target_trend_mid']).abs()
+    # --- Recursive Importance Pruning ---
+    if label_config:
+        corrs = daily_df[all_cols].corrwith(daily_df[label_config.label_column]).abs()
+    else:
+        corrs = daily_df[all_cols].corrwith(daily_df[f'target_trend_mid']).abs()
+        
     feature_cols = corrs.sort_values(ascending=False).head(20).index.tolist()
 
     if len(feature_cols) < 5 or len(daily_df) < MIN_ROWS:
@@ -182,6 +256,34 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
     ticker_dir = base_dir / ticker
     os.makedirs(ticker_dir, exist_ok=True)
     horizon_metrics = {}
+    
+    # Initialize Experiment Tracker (assuming it's passed or created)
+    tracker = kwargs.get('tracker')
+    train_start = pd.Timestamp.now().isoformat()
+
+    if label_config:
+        # Custom label path does not use multi-horizon
+        metrics = _train_custom_label(daily_df, ticker, ticker_dir, feature_cols, label_config)
+        result_dict = {
+            "ticker": ticker,
+            **metrics,
+            "train_rows": len(daily_df),
+        }
+        
+        # Log with ExperimentTracker if available
+        train_end = pd.Timestamp.now().isoformat()
+        if tracker:
+            tracker.log_experiment(
+                ticker=ticker,
+                label_type=label_config.mode,
+                model_type="LGBM_Custom_Label",
+                feature_count=metrics.get("n_features", len(feature_cols)),
+                metrics=metrics,
+                train_start=train_start,
+                train_end=train_end,
+                model_path=str(ticker_dir)
+            )
+        return result_dict
 
     # --- 1. Horizon Loop ---
     HORIZONS = {5: "_short", 20: "_mid", 120: "_long"}
@@ -355,19 +457,28 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
                 reg.fit(X_train, y_r_train, sample_weight=weights)
                 joblib.dump(reg, ticker_dir / f"range_{target_name}_q{q}{suffix}.joblib")
 
-    return {
+    result_dict = {
         "ticker": ticker,
         **horizon_metrics,
         "n_features": len(h_selected),
         "train_rows": len(daily_df),
     }
 
-    return {
-        "ticker": ticker,
-        **horizon_metrics,
-        "n_features": len(selected_features),
-        "train_rows": len(daily_df),
-    }
+    # Log with ExperimentTracker if available
+    train_end = pd.Timestamp.now().isoformat()
+    if tracker:
+        tracker.log_experiment(
+            ticker=ticker,
+            label_type=label_config.mode if label_config else "multi_horizon",
+            model_type="Ensemble_Stacking",
+            feature_count=len(h_selected),
+            metrics=horizon_metrics,
+            train_start=train_start,
+            train_end=train_end,
+            model_path=str(ticker_dir)
+        )
+
+    return result_dict
 
 
 # ═══════════════════════════ MAIN ══════════════════════════════════════════
@@ -379,7 +490,21 @@ def main():
     parser.add_argument("--output", type=str, default="models/")
     parser.add_argument("--report", type=str, default="models/evaluation_report.csv")
     parser.add_argument("--tickers", type=str, default="", help="Comma-separated list of tickers to train")
+    parser.add_argument("--all", action="store_true", dest="train_all", help="Train ALL tickers in the data directory")
+    parser.add_argument("--vn100", action="store_true", dest="train_vn100", help="Train only VN100 + 4 Viettel tickers (dynamic load)")
+    parser.add_argument("--optuna", action="store_true", help="Enable Optuna hyperparameter optimization")
+    parser.add_argument("--label-mode", "--label-type", type=str, default=None, help="Use custom label generator (e.g., binary_1d, regression_5d)")
+    parser.add_argument("--retrain-existing", action="store_true", help="Force retraining even if model files exist")
+    parser.add_argument("--max-tickers", type=int, default=None, help="Limit number of tickers to train")
+    parser.add_argument("--start-date", type=str, default=None, help="Filter data from this date (YYYY-MM-DD)")
+    parser.add_argument("--end-date", type=str, default=None, help="Filter data to this date (YYYY-MM-DD)")
+    parser.add_argument("--dry-run", action="store_true", help="Log what would be done without training")
     args = parser.parse_args()
+
+    label_config = None
+    if args.label_mode:
+        label_config = resolve_label_config(args.label_mode)
+        print(f"🎯 Using custom label mode: {args.label_mode} -> {label_config.registry_key} (col: {label_config.label_column})")
 
     daily_dir = Path(args.daily)
     hourly_dir = Path(args.hourly)
@@ -390,9 +515,20 @@ def main():
         return
 
     files = sorted(daily_dir.glob("*.csv"))
-    if args.tickers:
+    if args.train_vn100:
+        # Chỉ train VN100 + 4 mã Viettel (Dynamic)
+        vn100_list = get_vn100_universe(mode="current_plus_viettel")
+        target_set = set(t.upper() for t in vn100_list)
+        files = [f for f in files if f.stem.upper() in target_set]
+        print(f"🎯 Dynamic VN100 Resolved: {len(target_set)} potential tickers")
+    elif args.tickers and not args.train_all:
         target_list = [t.strip().upper() for t in args.tickers.split(",")]
         files = [f for f in files if f.stem.upper() in target_list]
+    # --all: use all files (no filter needed)
+
+    if args.max_tickers:
+        files = files[:args.max_tickers]
+        print(f"🔢 Limited to {args.max_tickers} tickers")
         
     if not files:
         print(f"❌ No CSV files found for: {args.tickers or 'all'}")
@@ -407,6 +543,8 @@ def main():
 
     results = []
     skipped = 0
+    trained = 0
+    failures = 0
     market_df = None
     fund_df = None
     sector_df = None
@@ -433,28 +571,66 @@ def main():
 
     print(f"✅ Loaded Phase 35 Intelligence: {len(fund_df) if fund_df is not None else 0} fundamentals, {len(sector_df) if sector_df is not None else 0} sectors.")
 
+    # Initialize Experiment Tracker
+    tracker = ExperimentTracker()
+    print(f"🔬 Experiment Tracking active: {tracker.storage_path} (Run: {tracker.run_id})")
+
     for idx, fpath in enumerate(files):
-        ticker = fpath.stem
+        ticker = fpath.stem.upper()
+        
+        # 1. Skip logic: Check if model already exists
+        ticker_dir = output_dir / ticker
+        model_file = ticker_dir / "feature_cols.joblib"
+        if label_config:
+             model_file = ticker_dir / f"feature_cols_{label_config.mode}.joblib"
+             
+        if model_file.exists() and not args.retrain_existing:
+            # print(f"  ⏩ Skipping {ticker} (model exists)")
+            skipped += 1
+            continue
+
         if idx % 50 == 0 and idx > 0:
-            avg = np.mean([r['dir_acc_pct'] for r in results]) if results else 0
-            cv_avg = np.mean([r['best_cv_acc'] for r in results]) if results else 0
-            n_overfit = sum(1 for r in results if r.get('overfit_flag'))
-            print(f"  ⏳ {idx}/{len(files)} – Test: {avg:.1f}% | CV: {cv_avg:.1f}% | Overfit: {n_overfit} | Skip: {skipped}")
+            avg = np.mean([r.get('short_acc', 0) for r in results]) if results else 0
+            elite_avg = np.mean([r.get('short_elite_acc', 0) for r in results]) if results else 0
+            print(f"  ⏳ {idx}/{len(files)} – 1W Base: {avg:.1f}% | Elite: {elite_avg:.1f}% | Skip: {skipped}")
+
+        if args.dry_run:
+            print(f"  🧪 DRY-RUN: Would train {ticker}")
+            trained += 1
+            results.append({"ticker": ticker, "status": "dry_run"})
+            continue
 
         try:
             df_daily = pd.read_csv(fpath)
             if 'time' in df_daily.columns and 'date' not in df_daily.columns:
                 df_daily = df_daily.rename(columns={'time': 'date'})
+            
+            # 2. Date Filtering
+            if args.start_date:
+                df_daily = df_daily[df_daily['date'] >= args.start_date]
+            if args.end_date:
+                df_daily = df_daily[df_daily['date'] <= args.end_date]
+
             if len(df_daily) < 60:
+                logger.warning("insufficient_data", ticker=ticker, rows=len(df_daily))
                 skipped += 1
                 continue
+            
+            # Data Quality Validation (OHLCV)
+            validator = DataQualityValidator(ticker=ticker)
+            validator.validate_ohlcv(df_daily)
             
             # Filter sentiment for this ticker if available
             ticker_sentiment = None
             if sentiment_df is not None:
                 ticker_sentiment = sentiment_df[sentiment_df['ticker'] == ticker]
 
-            df_daily = build_daily_features(df_daily, sentiment_df=ticker_sentiment)
+            df_daily = build_daily_features(df_daily, sentiment_df=ticker_sentiment, label_config=label_config)
+            
+            # Data Quality Validation (Features)
+            fe = FeatureEngineer()
+            feature_cols = fe.get_feature_columns(df_daily)
+            validator.validate_features(df_daily, feature_cols)
 
             hourly_agg = None
             hourly_file = hourly_dir / f"{ticker}.csv"
@@ -465,34 +641,54 @@ def main():
 
             metrics = train_ticker(df_daily, hourly_agg, ticker, output_dir, 
                                    market_df=market_df, fund_df=fund_df, 
-                                   sector_df=sector_df, ticker_sectors=ticker_sectors)
+                                   sector_df=sector_df, ticker_sectors=ticker_sectors,
+                                   label_config=label_config, tracker=tracker)
             if metrics:
                 results.append(metrics)
+                trained += 1
             else:
                 skipped += 1
         except Exception as e:
             logger.error("fail", ticker=ticker, error=str(e))
-            skipped += 1
+            failures += 1
 
     if results:
         df_report = pd.DataFrame(results)
         df_report.to_csv(args.report, index=False)
         
-        # Calculate averages for report
-        avg_1w_base = df_report.get("short_acc", pd.Series([0])).mean()
-        avg_1w_elite = df_report.get("short_elite_acc", pd.Series([0])).mean()
-        avg_1m_base = df_report.get("mid_acc", pd.Series([0])).mean()
-        avg_1m_elite = df_report.get("mid_elite_acc", pd.Series([0])).mean()
-        avg_6m_base = df_report.get("long_acc", pd.Series([0])).mean()
-        avg_6m_elite = df_report.get("long_elite_acc", pd.Series([0])).mean()
+        # Save summary JSON
+        import json
+        summary_path = Path("logs") / f"train_summary_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.json"
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        summary_data = {
+            "timestamp": pd.Timestamp.now().isoformat(),
+            "mode": "vn100" if args.train_vn100 else "custom",
+            "label_mode": args.label_mode,
+            "total_files": len(files),
+            "trained": trained,
+            "skipped": skipped,
+            "failures": failures,
+        }
+        
+        if not args.dry_run:
+            # Calculate averages for report
+            metrics = {}
+            for col in df_report.columns:
+                if col.endswith('_acc') or col.endswith('_mae'):
+                    metrics[f"avg_{col}"] = float(df_report[col].mean())
+            summary_data["metrics"] = metrics
+
+        with open(summary_path, "w") as f:
+            json.dump(summary_data, f, indent=4)
 
         print(f"\n{'='*65}")
-        print(f"✅ Hoàn tất! Đã train {len(results)} mô hình (bỏ qua {skipped} mã).")
-        print(f"📊 1-Week  Base: {avg_1w_base:.1f}% | Elite: {avg_1w_elite:.1f}%")
-        print(f"📊 1-Month Base: {avg_1m_base:.1f}% | Elite: {avg_1m_elite:.1f}%")
-        print(f"📊 6-Month Base: {avg_6m_base:.1f}% | Elite: {avg_6m_elite:.1f}%")
+        print(f"✅ Hoàn tất! Đã train {trained} mô hình (bỏ qua {skipped} mã, lỗi {failures}).")
+        if not args.dry_run and "avg_short_acc" in summary_data.get("metrics", {}):
+            print(f"📊 1-Week  Base: {summary_data['metrics']['avg_short_acc']:.1f}% | Elite: {summary_data['metrics'].get('avg_short_elite_acc', 0):.1f}%")
         print(f"📁 Models:       {output_dir}")
         print(f"📋 Report:       {args.report}")
+        print(f"📝 Summary:      {summary_path}")
         print(f"{'='*65}")
 
 

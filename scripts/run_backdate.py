@@ -16,7 +16,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
-from src.historical.backdate import BackdateIngestor
+from src.data.historical.backdate import BackdateIngestor
 from src.utils.logging import setup_logging, get_logger
 
 import datetime as dt
@@ -122,8 +122,8 @@ async def main() -> None:
                 
                 # Bulk insert Company Profiles to DB to avoid 1500 API calls later
                 logger.info("bulk_inserting_company_profiles")
-                from src.database.connection import get_session
-                from src.models.company import CompanyProfile
+                from src.data.database.connection import get_session
+                from src.ml.models.company import CompanyProfile
                 from sqlalchemy.dialects.postgresql import insert as pg_insert
                 
                 async def _insert_profiles():

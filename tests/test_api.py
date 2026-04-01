@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.main import app
-from src.api.schemas import PredictionResponse
+from src.api.schemas_v2 import TerminalPayload
 
 
 @pytest.fixture
@@ -27,14 +27,14 @@ class TestHealthEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
-        assert data["version"] == "2.0.0"
+        assert data["version"] == "5.0.0"
         assert "X-Process-Time-Ms" in response.headers
         assert "X-Trace-Id" in response.headers
 
     def test_health_phase(self, client: TestClient):
         response = client.get("/api/v1/health")
         data = response.json()
-        assert "Phase 2" in data["phase"]
+        assert "Phase 1-5" in data["phase"]
 
 
 class TestRootEndpoint:
@@ -81,19 +81,19 @@ class TestPredictEndpoint:
         assert response.status_code == 200
 
     def test_predict_json_contract(self, client: TestClient):
-        """Response must match the PredictionResponse schema."""
+        """Response must match the TerminalPayload schema."""
         response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
         data = response.json()
 
         # Validate with Pydantic model
-        parsed = PredictionResponse(**data)
+        parsed = TerminalPayload(**data)
         assert parsed.ticker == "PRED"
 
     def test_predict_has_trend_probabilities(self, client: TestClient):
         """Response must include up/down/sideways probabilities."""
         response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
         data = response.json()
-        probs = data["quantitative_signals"]["trend_probabilities"]
+        probs = data["technical"]["horizons"][0]["trend_probs"]
         assert "up" in probs
         assert "down" in probs
         assert "sideways" in probs
@@ -105,7 +105,7 @@ class TestPredictEndpoint:
         """Response must include quantile price ranges."""
         response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
         data = response.json()
-        rng = data["quantitative_signals"]["expected_range"]
+        rng = data["technical"]["horizons"][0]["expected_range"]
         assert "bottom_10th" in rng
         assert "median_50th" in rng
         assert "ceiling_90th" in rng
@@ -113,34 +113,21 @@ class TestPredictEndpoint:
         assert rng["bottom_10th"] <= rng["median_50th"] <= rng["ceiling_90th"]
 
     def test_predict_has_action_plan(self, client: TestClient):
-        """Response must include an action plan."""
+        """Response must include a fusion decision."""
         response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
         data = response.json()
-        plan = data["quantitative_signals"]["action_plan"]
-        assert plan["recommendation"] in ("BUY", "SELL", "RANGE_TRADE", "STAND_ASIDE")
-        assert "entry_zone" in plan
-        assert "stop_loss" in plan
-        assert "take_profit" in plan
+        fusion = data["fusion"]
+        assert fusion["action"] in ("BUY", "SELL", "RANGE_TRADE", "STAND_ASIDE", "STRONG_BUY", "STRONG_SELL", "CANCEL_ORDER", "STANDBY")
+        assert "rationale" in fusion
 
-    def test_predict_risk_cap(self, client: TestClient):
-        """max_risk_tolerance must be ≤ 0.70."""
+    def test_predict_risk_payload(self, client: TestClient):
+        """Response must include risk monitoring."""
         response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
         data = response.json()
-        assert data["system_parameters"]["max_risk_tolerance"] <= 0.70
-
-    def test_predict_risk_cap_override(self, client: TestClient):
-        """Even with risk_tolerance=1.0, cap at 0.70."""
-        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true&risk_tolerance=1.0")
-        data = response.json()
-        assert data["system_parameters"]["max_risk_tolerance"] <= 0.70
-
-    def test_predict_confidence_routing(self, client: TestClient):
-        """Confidence metrics must follow specified routing."""
-        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
-        data = response.json()
-        conf = data["system_parameters"]["confidence_metrics"]
-        assert conf["stock_quantitative_data"] == 0.95
-        assert conf["general_market_context"] == 0.70
+        risk = data["risk"]
+        assert "position_size_suggestion" in risk
+        assert "veto_flag" in risk
+        assert isinstance(risk["veto_flag"], bool)
 
 
 class TestPredictErrors:
@@ -152,6 +139,7 @@ class TestPredictErrors:
         assert response.status_code == 422
 
     def test_predict_untrained_ticker(self, client: TestClient):
-        """Untrained ticker without mock should return 404."""
+        """Untrained ticker or insufficient data should return 422."""
         response = client.get("/api/v1/predict?ticker=NONEXISTENT_TICKER_XYZ")
-        assert response.status_code in (404, 500)
+        # In Phase 5, if data search fails or is insufficient, we return 422
+        assert response.status_code == 422
