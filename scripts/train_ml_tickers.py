@@ -50,7 +50,7 @@ from src.data.universe import get_vn100_universe
 MIN_ROWS = 40           # Lowered — 5-year data ensures enough rows
 MIN_TEST_ROWS = 10      # Minimum test set size
 OPTUNA_TRIALS = 200     # Ultimate tuning for the 80-90% goal
-PURGE_GAP = 3           # Gap between train/test to prevent lookahead
+PURGE_GAP = 10          # Default gap between train/test to prevent lookahead
 
 # Configuration constants
 
@@ -83,11 +83,11 @@ def build_daily_features(df: pd.DataFrame, sentiment_df: pd.DataFrame = None, la
         feat_df = label_config.generator.generate(feat_df)
     else:
         # --- Targets (Multi-Horizon) with Noise Filtering ---
-        # We use a scaled buffer to filter out market noise
-        c = feat_df['close']
-        c_raw = df['close_raw'] if 'close_raw' in df.columns else df['close']
-        h_raw = df['high'] # Usually high/low are not smoothed
-        l_raw = df['low']
+        # IMPORTANT: Extract target series from feat_df AFTER transform() 
+        # to ensure they are aligned with the dropped/filtered feature rows.
+        c_raw = feat_df['close']
+        h_raw = feat_df['high']
+        l_raw = feat_df['low']
         
         HORIZONS = {5: "_short", 20: "_mid", 120: "_long"}
         for h_days, suffix in HORIZONS.items():

@@ -304,19 +304,19 @@ class FeatureEngineer:
         # --- Williams %R ---
         df['wpr'] = ta.willr(df['high'], df['low'], df['close'], length=14)
         
-        # --- Phase 36: High-Octane Factors ---
         # --- Phase 41: Kalman Smoothing (Noise Reduction) ---
-        df['close_raw'] = df['close'] # Keep raw for target calculation
-        df['close'] = apply_kalman_filter(df['close'].values)
+        # df['close_raw'] is not needed as we don't overwrite df['close'] anymore
+        df['close_kalman'] = apply_kalman_filter(df['close'].values)
         
         # Standard indicators Needed for Phase 36
-        rsi = ta.rsi(df['close'], length=14)
+        # Use smoothed close for indicators that benefit from denoising
+        rsi = ta.rsi(df['close_kalman'], length=14)
         df['rsi'] = rsi
         df['rsi_signal'] = ta.sma(rsi, length=5)
         df['rsi_diff'] = df['rsi'] - df['rsi_signal']
 
         # 1. Bollinger Band Squeeze
-        bb = ta.bbands(df['close'], length=20, std=2)
+        bb = ta.bbands(df['close_kalman'], length=20, std=2)
         if bb is not None and not bb.empty:
              # Safe column access for different pandas_ta versions
              upper_col = [c for c in bb.columns if 'BBU' in c][0]

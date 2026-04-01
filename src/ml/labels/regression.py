@@ -14,7 +14,7 @@ from typing import List
 
 import pandas as pd
 
-from src.ml.labels.base import BaseLabelGenerator
+from src.ml.labels.base import BaseLabelGenerator, _get_target_close
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -43,7 +43,8 @@ class RegNextCloseReturn(BaseLabelGenerator):
         return [self._col]
 
     def _compute(self, df: pd.DataFrame) -> pd.DataFrame:
-        df[self._col] = df["close"].shift(-1) / df["close"] - 1
+        close = _get_target_close(df)
+        df[self._col] = close.shift(-1) / close - 1
         return df
 
 
@@ -72,5 +73,6 @@ class Reg5dReturn(BaseLabelGenerator):
         return [self._col]
 
     def _compute(self, df: pd.DataFrame) -> pd.DataFrame:
-        df[self._col] = df["close"].shift(-self.HORIZON) / df["close"] - 1
+        close = _get_target_close(df)
+        df[self._col] = close.shift(-self.HORIZON) / close - 1
         return df

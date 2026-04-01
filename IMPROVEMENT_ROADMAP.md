@@ -1,24 +1,36 @@
-# Improvement Roadmap
+# 🚀 Improvement Roadmap
 
-The following prioritized roadmap outlines the next steps for enhancing the `AI-ML-LLM in Stock` system.
+## 1. P0: CRITICAL VALIDITY & SAFETY (Immediate)
+**Reasoning**: Ensure the integrity of prediction signals before capital risk.
 
-## P0: Critical Refinement
-### Path Standardization in `settings.py`
-Standardize all string-based paths into `Path` objects derived from `PROJECT_ROOT`. This eliminates potential runtime relative path issues.
+| Item | Action | Reasoning |
+| :--- | :--- | :--- |
+| **Fix Label Smoothing** | Update `src/ml/labels/*.py` to use raw market prices only. | Prevents "artificially" high accuracy from smoothed data. |
+| **Sanitize Features** | Update `FeatureEngineer` to preserve `close_raw`. | Ensures causal inputs for all downstream indicators. |
+| **Artifact Pruning** | Archive non-VN100 models in `models/`. | Improves repo maintainability and disk I/O. |
 
-### Centralized Command-Line Interface (CLI)
-Create a single `main.py` entry point (using `click` or `argparse`) that wraps all scripts in `scripts/`. This would provide a unified command like `python main.py sync` or `python main.py train`.
+## 2. P1: MAINTAINABILITY & ROBUSTNESS (Secondary)
+**Reasoning**: Standardize the environment for team collaboration and production scaling.
 
-## P1: Important Scalability
-### Consistent Documentation Standards
-Audit all modules in `src/` to ensure they follow a consistent docstring format (NumPy or Google style) and include type hinting.
+| Item | Action | Reasoning |
+| :--- | :--- | :--- |
+| **Feature Registry** | Implement `src/features/registry.py`. | Standardizes alpha factor computation and dependency management. |
+| **Config Centralization** | Move hardcoded settings to `configs/ml_params.yaml`. | Reduces "magic numbers" and improves configurability. |
+| **Data Ingestion** | Unified `sync_all_data.py` as the master orchestrator. | Prevents database conflicts across different sync scripts. |
 
-### Automated Test Coverage
-Expand `tests/` to include integration tests for the full pipeline: Ingestion -> Training -> Prediction.
+## 3. P2: PERFORMANCE & QUALITY UPGRADES
+**Reasoning**: Optional enhancements for long-term scalability.
 
-## P2: Quality Upgrades
-### Containerization
-Develop a `Dockerfile` and `docker-compose.yml` to standardize the environment, including external dependencies like `PostgreSQL` or `ChromADB`.
+| Item | Action | Reasoning |
+| :--- | :--- | :--- |
+| **Parquet Transition** | Migrating from ticker-split CSVs to partitioned Parquet files. | Significant improvement in data loading speed. |
+| **Benchmark Baseline** | Integrated `VNINDEX` relative performance in all backtests. | Provides better context for alpha generation. |
+| **Walk-Forward Loop** | Retraining models periodically during backtests. | Accounts for market regime changes dynamically. |
 
-### CI/CD Integration
-Implement GitHub Actions to automate linting, testing, and documentation generation on every pull request.
+---
+
+## EXECUTION ORDER RECOMMENDATION
+1. **Validity Check (F-01, L-01)**: Fix Kalman smoothing vs Label interaction.
+2. **Environment Cleanup (S-01)**: Prune models and mass CSV files.
+3. **Registry Pattern (F-02)**: Formalize factor management.
+4. **Data Infrastructure (D-02)**: Optimize I/O logic.

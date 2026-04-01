@@ -1,46 +1,51 @@
-# Audit Report (Post-Restructuring)
+# 🛡️ Repository Audit Report (Consolidated)
 
-The `AI-ML-LLM in Stock` repository has been audited and restructured for production-grade maintenance and scalability.
+## 1. CURRENT ARCHITECTURE
+- **System**: Hybrid Agentic Trading System (v5.3.1).
+- **Core Strategy**: Multi-agent consensus (Technical + Sentiment).
+- **Design Pattern**: Domain-driven ML pipeline (Features -> Labels -> Trainer -> Inference -> Backtest).
 
-## Current Architecture
+## 2. MAIN ENTRY POINTS
+- Data Ingestion: `scripts/sync_all_data.py`
+- ML Training: `scripts/train_ml_tickers.py`
+- Real-time Inference: `scripts/per_session_predict.py`
+- Paper Trading: `src/ml/backtest/paper.py`
 
-The codebase is organized into five primary logical domains, each with a clear responsibility:
+## 3. DATA FLOW
+- **Ingestion**: `vnstock` API -> TimescaleDB (raw_prices).
+- **Processing**: DB -> Ticker CSVs (`data/daily_market_split_data/`).
+- **Feature Engineering**: Ticker CSVs -> Feature Matrices (`src/ml/feature_engineering.py`).
+- **Training**: Features -> Model Artifacts (`models/<TICKER>/`).
 
-*   **`src/data/`**: Standardized data ingestion, normalization, and universe management.
-*   **`src/ml/`**: Machine Learning pipeline, including feature and label engineering, trainers, model storage, and experiments.
-*   **`src/engine/`**: Core algorithmic processing, portfolio management, risk evaluation, and multi-agent orchestration.
-*   **`src/reporting/`**: Actionable insight generation (daily briefs, ranked predictions, and performance metrics).
-*   **`src/api/`**: Interaction layer, including web-based UI components and real-time streaming interfaces.
+## 4. SAVE/LOAD LOGIC
+- **Prices**: Database and local split-CSVs.
+- **Models**: Joblib serialization in ticker-named subdirectories.
+- **Predictions**: JSON snapshots in `data/latest_predictions.json`.
 
-## Completed Features
+## 5. COMPLETED COMPONENTS
+- [x] Multi-Horizon Feature Engineering (1w, 1m, 6m).
+- [x] Advanced Volatility Estimators (Yang-Zhang).
+- [x] Time-Series Purged Cross-Validation.
+- [x] Event-Driven Paper Trading Simulation with Slippage.
 
-*   **Ingestion**: Robust synchronization mechanism for VN100 OHLCV data via `sync_all_data.py`.
-*   **ML Pipeline**: Modular training flow with support for classification, regression, and volatility targets.
-*   **Feature Engineering**: Standardized technical and fundamental feature generation with time-safe transforms.
-*   **Experiment Tracking**: Centralized logging of training outcomes and model metadata.
-*   **Data Quality**: Validation layer for ingestion and training datasets.
-*   **Reporting**: Automated generation of ranked stock prediction tables and daily briefs.
+## 6. INCOMPLETE / WEAK COMPONENTS
+- [ ] Centralized Factor Registry (Factors are currently ad-hoc).
+- [ ] Unit-tested Causal Labels (Labels at risk of Kalman-smoothing bias).
+- [ ] Efficient Data I/O (CSV splitting creates disk bottlenecks).
 
-## Incomplete Components / Technical Debt
+## 7. DUPLICATE / CONFUSING FILES
+- `scripts/準備_fundamental_features.py` (Verify usage).
+- `scripts/prepare_vip_list.py` (Redundant).
+- `scripts/import_historical_csv.py` (Overlaps with `sync_all_data`).
 
-*   **Unified Entry Point**: The project still relies on multiple independent scripts in `scripts/`. A unified CLI wrapper (e.g., `main.py`) would improve usability.
-*   **Path Standardization**: While `settings.py` centralizes some parameters, many scripts still use string-based paths that should be fully converted to `pathlib` objects.
-*   **Internal Redundancy**: Some logic in `src/ml/labels/` and `src/ml/features/` might overlap with legacy code in `archive/`.
+## 8. TECHNICAL DEBT & RISK
+- **P0 Risk**: Potential smoothed price target in custom label generation.
+- **P1 Debt**: 1600+ ticker model directories degrade repository performance.
+- **P2 Debt**: Hardcoded magic numbers scattered in operational scripts.
 
-## Data Flow
-
-```mermaid
-graph TD
-    A[vnstock API] --> B[src/data/adapters]
-    B --> C[src/data/database]
-    C --> D[src/ml/feature_engineering]
-    D --> E[src/ml/trainer]
-    E --> F[models/]
-    F --> G[src/reporting/daily_brief]
-    G --> H[reports/*.md]
-```
-
-## Risks and Mitigation
-
-*   **Import Depth**: Nested packages (e.g., `src.ml.accuracy`) may require multi-level relative imports. This has been addressed by updating all `src.` prefixes to match the new depth.
-*   **Legacy Scratch**: Scratch scripts were moved to `archive/` rather than deleted, ensuring that any one-off logic is preserved but isolated from the production path.
+---
+*For detailed breakdowns, see:*
+- [Technical Prediction Audit](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/reports/audits/technical_prediction_audit.md)
+- [Data Flow Audit](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/reports/audits/data_flow_audit.md)
+- [Backtest Risk Audit](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/reports/audits/backtest_risk_audit.md)
+- [Repo Structure Audit](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/reports/audits/repo_structure_audit.md)

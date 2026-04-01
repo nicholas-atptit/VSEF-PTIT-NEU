@@ -1,52 +1,36 @@
-# Repository structure (Final)
+# 🗺️ Proposed Target Repository Structure
 
-This document provides a definitive guide to the new production-grade directory layout of the `AI-ML-LLM in Stock` repository.
+## 1. PROJECT ROOT
+- `configs/`: Centralized settings (YAML, Python).
+- `data/`: Ingested, staged, and featured data.
+- `src/`: Core logic modules (Data, Features, Labels, Training, Inference, Backtest).
+- `scripts/`: Final operational entry points.
+- `models/`: Curated model artifacts (VN100 focus).
+- `reports/`: Audit logs, experiment results, and performance analysis.
+- `docs/`: Technical documentation and design notes.
+- `archive/`: Redundant/legacy scripts and data.
 
-## Folder Tree
+## 2. FOLDER RESPONSIBILITIES
 
-```text
-├── archive/        # Legacy scripts, scratch files, and intermediate outputs
-├── config/         # System settings and environment configuration (Pydantic)
-├── data/           # Persistent storage for market data (CSV/DB)
-├── docs/           # Documentation and task-specific reports (Preserved)
-├── infra/          # Infrastructure configurations (Docker)
-├── logs/           # Application and diagnostic logs
-├── models/         # Trained model artifacts and evaluation reports
-├── scripts/        # Production-grade entry points for core workflows
-│   ├── core/       # High-priority production scripts
-│   └── utils/      # Operational helper scripts
-├── src/            # Core system source code
-│   ├── api/        # Interaction layers (Web/Streaming)
-│   ├── data/       # Data ingestion and universe management
-│   ├── engine/      # Core logic and multi-agent system
-│   ├── ml/         # Machine Learning pipeline and trackers
-│   ├── reporting/  # Post-prediction insight generation
-│   ├── utils/      # Common utilities (Logging/Time)
-│   └── validators/ # Data quality and validation
-├── tests/          # Unit and integration test suites
-└── web/            # Web dashboard and UI frontend
-```
+| Path | Responsibility |
+| :--- | :--- |
+| **configs/** | Unified source of truth for ML params, API keys, and paths. |
+| **data/raw/** | Original data downloads (immutable). |
+| **data/staging/** | Cleaned and partitioned OHLCV (Parquet preferred). |
+| **data/features/** | Computed feature matrices (versioned per registry). |
+| **src/data/** | Data source adapters and universe logic. |
+| **src/features/** | Central Factor Registry and indicator logic. |
+| **src/labels/** | Causal label generation logic. |
+| **src/training/** | Orchestrated training and cross-validation loops. |
+| **src/inference/** | Prediction engines for online/batch modes. |
+| **src/backtest/** | Event-driven and vectorized testing frameworks. |
 
-## Folder Descriptions
+## 3. GUIDANCE FOR FUTURE CODING
+- **New Indicators**: Add to `src/features/registry.py` first.
+- **New Labels**: Add to `src/labels/` and unit-test for causality.
+- **New Ingestion**: Add adapter to `src/data/adapters/`.
+- **New Scripts**: Keep thin, import core logic from `src/`.
+- **Path Handling**: Always use `config/settings.py` paths, never hardcoded strings.
 
-### `src/` (Source Code)
-*   **`api/`**: Contains API definitions and real-time communication modules.
-*   **`data/`**: Handles all interactions with raw data sources and local persistence.
-*   **`engine/`**: The "brain" of the system, where multi-agent logic and algorithms reside.
-*   **`ml/`**: Manages the lifecycle of machine learning models, from feature engineering to tracking.
-*   **`reporting/`**: Transforms model outputs into human-readable insights.
-
-### `scripts/` (Workflows)
-All operational scripts should reside here. Use `core/` for daily-run scripts and `utils/` for one-off maintenance tasks.
-
-### `archive/` (Safety)
-Anything that is not part of the active production path but may still be useful for reference should be moved here.
-
-## Developer Guidance
-
-When adding new functionality:
-1.  **Logic**: Place core logic in the appropriate `src/` sub-package.
-2.  **Inversion of Control**: Avoid hardcoded configuration; use `get_settings()` from `config.settings`.
-3.  **Imports**: Always use absolute project imports (e.g., `from src.data.universe import ...`).
-4.  **Logging**: Use the centralized logger from `src.utils.logging`.
-5.  **Paths**: Use `Path` objects relative to `PROJECT_ROOT` when defining new file dependencies.
+---
+*This structure is designed for production reliability and automated scaling.*

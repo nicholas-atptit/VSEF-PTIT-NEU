@@ -98,3 +98,12 @@ class BaseLabelGenerator(abc.ABC):
             )
         if df.empty:
             raise ValueError(f"[{self.name}] DataFrame is empty")
+def _get_target_close(df: pd.DataFrame) -> pd.Series:
+    """Helper to pick the valid close price for label calculation.
+    
+    Prefers 'close_raw' (if available from feature engineering) to avoid
+    using smoothed prices for targets. Fallback to 'close'.
+    """
+    if "close_raw" in df.columns:
+        return df["close_raw"]
+    return df["close"]

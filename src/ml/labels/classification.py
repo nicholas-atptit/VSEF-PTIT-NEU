@@ -20,7 +20,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from src.ml.labels.base import BaseLabelGenerator
+from src.ml.labels.base import BaseLabelGenerator, _get_target_close
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -55,7 +55,8 @@ class Cls1dUpDown(BaseLabelGenerator):
         return [self._col]
 
     def _compute(self, df: pd.DataFrame) -> pd.DataFrame:
-        future_ret = df["close"].shift(-1) / df["close"] - 1
+        close = _get_target_close(df)
+        future_ret = close.shift(-1) / close - 1
         df[self._col] = (future_ret > 0).astype("Int64")
         # NaN for rows where future is unknown
         df.loc[future_ret.isna(), self._col] = pd.NA
@@ -79,7 +80,8 @@ class Cls5dUpDown(BaseLabelGenerator):
         return [self._col]
 
     def _compute(self, df: pd.DataFrame) -> pd.DataFrame:
-        future_ret = df["close"].shift(-self.HORIZON) / df["close"] - 1
+        close = _get_target_close(df)
+        future_ret = close.shift(-self.HORIZON) / close - 1
         df[self._col] = (future_ret > 0).astype("Int64")
         df.loc[future_ret.isna(), self._col] = pd.NA
         return df
@@ -102,7 +104,8 @@ class Cls20dUpDown(BaseLabelGenerator):
         return [self._col]
 
     def _compute(self, df: pd.DataFrame) -> pd.DataFrame:
-        future_ret = df["close"].shift(-self.HORIZON) / df["close"] - 1
+        close = _get_target_close(df)
+        future_ret = close.shift(-self.HORIZON) / close - 1
         df[self._col] = (future_ret > 0).astype("Int64")
         df.loc[future_ret.isna(), self._col] = pd.NA
         return df
@@ -142,7 +145,8 @@ class Cls1d3Class(BaseLabelGenerator):
         return [self._col]
 
     def _compute(self, df: pd.DataFrame) -> pd.DataFrame:
-        future_ret = df["close"].shift(-1) / df["close"] - 1
+        close = _get_target_close(df)
+        future_ret = close.shift(-1) / close - 1
 
         labels = pd.array(
             np.select(
@@ -188,7 +192,8 @@ class Cls5d3Class(BaseLabelGenerator):
         return [self._col]
 
     def _compute(self, df: pd.DataFrame) -> pd.DataFrame:
-        future_ret = df["close"].shift(-self.HORIZON) / df["close"] - 1
+        close = _get_target_close(df)
+        future_ret = close.shift(-self.HORIZON) / close - 1
 
         labels = pd.array(
             np.select(

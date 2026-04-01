@@ -157,4 +157,5 @@ __all__ = [
     "LABEL_NAMES",
     "get_generator",
     "apply_all_labels",
+    "_get_target_close",
 ]

@@ -37,8 +37,16 @@ async def predict_ticker(trainer, sg, ticker, semaphore):
     async with semaphore:
         try:
             # Use VN100DataLoader for robust multi-source loading
-            loader = VN100DataLoader(prefer_source="csv") # Matches user's recent training
-            df = await asyncio.to_thread(loader.build_inference_dataset, tickers=[ticker], lookback_days=300)
+            # Join market, fundamentals, and sentiment to match training contract
+            loader = VN100DataLoader(prefer_source="csv")
+            df = await asyncio.to_thread(
+                loader.build_inference_dataset, 
+                tickers=[ticker], 
+                lookback_days=300,
+                join_market=True,
+                join_fundamentals=True,
+                join_sentiment=True
+            )
             
             if df.empty or len(df) < 30:
                 logger.warning("insufficient_data", ticker=ticker, count=len(df))
@@ -134,6 +142,19 @@ async def main_loop(interval_mins, session_mode=False, tickers_list=None, train_
             print(f"Sleeping for {wait_sec/3600:.2f} hours...")
             await asyncio.sleep(wait_sec)
         
+        # Check if today is a trading day
+        if not is_trading_day():
+            logger.info("not_a_trading_day_skipping")
+            if session_mode:
+                # Wait longer if in session mode
+                await asyncio.sleep(3600)
+                continue
+            elif interval_mins > 0:
+                await asyncio.sleep(interval_mins * 60)
+                continue
+            else:
+                break
+
         start_time = time.time()
         print(f"Starting ML prediction cycle...")
         

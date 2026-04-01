@@ -567,16 +567,22 @@ class VN100DataLoader:
         tickers: List[str],
         lookback_days: int = 120,
         join_market: bool = True,
+        join_fundamentals: bool = False,
+        join_sentiment: bool = False,
     ) -> pd.DataFrame:
         """Build a dataset suitable for batch inference (latest N trading days).
 
         This is a convenience wrapper around :meth:`build_dataset` that
-        automatically computes the date window from today.
+        automatically computes the date window from today. Supports full
+        context joins (Market, Fundamentals, Sentiment) to match the
+        training feature contract.
 
         Args:
             tickers: List of ticker symbols.
-            lookback_days: Calendar days to look back (default 120 ≈ 6 months).
+            lookback_days: Calendar days to look back.
             join_market: Merge market proxy column.
+            join_fundamentals: Whether to join fundamental data.
+            join_sentiment: Whether to join sentiment data.
 
         Returns:
             DataFrame with the most recent ``lookback_days`` of data per ticker.
@@ -588,6 +594,8 @@ class VN100DataLoader:
             start_date=start,
             end_date=end,
             join_market=join_market,
+            join_fundamentals=join_fundamentals,
+            join_sentiment=join_sentiment,
             min_rows_per_ticker=10,
         )
 

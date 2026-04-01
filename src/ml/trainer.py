@@ -71,15 +71,18 @@ class DualModelTrainer:
         if isinstance(features_row, pd.DataFrame):
             if feature_cols:
                 missing = set(feature_cols) - set(features_row.columns)
-                for col in missing:
-                    features_row[col] = 0.0
+                if missing:
+                    raise ValueError(f"Missing mandatory features for {ticker}: {missing}")
                 X = features_row[feature_cols]
             else:
                 X = features_row
         elif isinstance(features_row, pd.Series):
             if feature_cols:
                 row_dict = features_row.to_dict()
-                aligned = {f: row_dict.get(f, 0.0) for f in feature_cols}
+                missing = set(feature_cols) - set(row_dict.keys())
+                if missing:
+                    raise ValueError(f"Missing mandatory features for {ticker}: {missing}")
+                aligned = {f: row_dict[f] for f in feature_cols}
                 X = pd.DataFrame([aligned])
             else:
                 X = pd.DataFrame([features_row])
@@ -259,12 +262,11 @@ class DualModelTrainer:
         # 4. Filter to exact columns used in training if feature_cols is available
         if "feature_cols" in self._models.get(ticker, {}):
             feat_cols = self._models[ticker]["feature_cols"]
-            try:
-                feat_df = feat_df[feat_cols]
-            except KeyError as e:
-                # If some columns are missing, we log it but don't fail immediately
-                # (might be handled by ffill/bfill earlier)
-                logger.warning("feature_mismatch_during_filter", ticker=ticker, error=str(e))
+            missing = set(feat_cols) - set(feat_df.columns)
+            if missing:
+                # Fail-fast during feature computation if contract is broken
+                raise ValueError(f"Feature contract mismatch for {ticker}. Missing: {missing}")
+            feat_df = feat_df[feat_cols]
         
         # 5. Cleanup
         feat_df = feat_df.replace([np.inf, -np.inf], np.nan)
