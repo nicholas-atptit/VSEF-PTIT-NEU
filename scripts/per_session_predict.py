@@ -45,7 +45,8 @@ async def predict_ticker(trainer, sg, ticker, semaphore):
                 lookback_days=300,
                 join_market=True,
                 join_fundamentals=True,
-                join_sentiment=True
+                join_sentiment=True,
+                join_sectors=True
             )
             
             if df.empty or len(df) < 30:

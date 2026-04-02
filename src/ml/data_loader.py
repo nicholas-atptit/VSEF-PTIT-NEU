@@ -32,6 +32,8 @@ _DEFAULT_DAILY_CSV_DIR = PROJECT_ROOT / "data" / "daily_market_split_data"
 _DEFAULT_MARKET_PROXY_PATH = PROJECT_ROOT / "data" / "market_proxy.csv"
 _DEFAULT_FUNDAMENTALS_PATH = PROJECT_ROOT / "data" / "fundamentals_latest.csv"
 _DEFAULT_SENTIMENT_PATH = PROJECT_ROOT / "data" / "sentiment_features.csv"
+_DEFAULT_SECTOR_PROXIES_PATH = PROJECT_ROOT / "data" / "sector_proxies.csv"
+_DEFAULT_TICKER_SECTORS_PATH = PROJECT_ROOT / "data" / "ticker_sectors.csv"
 
 
 def load_ohlcv_from_db(
@@ -369,6 +371,95 @@ def load_sentiment(
     return df
 
 
+def load_ticker_sectors(path: Path | str | None = None) -> pd.DataFrame:
+    """Load ticker-to-sector mapping."""
+    path = Path(path) if path else _DEFAULT_TICKER_SECTORS_PATH
+    if not path.exists():
+        logger.debug("ticker_sectors_not_found", path=str(path))
+        return pd.DataFrame()
+    return pd.read_csv(path)
+
+
+def load_sector_proxies(path: Path | str | None = None) -> pd.DataFrame:
+    """Load sector index returns."""
+    path = Path(path) if path else _DEFAULT_SECTOR_PROXIES_PATH
+    if not path.exists():
+        logger.debug("sector_proxies_not_found", path=str(path))
+        return pd.DataFrame()
+    return pd.read_csv(path)
+
+
+def apply_context_features(
+    df: pd.DataFrame,
+    ticker: str,
+    market_df: pd.DataFrame = None,
+    sector_df: pd.DataFrame = None,
+    ticker_sectors: pd.DataFrame = None,
+) -> pd.DataFrame:
+    """Ensure Market and Sector rolling features are present (Training & Inference Parity).
+
+    This logic is centralized here to prevent drift between training and inference scripts.
+    It builds:
+      - m_ret, m_ret_5d, rel_to_market
+      - s_ret, s_ret_5d, rel_to_sector
+    """
+    df = df.copy()
+    if 'date' in df.columns:
+        df['date'] = pd.to_datetime(df['date']).dt.normalize()
+
+    # 1. Market Proxy (Always tries to add if market_df provided)
+    if market_df is not None and not market_df.empty:
+        market_df = market_df.copy()
+        market_df['date'] = pd.to_datetime(market_df['date']).dt.normalize()
+        # Merge market return
+        if 'm_ret' not in df.columns:
+            df = df.merge(market_df[['date', 'm_ret']], on='date', how='left')
+        
+        df['m_ret'] = df['m_ret'].fillna(0.0)
+        df['m_ret_5d'] = df['m_ret'].rolling(5).mean().fillna(0.0)
+        df['m_ret_20d'] = df['m_ret'].rolling(20).mean().fillna(0.0)
+        
+        # Relative to market
+        if 'pct_return' in df.columns:
+            df['rel_to_market'] = df['pct_return'] - df['m_ret']
+        elif 'close_to_close_return_1d' in df.columns:
+            df['rel_to_market'] = df['close_to_close_return_1d'] - df['m_ret']
+        else:
+            # Fallback pct_return calc if missing
+            df['rel_to_market'] = df['close'].pct_change().fillna(0.0) - df['m_ret']
+
+    # 2. Sector Proxy
+    if sector_df is not None and ticker_sectors is not None and not sector_df.empty and not ticker_sectors.empty:
+        ts = ticker_sectors
+        industry = ts[ts['ticker'] == ticker.upper()]['industry'].values[0] if ticker.upper() in ts['ticker'].values else None
+        
+        if industry:
+            sdf = sector_df[sector_df['industry'] == industry][['date', 'ret']].copy()
+            sdf = sdf.rename(columns={'ret': 's_ret'})
+            sdf['date'] = pd.to_datetime(sdf['date']).dt.normalize()
+            
+            if 's_ret' not in df.columns:
+                df = df.merge(sdf, on='date', how='left')
+            
+            df['s_ret'] = df['s_ret'].fillna(0.0)
+            df['s_ret_5d'] = df['s_ret'].rolling(5).mean().fillna(0.0)
+            
+            # Relative to sector
+            if 'pct_return' in df.columns:
+                df['rel_to_sector'] = df['pct_return'] - df['s_ret']
+            elif 'close_to_close_return_1d' in df.columns:
+                df['rel_to_sector'] = df['close_to_close_return_1d'] - df['s_ret']
+            else:
+                df['rel_to_sector'] = df['close'].pct_change().fillna(0.0) - df['s_ret']
+        else:
+            # Ticker has no sector mapping - fill mandatory columns with 0 to match contract
+            for col in ['s_ret', 's_ret_5d', 'rel_to_sector']:
+                if col not in df.columns:
+                    df[col] = 0.0
+
+    return df
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # VN100 DATA LOADER  (batch dataset builder)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -482,6 +573,7 @@ class VN100DataLoader:
         join_market: bool = True,
         join_fundamentals: bool = False,
         join_sentiment: bool = False,
+        join_sectors: bool = False,
         min_rows_per_ticker: int = 60,
     ) -> pd.DataFrame:
         """Build a multi-ticker daily dataset suitable for ML training.
@@ -545,6 +637,23 @@ class VN100DataLoader:
                 result = result.merge(sent_df, on=["ticker", "date"], how="left")
                 logger.debug("sentiment_joined")
 
+        if (join_sectors or join_market) and "ticker" in result.columns:
+            # We use apply_context_features which handles both Market and Sector
+            m_df = load_market_proxy() if join_market else None
+            s_proxies = load_sector_proxies() if join_sectors else None
+            t_sectors = load_ticker_sectors() if join_sectors else None
+            
+            processed_frames = []
+            for t in result["ticker"].unique():
+                t_df = result[result["ticker"] == t]
+                t_df = apply_context_features(t_df, t, market_df=m_df, sector_df=s_proxies, ticker_sectors=t_sectors)
+                processed_frames.append(t_df)
+            
+            result = pd.concat(processed_frames, ignore_index=True)
+            logger.debug("context_features_applied", joined_sectors=join_sectors, joined_market=join_market)
+        elif join_sectors or join_market:
+            logger.warning("ticker_missing_context_skipped", join_sectors=join_sectors, join_market=join_market)
+
         result = result.sort_values(["ticker", "date"]).reset_index(drop=True)
 
         # ── Basic validation ────────────────────────────────────
@@ -565,37 +674,28 @@ class VN100DataLoader:
     def build_inference_dataset(
         self,
         tickers: List[str],
-        lookback_days: int = 120,
+        lookback_days: int = 400, # Increased default buffer
         join_market: bool = True,
         join_fundamentals: bool = False,
         join_sentiment: bool = False,
+        join_sectors: bool = False,
     ) -> pd.DataFrame:
-        """Build a dataset suitable for batch inference (latest N trading days).
-
-        This is a convenience wrapper around :meth:`build_dataset` that
-        automatically computes the date window from today. Supports full
-        context joins (Market, Fundamentals, Sentiment) to match the
-        training feature contract.
-
-        Args:
-            tickers: List of ticker symbols.
-            lookback_days: Calendar days to look back.
-            join_market: Merge market proxy column.
-            join_fundamentals: Whether to join fundamental data.
-            join_sentiment: Whether to join sentiment data.
-
-        Returns:
-            DataFrame with the most recent ``lookback_days`` of data per ticker.
+        """Build a dataset suitable for batch inference.
+        
+        To ensure feature parity with training (especially for rolling features 
+        like roc_250), this loads ALL available history for calculation.
+        Slicing to lookback_days should be done AFTER feature engineering.
         """
         end = dt.date.today()
-        start = end - dt.timedelta(days=lookback_days)
+        # Pass start_date=None to build_dataset to load full CSV history
         return self.build_dataset(
             tickers=tickers,
-            start_date=start,
+            start_date=None, 
             end_date=end,
             join_market=join_market,
             join_fundamentals=join_fundamentals,
             join_sentiment=join_sentiment,
+            join_sectors=join_sectors,
             min_rows_per_ticker=10,
         )
 
@@ -612,6 +712,7 @@ def load_vn100_daily_dataset(
     join_market: bool = True,
     join_fundamentals: bool = False,
     join_sentiment: bool = False,
+    join_sectors: bool = False,
     prefer_source: str = "csv",
 ) -> pd.DataFrame:
     """One-call helper to build a VN100 daily dataset.
@@ -643,5 +744,6 @@ def load_vn100_daily_dataset(
         join_market=join_market,
         join_fundamentals=join_fundamentals,
         join_sentiment=join_sentiment,
+        join_sectors=join_sectors,
     )
 

@@ -251,26 +251,10 @@ class DualModelTrainer:
             
         # 2. Transform using FeatureEngineer
         fe = FeatureEngineer()
-        feat_df = fe.transform(df)
+        # This now handles Kalman filtering, deltas (d_), and sentiment consistently
+        feat_df = fe.transform(df, drop_na=False)
         
-        # 3. Add 'd_' prefix for trained model compatibility
-        core_cols = fe.get_feature_columns(feat_df)
-        for col in core_cols:
-            if not col.startswith('d_'):
-                feat_df[f'd_{col}'] = feat_df[col]
-        
-        # 4. Filter to exact columns used in training if feature_cols is available
-        if "feature_cols" in self._models.get(ticker, {}):
-            feat_cols = self._models[ticker]["feature_cols"]
-            missing = set(feat_cols) - set(feat_df.columns)
-            if missing:
-                # Fail-fast during feature computation if contract is broken
-                raise ValueError(f"Feature contract mismatch for {ticker}. Missing: {missing}")
-            feat_df = feat_df[feat_cols]
-        
-        # 5. Cleanup
-        feat_df = feat_df.replace([np.inf, -np.inf], np.nan)
-        feat_df = feat_df.ffill().bfill()
+        logger.info("trainer_features_computed", total=len(feat_df.columns))
         
         return feat_df
 

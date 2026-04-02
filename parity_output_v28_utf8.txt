@@ -1,0 +1,30 @@
+﻿=== PARITY CHECK: FPT ===
+
+[1/3] Reconstructing Training Path...
+[OK] Loaded trained feature contract from: models\FPT\feature_cols.joblib
+Training row built. Date: 2025-09-24
+
+[2/3] Executing Inference Path...
+Inference row built. Date: 2026-03-20
+
+[3/3] Comparing Feature Vectors...
+Target contract features: 16
+Comparing features for Date: 2025-09-24
+Target contract features: 20
+[ERR]: 12 VALUE MISMATCHES found!
+Feature                             | Train Value     | Infer Value     | Diff           
+d_roc_60                            | 0.007280        | -0.031947       | 0.03922734     
+d_return_roll_60                    | 0.007280        | -0.031947       | 0.03922734     
+rsi_20_max                          | MISSING         | INFER           | N/A
+d_rsi_20_max                        | MISSING         | INFER           | N/A
+d_rsi_lag_3                         | 0.000000        | 49.593308       | 49.59330802    
+rsi_signal                          | MISSING         | INFER           | N/A
+d_rsi_signal                        | MISSING         | INFER           | N/A
+d_rsi_lag_2                         | -7.764856       | 41.828452       | 49.59330802    
+d_rsi_lag_1                         | -3.334629       | 38.493823       | 41.82845240    
+d_rsi                               | 4.351968        | 42.845791       | 38.49382307    
+d_return_roll_20                    | 0.017263        | 0.007159        | 0.01010410     
+d_return_roll_5                     | -0.003686       | -0.056795       | 0.05310944     
+
+================================================================================
+[FAIL] PARITY CHECK: FAILED
