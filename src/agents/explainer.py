@@ -56,26 +56,31 @@ class ExplainerAgent:
         analyst: AnalystDecision, 
         risk: RiskDecision
     ) -> str:
-        """Construct the prompt from the quantitative context."""
+        """Construct the prompt from the quantitative context.
+        
+        Optimized for local 8B models (concise, structured).
+        """
         return f"""
-Explain the following trading decision for {signal.ticker}:
+Bạn là chuyên gia phân tích tài chính cao cấp. Hãy giải thích quyết định giao dịch sau cho mã {signal.ticker}:
 
-## Quantitative Context:
-- Current Price: {signal.current_price:.2f}
-- Prediction: Up={signal.trend_up_prob:.2f}, Down={signal.trend_down_prob:.2f}, Side={signal.trend_sideways_prob:.2f}
-- Confidence: {signal.confidence:.2f}
-- Volatility: {signal.volatility:.4f}
-- Technical Indicators: RSI={signal.rsi_14 or 'N/A'}, SMA20={signal.sma_20 or 'N/A'}
+### Dữ liệu Định lượng:
+- Giá hiện tại: {signal.current_price:.2f}
+- Dự báo (Xác suất): Tăng={signal.trend_up_prob:.2%}, Giảm={signal.trend_down_prob:.2%}, Đi ngang={signal.trend_sideways_prob:.2%}
+- Độ tin cậy: {signal.confidence:.2f}
+- Biến động (Volatility): {signal.volatility:.4f}
+- RSI-14: {signal.rsi_14 or 'N/A'}, SMA-20: {signal.sma_20 or 'N/A'}
 
-## Agent Decisions:
-- Analyst Action: {analyst.action}
-- Analyst Logic: {', '.join(analyst.reasons)}
-- Risk Status: {"Approved" if risk.approved else "REJECTED"}
-- Risk Veto Reasons: {', '.join(risk.veto_reasons) if risk.veto_reasons else "None"}
+### Quyết định của Hệ thống:
+- Hành động từ Analyst: {analyst.action}
+- Lý do: {', '.join(analyst.reasons)}
+- Trạng thái Rủi ro (Risk): {"Được duyệt" if risk.approved else "BỊ TỪ CHỐI"}
+- Lý do phủ quyết (Veto): {', '.join(risk.veto_reasons) if risk.veto_reasons else "Không có"}
 
-Generate a brief (2-3 paragraph) explanation for a human trader in Vietnamese. 
-Highlight why the decision was made, what the key technical drivers are, and any risks identified.
-Use a professional, objective tone. Output in Markdown.
+Yêu cầu:
+1. Giải thích ngắn gọn (2-3 đoạn) lý do tại sao hệ thống đưa ra quyết định này.
+2. Phân tích các yếu tố kỹ thuật chính và rủi ro được xác định.
+3. Sử dụng tông giọng chuyên nghiệp, khách quan.
+4. Ngôn ngữ: TIẾNG VIỆT. Định dạng: Markdown.
 """
 
     async def explain_batch(self, signals: list[MarketSignal], analyst_decisions: list[AnalystDecision], risk_decisions: list[RiskDecision]) -> list[str]:

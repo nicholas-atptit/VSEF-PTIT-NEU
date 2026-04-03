@@ -1,25 +1,19 @@
-# IMPROVEMENT ROADMAP: VN100 Multi-Agent Trading System
+# Improvement Roadmap - Low-Resource Deployment Branch
 
-Date: 2026-04-03
-Priority Status: High
+## P0: Core Functionality (Immediate)
+- **Local Model Configuration**: Set up `settings.py` to use Ollama with `qwen3:8b` as the default.
+- **Explain-Only Mode**: Ensure `enable_llm_explainer` is `True` and its output is correctly captured in reports.
+- **Asynchronous Execution**: Verify that the orchestrator's `await` calls prevent UI blocking during inference.
 
-## Recommended Next Steps
+## P1: Performance & UX (Short-Term)
+- **Prompt Optimization**: Streamline the quantitative context passed to the 8B model to reduce token count and latency.
+- **Vietnamese Language Support**: Add explicit system instructions for consistent, professional Vietnamese financial analysis.
+- **Memory Management**: Implement conditional LLM loading (if possible via Ollama's `keep_alive` or similar) to save resources for the ML pipeline.
 
-### P0: Intelligence Realism (Critical Structural Risk)
-- **RAG Integration**: Fully connect `ZonedRAGService` with `ExplainerAgent`. Currently, the explainer uses a quantitative signal snapshot. Realism requires "context-in-loop" where the agent can search for recent (24H) news on a ticker before rendering a Vietnamese rationale.
-- **Error Sensitivity**: Refine exception handling in the `AgentOrchestrator`. If an LLM call fails, the system should fallback to a rule-based "fallback rationale" rather than returning an error string.
-
-### P1: Portfolio Optimization (Maintainability & Scalability)
-- **Position Scaling Logic**: Implement a "Portfolio Optimizer" agent (e.g., CVaR or Kelly Criterion based). The current `PortfolioAgent` uses simple budget-scaling, which does not account for ticker covariance or volatility targeting.
-- **Consolidate Backtesting**: Merge `src/ml/backtest/paper.py` (event-driven mode) with `scripts/backtest_portfolio_multi_agent.py`. The two logic chains share rebalancing and slippage code but live in different places.
-
-### P2: UI & Observability (Quality Upgrade)
-- **Feedback Loop**: Integrate the generated `backtest_portfolio_result.json` into the existing dashboard. Visualization of the equity curve vs individual ticker signals is the next logical step. 
-- **Explainability Logging**: Create a dedicated `logs/agent_narratives.jsonl` to store every LLM response for audit and human-in-the-loop verification.
+## P2: Long-Term Enhancements
+- **Multi-Ticker Batching**: Optimize `explain_batch` to handle multiple tickers efficiently on low-resource hardware.
+- **Quantization Support**: Add documentation for using GGUF-quantized models (e.g., Q4_K_M) for even lower resource usage.
+- **Model Switching Logic**: Create a fallback mechanism if the local LLM is down (e.g., use a simple rule-based summary).
 
 ---
-
-## Recommended Order of Execution
-1. **RAG Hooking**: 2-3 hours (Focus on `ExplainerAgent` context injection).
-2. **Backtest Consolidation**: 4-6 hours (Refactor `paper.py` to be a pure Simulation engine).
-3. **Portfolio Optimizer**: 8-12 hours (Add a `PortfolioRiskAgent` specializing in cross-ticker correlations).
+*Signed: Antigravity - Senior Software Architect*

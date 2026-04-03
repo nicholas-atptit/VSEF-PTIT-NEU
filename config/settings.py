@@ -113,13 +113,16 @@ class Settings(BaseSettings):
     label_cls_5d_threshold: float = 0.02   # ±2 % for 5-day 3-class
 
     # ── LLM Pipeline (Phase 3 & 4 Upgrade) ────────────────────
-    llm_provider: Literal["ollama", "openai", "groq", "gemini"] = "gemini"
+    llm_provider: Literal["ollama", "openai", "groq", "gemini"] = "ollama"
     
     # Ollama (Local)
     ollama_base_url: str = "http://localhost:11434/v1"
     ollama_api_key: str = "" # Default is empty
-    ollama_model_name: str = "qwen2.5:7b"
     
+    # Low-Resource Branch Specifics
+    llm_mode: str = "explainer_only"
+    llm_timeout: int = 30
+
     # OpenAI
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
@@ -148,10 +151,19 @@ class Settings(BaseSettings):
 
     # ── Trading Agents Upgrade (Skeleton Integration) ────────
     use_rule_based_agents: bool = True
-    enable_llm_explainer: bool = False
-    llm_model_explainer: str = "qwen2.5:7b" # Default to Ollama model
+    enable_llm_explainer: bool = True
+    llm_model_explainer: str = "qwen3:8b" # Authority for local/cloud explainer
     max_position_pct: float = 0.20
     max_volatility: float = 0.08
+
+    # Alias / Compatibility for low-resource branch
+    @property
+    def ollama_model_name(self) -> str:
+        return self.llm_model_explainer
+
+    @property
+    def enable_local_explainer(self) -> bool:
+        return self.enable_llm_explainer
 
     # ── TUI & Monitoring ─────────────────────────────────────
     terminal_refresh_ms: int = 500
