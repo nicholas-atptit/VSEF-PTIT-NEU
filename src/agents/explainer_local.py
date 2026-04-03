@@ -11,8 +11,11 @@ from typing import Any
 
 from config.settings import get_settings
 from src.llm.local_client import get_local_client, LocalLLMError
+from src.utils.logging import get_logger
 from .contracts import MarketSignal, RiskDecision, PortfolioProposal
 from .prompts_explainer import build_explainer_prompt
+
+logger = get_logger(__name__)
 
 
 class LocalExplainerAgent:
@@ -42,13 +45,9 @@ class LocalExplainerAgent:
             explanation = await self._client.generate(prompt)
             return explanation
         except LocalLLMError as e:
-            from src.utils.logging import get_logger
-            logger = get_logger(__name__)
             logger.error("local_explainer_llm_failure", ticker=signal.ticker, error=str(e))
             return f"Explain-Only Fallback: Trading system decision made, but explanation generation failed. ({str(e)})"
         except Exception as e:
-            from src.utils.logging import get_logger
-            logger = get_logger(__name__)
             logger.error("local_explainer_unexpected_error", ticker=signal.ticker, error=str(e))
             return f"Fallback: Explanation service unavailable. [{str(e)}]"
 

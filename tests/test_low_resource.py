@@ -43,8 +43,21 @@ async def test_explainer_fallback_when_ollama_unavailable(mock_signal):
     # Mock client to raise LocalLLMError
     agent._client.generate = AsyncMock(side_effect=LocalLLMError("Ollama connection refused"))
     
-    risk = RiskDecision(approved=True, position_size_pct=0.1, stop_loss_pct=0.05, take_profit_pct=0.1)
-    portfolio = PortfolioProposal(positions=[PositionProposal(ticker="SSI", weight=0.1)], notes=["Test"])
+    risk = RiskDecision(
+        ticker="SSI", 
+        approved=True, 
+        action="BUY", 
+        position_size_pct=0.1, 
+        stop_loss_pct=0.05, 
+        take_profit_pct=0.1, 
+        max_holding_days=10
+    )
+    portfolio = PortfolioProposal(
+        positions=[PositionProposal(ticker="SSI", action="BUY", weight=0.1, confidence=0.8, rationale="Test")],
+        gross_exposure=0.1,
+        cash_buffer=0.9,
+        notes=["Test"]
+    )
     
     explanation = await agent.explain(mock_signal, risk, portfolio)
     

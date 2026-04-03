@@ -13,7 +13,7 @@ class AgentOrchestrator:
     """VN100 Low-Resource Orchestrator. 
     
     Deterministic Flow:
-    Signal -> Risk -> Portfolio -> (Local Explanation)
+    Analyst -> Risk -> Portfolio -> (Local Explanation)
     """
 
     def __init__(
