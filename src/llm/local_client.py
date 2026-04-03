@@ -1,17 +1,15 @@
-"""Local LLM Client for Ollama.
-
-Provides a clean, minimal interface for generating text using a local Ollama instance.
-Isolates the LLM infrastructure from the agents.
-"""
-
-from __future__ import annotations
-
 import httpx
 import json
 from config.settings import get_settings
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+class LocalLLMError(Exception):
+    """Specific exception for local LLM communication failures."""
+    pass
+
 
 class LocalLLMClient:
     """Client for interacting with local Ollama API."""
@@ -72,14 +70,14 @@ class LocalLLMClient:
                 elif "choices" in data:
                     return data["choices"][0]["text"].strip()
                 else:
-                    return "Error: Unexpected LLM response format."
+                    raise LocalLLMError("Unexpected LLM response format: missing 'response' or 'choices' keys.")
                     
         except httpx.TimeoutException:
             logger.error("llm_client_timeout", model=self.model)
-            return "Error: LLM request timed out."
+            raise LocalLLMError(f"Local LLM request timed out after {self.timeout}s")
         except Exception as e:
             logger.error("llm_client_error", error=str(e), model=self.model)
-            return f"Error: Failed to connect to local LLM: {str(e)}"
+            raise LocalLLMError(f"Failed to connect to local LLM: {str(e)}")
 
 # Singleton-style helper
 _client = None

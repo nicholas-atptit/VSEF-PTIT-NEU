@@ -55,6 +55,8 @@ async def main() -> None:
             "position_weight": result["portfolio"]["positions"][0]["weight"] if result["portfolio"]["positions"] else 0.0,
             "risk_veto_reasons": result["risk_decisions"][0]["veto_reasons"]
         },
+        "portfolio": result["portfolio"],
+        "explanations": result["explanations"],
         "local_llm_explanation": result["explanations"][0]
     }
     
