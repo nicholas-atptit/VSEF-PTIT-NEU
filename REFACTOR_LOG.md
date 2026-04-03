@@ -1,21 +1,23 @@
-# 📜 Refactor Log (Audit Phase - 2026.04)
+# REFACTOR LOG: Multi-Agent Trading Architecture
 
-## OVERVIEW
-This log documents the documentation and reporting changes during the **Comprehensive Engineering & Quantitative ML Audit**. No production code or business logic was altered.
+Date: 2026-04-03
+Reference: Phase 3 (Intelligence & Backtesting)
 
-## 🛠️ DOCUMENTATION UPDATES
+## Structural Moves & Consolidations
+- **[MODIFY] [src/agents/orchestrator.py](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/src/agents/orchestrator.py)**: Converted `run()` to `async`. Removed synchronous blocking calls.
+- **[MODIFY] [src/agents/explainer.py](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/src/agents/explainer.py)**: Refactored to include Vietnamese localized prompts and `async` LLM calls. Fixed `MarketSignal` attribute errors.
+- **[NEW] [scripts/backtest_portfolio_multi_agent.py](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/scripts/backtest_portfolio_multi_agent.py)**: Created from scratch to enable daily-at-a-time portfolio simulation with multi-agent logic.
 
-| Date | File | Action | Description |
-| :--- | :--- | :--- | :--- |
-| 2026-04-02 | `AUDIT_REPORT.md` | [MODIFY] | Updated to High-Level Deep Audit v5.0. |
-| 2026-04-02 | `IMPROVEMENT_ROADMAP.md` | [MODIFY] | Added P0/P1 findings (Mock metrics, Hardcoded secrets). |
-| 2026-04-02 | `reports/audits/quantitative_ml_audit_v2.md` | [NEW] | Full deep technical analysis report. |
-| 2026-04-02 | `REFACTOR_LOG.md` | [NEW] | Initialized for audit tracking. |
-| 2026-04-02 | `STRUCTURE_FINAL.md` | [NEW] | Defined repository layout per Rule 001.md. |
+## Import & Path Fixes
+- **[FIX] [src/ml/backtest/event_driven.py](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/src/ml/backtest/event_driven.py)**: Fixed broken context import `src.context.rag_service` -> `src.data.context.rag_service`.
+- **[FIX] [src/data/context/rag_service.py](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/src/data/context/rag_service.py)**: Fixed broken internal import `src.context.embedder` -> `src.data.context.embedder`.
+- **[FIX] [src/data/context/ingestion_pipeline.py](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/src/data/context/ingestion_pipeline.py)**: Fixed numerous broken internal context imports.
 
-## 📦 ARCHIVED ASSETS
-*None at this stage.* (Cleanup planned for Phase 2).
+## Bug Fixes & Logic Refinements
+- **[FIX] [src/ml/feature_engineering.py](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/src/ml/feature_engineering.py)**: Standardized `date` type as `pd.Timestamp` (Normalized) instead of `dt.date`. This resolved a `TypeError` during historical range filtering.
+- **[FIX] [src/agents/__init__.py](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/src/agents/__init__.py)**: Corrected export names for dataclasses. Changed `PortfolioAllocation` -> `PortfolioProposal`, and added `PositionProposal`.
+- **[FIX] [config/settings.py](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/config/settings.py)**: Added missing `llm_model_explainer` attribute to the `Settings` class to support ExplainerAgent configuration.
 
-## 🛡️ CRITICAL DECISIONS
-1. **Preserve business logic**: All code remains untouched to prevent regression during the audit phase.
-2. **Standardize on VN100**: Recommendations focus on the VN100 + Viettel universe to reduce artifact bloat.
+## Risky & Breaking Changes
+- **Breaking Change (Async)**: ALL callers of `AgentOrchestrator.run()` MUST now `await` the response. 
+- **Breaking Change (Signal Generator)**: `SignalGenerator.generate()` is now a coroutine. Upstream callers (API routes, PaperTradingEngine) have been updated, but legacy scripts may still require migration.

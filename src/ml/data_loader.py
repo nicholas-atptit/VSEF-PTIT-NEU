@@ -250,9 +250,11 @@ def load_ohlcv_from_csv(
 
         # Date filtering
         if start_date:
-            df = df[df["date"] >= pd.Timestamp(start_date)]
+            ts_start = pd.Timestamp(start_date).normalize()
+            df = df[df["date"] >= ts_start]
         if end_date:
-            df = df[df["date"] <= pd.Timestamp(end_date)]
+            ts_end = pd.Timestamp(end_date).normalize()
+            df = df[df["date"] <= ts_end]
 
         # Ensure ticker column
         df["ticker"] = ticker.upper()
@@ -295,9 +297,11 @@ def load_market_proxy(
     df["date"] = pd.to_datetime(df["date"]).dt.normalize()
 
     if start_date:
-        df = df[df["date"] >= pd.Timestamp(start_date)]
+        ts_start = pd.Timestamp(start_date).normalize()
+        df = df[df["date"] >= ts_start]
     if end_date:
-        df = df[df["date"] <= pd.Timestamp(end_date)]
+        ts_end = pd.Timestamp(end_date).normalize()
+        df = df[df["date"] <= ts_end]
 
     logger.debug("market_proxy_loaded", rows=len(df))
     return df
@@ -359,9 +363,11 @@ def load_sentiment(
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"]).dt.normalize()
         if start_date:
-            df = df[df["date"] >= pd.Timestamp(start_date)]
+            ts_start = pd.Timestamp(start_date).normalize()
+            df = df[df["date"] >= ts_start]
         if end_date:
-            df = df[df["date"] <= pd.Timestamp(end_date)]
+            ts_end = pd.Timestamp(end_date).normalize()
+            df = df[df["date"] <= ts_end]
 
     if tickers and "ticker" in df.columns:
         upper = [t.upper() for t in tickers]

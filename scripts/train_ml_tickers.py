@@ -142,7 +142,7 @@ def _train_custom_label(daily_df: pd.DataFrame, ticker: str, ticker_dir: Path, f
         vol = daily_df['pct_return'].rolling(5).std().fillna(daily_df['pct_return'].std())
         vol_weights = 1.0 / (vol + 1e-6)
         vol_weights = vol_weights / vol_weights.mean()
-    weights = (recency_weights * vol_weights).iloc[:current_split]
+    weights = (recency_weights * vol_weights).iloc[:train_end]
     
     # Feature Selection
     selector = LGBMClassifier(n_estimators=100, max_depth=3, random_state=42, n_jobs=-1, verbosity=-1) if label_config.task_type == "classification" else LGBMRegressor(n_estimators=100, max_depth=3, random_state=42, n_jobs=-1, verbosity=-1)
@@ -164,14 +164,19 @@ def _train_custom_label(daily_df: pd.DataFrame, ticker: str, ticker_dir: Path, f
         
         # --- Financial Evaluation Hook ---
         evaluator = MetricsEvaluator()
-        test_returns = daily_df['pct_return'].iloc[purge_end:]
+        test_returns = daily_df['pct_return'].iloc[split_idx:]
         eval_res = evaluator.evaluate_strategy(test_preds, test_returns)
         m = eval_res["metrics"]
         logger.info("quant_eval", ticker=ticker, mode=label_config.mode, sharpe=m["sharpe"], cagr=m["cagr"], trades=eval_res["trade_stats"]["num_trades"])
         
-        metric_val = accuracy_score(y_test, test_preds) * 100
+        acc = accuracy_score(y_test, test_preds) * 100
+        metric_val = acc
         metric_name = f"{label_config.mode}_acc"
         model_name = f"trend_classifier_{label_config.mode}.joblib"
+        
+        # Financial metrics for model selection/logging
+        sharpe = m["sharpe"]
+        cagr = m["cagr"]
     else:
         model = LGBMRegressor(n_estimators=400, learning_rate=0.05, max_depth=5, random_state=42, n_jobs=-1, verbosity=-1)
         model.fit(X_train, y_train_full, sample_weight=weights)
@@ -180,11 +185,15 @@ def _train_custom_label(daily_df: pd.DataFrame, ticker: str, ticker_dir: Path, f
         metric_val = mean_absolute_error(y_test, test_preds)
         metric_name = f"{label_config.mode}_mae"
         model_name = f"regressor_{label_config.mode}.joblib"
+        sharpe = 0.0
+        cagr = 0.0
         
     joblib.dump(model, ticker_dir / model_name)
     joblib.dump(h_selected, ticker_dir / f"feature_cols_{label_config.mode}.joblib")
     
     return {
+        "sharpe": sharpe,
+        "cagr": cagr,
         metric_name: metric_val,
         "n_features": len(h_selected)
     }
@@ -317,6 +326,8 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
                     outperform_bh=comparison["outperformance"])
         
         acc = accuracy_score(y_test, test_preds) * 100
+        horizon_metrics[f"{suffix.strip('_')}_sharpe"] = m["sharpe"]
+        horizon_metrics[f"{suffix.strip('_')}_cagr"] = m["cagr"]
         horizon_metrics[f"{suffix.strip('_')}_acc"] = acc
         horizon_metrics[f"{suffix.strip('_')}_elite_acc"] = acc # Fallback
         horizon_metrics[f"{suffix.strip('_')}_elite_count"] = 0

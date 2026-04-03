@@ -78,7 +78,7 @@ class FeatureEngineer:
         """Unified transformation pipeline for both training and inference."""
         df = df.copy().sort_values("date").reset_index(drop=True)
         if 'date' in df.columns:
-            df['date'] = pd.to_datetime(df['date']).dt.date
+            df['date'] = pd.to_datetime(df['date']).dt.normalize()
         
         # 0. Preserve raw Close for safe target/label generation
         df["close_raw"] = df["close"].copy()
@@ -90,7 +90,7 @@ class FeatureEngineer:
         if sentiment_df is not None and not sentiment_df.empty:
             if 'date' in sentiment_df.columns:
                 sentiment_df = sentiment_df.copy()
-                sentiment_df['date'] = pd.to_datetime(sentiment_df['date']).dt.date
+                sentiment_df['date'] = pd.to_datetime(sentiment_df['date']).dt.normalize()
             df = df.merge(sentiment_df, on='date', how='left').fillna(0)
 
         df = df.ffill() # Forward fill only for time-safety. 

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     timescale_port: int = 5432
     timescale_db: str = "algo_trading"
     timescale_user: str = "postgres"
-    timescale_password: str = "your_password_here"
+    timescale_password: str = "" # To be loaded from .env
 
     @property
     def timescale_url(self) -> str:
@@ -145,6 +145,13 @@ class Settings(BaseSettings):
     short_horizon_days: int = 5
     mid_horizon_days: int = 20
     long_horizon_days: int = 120
+
+    # ── Trading Agents Upgrade (Skeleton Integration) ────────
+    use_rule_based_agents: bool = True
+    enable_llm_explainer: bool = False
+    llm_model_explainer: str = "qwen2.5:7b" # Default to Ollama model
+    max_position_pct: float = 0.20
+    max_volatility: float = 0.08
 
     # ── TUI & Monitoring ─────────────────────────────────────
     terminal_refresh_ms: int = 500

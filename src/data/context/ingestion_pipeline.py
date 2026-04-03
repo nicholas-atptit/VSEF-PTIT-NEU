@@ -6,9 +6,9 @@ import datetime as dt
 from typing import Any
 
 from config.settings import get_settings
-from src.context.bctc_loader import BCTCLoader
-from src.context.embedder import DocumentEmbedder
-from src.context.news_crawler import CrawledDocument, NewsCrawler
+from src.data.context.bctc_loader import BCTCLoader
+from src.data.context.embedder import DocumentEmbedder
+from src.data.context.news_crawler import CrawledDocument, NewsCrawler
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)

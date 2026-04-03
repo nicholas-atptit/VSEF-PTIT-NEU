@@ -24,6 +24,10 @@ from src.context.news_crawler import NewsCrawler
 from src.utils.monitoring.drift import DriftMonitor
 from src.utils.monitoring.accuracy import AccuracyMonitor
 
+# New Agentic Architecture
+from src.signals.builder import build_market_signal
+from src.agents.orchestrator import AgentOrchestrator
+
 logger = get_logger(__name__)
 
 # ── Action constants ──────────────────────────────────────────
@@ -58,6 +62,7 @@ class SignalGenerator:
         self._crawler = NewsCrawler()
         self._drift_monitor = DriftMonitor()
         self._accuracy_monitor = AccuracyMonitor()
+        self._orchestrator = AgentOrchestrator()
 
     async def generate(
         self,
@@ -159,57 +164,92 @@ class SignalGenerator:
                     "status": "success"
                 }
 
-        # --- Phase 4: Decision Fusion (Agent Matrix) ---
-        from src.api.schemas import QuantitativeSignals, QualitativeAnalysis
-        
-        # Ensure default values for trend_probs and expected_range to satisfy Pydantic
-        trend_probs_safe = {
-            "up": trend_probs.get("up", 0.0),
-            "down": trend_probs.get("down", 0.0),
-            "sideways": trend_probs.get("sideways", 1.0) if not trend_probs else 1.0
-        }
-        expected_range_safe = {
-            "bottom_10th": expected_range.get("bottom_10th", current_close * 0.95),
-            "median_50th": expected_range.get("median_50th", current_close),
-            "ceiling_90th": expected_range.get("ceiling_90th", current_close * 1.05)
-        }
+        # --- Phase 6: Agentic Upgrade (Rule-Based Agents) ---
+        if self._settings.use_rule_based_agents:
+            # 1. Normalize to MarketSignal
+            market_signal = build_market_signal(
+                ticker=ticker,
+                current_price=current_close,
+                model_output=model_output,
+                feature_snapshot={
+                    "volatility": vol_val,
+                    # We can pass more from model_output or feature engineering if available
+                },
+                sentiment_payload=sentiment_payload
+            )
+            
+            # 2. Run Orchestrator
+            agent_results = self._orchestrator.run([market_signal])
+            
+            # 3. Extract results (single ticker mode)
+            analyst = agent_results["analyst_decisions"][0]
+            risk = agent_results["risk_decisions"][0]
+            proposal = agent_results["portfolio"]["positions"][0] if agent_results["portfolio"]["positions"] else None
+            
+            # Map to legacy consensus format for TerminalPayload
+            matrix_decision = risk["action"]
+            consensus_rationale = "; ".join(analyst["reasons"])
+            position_size = proposal["weight"] if proposal else 0.0
+            veto_flag = not risk["approved"]
+            constraints_hit = risk["veto_reasons"]
+        else:
+            # --- Phase 4: Legacy Decision Fusion (Agent Matrix) ---
+            from src.api.schemas import QuantitativeSignals, QualitativeAnalysis
+            
+            # Ensure default values for trend_probs and expected_range to satisfy Pydantic
+            trend_probs_safe = {
+                "up": trend_probs.get("up", 0.0),
+                "down": trend_probs.get("down", 0.0),
+                "sideways": trend_probs.get("sideways", 1.0) if not trend_probs else 1.0
+            }
+            expected_range_safe = {
+                "bottom_10th": expected_range.get("bottom_10th", current_close * 0.95),
+                "median_50th": expected_range.get("median_50th", current_close),
+                "ceiling_90th": expected_range.get("ceiling_90th", current_close * 1.05)
+            }
 
-        # Adapt v5.0 inputs for compat with matrix.py
-        quant_model = QuantitativeSignals(
-            trend_probabilities=trend_probs_safe,
-            expected_range=expected_range_safe,
-            action_plan={"recommendation": "STAND_ASIDE", "entry_zone": [0.0, 0.0], "stop_loss": 0, "take_profit": 0}
-        )
-        # Handle recommendation from raw trend_probs for matrix
-        if trend_probs.get("up", 0) > 0.6: quant_model.action_plan.recommendation = "BUY"
-        elif trend_probs.get("down", 0) > 0.6: quant_model.action_plan.recommendation = "SELL"
-        
-        qual_model = QualitativeAnalysis(
-            analysis_status=sentiment_payload["status"].lower(),
-            confidence_score=sentiment_payload["sentiment_confidence"],
-            overall_outlook=sentiment_payload["sentiment_regime"],
-            reasoning="Phase 3 Intelligence",
-            veto_flag=False,
-            anti_hallucination_check_passed=True
-        )
-        
-        matrix_decision, consensus = evaluate_decision_matrix(
-            quant=quant_model,
-            qual=qual_model,
-            weights={"technical": 0.6, "sentiment": 0.4}
-        )
-        
-        # --- Phase 4: Risk Overlay ---
-        # Placeholder ATR (In production this would come from the live feature stream)
-        mock_atr = current_close * 0.03 # 3% daily volatility approx
-        
-        order_payload, risk_record = apply_risk_constraints(
-            ticker=ticker,
-            action_plan=quant_model.action_plan,
-            real_time_price=current_close,
-            atr_14=mock_atr,
-            applied_risk_tolerance=min(risk_tolerance if risk_tolerance is not None else 0.0, 0.70)
-        )
+            # Adapt v5.0 inputs for compat with matrix.py
+            quant_model = QuantitativeSignals(
+                trend_probabilities=trend_probs_safe,
+                expected_range=expected_range_safe,
+                action_plan={"recommendation": "STAND_ASIDE", "entry_zone": [0.0, 0.0], "stop_loss": 0, "take_profit": 0}
+            )
+            # Handle recommendation from raw trend_probs for matrix
+            if trend_probs.get("up", 0) > 0.6: quant_model.action_plan.recommendation = "BUY"
+            elif trend_probs.get("down", 0) > 0.6: quant_model.action_plan.recommendation = "SELL"
+            
+            qual_model = QualitativeAnalysis(
+                analysis_status=sentiment_payload["status"].lower(),
+                confidence_score=sentiment_payload["sentiment_confidence"],
+                overall_outlook=sentiment_payload["sentiment_regime"],
+                reasoning="Phase 3 Intelligence",
+                veto_flag=False,
+                anti_hallucination_check_passed=True
+            )
+            
+            matrix_decision, consensus = evaluate_decision_matrix(
+                quant=quant_model,
+                qual=qual_model,
+                weights={"technical": 0.6, "sentiment": 0.4}
+            )
+            
+            # --- Phase 4: Risk Overlay ---
+            mock_atr = current_close * 0.03 # 3% daily volatility approx
+            
+            order_payload, risk_record = apply_risk_constraints(
+                ticker=ticker,
+                action_plan=quant_model.action_plan,
+                real_time_price=current_close,
+                atr_14=mock_atr,
+                applied_risk_tolerance=min(risk_tolerance if risk_tolerance is not None else 0.0, 0.70)
+            )
+            position_size = float(order_payload.volume) if order_payload else 0.0
+            veto_flag = not risk_record.fomo_check_passed
+            constraints_hit = ["FOMO"] if not risk_record.fomo_check_passed else []
+            consensus_rationale = (
+                f"ml={consensus.ml_signal}, llm={consensus.llm_sentiment}, "
+                f"veto={consensus.veto_triggered}"
+            )
         
         # --- Terminal Payload (Standard Contract v5.1) ---
         return {
@@ -238,16 +278,13 @@ class SignalGenerator:
                 "regime_detected": "trend",
                 "action": matrix_decision,
                 "confidence": 0.85,
-                "rationale": (
-                    f"ml={consensus.ml_signal}, llm={consensus.llm_sentiment}, "
-                    f"veto={consensus.veto_triggered}"
-                ),
+                "rationale": consensus_rationale,
                 "agent_weights": {"technical": 0.6, "sentiment": 0.4},
             },
             "risk": {
-                "position_size_suggestion": float(order_payload.volume) if order_payload else 0.0,
-                "veto_flag": not risk_record.fomo_check_passed,
-                "constraints_hit": ["FOMO"] if not risk_record.fomo_check_passed else [],
+                "position_size_suggestion": position_size,
+                "veto_flag": veto_flag,
+                "constraints_hit": constraints_hit,
                 "risk_budget_consumed": 0.0,
                 "model_accuracy_1w": accuracy_info.get("accuracy", 0.0)
             },

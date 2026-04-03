@@ -1,38 +1,25 @@
-# 🚀 Improvement Roadmap
+# IMPROVEMENT ROADMAP: VN100 Multi-Agent Trading System
 
-## 1. P0: CRITICAL VALIDITY & SAFETY (Immediate)
-**Reasoning**: Ensure the integrity of prediction signals and data security.
+Date: 2026-04-03
+Priority Status: High
 
-| Item | Action | Reasoning |
-| :--- | :--- | :--- |
-| **Fix Mock Benchmarks** | Replace `np.random` in `src/ml/benchmark/evaluator.py`. | Current CAGR/Sharpe are fake; prevents false signal confidence. |
-| **Remove Hardcoded Key** | Move `vnstock_api_key` to `.env`. | Fixes critical security risk in `config/settings.py`. |
-| **Fix Label Smoothing** | Update `src/ml/labels/*.py` to use raw market prices only. | Prevents "artificially" high accuracy from smoothed data. |
-| **Sanitize Features** | Update `FeatureEngineer` to preserve `close_raw`. | Ensures causal inputs for all downstream indicators. |
+## Recommended Next Steps
 
-## 2. P1: METHODOLOGY & ROBUSTNESS (Secondary)
-**Reasoning**: Align training pipeline with financial machine learning best practices.
+### P0: Intelligence Realism (Critical Structural Risk)
+- **RAG Integration**: Fully connect `ZonedRAGService` with `ExplainerAgent`. Currently, the explainer uses a quantitative signal snapshot. Realism requires "context-in-loop" where the agent can search for recent (24H) news on a ticker before rendering a Vietnamese rationale.
+- **Error Sensitivity**: Refine exception handling in the `AgentOrchestrator`. If an LLM call fails, the system should fallback to a rule-based "fallback rationale" rather than returning an error string.
 
-| Item | Action | Reasoning |
-| :--- | :--- | :--- |
-| **Walk-Forward Split** | Use `TimeSeriesSplit` in `train_ml_tickers.py`. | Replaces static 80/20 split; reflects real model drift. |
-| **Returns-Based Metrics** | Replaces `Accuracy` with `Sharpe/Sortino`. | Accuracy is misleading for non-stationary price data. |
-| **Feature Registry** | Implement `src/features/registry.py`. | Standardizes alpha factor computation and dependency management. |
-| **Config Centralization** | Move hardcoded settings to `configs/ml_params.yaml`. | Reduces "magic numbers" and improves configurability. |
+### P1: Portfolio Optimization (Maintainability & Scalability)
+- **Position Scaling Logic**: Implement a "Portfolio Optimizer" agent (e.g., CVaR or Kelly Criterion based). The current `PortfolioAgent` uses simple budget-scaling, which does not account for ticker covariance or volatility targeting.
+- **Consolidate Backtesting**: Merge `src/ml/backtest/paper.py` (event-driven mode) with `scripts/backtest_portfolio_multi_agent.py`. The two logic chains share rebalancing and slippage code but live in different places.
 
-## 3. P2: PERFORMANCE & QUALITY UPGRADES
-**Reasoning**: Optional enhancements for long-term scalability.
-
-| Item | Action | Reasoning |
-| :--- | :--- | :--- |
-| **Parquet Transition** | Migrating from ticker-split CSVs to partitioned Parquet files. | Significant improvement in data loading speed. |
-| **Benchmark Baseline** | Integrated `VNINDEX` relative performance in all backtests. | Provides better context for alpha generation. |
-| **Walk-Forward Loop** | Retraining models periodically during backtests. | Accounts for market regime changes dynamically. |
+### P2: UI & Observability (Quality Upgrade)
+- **Feedback Loop**: Integrate the generated `backtest_portfolio_result.json` into the existing dashboard. Visualization of the equity curve vs individual ticker signals is the next logical step. 
+- **Explainability Logging**: Create a dedicated `logs/agent_narratives.jsonl` to store every LLM response for audit and human-in-the-loop verification.
 
 ---
 
-## EXECUTION ORDER RECOMMENDATION
-1. **Validity Check (F-01, L-01)**: Fix Kalman smoothing vs Label interaction.
-2. **Environment Cleanup (S-01)**: Prune models and mass CSV files.
-3. **Registry Pattern (F-02)**: Formalize factor management.
-4. **Data Infrastructure (D-02)**: Optimize I/O logic.
+## Recommended Order of Execution
+1. **RAG Hooking**: 2-3 hours (Focus on `ExplainerAgent` context injection).
+2. **Backtest Consolidation**: 4-6 hours (Refactor `paper.py` to be a pure Simulation engine).
+3. **Portfolio Optimizer**: 8-12 hours (Add a `PortfolioRiskAgent` specializing in cross-ticker correlations).
