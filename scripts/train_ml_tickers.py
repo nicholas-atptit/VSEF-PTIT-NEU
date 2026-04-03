@@ -12,6 +12,8 @@ from lightgbm import LGBMClassifier, LGBMRegressor, early_stopping, log_evaluati
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.metrics import accuracy_score
+from src.ml.benchmark.evaluator import MetricsEvaluator
+from src.ml.benchmark.baselines import BaselineStrategies
 from sklearn.model_selection import TimeSeriesSplit
 import optuna
 optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -115,13 +117,20 @@ def _train_custom_label(daily_df: pd.DataFrame, ticker: str, ticker_dir: Path, f
     """Train a single model for the requested custom label."""
     y = daily_df[label_config.label_column]
     
-    current_split = int(len(daily_df) * 0.8)
-    purge_end = min(current_split + PURGE_GAP, len(daily_df) - 5)
+    # Minimal Time-Series Safe Split
+    # Logic: Train on [0, split_idx - horizon], Test on [split_idx, end]
+    # This prevents the training set from "seeing" test set prices in its labels.
+    split_idx = int(len(daily_df) * 0.8)
+    horizon = getattr(label_config.generator, "HORIZON", 5) # Default 5 if not specified
     
-    X_train_full = daily_df[feature_cols].iloc[:current_split]
-    y_train_full = y.iloc[:current_split]
-    X_test = daily_df[feature_cols].iloc[purge_end:]
-    y_test = y.iloc[purge_end:]
+    train_end = split_idx - horizon
+    if train_end < MIN_ROWS:
+        return {} # Not enough data to be safe
+        
+    X_train_full = daily_df[feature_cols].iloc[:train_end]
+    y_train_full = y.iloc[:train_end]
+    X_test = daily_df[feature_cols].iloc[split_idx:]
+    y_test = y.iloc[split_idx:]
     
     if len(X_test) < 5 or len(X_train_full) < MIN_ROWS:
         return {}
@@ -152,6 +161,14 @@ def _train_custom_label(daily_df: pd.DataFrame, ticker: str, ticker_dir: Path, f
         model = LGBMClassifier(n_estimators=400, learning_rate=0.05, max_depth=5, random_state=42, n_jobs=-1, verbosity=-1)
         model.fit(X_train, y_train_full, sample_weight=weights)
         test_preds = model.predict(X_test)
+        
+        # --- Financial Evaluation Hook ---
+        evaluator = MetricsEvaluator()
+        test_returns = daily_df['pct_return'].iloc[purge_end:]
+        eval_res = evaluator.evaluate_strategy(test_preds, test_returns)
+        m = eval_res["metrics"]
+        logger.info("quant_eval", ticker=ticker, mode=label_config.mode, sharpe=m["sharpe"], cagr=m["cagr"], trades=eval_res["trade_stats"]["num_trades"])
+        
         metric_val = accuracy_score(y_test, test_preds) * 100
         metric_name = f"{label_config.mode}_acc"
         model_name = f"trend_classifier_{label_config.mode}.joblib"
@@ -234,14 +251,17 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
     for h_days, suffix in HORIZONS.items():
         y = daily_df[f'target_trend{suffix}']
         
-        current_split = int(len(daily_df) * 0.8)
-        current_purge = min(PURGE_GAP, 2) if h_days > 5 else PURGE_GAP
-        purge_end = min(current_split + current_purge, len(daily_df) - 5)
+        # Time-Series Safe Split per Horizon
+        split_idx = int(len(daily_df) * 0.8)
+        train_end = split_idx - h_days
         
-        X_train_full = daily_df[feature_cols].iloc[:current_split]
-        y_train_full = y.iloc[:current_split]
-        X_test = daily_df[feature_cols].iloc[purge_end:]
-        y_test = y.iloc[purge_end:]
+        if train_end < MIN_ROWS:
+            continue
+            
+        X_train_full = daily_df[feature_cols].iloc[:train_end]
+        y_train_full = y.iloc[:train_end]
+        X_test = daily_df[feature_cols].iloc[split_idx:]
+        y_test = y.iloc[split_idx:]
 
         if len(X_test) < 5 or len(X_train_full) < MIN_ROWS:
             continue
@@ -278,6 +298,24 @@ def train_ticker(daily_df: pd.DataFrame, hourly_agg: pd.DataFrame | None,
             joblib.dump(h_selected, ticker_dir / "feature_cols.joblib")
         
         test_preds = lgbm.predict(X_test)
+        
+        # --- Financial Evaluation Hook ---
+        evaluator = MetricsEvaluator()
+        baseline_eng = BaselineStrategies()
+        test_returns = daily_df['pct_return'].iloc[split_idx:]
+        
+        eval_res = evaluator.evaluate_strategy(test_preds, test_returns)
+        m = eval_res["metrics"]
+        
+        # Benchmarking vs Buy and Hold
+        bh_res = baseline_eng.buy_and_hold(test_returns)
+        comparison = evaluator.compare_vs_baseline(m, bh_res["metrics"])
+        
+        logger.info("quant_eval", ticker=ticker, horizon=suffix, 
+                    sharpe=m["sharpe"], cagr=m["cagr"], 
+                    alpha_sharpe=comparison["alpha_sharpe"],
+                    outperform_bh=comparison["outperformance"])
+        
         acc = accuracy_score(y_test, test_preds) * 100
         horizon_metrics[f"{suffix.strip('_')}_acc"] = acc
         horizon_metrics[f"{suffix.strip('_')}_elite_acc"] = acc # Fallback

@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     dnse_base_url: str = "https://openapi.dnse.com.vn"
 
     # ── Vnstock API ───────────────────────────────────────────
-    vnstock_api_key: str = "vnstock_a55a985b3bd1fce9c3182436341a5483"
+    vnstock_api_key: str = ""
 
     # Fast In-Memory Broker (Phase 1 Upgrades)
     redis_url: str = "redis://localhost:6379"
@@ -43,9 +43,17 @@ class Settings(BaseSettings):
     timescale_port: int = 5432
     timescale_db: str = "algo_trading"
     timescale_user: str = "postgres"
-    timescale_password: str = "postgres"
-    timescale_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/algo_trading"
-    timescale_sync_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/algo_trading"
+    timescale_password: str = "your_password_here"
+
+    @property
+    def timescale_url(self) -> str:
+        """Construct async DB URL safely from components."""
+        return f"postgresql+asyncpg://{self.timescale_user}:{self.timescale_password}@{self.timescale_host}:{self.timescale_port}/{self.timescale_db}"
+
+    @property
+    def timescale_sync_url(self) -> str:
+        """Construct sync DB URL safely from components."""
+        return f"postgresql+psycopg2://{self.timescale_user}:{self.timescale_password}@{self.timescale_host}:{self.timescale_port}/{self.timescale_db}"
 
     # ── ChromaDB ─────────────────────────────────────────────
     chroma_host: str = "localhost"
@@ -109,7 +117,7 @@ class Settings(BaseSettings):
     
     # Ollama (Local)
     ollama_base_url: str = "http://localhost:11434/v1"
-    ollama_api_key: str = "ollama"
+    ollama_api_key: str = "" # Default is empty
     ollama_model_name: str = "qwen2.5:7b"
     
     # OpenAI

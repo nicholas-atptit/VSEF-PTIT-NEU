@@ -80,6 +80,9 @@ class FeatureEngineer:
         if 'date' in df.columns:
             df['date'] = pd.to_datetime(df['date']).dt.date
         
+        # 0. Preserve raw Close for safe target/label generation
+        df["close_raw"] = df["close"].copy()
+        
         # 1. Merge external contexts accurately
         if fundamentals_df is not None and not fundamentals_df.empty:
             df = df.merge(fundamentals_df, on='date', how='left').ffill()
@@ -90,7 +93,8 @@ class FeatureEngineer:
                 sentiment_df['date'] = pd.to_datetime(sentiment_df['date']).dt.date
             df = df.merge(sentiment_df, on='date', how='left').fillna(0)
 
-        df = df.ffill().bfill() # Ensure no mid-gaps
+        df = df.ffill() # Forward fill only for time-safety. 
+        # bfill() removed to prevent future leakage in merged contexts.
 
         # 2. Base Returns
         df["log_return"] = np.log(df["close"] / df["close"].shift(1))
@@ -122,7 +126,8 @@ class FeatureEngineer:
             df = df.dropna().reset_index(drop=True)
         else:
             # For inference, preserve latest rows via filling
-            df = df.ffill().bfill().fillna(0).reset_index(drop=True)
+            # Note: ffill is safe; bfill at very end is only for inference edge cases.
+            df = df.ffill().fillna(0).reset_index(drop=True)
 
         return df
 

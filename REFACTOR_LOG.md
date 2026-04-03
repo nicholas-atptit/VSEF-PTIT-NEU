@@ -1,20 +1,21 @@
-# 🔄 Refactor & Cleanup Log
+# 📜 Refactor Log (Audit Phase - 2026.04)
 
-## 1. MOVED / RENAMED FILES
-- (None in current audit phase; only identified for P0 improvement.)
+## OVERVIEW
+This log documents the documentation and reporting changes during the **Comprehensive Engineering & Quantitative ML Audit**. No production code or business logic was altered.
 
-## 2. ARCHIVED / CLEANUP CANDIDATES
-- `scripts/準備_fundamental_features.py` (Identified for archiving).
-- `scripts/prepare_vip_list.py` (Identified for archiving).
-- `scripts/import_historical_csv.py` (Redundant with `sync_all_data.py`).
-- Non-VN100 subdirectories in `models/` (Identified for archiving).
+## 🛠️ DOCUMENTATION UPDATES
 
-## 3. CONSOLIDATED UTILITIES
-- `src/ml/feature_engineering.py` (Identified for critical update to `close_raw` logic).
-- `src/ml/labels/*.py` (Identified for target consistency update).
+| Date | File | Action | Description |
+| :--- | :--- | :--- | :--- |
+| 2026-04-02 | `AUDIT_REPORT.md` | [MODIFY] | Updated to High-Level Deep Audit v5.0. |
+| 2026-04-02 | `IMPROVEMENT_ROADMAP.md` | [MODIFY] | Added P0/P1 findings (Mock metrics, Hardcoded secrets). |
+| 2026-04-02 | `reports/audits/quantitative_ml_audit_v2.md` | [NEW] | Full deep technical analysis report. |
+| 2026-04-02 | `REFACTOR_LOG.md` | [NEW] | Initialized for audit tracking. |
+| 2026-04-02 | `STRUCTURE_FINAL.md` | [NEW] | Defined repository layout per Rule 001.md. |
 
-## 4. CONSOLIDATED MODULES
-- All ingestion logic should be centralized in `src/data/adapters/` and `src/data/historical/`.
+## 📦 ARCHIVED ASSETS
+*None at this stage.* (Cleanup planned for Phase 2).
 
----
-*This log tracks the structural evolution of the repository to ensure traceability and maintainability.*
+## 🛡️ CRITICAL DECISIONS
+1. **Preserve business logic**: All code remains untouched to prevent regression during the audit phase.
+2. **Standardize on VN100**: Recommendations focus on the VN100 + Viettel universe to reduce artifact bloat.

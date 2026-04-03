@@ -1,22 +1,24 @@
 # 🚀 Improvement Roadmap
 
 ## 1. P0: CRITICAL VALIDITY & SAFETY (Immediate)
-**Reasoning**: Ensure the integrity of prediction signals before capital risk.
+**Reasoning**: Ensure the integrity of prediction signals and data security.
 
 | Item | Action | Reasoning |
 | :--- | :--- | :--- |
+| **Fix Mock Benchmarks** | Replace `np.random` in `src/ml/benchmark/evaluator.py`. | Current CAGR/Sharpe are fake; prevents false signal confidence. |
+| **Remove Hardcoded Key** | Move `vnstock_api_key` to `.env`. | Fixes critical security risk in `config/settings.py`. |
 | **Fix Label Smoothing** | Update `src/ml/labels/*.py` to use raw market prices only. | Prevents "artificially" high accuracy from smoothed data. |
 | **Sanitize Features** | Update `FeatureEngineer` to preserve `close_raw`. | Ensures causal inputs for all downstream indicators. |
-| **Artifact Pruning** | Archive non-VN100 models in `models/`. | Improves repo maintainability and disk I/O. |
 
-## 2. P1: MAINTAINABILITY & ROBUSTNESS (Secondary)
-**Reasoning**: Standardize the environment for team collaboration and production scaling.
+## 2. P1: METHODOLOGY & ROBUSTNESS (Secondary)
+**Reasoning**: Align training pipeline with financial machine learning best practices.
 
 | Item | Action | Reasoning |
 | :--- | :--- | :--- |
+| **Walk-Forward Split** | Use `TimeSeriesSplit` in `train_ml_tickers.py`. | Replaces static 80/20 split; reflects real model drift. |
+| **Returns-Based Metrics** | Replaces `Accuracy` with `Sharpe/Sortino`. | Accuracy is misleading for non-stationary price data. |
 | **Feature Registry** | Implement `src/features/registry.py`. | Standardizes alpha factor computation and dependency management. |
 | **Config Centralization** | Move hardcoded settings to `configs/ml_params.yaml`. | Reduces "magic numbers" and improves configurability. |
-| **Data Ingestion** | Unified `sync_all_data.py` as the master orchestrator. | Prevents database conflicts across different sync scripts. |
 
 ## 3. P2: PERFORMANCE & QUALITY UPGRADES
 **Reasoning**: Optional enhancements for long-term scalability.

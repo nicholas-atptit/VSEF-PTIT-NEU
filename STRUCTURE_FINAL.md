@@ -1,36 +1,27 @@
-# 🗺️ Proposed Target Repository Structure
+# 📂 Repository Structure (Final Design)
 
-## 1. PROJECT ROOT
-- `configs/`: Centralized settings (YAML, Python).
-- `data/`: Ingested, staged, and featured data.
-- `src/`: Core logic modules (Data, Features, Labels, Training, Inference, Backtest).
-- `scripts/`: Final operational entry points.
-- `models/`: Curated model artifacts (VN100 focus).
-- `reports/`: Audit logs, experiment results, and performance analysis.
-- `docs/`: Technical documentation and design notes.
-- `archive/`: Redundant/legacy scripts and data.
+## 🏗️ SYSTEM ARCHITECTURE
+This repository follows a Domain-Driven Design (DDD) for Quantitative ML, separated into clear layers: Data -> ML -> Engine -> API.
 
-## 2. FOLDER RESPONSIBILITIES
+## 📁 CORE DIRECTORIES
 
-| Path | Responsibility |
+| Folder | Responsibility |
 | :--- | :--- |
-| **configs/** | Unified source of truth for ML params, API keys, and paths. |
-| **data/raw/** | Original data downloads (immutable). |
-| **data/staging/** | Cleaned and partitioned OHLCV (Parquet preferred). |
-| **data/features/** | Computed feature matrices (versioned per registry). |
-| **src/data/** | Data source adapters and universe logic. |
-| **src/features/** | Central Factor Registry and indicator logic. |
-| **src/labels/** | Causal label generation logic. |
-| **src/training/** | Orchestrated training and cross-validation loops. |
-| **src/inference/** | Prediction engines for online/batch modes. |
-| **src/backtest/** | Event-driven and vectorized testing frameworks. |
+| `src/data/` | Ingestion, Database Adapters, VN100 Universe management. |
+| `src/ml/` | **Core Brain**. Features, Labels, Training, Prediction, and RAG. |
+| `src/engine/` | Decision Logic (Matrix), Risk Management, Execution Rules. |
+| `src/api/` | FastAPI routes, schemas, and health checks. |
+| `scripts/` | **CLI Entry Points**. Operational scripts for sync, train, and inference. |
+| `data/` | **Artifacts Layer**. Raw/Processed prices and temporary CSV splits. |
+| `models/` | **Serialized Weights**. `.joblib` files organized by Ticker. |
+| `reports/` | **Analytics**. Audit logs, daily briefs, and performance reports. |
+| `docs/` | **Documentation**. Prompt runs, feature engineering notes, and design specs. |
 
-## 3. GUIDANCE FOR FUTURE CODING
-- **New Indicators**: Add to `src/features/registry.py` first.
-- **New Labels**: Add to `src/labels/` and unit-test for causality.
-- **New Ingestion**: Add adapter to `src/data/adapters/`.
-- **New Scripts**: Keep thin, import core logic from `src/`.
-- **Path Handling**: Always use `config/settings.py` paths, never hardcoded strings.
+## 🛠️ GUIDANCE FOR FUTURE CODE
+1. **New Indicators**: Must be added to `src/ml/feature_engineering.py` (Unified Feature Layer).
+2. **New Model Types**: Place definitions in `src/ml/training_pipeline/` and training logic in `scripts/train_ml_tickers.py`.
+3. **Execution Rules**: Modify `src/engine/matrix.py` or `src/engine/risk.py`.
+4. **Data Sync**: Always extend `scripts/sync_all_data.py` instead of creating new sync scripts.
 
 ---
-*This structure is designed for production reliability and automated scaling.*
+*Created by Antigravity Audit Agent*
