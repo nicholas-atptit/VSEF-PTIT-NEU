@@ -9,8 +9,9 @@
 Hệ thống hoạt động theo mô hình **Agentic Graph**, nơi dữ liệu được xử lý qua 4 miền (Domains) độc lập trước khi đưa ra quyết định cuối cùng:
 
 1.  **Domain A: Technical Radar (Quantitative)**:
-    - Sử dụng **LightGBM & XGBoost** tối ưu qua **Optuna**.
-    - Alpha Factors mới: **Parkinson Volatility** (biên độ High-Low), **Yang-Zhang Volatility** (mới - tối ưu gap mở cửa), **Sentiment Momentum**, và 80+ chỉ số kỹ thuật khác.
+    - Sử dụng **CART (Classification And Regression Tree)** cho tốc độ và diễn giải, **LSTM/BiLSTM** cho mô hình hóa chuỗi thời gian.
+    - **Cửa sổ dữ liệu**: Rolling 5 năm mới nhất, được tính toán lại tại mỗi lần huấn luyện.
+    - Alpha Factors: **Parkinson Volatility** (biên độ High-Low), **Yang-Zhang Volatility** (tối ưu gap mở cửa), **Sentiment Momentum**, và 80+ chỉ số kỹ thuật khác.
 2.  **Domain B: Sentiment Intelligence (Qualitative)**:
     - **News Crawler**: Quét tin tức thời gian thực từ Google News RSS & Vnstock cho 104 mã.
     - **Active Analysis Path**: Tự động kích hoạt crawl & analyze on-demand nếu dữ liệu cache thiếu/stale.
@@ -47,7 +48,7 @@ Hệ thống lưu trữ dữ liệu tại 3 lớp chính:
 
 | Nhóm | Thư viện chính |
 | :--- | :--- |
-| **ML Engine** | `lightgbm`, `xgboost`, `optuna` (Tuning), `scikit-learn` |
+| **ML Engine** | `scikit-learn` (CART), `torch` (LSTM/BiLSTM), `joblib` (artifact persistence) |
 | **Data Logic** | `pandas`, `pandas_ta` (Technical Indicators), `sqlalchemy` (asyncio) |
 | **AI/LLM** | `ollama` (Local LLM), `langchain` (Orchestrator), `httpx` |
 | **Data Source** | `vnstock_pro` (Official Data), `beautifulsoup4` (Crawling) |
