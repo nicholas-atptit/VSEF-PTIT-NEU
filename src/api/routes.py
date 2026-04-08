@@ -26,7 +26,6 @@ from src.engine.risk import apply_risk_constraints
 from src.api.tracing import trace_stage
 from src.ml.llm.pipeline import run_qualitative_analysis
 from src.ml.data_loader import generate_mock_data, load_ohlcv_from_db, load_ohlcv_from_vnstock
-from src.ml.feature_engineering import FeatureEngineer
 from src.ml.signal_generator import SignalGenerator
 from src.ml.trainer import DualModelTrainer
 from src.utils.logging import get_logger
@@ -37,7 +36,6 @@ router = APIRouter(prefix="/api/v1", tags=["Phase 2 — Quantitative ML"])
 
 # Shared instances (singleton within the process)
 _trainer = DualModelTrainer()
-_fe = FeatureEngineer()
 _signal_gen = SignalGenerator()
 
 
@@ -125,29 +123,11 @@ async def predict(
             )
 
         with trace_stage(request, "quant_feature_engineering"):
-            # Auto-detect v3 models (feature_cols with d_* prefix)
-            try:
-                _trainer._ensure_models_loaded(ticker)
-                saved_features = _trainer._models[ticker].get("feature_cols", [])
-            except FileNotFoundError:
-                saved_features = []
-
-            is_v3 = saved_features and any(f.startswith('d_') for f in saved_features)
-
-            if is_v3:
-                # v3 path: use trainer's built-in feature engineering
-                feat_df = _trainer.compute_features_for_ticker(ticker, raw_df)
-                latest_row = feat_df[saved_features].iloc[[-1]]  # DataFrame row
-                current_close = float(feat_df["close"].iloc[-1])
-            else:
-                # Legacy path: use old FeatureEngineer
-                feat_df = _fe.transform(raw_df)
-                feature_cols = _fe.get_feature_columns(feat_df)
-                latest_row = feat_df[feature_cols].iloc[-1]
-                current_close = float(feat_df["close"].iloc[-1])
+            feat_df = _trainer.compute_features_for_ticker(ticker, raw_df)
+            current_close = float(feat_df["close"].iloc[-1])
 
         with trace_stage(request, "quant_model_inference"):
-            model_output = _trainer.predict(ticker, latest_row)
+            model_output = _trainer.predict(ticker, feat_df)
             payload = await _signal_gen.generate(
                 ticker=ticker,
                 current_close=current_close,

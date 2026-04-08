@@ -139,7 +139,6 @@ class TestPredictErrors:
         assert response.status_code == 422
 
     def test_predict_untrained_ticker(self, client: TestClient):
-        """Untrained ticker or insufficient data should return 422."""
+        """Untrained ticker should return 404 with the new manifest-based contract."""
         response = client.get("/api/v1/predict?ticker=NONEXISTENT_TICKER_XYZ")
-        # In Phase 5, if data search fails or is insufficient, we return 422
-        assert response.status_code == 422
+        assert response.status_code == 404

@@ -1,17 +1,18 @@
-"""SQLAlchemy Base and common model utilities."""
+"""Shared SQLAlchemy base objects and ML model interface contracts."""
 
 from __future__ import annotations
 
+import abc
 import datetime as dt
+from pathlib import Path
+from typing import Any, Dict
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
-    """Base class for all SQLAlchemy models."""
-
-    pass
+    """Base class for SQLAlchemy ORM models."""
 
 
 class TimestampMixin:
@@ -28,3 +29,42 @@ class TimestampMixin:
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class BaseModel(abc.ABC):
+    """Abstract contract for trainable ML models."""
+
+    @abc.abstractmethod
+    def fit(
+        self,
+        X_train: Any,
+        y_train: Any,
+        X_val: Any = None,
+        y_val: Any = None,
+    ) -> None:
+        """Train the model."""
+
+    @abc.abstractmethod
+    def predict(self, X: Any) -> Any:
+        """Return model predictions."""
+
+    def predict_proba(self, X: Any) -> Any:  # pragma: no cover
+        """Return class probabilities when supported."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def save(self, artifact_path: Path) -> None:
+        """Persist model weights and companion metadata."""
+
+    @classmethod
+    @abc.abstractmethod
+    def load(cls, artifact_path: Path) -> "BaseModel":
+        """Load a persisted model bundle."""
+
+    @abc.abstractmethod
+    def get_artifact_metadata(self) -> Dict[str, Any]:
+        """Return serializable metadata required for reloading and auditing."""
+
+    def metadata(self) -> Dict[str, Any]:
+        """Compatibility alias for older callers."""
+        return self.get_artifact_metadata()

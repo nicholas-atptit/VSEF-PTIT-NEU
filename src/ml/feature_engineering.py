@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import List
 import numpy as np
 import pandas as pd
-import pandas_ta as ta
 
 from src.utils.logging import get_logger
 
@@ -69,6 +68,24 @@ def apply_kalman_filter(data):
         P[k] = (1 - K[k]) * Pminus[k]
         
     return xhat
+
+
+def compute_rsi(series: pd.Series, window: int = 14) -> pd.Series:
+    delta = series.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
+    rs = avg_gain / (avg_loss + 1e-9)
+    return 100 - (100 / (1 + rs))
+
+
+def compute_bollinger_bands(series: pd.Series, window: int = 20, num_std: float = 2.0) -> tuple[pd.Series, pd.Series]:
+    rolling_mean = series.rolling(window).mean()
+    rolling_std = series.rolling(window).std()
+    upper = rolling_mean + (rolling_std * num_std)
+    lower = rolling_mean - (rolling_std * num_std)
+    return upper, lower
 
 class FeatureEngineer:
     """Computes quantitative features from daily OHLCV data."""
@@ -139,9 +156,10 @@ class FeatureEngineer:
     def _add_delta_features(self, df: pd.DataFrame) -> pd.DataFrame:
         exclude = {"date", "ticker", "open", "high", "low", "close", "volume"}
         feat_cols = [c for c in df.columns if c not in exclude and not c.startswith('d_')]
-        for c in feat_cols:
-            df[f"d_{c}"] = df[c] - df[c].shift(1)
-        return df
+        delta_map = {f"d_{col}": df[col] - df[col].shift(1) for col in feat_cols}
+        if not delta_map:
+            return df
+        return pd.concat([df, pd.DataFrame(delta_map, index=df.index)], axis=1)
 
     def _add_volatility_features(self, df: pd.DataFrame) -> pd.DataFrame:
         window = 20
@@ -173,15 +191,11 @@ class FeatureEngineer:
         return df
 
     def _add_advanced_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        df["rsi"] = ta.rsi(df["close"], length=14)
-        bb = ta.bbands(df["close"], length=20, std=2.0)
-        if bb is not None:
-            # Use columns that contain BBU, BBL, BBB
-            u_col = [c for c in bb.columns if c.startswith("BBU_")][0]
-            l_col = [c for c in bb.columns if c.startswith("BBL_")][0]
-            df["bb_upper"] = bb[u_col]
-            df["bb_lower"] = bb[l_col]
-            df["bb_width"] = (df["bb_upper"] - df["bb_lower"]) / (df["close"] + 1e-9)
+        df["rsi"] = compute_rsi(df["close"], window=14)
+        bb_upper, bb_lower = compute_bollinger_bands(df["close"], window=20, num_std=2.0)
+        df["bb_upper"] = bb_upper
+        df["bb_lower"] = bb_lower
+        df["bb_width"] = (df["bb_upper"] - df["bb_lower"]) / (df["close"] + 1e-9)
         return df
 
     def _add_lagged_features(self, df: pd.DataFrame) -> pd.DataFrame:

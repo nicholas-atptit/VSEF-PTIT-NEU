@@ -138,3 +138,107 @@ Hệ thống được thiết kế dựa trên triết lý từ các nghiên c�
 ## License
 Private — Proprietary Vietnamese Stock Analysis System - Lương Minh Quân.
 v5.1.3 — Universal Hybrid Edition.
+---
+
+## Technical ML Rebuild
+
+The technical forecasting stack has been rebuilt around a single registry-driven pipeline.
+
+- Supported algorithms: `cart`, `lstm`, `bilstm`
+- Training window: the latest rolling 5 years available per ticker at execution time
+- Split policy: chronological train/validation/test only, with horizon purge gaps
+- Feature scaling: sequence-model scalers are fit on training sequences only
+- Artifact root: `models/<TICKER>/`
+- Manifest contract: `models/<TICKER>/manifest.json`
+
+### Model Registry
+
+- `src/ml/models/base.py`: shared ML model contract plus ORM base objects
+- `src/ml/models/factory.py`: central registry and lazy model loading
+- `src/ml/models/cart.py`: `DecisionTreeClassifier` and `DecisionTreeRegressor`
+- `src/ml/models/lstm.py`: PyTorch LSTM implementation
+- `src/ml/models/bilstm.py`: true bidirectional PyTorch LSTM
+- `src/ml/sequence_dataset.py`: rolling-window builder for sequence models
+- `src/ml/trainer.py`: unified training/inference facade used by CLI, API, batch inference, and backtests
+
+### Data Window
+
+For every ticker, the trainer:
+
+1. finds the latest available trading date in the source CSV
+2. keeps only the rolling 5-year window ending on that date
+3. adds a warmup buffer before the 5-year start for indicator computation only
+4. recomputes features from raw OHLCV inside that scope
+5. logs the effective start date, effective end date, raw rows, indicator warmup rows, target rows lost, sequence rows lost, and final usable rows
+
+### Artifact Contract
+
+- CART trend classifier: `trend_classifier_cart_<horizon>.joblib`
+- CART return regressor: `return_regressor_cart_<horizon>.joblib`
+- LSTM trend classifier: `trend_classifier_lstm_<horizon>.pt`
+- LSTM return regressor: `return_regressor_lstm_<horizon>.pt`
+- BiLSTM trend classifier: `trend_classifier_bilstm_<horizon>.pt`
+- BiLSTM return regressor: `return_regressor_bilstm_<horizon>.pt`
+- Companion metadata: `*.meta.joblib`
+- Torch scaler bundles: `*.scaler.joblib`
+- Per-ticker manifest: `manifest.json`
+
+The manifest stores the primary algorithm, feature columns, horizon metadata, calibration values for range reconstruction, and the exact data window used for that ticker.
+
+### Commands
+
+Install dependencies:
+
+```powershell
+pip install -r requirements.txt
+```
+
+If your default `python` is `3.13`, run the deep-model commands under a Python `3.12` interpreter because PyTorch support in this environment is on `3.12`.
+
+Rebuild the 5-year feature dataset without training:
+
+```powershell
+python scripts/train_ml_tickers.py --tickers SSI --prepare-only --report reports/ssi_prepare_report.csv
+```
+
+Train CART:
+
+```powershell
+python scripts/train_ml_tickers.py --tickers SSI --algorithms cart --primary-algorithm cart
+```
+
+Train LSTM:
+
+```powershell
+python scripts/train_ml_tickers.py --tickers SSI --algorithms lstm --primary-algorithm lstm --sequence-length 20 --epochs 50 --batch-size 32
+```
+
+Train BiLSTM:
+
+```powershell
+python scripts/train_ml_tickers.py --tickers SSI --algorithms bilstm --primary-algorithm bilstm --sequence-length 20 --epochs 50 --batch-size 32
+```
+
+Train all selected algorithms:
+
+```powershell
+python scripts/train_ml_tickers.py --tickers SSI --algorithms cart,lstm,bilstm --primary-algorithm lstm --sequence-length 20 --epochs 50 --batch-size 32 --report reports/ssi_benchmark.csv
+```
+
+Run benchmark/report generation:
+
+```powershell
+python -m src.ml.benchmark.run --tickers SSI,HPG --algorithms cart,lstm,bilstm --sequence-length 20 --epochs 50 --batch-size 32 --report reports/ml_benchmark.csv
+```
+
+Run an inference smoke test:
+
+```powershell
+python -c "import pandas as pd; from src.ml.trainer import DualModelTrainer; df=pd.read_csv('data/daily_market_split_data/SSI.csv'); t=DualModelTrainer(); feat=t.compute_features_for_ticker('SSI', df); print(t.predict('SSI', feat, horizon='short'))"
+```
+
+Run the rebuilt ML tests:
+
+```powershell
+pytest tests/ml/test_sequence_dataset.py tests/ml/test_model_artifacts.py tests/ml/test_training_cli.py tests/ml/test_trainer_pipeline.py
+```
