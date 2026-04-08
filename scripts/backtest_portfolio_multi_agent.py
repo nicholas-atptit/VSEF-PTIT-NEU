@@ -96,8 +96,13 @@ class PortfolioBacktester:
                 price = row["close"]
                 
                 try:
+                    ticker_history = backtest_df[
+                        (backtest_df["ticker"] == ticker) & (backtest_df["date"] <= current_date)
+                    ]
+                    if ticker_history.empty:
+                        continue
                     # Generate ML prediction (Trend/Range)
-                    model_output = self.trainer.predict(ticker, row)
+                    model_output = self.trainer.predict(ticker, ticker_history)
                     if not model_output: continue
                     
                     # Wrap in MarketSignal contract

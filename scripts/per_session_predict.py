@@ -67,7 +67,6 @@ async def predict_ticker(trainer, sg, ticker, semaphore):
                 logger.warning("features_empty", ticker=ticker)
                 return ticker, None
             
-            last_row = features_df.iloc[-1]
             current_close = float(df.iloc[-1]["close"])
             
             horizons = ["1w", "1m", "6m"]
@@ -75,7 +74,7 @@ async def predict_ticker(trainer, sg, ticker, semaphore):
             
             for h in horizons:
                 try:
-                    pred = trainer.predict(ticker, last_row, horizon=h)
+                    pred = trainer.predict(ticker, features_df, horizon=h)
                     if pred:
                         signal = await sg.generate(ticker, current_close, pred, volatility_score=pred.get("volatility"))
                         multi_signals[h] = signal

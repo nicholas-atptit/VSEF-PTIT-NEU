@@ -57,7 +57,7 @@ class MLPredictionConsumer:
             
             # Simple synchronous fetch in a thread
             def _fetch_lookback():
-                return load_ohlcv_from_vnstock(ticker, limit=400)
+                return load_ohlcv_from_vnstock(ticker, num_days=800)
                 
             df = await asyncio.to_thread(_fetch_lookback)
             
@@ -80,10 +80,8 @@ class MLPredictionConsumer:
                 logger.warning("ml_consumer_no_model", ticker=ticker)
                 return
                 
-            latest_row = feat_df[saved_features].iloc[[-1]]
-            
             # 4. Predict
-            prediction = self.trainer.predict(ticker, latest_row)
+            prediction = self.trainer.predict(ticker, feat_df)
             
             # 5. Publish Prediction Event
             event = {

@@ -16,7 +16,6 @@ from src.engine.matrix import evaluate_decision_matrix
 from src.engine.risk import apply_risk_constraints
 from src.ml.llm.pipeline import run_qualitative_analysis
 from src.ml.data_loader import generate_mock_data, load_ohlcv_from_db, load_ohlcv_from_vnstock
-from src.ml.feature_engineering import FeatureEngineer
 from src.ml.signal_generator import SignalGenerator
 from src.ml.trainer import DualModelTrainer
 from src.utils.logging import get_logger
@@ -78,7 +77,6 @@ class PaperTradingEngine:
         self._realized_pnl = 0.0
 
         self._trainer = DualModelTrainer()
-        self._feature_engineer = FeatureEngineer()
         self._signal_generator = SignalGenerator()
 
     async def run_single_cycle(
@@ -284,16 +282,15 @@ class PaperTradingEngine:
         if len(raw_df) < 100:
             raise ValueError(f"Insufficient data for {ticker}: {len(raw_df)} rows")
 
-        features = self._feature_engineer.transform(raw_df)
-        feature_cols = self._feature_engineer.get_feature_columns(features)
-        latest_row = features[feature_cols].iloc[-1]
+        features = self._trainer.compute_features_for_ticker(ticker, raw_df)
 
         try:
-            model_output = self._trainer.predict(ticker, latest_row)
+            model_output = self._trainer.predict(ticker, features)
         except FileNotFoundError:
             logger.info("paper_trade_auto_train", ticker=ticker)
             self._trainer.train(ticker=ticker, df=raw_df)
-            model_output = self._trainer.predict(ticker, latest_row)
+            features = self._trainer.compute_features_for_ticker(ticker, raw_df)
+            model_output = self._trainer.predict(ticker, features)
 
         quant_payload = await self._signal_generator.generate(
             ticker=ticker,

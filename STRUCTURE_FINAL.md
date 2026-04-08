@@ -1,49 +1,34 @@
-# STRUCTURE FINAL: VN100 Multi-Agent Project
+# Structure Final - Low-Resource Deployment Branch
 
-Date: 2026-04-03
-Status: Phase 3 Completed (Full Integration)
+## File Structure Overview
 
-## Final Repository Tree (Key Folders)
-```
-/
-├── config/                # Centralized Settings & Secrets
-├── scripts/               # Operational Scripts (Backtest, Sync, Demo)
+```text
+h:\AI-ML-LLM in Stock_march26_PTIT_NEU/
+├── config/
+│   ├── settings.py           <-- [MODIFIED] Local-Only Defaults
 ├── src/
-│   ├── agents/            # Multi-Agent Intelligent Layer (Async)
-│   │   ├── AnalystAgent   # Technical/Quantitative Decision Maker
-│   │   ├── RiskAgent      # Protective Filter & Position Sizing
-│   │   ├── ExplainerAgent # LLM-based Narrative Generator (Vietnamese)
-│   │   └── Orchestrator   # Async Graph Coordinator
-│   ├── data/              # Data Management & Context (RAG) layer
-│   │   ├── context/       # ChromaDB, Embedding, and News Ingestion
-│   │   ├── historical/    # Backdate processing & split handling
-│   │   └── universe.py    # VN100 constituent managers
-│   ├── ml/                # Machine Learning Pipeline
-│   │   ├── backtest/      # Trading Simulation Engines
-│   │   ├── inference/     # Predictor Wrappers
-│   │   ├── signals/       # Quantitative Signal Generation
-│   │   └── trainer.py     # Dual-Model (Trend/Range) Trainer
-│   ├── reporting/         # Reports & Insight Generators
-│   ├── utils/             # Cross-cutting logging & time utilities
-│   └── main.py            # API / System Entry Point
-├── reports/               # Auto-generated signal/backtest outputs
-└── docs/                  # Technical notes & Architectural decisions
+│   ├── agents/
+│   │   ├── orchestrator.py   <-- [UNCHANGED] ML -> Risk -> Portfolio -> Explain Flow
+│   │   ├── explainer.py      <-- [MODIFIED] Local LLM Optimization
+│   ├── ml/
+│   │   ├── llm/
+│   │   │   ├── client.py     <-- [UNCHANGED] OpenAI-compatible Ollama provider
+├── AUDIT_REPORT.md           <-- [NEW] This Audit
+├── IMPROVEMENT_ROADMAP.md    <-- [NEW] Planned Upgrades
+├── REFACTOR_LOG.md           <-- [NEW] History of modifications
+└── STRUCTURE_FINAL.md        <-- [NEW] This document
 ```
 
-## Guidance for Future Development
+## Folder Responsibilities
 
-### 1. Where do new Agents go?
-- New agent logic should reside in `src/agents/`. 
-- Ensure every agent inherits from a common async interface and returns a defined dataclass from `src/agents/contracts.py`.
+- **`config/`**: Centralized configuration via Pydantic Settings. For this branch, it defaults to Ollama and local Qwen models.
+- **`src/agents/`**: Contains the multi-agent logic. The `AgentOrchestrator` is the deterministic core.
+- **`src/ml/llm/`**: Houses LLM clients and prompts. The `client.py` is generic and supports local Ollama endpoints.
 
-### 2. Where do new Simulation logics go?
-- Simulation and rebalancing logic should be added to `src/ml/backtest/`. 
-- Prefer modifying the `PortfolioBacktester` script for multi-ticker logic or `paper.py` for event-driven execution.
+## Future Development Guidelines
 
-### 3. How to add new ML features?
-- Add new feature calculation logic to `src/ml/feature_engineering.py`.
-- Ensure parity by using the `FeatureEngineer` class across both training and inference paths.
+- **New Agents**: Any new "active" agents (controlling decisions) must NOT be added to this branch's orchestrator to maintain its "Explain-Only" nature.
+- **Dependency Management**: Avoid adding heavy Python dependencies (e.g., LangChain) to keep the resource footprint minimal.
 
-### 4. How to scale LLM capabilities?
-- Add new LLM prompt templates and processing logic to `src/agents/explainer.py`.
-- Use `src/ml/llm/client.py` for a unified model provider abstraction.
+---
+*Signed: Antigravity - Senior Software Architect*
