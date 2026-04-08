@@ -45,7 +45,7 @@ class InferenceEngine:
         -------
         pd.DataFrame
             Results with columns: ticker, symbol, horizon, algorithm, 
-            direction_prediction, expected_return, trend_probabilities, etc.
+            predicted_return, trend_probabilities, expected_range, etc.
         """
         if features_df.empty:
             return pd.DataFrame()
@@ -74,10 +74,10 @@ class InferenceEngine:
                     "symbol": ticker,
                     "horizon": "short",
                     "algorithm": prediction.get("algorithm", ""),
-                    "direction_prediction": prediction.get("direction_prediction"),
-                    "expected_return": prediction.get("expected_return"),
+                    "predicted_return": prediction.get("predicted_return"),
                     "trend_probabilities": prediction.get("trend_probabilities", {}),
-                    "inference_latency_ms": prediction.get("inference_latency_ms"),
+                    "expected_range": prediction.get("expected_range", {}),
+                    "sequence_length": prediction.get("sequence_length"),
                 }
                 results.append(pred_row)
             except Exception as exc:

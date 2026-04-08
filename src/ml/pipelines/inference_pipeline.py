@@ -58,15 +58,7 @@ class InferencePipeline:
             # 2. Predict via InferenceEngine (backed by DualModelTrainer)
             # The engine will request full per-ticker history for sequence models
             # and handle model-specific input requirements
-            try:
-                predictions = self.engine.predict_batch(df)
-            except ValueError as ve:
-                if "Insufficient history" in str(ve):
-                    logger.warning("inference_pipeline_insufficient_history", error=str(ve))
-                    # Some tickers lack sequence history; continue with whatever succeeded
-                    predictions = self.engine.predict_batch(df)
-                else:
-                    raise
+            predictions = self.engine.predict_batch(df)
             
             logger.info("batch_inference_complete", prediction_rows=len(predictions))
 
