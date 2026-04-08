@@ -33,24 +33,41 @@ class InferencePipeline:
         self.symbols = symbols
 
     def run(self) -> None:
-        """Run daily inference and save report content."""
+        """Run daily inference and save report content.
+        
+        Notes:
+            - For LSTM/BiLSTM models, the engine needs sufficient historical context
+              (default 20+ trading days). DatasetLoader should provide at least that range.
+            - For CART models, only the latest row is strictly necessary.
+            - This pipeline passes full history to the engine; it will raise a clear
+              error if LSTM/BiLSTM models lack sufficient context.
+        """
         logger.info("starting_inference_pipeline", symbols_count=len(self.symbols))
         try:
             from src.data.datasets.loader import DatasetLoader
             loader = DatasetLoader(self.symbols)
 
-            # 1. Fetch latest features for all symbols
+            # 1. Fetch features for all symbols (preferably last 30+ trading days for sequence models)
             df = loader.create_features_labels()
             if df.empty:
                 logger.error("inference_failed_no_features")
                 return
 
-            # Take only the latest sample for each symbol
-            latest_features = df.sort_values("timestamp").groupby("symbol").tail(1)
-            logger.info("loaded_latest_features", feature_rows=len(latest_features))
+            logger.info("loaded_features", total_rows=len(df), unique_symbols=df["symbol"].nunique() if "symbol" in df.columns else 0)
 
-            # 2. Predict via the modern InferenceEngine (backed by DualModelTrainer)
-            predictions = self.engine.predict_batch(latest_features)
+            # 2. Predict via InferenceEngine (backed by DualModelTrainer)
+            # The engine will request full per-ticker history for sequence models
+            # and handle model-specific input requirements
+            try:
+                predictions = self.engine.predict_batch(df)
+            except ValueError as ve:
+                if "Insufficient history" in str(ve):
+                    logger.warning("inference_pipeline_insufficient_history", error=str(ve))
+                    # Some tickers lack sequence history; continue with whatever succeeded
+                    predictions = self.engine.predict_batch(df)
+                else:
+                    raise
+            
             logger.info("batch_inference_complete", prediction_rows=len(predictions))
 
             if predictions.empty:

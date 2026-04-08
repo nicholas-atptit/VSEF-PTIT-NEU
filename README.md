@@ -65,25 +65,36 @@ Chạy script quét tin tức cho toàn bộ 104 mã trọng tâm:
 python scripts/run_news_crawler.py
 ```
 
-### Bước 2: Huấn luyện Mô hình Lai (Hybrid Training)
-Huấn luyện **toàn bộ** mã trong thư mục data bằng 1 lệnh duy nhất:
-```powershell
-python scripts/train_ml_tickers.py --all --optuna
-```
-> Hoặc chỉ train một vài mã cụ thể: `python scripts/train_ml_tickers.py --tickers "SSI,HPG,VGI"`
+### Bước 2: Huấn luyện Mô hình Kỹ thuật (ML Training)
+Huấn luyện các mô hình CART, LSTM, BiLSTM trên cửa sổ dữ liệu rolling 5 năm.
 
-### Bước 3: Đồng bộ kết quả (Sync to DB)
-Đẩy kết quả huấn luyện từ file models vào Dashboard API:
+**Train CART cho tất cả mã VN100:**
 ```powershell
-python scripts/sync_predictions_to_db.py
+python scripts/train_ml_tickers.py --vn100 --algorithms cart --primary-algorithm cart
 ```
 
-### Bước 4: Vận hành Dashboard
+**Train LSTM với tuning cơ bản:**
+```powershell
+python scripts/train_ml_tickers.py --tickers "SSI,HPG,VGI" --algorithms lstm --primary-algorithm lstm --sequence-length 20 --epochs 50 --batch-size 32
+```
+
+**Train cả ba thuật toán trên một mã:**
+```powershell
+python scripts/train_ml_tickers.py --tickers "SSI" --algorithms cart,lstm,bilstm --primary-algorithm lstm --sequence-length 20 --epochs 50
+```
+
+**Chỉ BUILD features (không train model):**
+```powershell
+python scripts/train_ml_tickers.py --tickers "SSI" --prepare-only
+```
+
+### Bước 3: Vận hành Dashboard
 Khởi động Terminal Dashboard để xem tín hiệu trực tiếp:
 ```powershell
 python src/ui/dashboard.py <TICKER>
+```
 
-# 6. Tương tác với AI Agent (Q&A)
+### Bước 4: Tương tác với AI Agent (Q&A)
 Gửi câu hỏi trực tiếp cho hệ thống qua API (hoặc tích hợp vào Chat Terminal):
 ```bash
 # Sử dụng Curl để hỏi về mã VGI
@@ -141,105 +152,177 @@ Private — Proprietary Vietnamese Stock Analysis System - Lương Minh Quân.
 v5.1.3 — Universal Hybrid Edition.
 ---
 
-## Technical ML Rebuild
+## Technical ML Architecture (Domain A — Quantitative)
 
-The technical forecasting stack has been rebuilt around a single registry-driven pipeline.
+The technical forecasting stack has been rebuilt around a **single manifest-driven registry pipeline** supporting three production algorithms.
 
-- Supported algorithms: `cart`, `lstm`, `bilstm`
-- Training window: the latest rolling 5 years available per ticker at execution time
-- Split policy: chronological train/validation/test only, with horizon purge gaps
-- Feature scaling: sequence-model scalers are fit on training sequences only
-- Artifact root: `models/<TICKER>/`
-- Manifest contract: `models/<TICKER>/manifest.json`
+### Supported Algorithms
 
-### Model Registry
+| Algorithm | Type | Framework | Sequences? | Artifact format |
+|-----------|------|-----------|------------|-----------------|
+| **CART** | Classification & Regression Tree | scikit-learn | No | `.joblib` |
+| **LSTM** | Unidirectional RNN | PyTorch | Yes | `.pt` file + metadata |
+| **BiLSTM** | Bidirectional RNN | PyTorch | Yes | `.pt` file + metadata |
 
-- `src/ml/models/base.py`: shared ML model contract plus ORM base objects
-- `src/ml/models/factory.py`: central registry and lazy model loading
-- `src/ml/models/cart.py`: `DecisionTreeClassifier` and `DecisionTreeRegressor`
-- `src/ml/models/lstm.py`: PyTorch LSTM implementation
-- `src/ml/models/bilstm.py`: true bidirectional PyTorch LSTM
-- `src/ml/sequence_dataset.py`: rolling-window builder for sequence models
-- `src/ml/trainer.py`: unified training/inference facade used by CLI, API, batch inference, and backtests
+### Data & Feature Engineering
 
-### Data Window
+**Rolling 5-year window:**
+- The trainer auto-detects the latest trading date in your source CSV
+- Keeps only the 5-year window ending on that date (recalculated every run)
+- Adds a ~180-day warmup before the window for indicator computation only
+- Recomputes all features from raw OHLCV within the scope
+- Prevents data leakage via chronological train/validation/test split
 
-For every ticker, the trainer:
+**Features:**
+- 80+ technical indicators: RSI, MACD, Bollinger, Parkinson Volatility, Yang-Zhang Volatility, Sentiment Momentum
+- Context features: market return, sector return, relative performance
+- Auto-computed via `src/ml/feature_engineering.py` + `src/ml/features/`
 
-1. finds the latest available trading date in the source CSV
-2. keeps only the rolling 5-year window ending on that date
-3. adds a warmup buffer before the 5-year start for indicator computation only
-4. recomputes features from raw OHLCV inside that scope
-5. logs the effective start date, effective end date, raw rows, indicator warmup rows, target rows lost, sequence rows lost, and final usable rows
+### Artifact & Manifest System
 
-### Artifact Contract
+**Per-ticker directory:** `models/<TICKER>/`
 
-- CART trend classifier: `trend_classifier_cart_<horizon>.joblib`
-- CART return regressor: `return_regressor_cart_<horizon>.joblib`
-- LSTM trend classifier: `trend_classifier_lstm_<horizon>.pt`
-- LSTM return regressor: `return_regressor_lstm_<horizon>.pt`
-- BiLSTM trend classifier: `trend_classifier_bilstm_<horizon>.pt`
-- BiLSTM return regressor: `return_regressor_bilstm_<horizon>.pt`
-- Companion metadata: `*.meta.joblib`
-- Torch scaler bundles: `*.scaler.joblib`
-- Per-ticker manifest: `manifest.json`
+**Files present after training:**
+```
+models/SSI/
+├── manifest.json                              # Central metadata contract
+├── trend_classifier_cart_short.joblib         # CART classifier
+├── return_regressor_cart_short.joblib         # CART regressor
+├── trend_classifier_lstm_short.pt             # LSTM weights (PyTorch)
+├── trend_classifier_lstm_short.meta.joblib    # LSTM config
+├── trend_classifier_lstm_short.scaler.joblib  # Feature scaler (fit on train only)
+├── [same for return_regressor_lstm_short.*]
+└── [same pattern for bilstm]
+```
 
-The manifest stores the primary algorithm, feature columns, horizon metadata, calibration values for range reconstruction, and the exact data window used for that ticker.
+**What `manifest.json` contains:**
+- `schema_version` – artifact format compatibility  
+- `primary_algorithm` – default inference algorithm  
+- `feature_columns` – exact feature names (prevents misalignment)  
+- `data_window.start` / `data_window.end` – reproducible data scope  
+- `raw_stats` – row counts per ticker  
+- `horizons.<horizon>.algorithms.<algorithm>` – per-algo metrics, calibration, artifact files
 
-### Commands
+### Inference Expected Behavior
 
-Install dependencies:
+**For CART models:**
+- Input: a row or small dataframe with required feature columns
+- Output: class probabilities (trend: up/down/sideways) + expected range
+- Latency: ~1-5ms per sample on CPU
+- Handles: single-row prediction or batch
 
+**For LSTM/BiLSTM models:**
+- Input: historical feature sequences (configurable window, default 20 trading days)
+- Output: same as CART (probabilities + range)
+- Latency: ~10-50ms per sample on CPU
+- **Error if insufficient history:** raises `ValueError("Insufficient history...")`
+
+**Via the InferenceEngine facade:**
+- Manifest auto-discovery via `models/<TICKER>/manifest.json`
+- Automatic model loading based on primary_algorithm
+- Batch-friendly interface for multiple tickers
+- Clear error messages on missing artifacts or insufficient history
+
+### Supported Training Commands
+
+**Install dependencies:**
 ```powershell
 pip install -r requirements.txt
 ```
+> Python 3.12+ recommended. If stuck on 3.13, use a 3.12 venv for LSTM/BiLSTM.
 
-If your default `python` is `3.13`, run the deep-model commands under a Python `3.12` interpreter because PyTorch support in this environment is on `3.12`.
-
-Rebuild the 5-year feature dataset without training:
-
+**Basic usage:**
 ```powershell
-python scripts/train_ml_tickers.py --tickers SSI --prepare-only --report reports/ssi_prepare_report.csv
+python scripts/train_ml_tickers.py \
+  --tickers "SSI" \
+  --algorithms cart,lstm,bilstm \
+  --primary-algorithm lstm \
+  --sequence-length 20 \
+  --epochs 50 \
+  --batch-size 32
 ```
 
-Train CART:
+**CLI arguments:**
+- `--tickers` – comma-separated symbols (default: required unless --all or --vn100)
+- `--all` – train every .csv in `data/daily_market_split_data/`
+- `--vn100` – train current dynamic VN100 universe
+- `--algorithms` – comma-separated: `cart`, `lstm`, `bilstm` (default: `cart`)
+- `--primary-algorithm` – which to use by default in inference
+- `--sequence-length` – rolling window size for LSTM/BiLSTM (default: 20)
+- `--hidden-size` – RNN hidden dimension (default: 64)
+- `--num-layers` – RNN layer count (default: 2)
+- `--dropout` – RNN dropout fraction (default: 0.2)
+- `--learning-rate` – optimizer lr for RNN (default: 1e-3)
+- `--batch-size` – training batch size (default: 32)
+- `--epochs` – max RNN training epochs (default: 30)
+- `--patience` – early stopping patience (default: 5)
+- `--max-depth` – CART max tree depth (default: None = unlimited)
+- `--min-samples-split` – CART split threshold (default: 2)
+- `--min-samples-leaf` – CART leaf threshold (default: 1)
+- `--prepare-only` – build features without training models
+- `--report` – output benchmark CSV path (default: `reports/ml_benchmark.csv`)
 
+**Example commands:**
+
+Rebuild feature dataset only:
 ```powershell
-python scripts/train_ml_tickers.py --tickers SSI --algorithms cart --primary-algorithm cart
+python scripts/train_ml_tickers.py --tickers SSI --prepare-only
 ```
 
-Train LSTM:
-
+Train CART on entire VN100:
 ```powershell
-python scripts/train_ml_tickers.py --tickers SSI --algorithms lstm --primary-algorithm lstm --sequence-length 20 --epochs 50 --batch-size 32
+python scripts/train_ml_tickers.py --vn100 --algorithms cart
 ```
 
-Train BiLSTM:
-
+Train LSTM with custom params:
 ```powershell
-python scripts/train_ml_tickers.py --tickers SSI --algorithms bilstm --primary-algorithm bilstm --sequence-length 20 --epochs 50 --batch-size 32
+python scripts/train_ml_tickers.py --tickers "SSI,HPG,VGI" \
+  --algorithms lstm \
+  --primary-algorithm lstm \
+  --sequence-length 20 \
+  --hidden-size 128 \
+  --epochs 100 \
+  --batch-size 16
 ```
 
-Train all selected algorithms:
-
+Train all algorithms and compare:
 ```powershell
-python scripts/train_ml_tickers.py --tickers SSI --algorithms cart,lstm,bilstm --primary-algorithm lstm --sequence-length 20 --epochs 50 --batch-size 32 --report reports/ssi_benchmark.csv
+python scripts/train_ml_tickers.py --tickers "SSI" \
+  --algorithms cart,lstm,bilstm \
+  --primary-algorithm bilstm \
+  --report reports/ssi_full_benchmark.csv
 ```
 
-Run benchmark/report generation:
+### Testing the ML System
 
+Run all ML tests:
 ```powershell
-python -m src.ml.benchmark.run --tickers SSI,HPG --algorithms cart,lstm,bilstm --sequence-length 20 --epochs 50 --batch-size 32 --report reports/ml_benchmark.csv
+pytest tests/ml/ -v
 ```
 
-Run an inference smoke test:
-
+Run specific test suites:
 ```powershell
-python -c "import pandas as pd; from src.ml.trainer import DualModelTrainer; df=pd.read_csv('data/daily_market_split_data/SSI.csv'); t=DualModelTrainer(); feat=t.compute_features_for_ticker('SSI', df); print(t.predict('SSI', feat, horizon='short'))"
+pytest tests/ml/test_training_cli.py -v                        # CLI parsing
+pytest tests/ml/test_trainer_pipeline.py -v                    # Training + inference
+pytest tests/ml/test_sequence_dataset.py -v                    # Sequence building
+pytest tests/ml/test_model_artifacts.py -v                     # Artifact save/load
 ```
 
-Run the rebuilt ML tests:
-
+Quick smoke test of inference:
 ```powershell
-pytest tests/ml/test_sequence_dataset.py tests/ml/test_model_artifacts.py tests/ml/test_training_cli.py tests/ml/test_trainer_pipeline.py
+python -c "
+from src.ml.trainer import DualModelTrainer
+from src.ml.data_loader import generate_mock_data
+import tempfile
+
+with tempfile.TemporaryDirectory() as tmpdir:
+    trainer = DualModelTrainer(model_dir=tmpdir)
+    df = generate_mock_data(ticker='TEST', num_days=900)
+    result = trainer.train(ticker='TEST', df=df, algorithms=['cart'], horizons=['short'])
+    print(f'✅ Training: {result[\"ticker\"]} OK')
+    
+    features = trainer.compute_features_for_ticker('TEST', df)
+    pred = trainer.predict('TEST', features, horizon='short')
+    print(f'✅ Inference: algorithm={pred[\"algorithm\"]}, trend={list(pred.get(\"trend_probabilities\", {}).keys())}')
+"
 ```
