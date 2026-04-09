@@ -1,0 +1,373 @@
+{
+  "data_window": {
+    "end": "2026-03-20",
+    "start": "2021-03-22"
+  },
+  "feature_columns": [
+    "m_ret",
+    "m_ret_5d",
+    "m_ret_20d",
+    "rel_to_market",
+    "s_ret",
+    "s_ret_5d",
+    "rel_to_sector",
+    "log_return",
+    "pct_return",
+    "park_vol_20",
+    "rs_vol_20",
+    "range_5",
+    "range_20",
+    "price_gap",
+    "roc_5",
+    "roc_20",
+    "roc_60",
+    "dist_ma_5",
+    "dist_ma_20",
+    "dist_ma_60",
+    "vroc_5",
+    "vroc_20",
+    "vroc_60",
+    "rsi",
+    "bb_upper",
+    "bb_lower",
+    "bb_width",
+    "pct_return_lag_1",
+    "pct_return_lag_2",
+    "pct_return_lag_3",
+    "rsi_lag_1",
+    "rsi_lag_2",
+    "rsi_lag_3",
+    "close_kalman",
+    "return_roll_5",
+    "volume_ratio_5",
+    "return_roll_20",
+    "volume_ratio_20",
+    "return_roll_60",
+    "volume_ratio_60",
+    "prev_close",
+    "close_to_close_return_1d",
+    "open_to_close_return_1d",
+    "overnight_return_1d",
+    "high_low_range_pct",
+    "true_range",
+    "atr_14",
+    "return_3d",
+    "return_5d",
+    "return_10d",
+    "return_20d",
+    "volume_ma_5",
+    "rolling_volatility_5",
+    "value_ratio_5",
+    "volume_ma_20",
+    "rolling_volatility_20",
+    "value_ratio_20",
+    "d_m_ret",
+    "d_m_ret_5d",
+    "d_m_ret_20d",
+    "d_rel_to_market",
+    "d_s_ret",
+    "d_s_ret_5d",
+    "d_rel_to_sector",
+    "d_close_raw",
+    "d_log_return",
+    "d_pct_return",
+    "d_park_vol_20",
+    "d_rs_vol_20",
+    "d_range_5",
+    "d_range_20",
+    "d_price_gap",
+    "d_roc_5",
+    "d_roc_20",
+    "d_roc_60",
+    "d_dist_ma_5",
+    "d_dist_ma_20",
+    "d_dist_ma_60",
+    "d_vroc_5",
+    "d_vroc_20",
+    "d_vroc_60",
+    "d_rsi",
+    "d_bb_upper",
+    "d_bb_lower",
+    "d_bb_width",
+    "d_pct_return_lag_1",
+    "d_pct_return_lag_2",
+    "d_pct_return_lag_3",
+    "d_rsi_lag_1",
+    "d_rsi_lag_2",
+    "d_rsi_lag_3",
+    "d_close_kalman",
+    "d_return_roll_5",
+    "d_volume_ratio_5",
+    "d_return_roll_20",
+    "d_volume_ratio_20",
+    "d_return_roll_60",
+    "d_volume_ratio_60",
+    "d_prev_close",
+    "d_close_to_close_return_1d",
+    "d_open_to_close_return_1d",
+    "d_overnight_return_1d",
+    "d_high_low_range_pct",
+    "d_true_range",
+    "d_atr_14",
+    "d_return_3d",
+    "d_return_5d",
+    "d_return_10d",
+    "d_return_20d",
+    "d_volume_ma_5",
+    "d_rolling_volatility_5",
+    "d_value_ratio_5",
+    "d_volume_ma_20",
+    "d_rolling_volatility_20",
+    "d_value_ratio_20"
+  ],
+  "horizons": {
+    "long": {
+      "algorithms": {
+        "bilstm": {
+          "artifact_type": "torch",
+          "calibration": {
+            "q10": 0.06065007186541452,
+            "q50": 0.14325398056910799,
+            "q90": 0.22553378949086467
+          },
+          "metrics": {
+            "accuracy": 0.13609467455621302,
+            "balanced_accuracy": 0.381104033970276,
+            "cagr": -0.0759,
+            "f1": 0.17045454545454544,
+            "inference_latency_ms": 0.04234142014591475,
+            "mae": 0.8251317413815453,
+            "max_drawdown": -0.0515,
+            "rmse": 0.9503324690507535,
+            "sharpe": -3.85,
+            "sortino": -3.98,
+            "train_seconds": 1.0229008999885991
+          },
+          "return_model_file": "return_regressor_bilstm_long.pt",
+          "sequence_length": 20,
+          "trend_model_file": "trend_classifier_bilstm_long.pt"
+        },
+        "cart": {
+          "artifact_type": "joblib",
+          "calibration": {
+            "q10": 0.07688791922035747,
+            "q50": 0.12457542457542459,
+            "q90": 0.1558877964141123
+          },
+          "metrics": {
+            "accuracy": 0.26627218934911245,
+            "balanced_accuracy": 0.6050955414012739,
+            "cagr": 0.0711,
+            "f1": 0.3473684210526316,
+            "inference_latency_ms": 0.001408875790375048,
+            "mae": 0.7371979398450744,
+            "max_drawdown": -0.0131,
+            "rmse": 0.9031289989448672,
+            "sharpe": 2.45,
+            "sortino": 4.74,
+            "train_seconds": 0.07640709998668171
+          },
+          "return_model_file": "return_regressor_cart_long.joblib",
+          "sequence_length": null,
+          "trend_model_file": "trend_classifier_cart_long.joblib"
+        },
+        "lstm": {
+          "artifact_type": "torch",
+          "calibration": {
+            "q10": -0.07176605983385746,
+            "q50": 0.024319924461857045,
+            "q90": 0.08304919383571036
+          },
+          "metrics": {
+            "accuracy": 0.6035502958579881,
+            "balanced_accuracy": 0.3633227176220807,
+            "cagr": 0.3907,
+            "f1": 0.7509293680297398,
+            "inference_latency_ms": 0.030743787044482912,
+            "mae": 0.7950821107304974,
+            "max_drawdown": -0.0352,
+            "rmse": 0.9280102796242549,
+            "sharpe": 6.92,
+            "sortino": 15.92,
+            "train_seconds": 0.7122992999793496
+          },
+          "return_model_file": "return_regressor_lstm_long.pt",
+          "sequence_length": 20,
+          "trend_model_file": "trend_classifier_lstm_long.pt"
+        }
+      },
+      "days": 120,
+      "labeled_rows": 1125,
+      "target_rows_lost": 120
+    },
+    "mid": {
+      "algorithms": {
+        "bilstm": {
+          "artifact_type": "torch",
+          "calibration": {
+            "q10": -0.0878074849836672,
+            "q50": 0.04308171240325487,
+            "q90": 0.270291420009856
+          },
+          "metrics": {
+            "accuracy": 0.5217391304347826,
+            "balanced_accuracy": 0.5332592866839443,
+            "cagr": 0.1341,
+            "f1": 0.5463917525773195,
+            "inference_latency_ms": 0.049027717424273164,
+            "mae": 0.18351511058487555,
+            "max_drawdown": -0.1068,
+            "rmse": 0.22118954446012024,
+            "sharpe": 1.61,
+            "sortino": 3.42,
+            "train_seconds": 1.299926499981666
+          },
+          "return_model_file": "return_regressor_bilstm_mid.pt",
+          "sequence_length": 20,
+          "trend_model_file": "trend_classifier_bilstm_mid.pt"
+        },
+        "cart": {
+          "artifact_type": "joblib",
+          "calibration": {
+            "q10": -0.08728487461334318,
+            "q50": 0.02818723800126427,
+            "q90": 0.2379121441743004
+          },
+          "metrics": {
+            "accuracy": 0.3641304347826087,
+            "balanced_accuracy": 0.3744909292854498,
+            "cagr": -0.2671,
+            "f1": 0.38095238095238093,
+            "inference_latency_ms": 0.002089673849379482,
+            "mae": 0.14286298800004057,
+            "max_drawdown": -0.2464,
+            "rmse": 0.17966197290006264,
+            "sharpe": -3.21,
+            "sortino": -3.51,
+            "train_seconds": 0.13525650001247413
+          },
+          "return_model_file": "return_regressor_cart_mid.joblib",
+          "sequence_length": null,
+          "trend_model_file": "trend_classifier_cart_mid.joblib"
+        },
+        "lstm": {
+          "artifact_type": "torch",
+          "calibration": {
+            "q10": -0.033086992237351016,
+            "q50": 0.07747788520056886,
+            "q90": 0.2859986887997176
+          },
+          "metrics": {
+            "accuracy": 0.6195652173913043,
+            "balanced_accuracy": 0.5955818832531161,
+            "cagr": 0.2398,
+            "f1": 0.6929824561403509,
+            "inference_latency_ms": 0.026008695662629023,
+            "mae": 0.15033559572043173,
+            "max_drawdown": -0.1491,
+            "rmse": 0.18019755280262748,
+            "sharpe": 2.33,
+            "sortino": 3.53,
+            "train_seconds": 0.9040306999813765
+          },
+          "return_model_file": "return_regressor_lstm_mid.pt",
+          "sequence_length": 20,
+          "trend_model_file": "trend_classifier_lstm_mid.pt"
+        }
+      },
+      "days": 20,
+      "labeled_rows": 1225,
+      "target_rows_lost": 20
+    },
+    "short": {
+      "algorithms": {
+        "bilstm": {
+          "artifact_type": "torch",
+          "calibration": {
+            "q10": -0.06781475736855336,
+            "q50": -0.0011932639721429217,
+            "q90": 0.09487387848999895
+          },
+          "metrics": {
+            "accuracy": 0.5268817204301075,
+            "balanced_accuracy": 0.5447420750965025,
+            "cagr": -0.1047,
+            "f1": 0.46987951807228917,
+            "inference_latency_ms": 0.04285053767499224,
+            "mae": 0.08750712150216988,
+            "max_drawdown": -0.2277,
+            "rmse": 0.11141504054708716,
+            "sharpe": -0.63,
+            "sortino": -0.65,
+            "train_seconds": 1.896007399976952
+          },
+          "return_model_file": "return_regressor_bilstm_short.pt",
+          "sequence_length": 20,
+          "trend_model_file": "trend_classifier_bilstm_short.pt"
+        },
+        "cart": {
+          "artifact_type": "joblib",
+          "calibration": {
+            "q10": -0.07661212306501652,
+            "q50": 0.00921433596886534,
+            "q90": 0.12050868289887418
+          },
+          "metrics": {
+            "accuracy": 0.521505376344086,
+            "balanced_accuracy": 0.534039068896947,
+            "cagr": 0.0485,
+            "f1": 0.49142857142857144,
+            "inference_latency_ms": 0.0008478493464770176,
+            "mae": 0.08490261586845715,
+            "max_drawdown": -0.1805,
+            "rmse": 0.10771831569103782,
+            "sharpe": 0.36,
+            "sortino": 0.47,
+            "train_seconds": 0.10433809997630306
+          },
+          "return_model_file": "return_regressor_cart_short.joblib",
+          "sequence_length": null,
+          "trend_model_file": "trend_classifier_cart_short.joblib"
+        },
+        "lstm": {
+          "artifact_type": "torch",
+          "calibration": {
+            "q10": -0.0523854695260525,
+            "q50": 0.023077844083309262,
+            "q90": 0.13594093075989355
+          },
+          "metrics": {
+            "accuracy": 0.5591397849462365,
+            "balanced_accuracy": 0.5808866534097555,
+            "cagr": 0.3578,
+            "f1": 0.4875,
+            "inference_latency_ms": 0.03033064516080964,
+            "mae": 0.10019055141172484,
+            "max_drawdown": -0.1085,
+            "rmse": 0.12103367001066316,
+            "sharpe": 2.31,
+            "sortino": 3.19,
+            "train_seconds": 1.168094699998619
+          },
+          "return_model_file": "return_regressor_lstm_short.pt",
+          "sequence_length": 20,
+          "trend_model_file": "trend_classifier_lstm_short.pt"
+        }
+      },
+      "days": 5,
+      "labeled_rows": 1240,
+      "target_rows_lost": 5
+    }
+  },
+  "primary_algorithm": "cart",
+  "raw_stats": {
+    "data_end": "2026-03-20",
+    "data_start": "2021-03-22",
+    "feature_rows": 1245,
+    "indicator_warmup_rows": 61,
+    "raw_rows": 1247,
+    "warmup_buffer_start": "2020-12-21"
+  },
+  "schema_version": 2,
+  "ticker": "VHM"
+}
