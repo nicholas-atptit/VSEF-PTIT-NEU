@@ -95,3 +95,111 @@ CLI help:
 ```powershell
 python scripts/train_ml_tickers.py --help
 ```
+# AI_ML_LLM-in-Stock: Risk-Aware Quantitative Forecasting Pipeline (v1)
+
+## Overview
+
+This repository implements a manifest-driven quantitative forecasting pipeline for stock prediction.  
+The current version expands the original ML workflow into a broader architecture that supports:
+
+- Statistical forecasting: **SARIMAX**, **ETS**
+- Boosting models: **XGBoost**, **LightGBM**
+- Optional hyperparameter tuning: **Optuna**
+- Deep learning compatibility: **LSTM**, **BiLSTM**
+- Conservative time-series-safe ensemble: **Stacking v1**
+- Post-forecast risk evaluation: **Monte Carlo VaR / CVaR**
+
+The system is designed to remain backward-compatible with the existing ML path while introducing structured risk-aware outputs and stronger model modularity.
+
+---
+
+## Key Features
+
+### 1. Multi-branch forecasting architecture
+The pipeline now supports multiple model families:
+
+- **Tree / Tabular ML**: CART, XGBoost, LightGBM
+- **Statistical models**: SARIMAX, ETS
+- **Sequence models**: LSTM, BiLSTM
+- **Ensemble model**: Stacking v1
+
+### 2. Time-series-safe validation
+All newly introduced tuning and ensemble logic use time-aware validation principles to avoid look-ahead bias.
+
+### 3. Optional Optuna tuning
+Boosting models can be tuned using Optuna without making Optuna a hard dependency for the whole project.
+
+### 4. Risk-aware inference
+A separate Monte Carlo risk module computes:
+
+- **VaR (Value-at-Risk)**
+- **CVaR / Expected Shortfall**
+- Scenario summary statistics
+
+This layer is intentionally kept outside the forecasting model factory.
+
+### 5. Structured artifacts and manifests
+Training and inference artifacts preserve:
+
+- algorithm name
+- model family
+- tuning backend
+- validation method
+- stacking base learners
+- risk configuration
+- volatility proxy source
+- risk assumptions
+
+---
+
+## Architecture Summary
+
+### Forecasting branches
+
+#### Statistical branch
+- `sarimax`
+- `ets`
+
+#### Boosting branch
+- `xgboost`
+- `lightgbm`
+
+#### Deep learning branch
+- `lstm`
+- `bilstm`
+
+#### Ensemble branch
+- `stacking`
+
+### Risk layer
+- `MonteCarloRiskSimulator`
+
+The risk layer consumes forecast outputs and residual-based volatility proxies to generate VaR/CVaR without modifying the predictive registry.
+
+---
+
+## Project Structure
+
+```text
+src/ml/
+├── models/
+│   ├── sarimax.py
+│   ├── ets.py
+│   ├── xgboost_model.py
+│   ├── lightgbm_model.py
+│   ├── stacking.py
+│   ├── base.py
+│   └── factory.py
+├── tuning.py
+├── risk.py
+├── trainer.py
+└── artifacts.py
+
+tests/ml/
+├── test_statistical_models.py
+├── test_boosting_models.py
+├── test_tuning.py
+├── test_deep_learning_models.py
+├── test_stacking.py
+├── test_risk.py
+└── test_integration.py
