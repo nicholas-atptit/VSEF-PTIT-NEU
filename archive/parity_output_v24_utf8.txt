@@ -1,0 +1,37 @@
+﻿=== PARITY CHECK: FPT ===
+
+[1/3] Reconstructing Training Path...
+[OK] Loaded trained feature contract from: models\FPT\feature_cols.joblib
+Training row built. Date: 2025-09-24
+
+[2/3] Executing Inference Path...
+Inference row built. Date: 2026-03-20
+
+[3/3] Comparing Feature Vectors...
+Target contract features: 20
+[INFO]: 179 EXTRA features in Infer path (not in contract)
+[ERR]: 20 VALUE MISMATCHES found!
+Feature                             | Train Value     | Infer Value     | Diff           
+roc_60                              | -0.031947       | -0.222106       | 0.19015905     
+d_roc_60                            | 0.007280        | -0.222106       | 0.22938639     
+return_roll_60                      | -0.031947       | -0.222106       | 0.19015905     
+d_return_roll_60                    | 0.007280        | -0.222106       | 0.22938639     
+rsi_20_max                          | 25.616715       | 67.419934       | 41.80321948    
+d_rsi_20_max                        | -1.830214       | 67.419934       | 69.25014855    
+d_rsi_lag_3                         | -0.586524       | 5.991736        | 6.57825997     
+rsi_lag_3                           | 18.174107       | 5.991736        | 12.18237039    
+rsi_signal                          | 15.603632       | 5.457079        | 10.14655350    
+d_rsi_signal                        | -1.492772       | 5.457079        | 6.94985109     
+rsi_lag_2                           | 15.850387       | 5.429771        | 10.42061621    
+d_rsi_lag_2                         | -2.323720       | 5.429771        | 7.75349064     
+d_rsi_lag_1                         | -2.512907       | 4.887917        | 7.40082381     
+rsi_lag_1                           | 13.337480       | 4.887917        | 8.44956335     
+d_rsi                               | -1.441924       | 4.366075        | 5.80799908     
+rsi                                 | 11.895556       | 4.366075        | 7.52948127     
+return_roll_20                      | 0.007159        | -0.225337       | 0.23249642     
+d_return_roll_20                    | 0.017263        | -0.225337       | 0.24260052     
+return_roll_5                       | -0.056795       | -0.031169       | 0.02562649     
+d_return_roll_5                     | -0.003686       | -0.031169       | 0.02748295     
+
+================================================================================
+[FAIL] PARITY CHECK: FAILED
