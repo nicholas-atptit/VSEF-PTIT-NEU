@@ -26,10 +26,45 @@ def _bilstm_cls():
     return BiLstmModel
 
 
+def _sarimax_cls():
+    from .sarimax import SarimaxModel
+
+    return SarimaxModel
+
+
+def _ets_cls():
+    from .ets import EtsModel
+
+    return EtsModel
+
+
+def _xgboost_cls():
+    from .xgboost_model import XgboostModel
+
+    return XgboostModel
+
+
+def _lightgbm_cls():
+    from .lightgbm_model import LightgbmModel
+
+    return LightgbmModel
+
+
+def _stacking_cls():
+    from .stacking import StackingModel
+
+    return StackingModel
+
+
 MODEL_REGISTRY: dict[str, Callable[[], type[BaseModel]]] = {
     "cart": _cart_cls,
     "lstm": _lstm_cls,
     "bilstm": _bilstm_cls,
+    "sarimax": _sarimax_cls,
+    "ets": _ets_cls,
+    "xgboost": _xgboost_cls,
+    "lightgbm": _lightgbm_cls,
+    "stacking": _stacking_cls,
 }
 
 

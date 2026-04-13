@@ -61,6 +61,16 @@ class CartModel(BaseModel):
             raise NotImplementedError("CART regression models do not expose predict_proba")
         return np.asarray(self.model.predict_proba(X))
 
+    @classmethod
+    def get_model_capabilities(cls) -> Dict[str, Any]:
+        return {
+            "algorithm": "cart",
+            "model_family": "tree",
+            "requires_sequence_data": False,
+            "supports_exogenous_features": True,
+            "artifact_type": "joblib",
+        }
+
     def save(self, artifact_path: Path) -> None:
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(self.model, artifact_path)

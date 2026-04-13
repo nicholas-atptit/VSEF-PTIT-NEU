@@ -19,6 +19,15 @@ logger = get_logger(__name__)
 
 # Rolling window sizes for multi-timeframe analysis
 WINDOWS = [5, 20, 60]
+LEGACY_COMPATIBILITY_COLUMNS = {
+    "hv_20",
+    "bb_bandwidth_5",
+    "bb_bandwidth_20",
+    "bb_bandwidth_60",
+    "pivot",
+    "resistance_1",
+    "support_1",
+}
 
 # ── VN100 Daily Feature Catalogue ────────────────────────────────────────
 VN100_DAILY_FEATURES: List[str] = [
@@ -133,6 +142,7 @@ class FeatureEngineer:
 
         # 5. VN100 Features
         df = self._add_vn100_daily_features(df)
+        df = self._add_legacy_compatibility_features(df)
 
         # 6. Delta features (Mirroring legacy script)
         # This MUST happen BEFORE dropna but AFTER all base features are computed
@@ -228,7 +238,28 @@ class FeatureEngineer:
             
         return df
 
+    def _add_legacy_compatibility_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Restore legacy feature names without changing the canonical feature set."""
+        if "rolling_volatility_20" in df.columns:
+            df["hv_20"] = df["rolling_volatility_20"] * np.sqrt(252)
+        else:
+            df["hv_20"] = df["pct_return"].rolling(20).std() * np.sqrt(252)
+
+        for window in WINDOWS:
+            rolling_mean = df["close"].rolling(window).mean()
+            rolling_std = df["close"].rolling(window).std()
+            df[f"bb_bandwidth_{window}"] = (4.0 * rolling_std) / (rolling_mean.abs() + 1e-9)
+
+        prev_high = df["high"].shift(1)
+        prev_low = df["low"].shift(1)
+        prev_close = df["close"].shift(1)
+        df["pivot"] = (prev_high + prev_low + prev_close) / 3.0
+        df["resistance_1"] = (2.0 * df["pivot"]) - prev_low
+        df["support_1"] = (2.0 * df["pivot"]) - prev_high
+        return df
+
     def get_feature_columns(self, df: pd.DataFrame) -> list[str]:
         exclude = {"date", "open", "high", "low", "close", "close_raw", "volume", "ticker", "time"}
         cols = [c for c in df.columns if c not in exclude and not str(c).startswith("target_")]
+        cols = [c for c in cols if c not in LEGACY_COMPATIBILITY_COLUMNS]
         return [c for c in cols if pd.api.types.is_numeric_dtype(df[c])]

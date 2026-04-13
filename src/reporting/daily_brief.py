@@ -115,6 +115,21 @@ class DailyBriefGenerator:
         if self.df.empty: return pd.DataFrame()
         return self.df.sort_values(metric, ascending=ascending).head(n)
 
+    def _render_markdown_table(self, df: pd.DataFrame) -> str:
+        """Render markdown tables without requiring pandas' optional tabulate dependency."""
+        if df.empty:
+            return "_No rows available._"
+        try:
+            return df.to_markdown(index=False)
+        except ImportError:
+            header = "| " + " | ".join(map(str, df.columns)) + " |"
+            separator = "| " + " | ".join(["---"] * len(df.columns)) + " |"
+            rows = [
+                "| " + " | ".join(map(str, row)) + " |"
+                for row in df.itertuples(index=False, name=None)
+            ]
+            return "\n".join([header, separator, *rows])
+
     def generate_brief(self) -> str:
         """Generate full Markdown brief content."""
         settings = get_settings()
@@ -138,7 +153,7 @@ class DailyBriefGenerator:
         # Bullish
         md += "### 🚀 Top 10 Bullish (Highest Up Probability)\n"
         top_bull = self.get_top_n("prob_up", 10)
-        md += top_bull[["ticker", "current_price", "prob_up", "action"]].to_markdown(index=False)
+        md += self._render_markdown_table(top_bull[["ticker", "current_price", "prob_up", "action"]])
         md += "\n\n"
         
         # Expected Return
@@ -147,13 +162,13 @@ class DailyBriefGenerator:
         # Format percentage
         top_ret_fmt = top_ret.copy()
         top_ret_fmt["expected_return"] = (top_ret_fmt["expected_return"] * 100).map("{:.2f}%".format)
-        md += top_ret_fmt[["ticker", "current_price", "expected_return", "median_target"]].to_markdown(index=False)
+        md += self._render_markdown_table(top_ret_fmt[["ticker", "current_price", "expected_return", "median_target"]])
         md += "\n\n"
         
         # Volatility
         md += "### ⚠️ High Volatility / Risk Names\n"
         top_vol = self.get_top_n("volatility", 10)
-        md += top_vol[["ticker", "current_price", "volatility", "confidence"]].to_markdown(index=False)
+        md += self._render_markdown_table(top_vol[["ticker", "current_price", "volatility", "confidence"]])
         md += "\n\n"
 
         # 3. Data Quality Warnings

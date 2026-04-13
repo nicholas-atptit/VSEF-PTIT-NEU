@@ -107,6 +107,20 @@ class Settings(BaseSettings):
     max_risk_tolerance: float = 0.70
     confidence_stock_quantitative: float = 0.95
     confidence_general_context: float = 0.70
+    enable_covar: bool = False
+    enable_risk_engine: bool = False
+    enable_regime_detection: bool = False
+    enable_regime_switching: bool = False
+    enable_risk_allocation: bool = False
+    covar_quantile: float = 0.05
+    covar_window: int = 60
+    regime_method: str = "threshold"
+    risk_penalty_strength: float = 1.0
+    high_vol_exposure_cut: float = 0.6
+    crisis_exposure_cut: float = 0.25
+    high_vol_threshold: float = 0.03
+    crisis_drawdown_threshold: float = -0.12
+    crisis_delta_covar_threshold: float = 0.015
 
     # ── Label Engineering ────────────────────────────────────
     label_cls_1d_threshold: float = 0.01   # ±1 % for 1-day 3-class

@@ -40,7 +40,7 @@ def build_market_signal(
         current_price=float(current_price),
         pred_return=pred_return,
         confidence=float(model_output.get("confidence", max(up, down, side))),
-        volatility=float(model_output.get("volatility", feature_snapshot.get("volatility", 0.02))),
+        volatility=_safe_float(model_output.get("volatility"), default=_safe_float(feature_snapshot.get("volatility"), default=0.02)),
         sentiment_score=float(sentiment_payload.get("sentiment_score", 0.0)),
         trend_up_prob=up,
         trend_down_prob=down,
@@ -55,10 +55,10 @@ def build_market_signal(
     )
 
 
-def _safe_float(value: Any) -> float | None:
+def _safe_float(value: Any, default: float | None = None) -> float | None:
     if value is None:
-        return None
+        return default
     try:
         return float(value)
     except (TypeError, ValueError):
-        return None
+        return default

@@ -12,6 +12,11 @@ MODEL_EXTENSIONS = {
     "cart": ".joblib",
     "lstm": ".pt",
     "bilstm": ".pt",
+    "sarimax": ".joblib",
+    "ets": ".joblib",
+    "xgboost": ".joblib",
+    "lightgbm": ".joblib",
+    "stacking": ".joblib",
 }
 TASK_PREFIXES = {
     "trend": "trend_classifier",

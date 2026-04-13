@@ -14,11 +14,24 @@ from src.utils.logging import get_logger
 logger = get_logger(__name__)
 
 class AccuracyMonitor:
+    _db_unavailable: bool = False
+
     def __init__(self):
-        self.db = get_db()
+        if self._db_unavailable:
+            self.db = None
+            return
+        try:
+            self.db = get_db()
+        except Exception as e:
+            type(self)._db_unavailable = True
+            self.db = None
+            logger.warning("accuracy_db_unavailable", error=str(e))
 
     def calculate_recent_accuracy(self, ticker: str, horizon: str = "1w") -> Dict[str, Any]:
         """Calculate directional accuracy for the last N realized predictions."""
+        if self._db_unavailable:
+            return {"accuracy": 0.0, "sample_size": 0}
+
         # 1. Define the 'realization' window
         # For '1w', we look for predictions made between 8 days and 6 days ago.
         now = dt.datetime.now(dt.UTC)
@@ -71,5 +84,6 @@ class AccuracyMonitor:
             }
             
         except Exception as e:
+            type(self)._db_unavailable = True
             logger.error("accuracy_calc_failed", ticker=ticker, error=str(e))
             return {"accuracy": 0.0, "sample_size": 0}

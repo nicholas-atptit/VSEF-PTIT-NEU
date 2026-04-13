@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from importlib import import_module
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -13,6 +14,11 @@ from src.api.streaming.session_manager import ConnectionState, SessionStreamingM
 
 class TestSessionStreamingManager:
     """Test WebSocket lifecycle management."""
+
+    def test_legacy_import_path_alias(self):
+        """Legacy streaming import path should resolve to the canonical module."""
+        legacy_module = import_module("src.streaming.session_manager")
+        assert legacy_module.SessionStreamingManager is SessionStreamingManager
 
     def test_initial_state(self):
         """Manager starts in DISCONNECTED state."""

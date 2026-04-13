@@ -1,0 +1,69 @@
+warning: in the working copy of 'config/settings.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/prompt_runs/CHANGELOG_SUMMARY.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/train_ml_tickers.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/agents/orchestrator.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/data/adapters/vnstock_adapter.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/ml/benchmark/evaluator.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/ml/benchmark/run.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/ml/feature_engineering.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/ml/features/technical.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/ml/signal_generator.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/ml/trainer.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/reporting/daily_brief.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/reporting/ranked_predictions.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/signals/builder.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/utils/monitoring/accuracy.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/ml/test_training_cli.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_404.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_feature_engineering.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_kafka_e2e.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_kafka_pipeline.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_streaming.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_vn100_adapters.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/test_vnstock_adapter.py', LF will be replaced by CRLF the next time Git touches it
+ config/settings.py                    |  14 [32m++[m
+ docs/prompt_runs/CHANGELOG_SUMMARY.md |   1 [32m+[m
+ docs/prompt_runs/INDEX.md             |   1 [32m+[m
+ models/PRED/feature_cols.joblib       | Bin [31m424[m -> [32m0[m bytes
+ models/PRED/range_high_q10.joblib     | Bin [31m224294[m -> [32m0[m bytes
+ models/PRED/range_high_q50.joblib     | Bin [31m280957[m -> [32m0[m bytes
+ models/PRED/range_high_q90.joblib     | Bin [31m237270[m -> [32m0[m bytes
+ models/PRED/range_low_q10.joblib      | Bin [31m260824[m -> [32m0[m bytes
+ models/PRED/range_low_q50.joblib      | Bin [31m266680[m -> [32m0[m bytes
+ models/PRED/range_low_q90.joblib      | Bin [31m210024[m -> [32m0[m bytes
+ models/PRED/trend_classifier.joblib   | Bin [31m1304442[m -> [32m0[m bytes
+ models/TEST/feature_cols.joblib       | Bin [31m424[m -> [32m0[m bytes
+ models/TEST/range_high_q10.joblib     | Bin [31m224294[m -> [32m0[m bytes
+ models/TEST/range_high_q50.joblib     | Bin [31m280957[m -> [32m0[m bytes
+ models/TEST/range_high_q90.joblib     | Bin [31m237270[m -> [32m0[m bytes
+ models/TEST/range_low_q10.joblib      | Bin [31m260824[m -> [32m0[m bytes
+ models/TEST/range_low_q50.joblib      | Bin [31m266680[m -> [32m0[m bytes
+ models/TEST/range_low_q90.joblib      | Bin [31m210024[m -> [32m0[m bytes
+ models/TEST/trend_classifier.joblib   | Bin [31m1304442[m -> [32m0[m bytes
+ scripts/train_ml_tickers.py           | 169 [32m+++++++++++++[m
+ src/agents/orchestrator.py            |  12 [32m+[m[31m-[m
+ src/data/adapters/vnstock_adapter.py  |  20 [32m+[m[31m-[m
+ src/ml/artifacts.py                   |   5 [32m+[m
+ src/ml/benchmark/evaluator.py         | 115 [32m++++++++[m[31m-[m
+ src/ml/benchmark/run.py               |  78 [32m+++[m[31m---[m
+ src/ml/feature_engineering.py         |  31 [32m+++[m
+ src/ml/features/technical.py          |   1 [31m-[m
+ src/ml/models/base.py                 |  11 [32m+[m
+ src/ml/models/cart.py                 |  10 [32m+[m
+ src/ml/models/factory.py              |  35 [32m+++[m
+ src/ml/models/lstm.py                 |  10 [32m+[m
+ src/ml/signal_generator.py            |  31 [32m++[m[31m-[m
+ src/ml/trainer.py                     | 448 [32m++++++++++++++++++++++++++++++[m[31m----[m
+ src/reporting/daily_brief.py          |  21 [32m+[m[31m-[m
+ src/reporting/ranked_predictions.py   |  19 [32m+[m[31m-[m
+ src/signals/builder.py                |   8 [32m+[m[31m-[m
+ src/utils/monitoring/accuracy.py      |  16 [32m+[m[31m-[m
+ tests/ml/test_training_cli.py         | 114 [32m+++++++++[m
+ tests/test_404.py                     |  70 [32m+++[m[31m---[m
+ tests/test_feature_engineering.py     |  19 [32m++[m
+ tests/test_kafka_e2e.py               |   4 [32m+[m
+ tests/test_kafka_pipeline.py          |   4 [32m+[m
+ tests/test_streaming.py               |   6 [32m+[m
+ tests/test_vn100_adapters.py          |  14 [32m++[m
+ tests/test_vnstock_adapter.py         |  41 [32m++++[m
+ 45 files changed, 1170 insertions(+), 158 deletions(-)

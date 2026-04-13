@@ -1,41 +1,53 @@
-import os
-from openai import AsyncOpenAI
 import asyncio
-from dotenv import load_dotenv
+import os
+import sys
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
-load_dotenv()
+from openai import AsyncOpenAI
 
-async def test():
+
+def _mock_response(content: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
+    )
+
+
+async def _exercise_gemini_openai_probe() -> dict[str, str]:
     api_key = os.getenv("GEMINI_API_KEY")
     model = "gemini-1.5-pro"
-    
-    # Test with models/ prefix
     client = AsyncOpenAI(
         api_key=api_key,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai"
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai",
     )
-    
-    print(f"Testing model: {model}")
-    try:
-        # Try without models/ prefix first (auto-added by my logic, but let's test)
-        res1 = await client.chat.completions.create(
-            model=model,
+
+    outputs: dict[str, str] = {}
+    for candidate in (model, f"models/{model}"):
+        response = await client.chat.completions.create(
+            model=candidate,
             messages=[{"role": "user", "content": "hi"}],
         )
-        print(f"Success without models/ prefix: {res1.choices[0].message.content[:20]}")
-    except Exception as e:
-        print(f"Failed without models/ prefix: {e}")
+        outputs[candidate] = response.choices[0].message.content
 
-    try:
-        # Try with models/ prefix
-        m_with_prefix = f"models/{model}" if not model.startswith("models/") else model
-        res2 = await client.chat.completions.create(
-            model=m_with_prefix,
-            messages=[{"role": "user", "content": "hi"}],
-        )
-        print(f"Success with models/ prefix: {res2.choices[0].message.content[:20]}")
-    except Exception as e:
-        print(f"Failed with models/ prefix: {e}")
+    return outputs
 
-if __name__ == "__main__":
-    asyncio.run(test())
+
+def test_gemini_openai_compatible_prefix_probe_offline(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    mock_client = MagicMock(spec=AsyncOpenAI)
+    mock_client.chat.completions.create = AsyncMock(
+        side_effect=[_mock_response("ok"), _mock_response("ok")]
+    )
+
+    with patch.object(sys.modules[__name__], "AsyncOpenAI", return_value=mock_client) as patched_client:
+        outputs = asyncio.run(_exercise_gemini_openai_probe())
+
+    patched_client.assert_called_once_with(
+        api_key="test-gemini-key",
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+    )
+    assert outputs == {
+        "gemini-1.5-pro": "ok",
+        "models/gemini-1.5-pro": "ok",
+    }
+    assert mock_client.chat.completions.create.await_count == 2

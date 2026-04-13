@@ -260,6 +260,16 @@ class LstmModel(BaseModel):
             probabilities = torch.softmax(outputs, dim=1)
         return probabilities.cpu().numpy()
 
+    @classmethod
+    def get_model_capabilities(cls) -> Dict[str, Any]:
+        return {
+            "algorithm": cls.algorithm_name,
+            "model_family": "deep_learning",
+            "requires_sequence_data": True,
+            "supports_exogenous_features": True,
+            "artifact_type": "torch",
+        }
+
     def save(self, artifact_path: Path) -> None:
         if self.model is None or self.scaler is None or self.input_dim is None or self.output_dim is None:
             raise RuntimeError("Cannot save an untrained LSTM model")

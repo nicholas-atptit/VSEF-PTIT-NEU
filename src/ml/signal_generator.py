@@ -12,6 +12,7 @@ System Constraints:
 from __future__ import annotations
 
 import datetime as dt
+import inspect
 from typing import Any
 
 from src.api.schemas_v2 import TerminalPayload, SentimentForecast
@@ -93,6 +94,16 @@ class SignalGenerator:
         # --- Phase 5: Signal Generation & TUI Standardization ---
         trend_probs = model_output.get("trend_probabilities", {})
         expected_range = model_output.get("expected_range", {})
+        trend_probs_safe = {
+            "up": trend_probs.get("up", 0.0),
+            "down": trend_probs.get("down", 0.0),
+            "sideways": trend_probs.get("sideways", 1.0 if not trend_probs else 0.0),
+        }
+        expected_range_safe = {
+            "bottom_10th": expected_range.get("bottom_10th", current_close * 0.95),
+            "median_50th": expected_range.get("median_50th", current_close),
+            "ceiling_90th": expected_range.get("ceiling_90th", current_close * 1.05),
+        }
         
         # Use provided volatility or from model_output
         vol_val = volatility_score if volatility_score is not None else model_output.get("volatility")
@@ -180,6 +191,8 @@ class SignalGenerator:
             
             # 2. Run Orchestrator
             agent_results = self._orchestrator.run([market_signal])
+            if inspect.isawaitable(agent_results):
+                agent_results = await agent_results
             
             # 3. Extract results (single ticker mode)
             analyst = agent_results["analyst_decisions"][0]
@@ -188,6 +201,12 @@ class SignalGenerator:
             
             # Map to legacy consensus format for TerminalPayload
             matrix_decision = risk["action"]
+            if trend_probs_safe["up"] > DIRECTIONAL_THRESHOLD:
+                matrix_decision = ACTION_BUY
+            elif trend_probs_safe["down"] > DIRECTIONAL_THRESHOLD:
+                matrix_decision = ACTION_SELL
+            elif trend_probs_safe["sideways"] >= 0.50:
+                matrix_decision = ACTION_RANGE_TRADE
             consensus_rationale = "; ".join(analyst["reasons"])
             position_size = proposal["weight"] if proposal else 0.0
             veto_flag = not risk["approved"]
@@ -195,18 +214,6 @@ class SignalGenerator:
         else:
             # --- Phase 4: Legacy Decision Fusion (Agent Matrix) ---
             from src.api.schemas import QuantitativeSignals, QualitativeAnalysis
-            
-            # Ensure default values for trend_probs and expected_range to satisfy Pydantic
-            trend_probs_safe = {
-                "up": trend_probs.get("up", 0.0),
-                "down": trend_probs.get("down", 0.0),
-                "sideways": trend_probs.get("sideways", 1.0) if not trend_probs else 1.0
-            }
-            expected_range_safe = {
-                "bottom_10th": expected_range.get("bottom_10th", current_close * 0.95),
-                "median_50th": expected_range.get("median_50th", current_close),
-                "ceiling_90th": expected_range.get("ceiling_90th", current_close * 1.05)
-            }
 
             # Adapt v5.0 inputs for compat with matrix.py
             quant_model = QuantitativeSignals(

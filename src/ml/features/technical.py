@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import pandas_ta as ta
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)

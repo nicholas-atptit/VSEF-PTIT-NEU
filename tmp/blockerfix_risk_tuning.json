@@ -1,0 +1,103 @@
+{
+  "best_score": -8.326453333333333,
+  "best_params": {
+    "risk_enabled": true,
+    "enable_covar": true,
+    "enable_risk_engine": true,
+    "enable_regime_detection": true,
+    "enable_regime_switching": true,
+    "enable_risk_allocation": true,
+    "regime_method": "threshold",
+    "random_seed": 42,
+    "simulations": 10000,
+    "confidence_levels": [
+      0.95,
+      0.99
+    ],
+    "covar_quantile": 0.0373818018663584,
+    "covar_window": 73,
+    "risk_penalty_strength": 1.3526405540621358,
+    "high_vol_threshold": 0.03392989411287273,
+    "crisis_drawdown_threshold": -0.1276294210555241,
+    "crisis_delta_covar_threshold": 0.011277223729341883,
+    "high_vol_exposure_cut": 0.47528678912113087,
+    "crisis_exposure_cut": 0.2148628294821613
+  },
+  "trials": [
+    {
+      "trial_number": 2,
+      "score": -8.326453333333333,
+      "risk_enabled": true,
+      "enable_covar": true,
+      "enable_risk_engine": true,
+      "enable_regime_detection": true,
+      "enable_regime_switching": true,
+      "enable_risk_allocation": true,
+      "covar_quantile": 0.0373818018663584,
+      "covar_window": 73,
+      "risk_penalty_strength": 1.3526405540621358,
+      "high_vol_threshold": 0.03392989411287273,
+      "crisis_drawdown_threshold": -0.1276294210555241,
+      "crisis_delta_covar_threshold": 0.011277223729341883,
+      "high_vol_exposure_cut": 0.47528678912113087,
+      "crisis_exposure_cut": 0.2148628294821613,
+      "regime_method": "threshold",
+      "random_seed": 42,
+      "simulations": 10000,
+      "confidence_levels": [
+        0.95,
+        0.99
+      ]
+    },
+    {
+      "trial_number": 0,
+      "score": -9.710386666666666,
+      "risk_enabled": true,
+      "enable_covar": true,
+      "enable_risk_engine": true,
+      "enable_regime_detection": true,
+      "enable_regime_switching": true,
+      "enable_risk_allocation": true,
+      "covar_quantile": 0.04370861069626263,
+      "covar_window": 116,
+      "risk_penalty_strength": 2.2227824312530746,
+      "high_vol_threshold": 0.05391280147280738,
+      "crisis_drawdown_threshold": -0.21879627191151269,
+      "crisis_delta_covar_threshold": 0.01201975341512912,
+      "high_vol_exposure_cut": 0.33485016730091965,
+      "crisis_exposure_cut": 0.4397792655987208,
+      "regime_method": "threshold",
+      "random_seed": 42,
+      "simulations": 10000,
+      "confidence_levels": [
+        0.95,
+        0.99
+      ]
+    },
+    {
+      "trial_number": 1,
+      "score": -9.769593333333333,
+      "risk_enabled": true,
+      "enable_covar": true,
+      "enable_risk_engine": true,
+      "enable_regime_detection": true,
+      "enable_regime_switching": true,
+      "enable_risk_allocation": true,
+      "covar_quantile": 0.0641003510568888,
+      "covar_window": 91,
+      "risk_penalty_strength": 0.1596950334578271,
+      "high_vol_threshold": 0.07804414039052963,
+      "crisis_drawdown_threshold": -0.08351147183991564,
+      "crisis_delta_covar_threshold": 0.014555259980522428,
+      "high_vol_exposure_cut": 0.4090949803242604,
+      "crisis_exposure_cut": 0.13253202943404524,
+      "regime_method": "threshold",
+      "random_seed": 42,
+      "simulations": 10000,
+      "confidence_levels": [
+        0.95,
+        0.99
+      ]
+    }
+  ]
+}

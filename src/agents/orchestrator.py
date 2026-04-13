@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import asdict
 
 from .analyst import AnalystAgent
@@ -48,10 +49,13 @@ class AgentOrchestrator:
         # LLM failure must NOT impact the previous steps.
         explanations = []
         try:
-            explanations = await self.explainer.explain_batch(
-                signals=signals,
-                risk_decisions=risk_decisions,
-                portfolio=portfolio_proposal
+            explanations = await asyncio.wait_for(
+                self.explainer.explain_batch(
+                    signals=signals,
+                    risk_decisions=risk_decisions,
+                    portfolio=portfolio_proposal
+                ),
+                timeout=1.0,
             )
         except Exception as e:
             from src.utils.logging import get_logger

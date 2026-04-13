@@ -1,0 +1,13 @@
+benchmark_mode,ticker,horizon,algorithm,mode_description,train_rows,val_rows,test_rows,cumulative_return,cagr,volatility,sharpe,sortino,calmar,max_drawdown,avg_drawdown,tail_loss,turnover,exposure,trade_count,rmse,mae,directional_accuracy
+forecast_plus_risk_and_regime,SSI,long,cart,Forecasting with risk features and regime-aware inputs.,667,49,169,0.1375,0.2117,0.0262,7.4,9.29,26.5227,-0.008,-0.0031,-0.0029,12.0,0.3787,6,0.368367,0.332113,0.579882
+forecast_plus_risk_and_regime,SSI,mid,cart,Forecasting with risk features and regime-aware inputs.,837,164,184,0.2245,0.3196,0.0798,3.53,6.02,3.0928,-0.1033,-0.0834,-0.0073,21.0,0.2935,11,0.162341,0.124126,0.532609
+forecast_plus_risk_and_regime,SSI,short,cart,Forecasting with risk features and regime-aware inputs.,863,181,186,0.3203,0.4571,0.1042,3.69,7.68,4.5359,-0.1008,-0.0494,-0.0094,14.0,0.3118,7,0.058013,0.046212,0.575269
+forecast_plus_risk_features,SSI,long,cart,Forecasting with rolling VaR/CVaR/CoVaR/Drawdown features.,667,49,169,0.1375,0.2117,0.0262,7.4,9.29,26.5227,-0.008,-0.0031,-0.0029,12.0,0.3787,6,0.368367,0.332113,0.579882
+forecast_plus_risk_features,SSI,mid,cart,Forecasting with rolling VaR/CVaR/CoVaR/Drawdown features.,837,164,184,0.2245,0.3196,0.0798,3.53,6.02,3.0928,-0.1033,-0.0834,-0.0073,21.0,0.2935,11,0.162341,0.124126,0.532609
+forecast_plus_risk_features,SSI,short,cart,Forecasting with rolling VaR/CVaR/CoVaR/Drawdown features.,863,181,186,0.3203,0.4571,0.1042,3.69,7.68,4.5359,-0.1008,-0.0494,-0.0094,14.0,0.3118,7,0.058013,0.046212,0.575269
+full_system,SSI,long,cart,"Forecasting with risk, regime, and allocation overlays.",667,49,169,0.1384,0.2133,0.0259,7.53,9.55,26.7151,-0.008,-0.0026,-0.0027,11.2,0.3763,6,0.368367,0.332113,0.579882
+full_system,SSI,mid,cart,"Forecasting with risk, regime, and allocation overlays.",837,164,184,0.1618,0.228,0.0667,3.13,4.12,3.2629,-0.0699,-0.0607,-0.0059,12.75,0.1712,11,0.162341,0.124126,0.532609
+full_system,SSI,short,cart,"Forecasting with risk, regime, and allocation overlays.",863,181,186,0.3511,0.5034,0.0873,4.74,33.75,19.266,-0.0261,-0.0124,-0.0023,5.0,0.1667,7,0.058013,0.046212,0.575269
+legacy_forecast_only,SSI,long,cart,"Forecasting only, no risk/regime/allocation extensions.",667,49,169,0.1375,0.2117,0.0262,7.4,9.29,26.5227,-0.008,-0.0031,-0.0029,12.0,0.3787,6,0.368367,0.332113,0.579882
+legacy_forecast_only,SSI,mid,cart,"Forecasting only, no risk/regime/allocation extensions.",837,164,184,0.2245,0.3196,0.0798,3.53,6.02,3.0928,-0.1033,-0.0834,-0.0073,21.0,0.2935,11,0.162341,0.124126,0.532609
+legacy_forecast_only,SSI,short,cart,"Forecasting only, no risk/regime/allocation extensions.",863,181,186,0.3203,0.4571,0.1042,3.69,7.68,4.5359,-0.1008,-0.0494,-0.0094,14.0,0.3118,7,0.058013,0.046212,0.575269

@@ -36,10 +36,10 @@ class VnstockAdapter:
 
     def _setup_env(self) -> None:
         """Inject API keys from settings into environment variables."""
-        api_key = self.settings.vnstock_api_key
+        api_key = self.settings.vnstock_api_key or ""
+        os.environ["VNAI_API_KEY"] = api_key
+        os.environ["VNSTOCK_API_KEY"] = api_key
         if api_key:
-            os.environ["VNAI_API_KEY"] = api_key
-            os.environ["VNSTOCK_API_KEY"] = api_key
             logger.debug("vnstock_api_keys_configured")
 
     def get_ohlcv(
@@ -83,6 +83,16 @@ class VnstockAdapter:
             
         return pd.DataFrame()
 
+    def get_ohlc(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        interval: str = "1D",
+    ) -> pd.DataFrame:
+        """Backward-compatible alias for the legacy OHLC fetch method."""
+        return self.get_ohlcv(symbol, start_date, end_date, interval)
+
     def get_index_ohlcv(
         self, 
         symbol: str, 
@@ -119,6 +129,10 @@ class VnstockAdapter:
         except Exception as e:
             logger.error("ratio_fetch_error", symbol=symbol, error=str(e))
         return pd.DataFrame()
+
+    def get_valuation_metrics(self, symbol: str) -> pd.DataFrame:
+        """Backward-compatible alias for legacy valuation metric lookups."""
+        return self.get_financial_ratios(symbol)
 
     def get_news(self, ticker: str, count: int = 10) -> pd.DataFrame:
         """Fetch recent news for a specific ticker.

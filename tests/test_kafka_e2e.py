@@ -16,7 +16,11 @@ import os
 import sys
 from datetime import datetime
 
+import pytest
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+pytest.importorskip("aiokafka")
 
 from src.api.streaming.kafka_client import KafkaPublisher, KafkaSubscriber
 

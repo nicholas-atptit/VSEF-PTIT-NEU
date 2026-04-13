@@ -64,6 +64,25 @@ class TestFeatureTransform:
         for col in feature_cols:
             assert col not in excluded
 
+    def test_legacy_compatibility_columns_not_in_default_feature_list(
+        self,
+        fe: FeatureEngineer,
+        ohlcv_df: pd.DataFrame,
+    ):
+        """Legacy compatibility aliases should not silently change canonical feature selection."""
+        result = fe.transform(ohlcv_df)
+        feature_cols = fe.get_feature_columns(result)
+        for legacy_col in [
+            "hv_20",
+            "bb_bandwidth_5",
+            "bb_bandwidth_20",
+            "bb_bandwidth_60",
+            "pivot",
+            "resistance_1",
+            "support_1",
+        ]:
+            assert legacy_col not in feature_cols
+
 
 class TestVolatilityFeatures:
     """Test individual volatility feature computations."""

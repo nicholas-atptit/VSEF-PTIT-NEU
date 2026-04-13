@@ -105,6 +105,21 @@ class RankedPredictionGenerator:
         
         return ranks
 
+    def _render_markdown_table(self, df: pd.DataFrame) -> str:
+        """Render markdown tables without requiring the optional tabulate package."""
+        if df.empty:
+            return "_No rows available._"
+        try:
+            return df.to_markdown(index=False)
+        except ImportError:
+            header = "| " + " | ".join(map(str, df.columns)) + " |"
+            separator = "| " + " | ".join(["---"] * len(df.columns)) + " |"
+            rows = [
+                "| " + " | ".join(map(str, row)) + " |"
+                for row in df.itertuples(index=False, name=None)
+            ]
+            return "\n".join([header, separator, *rows])
+
     def export_reports(self, top_n: int = 10) -> List[str]:
         """Export all ranks to CSV and return a consolidated Markdown summary."""
         ranks = self.generate_ranks(top_n)
@@ -126,7 +141,9 @@ class RankedPredictionGenerator:
         for name, rdf in ranks.items():
             title = name.replace("_", " ").title()
             md_report += f"## {title}\n\n"
-            md_report += rdf[["ticker", "current_price", "prob_up", "expected_return", "volatility"]].to_markdown(index=False)
+            md_report += self._render_markdown_table(
+                rdf[["ticker", "current_price", "prob_up", "expected_return", "volatility"]]
+            )
             md_report += "\n\n"
             
         md_report_path = self.output_dir / f"ranked_report_{timestamp}.md"

@@ -61,6 +61,17 @@ class BaseModel(abc.ABC):
     def load(cls, artifact_path: Path) -> "BaseModel":
         """Load a persisted model bundle."""
 
+    @classmethod
+    def get_model_capabilities(cls) -> Dict[str, Any]:
+        """Return declared capabilities of this model class."""
+        return {
+            "algorithm": "unknown",
+            "model_family": "unknown",
+            "requires_sequence_data": False,
+            "supports_exogenous_features": False,
+            "artifact_type": "unknown",
+        }
+
     @abc.abstractmethod
     def get_artifact_metadata(self) -> Dict[str, Any]:
         """Return serializable metadata required for reloading and auditing."""

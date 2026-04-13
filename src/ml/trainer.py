@@ -36,6 +36,9 @@ from src.ml.data_loader import (
 )
 from src.ml.feature_engineering import FeatureEngineer
 from src.ml.models.factory import create_model, load_model
+from src.ml.portfolio.allocation import RiskAwareAllocator
+from src.ml.regime.regime_detector import REGIME_TO_CODE, RegimeDetector
+from src.ml.risk import RiskEngine
 from src.ml.sequence_dataset import (
     build_latest_sequence,
     create_sequence_dataset,
@@ -51,16 +54,23 @@ HORIZON_DAYS = {
     "long": 120,
 }
 SEQUENCE_ALGORITHMS = {"lstm", "bilstm"}
+BOOSTER_ALGORITHMS = {"xgboost", "lightgbm"}
 CONTEXT_COLUMNS = {"m_ret", "m_ret_5d", "rel_to_market", "s_ret", "s_ret_5d", "rel_to_sector"}
+RISK_FEATURE_COLUMNS = ["var_q", "cvar_q", "covar_q", "delta_covar", "rolling_drawdown"]
+REGIME_FEATURE_COLUMNS = ["regime_label", "regime_probability"]
 
 
 @dataclass(frozen=True)
 class PreparedTickerData:
     feature_frame: pd.DataFrame
     feature_columns: list[str]
+    base_feature_columns: list[str]
     raw_stats: dict[str, Any]
     data_start: str
     data_end: str
+    risk_summary: dict[str, Any] | None = None
+    regime_distribution: dict[str, float] | None = None
+    advanced_config: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -178,6 +188,126 @@ class DualModelTrainer:
             ticker_sectors=context_sources.get("ticker_sectors"),
         )
 
+    @staticmethod
+    def _normalize_risk_config(risk_config: dict[str, Any] | None) -> dict[str, Any]:
+        settings = get_settings()
+        incoming = risk_config.copy() if risk_config else {}
+        confidence_levels = incoming.get("confidence_levels", [0.95, 0.99])
+        return {
+            "risk_enabled": bool(incoming.get("risk_enabled", bool(risk_config))),
+            "enable_covar": bool(incoming.get("enable_covar", settings.enable_covar)),
+            "enable_risk_engine": bool(incoming.get("enable_risk_engine", settings.enable_risk_engine)),
+            "enable_regime_detection": bool(incoming.get("enable_regime_detection", settings.enable_regime_detection)),
+            "enable_regime_switching": bool(incoming.get("enable_regime_switching", settings.enable_regime_switching)),
+            "enable_risk_allocation": bool(incoming.get("enable_risk_allocation", settings.enable_risk_allocation)),
+            "covar_quantile": float(incoming.get("covar_quantile", settings.covar_quantile)),
+            "covar_window": int(incoming.get("covar_window", settings.covar_window)),
+            "regime_method": str(incoming.get("regime_method", settings.regime_method)),
+            "risk_penalty_strength": float(
+                incoming.get("risk_penalty_strength", settings.risk_penalty_strength)
+            ),
+            "high_vol_exposure_cut": float(
+                incoming.get("high_vol_exposure_cut", settings.high_vol_exposure_cut)
+            ),
+            "crisis_exposure_cut": float(
+                incoming.get("crisis_exposure_cut", settings.crisis_exposure_cut)
+            ),
+            "high_vol_threshold": float(
+                incoming.get("high_vol_threshold", settings.high_vol_threshold)
+            ),
+            "crisis_drawdown_threshold": float(
+                incoming.get("crisis_drawdown_threshold", settings.crisis_drawdown_threshold)
+            ),
+            "crisis_delta_covar_threshold": float(
+                incoming.get("crisis_delta_covar_threshold", settings.crisis_delta_covar_threshold)
+            ),
+            "simulations": int(incoming.get("simulations", 10000)),
+            "confidence_levels": list(confidence_levels),
+            "random_seed": int(incoming.get("random_seed", 42)),
+        }
+
+    @staticmethod
+    def _advanced_features_enabled(config: dict[str, Any]) -> bool:
+        return bool(
+            config.get("enable_covar")
+            or config.get("enable_risk_engine")
+            or config.get("enable_regime_detection")
+            or config.get("enable_regime_switching")
+            or config.get("enable_risk_allocation")
+        )
+
+    def _apply_advanced_risk_features(
+        self,
+        ticker: str,
+        feature_frame: pd.DataFrame,
+        config: dict[str, Any],
+    ) -> tuple[pd.DataFrame, dict[str, Any] | None, dict[str, float] | None]:
+        augmented = feature_frame.copy()
+        risk_summary: dict[str, Any] | None = None
+        regime_distribution: dict[str, float] | None = None
+
+        if not self._advanced_features_enabled(config):
+            return augmented, risk_summary, regime_distribution
+
+        asset_returns = pd.to_numeric(augmented.get("pct_return"), errors="coerce")
+        if asset_returns is None or asset_returns.empty:
+            asset_returns = pd.to_numeric(augmented["close"].pct_change(), errors="coerce")
+        market_returns = pd.to_numeric(augmented.get("m_ret"), errors="coerce") if "m_ret" in augmented.columns else None
+        include_mc = bool(config.get("risk_enabled"))
+
+        if config.get("enable_risk_engine") or config.get("enable_covar") or config.get("enable_risk_allocation"):
+            risk_engine = RiskEngine(
+                window=int(config["covar_window"]),
+                quantile=float(config["covar_quantile"]),
+                simulations=int(config["simulations"]),
+                random_seed=int(config["random_seed"]),
+                include_monte_carlo=include_mc,
+            )
+            evaluated = risk_engine.evaluate(asset_returns.rename(ticker), market_returns=market_returns)
+            risk_frame = evaluated["per_asset_frames"][ticker]
+            for column in RISK_FEATURE_COLUMNS:
+                if column in risk_frame.columns:
+                    augmented[column] = risk_frame[column].reindex(augmented.index)
+            risk_summary = evaluated["risk_summary"]
+
+        if config.get("enable_regime_detection") or config.get("enable_regime_switching"):
+            detector = RegimeDetector(
+                method=str(config["regime_method"]),
+                high_vol_threshold=float(config.get("high_vol_threshold", 0.03)),
+                crisis_drawdown_threshold=float(config.get("crisis_drawdown_threshold", -0.12)),
+                crisis_delta_covar_threshold=float(config.get("crisis_delta_covar_threshold", 0.015)),
+            )
+            regime_result = detector.detect_from_frame(augmented)
+            augmented["regime_label"] = regime_result.encoded_labels.reindex(augmented.index)
+            assigned_prob = regime_result.probabilities.max(axis=1).rename("regime_probability")
+            augmented["regime_probability"] = assigned_prob.reindex(augmented.index)
+            counts = regime_result.labels.value_counts(dropna=False).to_dict()
+            total = max(int(len(regime_result.labels)), 1)
+            regime_distribution = {str(k): float(v) / total for k, v in counts.items()}
+
+        return augmented, risk_summary, regime_distribution
+
+    @staticmethod
+    def _select_algorithm_feature_columns(
+        prepared: PreparedTickerData,
+        algorithm: str,
+        advanced_config: dict[str, Any],
+    ) -> list[str]:
+        selected = list(prepared.base_feature_columns)
+        if algorithm in BOOSTER_ALGORITHMS and (
+            advanced_config.get("enable_risk_engine")
+            or advanced_config.get("enable_covar")
+            or advanced_config.get("enable_risk_allocation")
+        ):
+            for column in RISK_FEATURE_COLUMNS:
+                if column in prepared.feature_frame.columns and column not in selected:
+                    selected.append(column)
+        if algorithm in BOOSTER_ALGORITHMS and advanced_config.get("enable_regime_switching"):
+            for column in REGIME_FEATURE_COLUMNS:
+                if column in prepared.feature_frame.columns and column not in selected:
+                    selected.append(column)
+        return selected
+
     def prepare_ticker_data(
         self,
         ticker: str,
@@ -185,8 +315,10 @@ class DualModelTrainer:
         *,
         max_sequence_length: int = 20,
         context_sources: dict[str, pd.DataFrame | None] | None = None,
+        risk_config: dict[str, Any] | None = None,
     ) -> PreparedTickerData:
         context_sources = context_sources or self._load_context_sources()
+        advanced_config = self._normalize_risk_config(risk_config)
         normalized = self._normalize_ohlcv(df, ticker=ticker)
         if normalized.empty:
             raise ValueError(f"No rows available for {ticker}")
@@ -217,6 +349,12 @@ class DualModelTrainer:
         feature_scope = feature_buffer[feature_buffer["date"] >= start_target].reset_index(drop=True)
         if feature_scope.empty:
             raise ValueError(f"Feature engineering produced no usable rows for {ticker}")
+        base_feature_columns = self._feature_engineer.get_feature_columns(feature_scope)
+        feature_scope, risk_summary, regime_distribution = self._apply_advanced_risk_features(
+            ticker,
+            feature_scope,
+            advanced_config,
+        )
 
         # Stats-only pass on the strict 5-year scope to make warmup loss explicit.
         stats_scope = self._ensure_context_features(raw_scope, ticker, context_sources)
@@ -258,9 +396,13 @@ class DualModelTrainer:
         return PreparedTickerData(
             feature_frame=feature_scope,
             feature_columns=feature_columns,
+            base_feature_columns=base_feature_columns,
             raw_stats=stats,
             data_start=data_start,
             data_end=data_end,
+            risk_summary=risk_summary,
+            regime_distribution=regime_distribution,
+            advanced_config=advanced_config,
         )
 
     def compute_features_for_ticker(
@@ -271,9 +413,11 @@ class DualModelTrainer:
         """Rebuild features on the latest 5-year window for inference."""
 
         required_sequence_length = 20
+        advanced_config: dict[str, Any] | None = None
         try:
             self._ensure_models_loaded(ticker)
             manifest = self._manifests[ticker.upper()]
+            advanced_config = manifest.get("advanced_risk")
             for horizon_info in manifest.get("horizons", {}).values():
                 for algorithm_info in horizon_info.get("algorithms", {}).values():
                     seq_len = int(algorithm_info.get("sequence_length") or 1)
@@ -285,6 +429,7 @@ class DualModelTrainer:
             ticker=ticker,
             df=df,
             max_sequence_length=required_sequence_length,
+            risk_config=advanced_config,
         )
         return prepared.feature_frame
 
@@ -354,7 +499,11 @@ class DualModelTrainer:
             "y_train_return": y_return[: split.train_stop],
             "y_val_return": y_return[split.val_start : split.val_stop],
             "y_test_return": y_return[split.test_start :],
+            "val_feature_frame": labeled.iloc[split.val_start : split.val_stop].reset_index(drop=True),
+            "val_indices": np.arange(split.val_start, split.val_stop),
             "test_closes": closes[split.test_start :],
+            "test_feature_frame": labeled.iloc[split.test_start :].reset_index(drop=True),
+            "test_indices": np.arange(split.test_start, len(labeled)),
         }
 
         direction_sequences = create_sequence_dataset(
@@ -395,7 +544,11 @@ class DualModelTrainer:
             "y_train_return": seq_train_return.y,
             "y_val_return": seq_val_return.y,
             "y_test_return": seq_test_return.y,
+            "val_feature_frame": labeled.iloc[seq_val_return.target_indices].reset_index(drop=True),
+            "val_indices": seq_val_return.target_indices,
             "test_closes": closes[seq_test_return.target_indices],
+            "test_feature_frame": labeled.iloc[seq_test_return.target_indices].reset_index(drop=True),
+            "test_indices": seq_test_return.target_indices,
             "rows_lost": direction_sequences.rows_lost,
         }
         if len(sequence["X_train"]) == 0 or len(sequence["X_test"]) == 0:
@@ -432,6 +585,28 @@ class DualModelTrainer:
         return "torch" if algorithm in SEQUENCE_ALGORITHMS else "joblib"
 
     @staticmethod
+    def normalize_strategy_returns(
+        realized_future_returns: np.ndarray | pd.Series,
+        horizon_days: int,
+    ) -> np.ndarray:
+        clipped_returns = np.clip(np.asarray(realized_future_returns, dtype=float), -0.999999, None)
+        return np.power(1.0 + clipped_returns, 1.0 / max(horizon_days, 1)) - 1.0
+
+    @classmethod
+    def evaluate_strategy_for_horizon(
+        cls,
+        signal: np.ndarray | pd.Series,
+        realized_future_returns: np.ndarray | pd.Series,
+        horizon_days: int,
+        *,
+        evaluator: MetricsEvaluator | None = None,
+        config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        strategy_returns = cls.normalize_strategy_returns(realized_future_returns, horizon_days)
+        metric_engine = evaluator or MetricsEvaluator()
+        return metric_engine.evaluate_strategy(signal, strategy_returns, config)
+
+    @staticmethod
     def _classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
         return {
             "accuracy": float(accuracy_score(y_true, y_pred)),
@@ -442,9 +617,13 @@ class DualModelTrainer:
     @staticmethod
     def _regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
         rmse = float(np.sqrt(mean_squared_error(y_true, y_pred)))
+        residuals = y_true - y_pred
+        residual_std = float(np.std(residuals))
         return {
             "mae": float(mean_absolute_error(y_true, y_pred)),
             "rmse": rmse,
+            "residual_std": residual_std,
+            "volatility_proxy_source": "test_residuals_std" if len(y_true) > 1 else "validation_rmse"
         }
 
     def _trading_metrics(
@@ -454,9 +633,12 @@ class DualModelTrainer:
         horizon_days: int,
     ) -> dict[str, float]:
         signal = np.asarray(predicted_direction).astype(int)
-        clipped_returns = np.clip(np.asarray(realized_future_returns, dtype=float), -0.999999, None)
-        dailyized_returns = np.power(1.0 + clipped_returns, 1.0 / max(horizon_days, 1)) - 1.0
-        evaluation = self._metrics_evaluator.evaluate_strategy(signal, dailyized_returns)
+        evaluation = self.evaluate_strategy_for_horizon(
+            signal,
+            realized_future_returns,
+            horizon_days,
+            evaluator=self._metrics_evaluator,
+        )
         return {
             "cagr": float(evaluation["metrics"]["cagr"]),
             "sharpe": float(evaluation["metrics"]["sharpe"]),
@@ -477,7 +659,6 @@ class DualModelTrainer:
 
     def _model_params(
         self,
-        *,
         algorithm: str,
         task: str,
         sequence_length: int,
@@ -492,10 +673,15 @@ class DualModelTrainer:
         min_samples_split: int,
         min_samples_leaf: int,
         criterion: str | None,
+        tune_boosters: bool = False,
     ) -> dict[str, Any]:
+        params: dict[str, Any] = {"task": task}
+        if tune_boosters and algorithm in {"xgboost", "lightgbm"}:
+            params["tuned"] = True
+            
         if algorithm in SEQUENCE_ALGORITHMS:
             return {
-                "task": task,
+                **params,
                 "sequence_length": sequence_length,
                 "hidden_size": hidden_size,
                 "num_layers": num_layers,
@@ -506,7 +692,7 @@ class DualModelTrainer:
                 "patience": patience,
             }
         return {
-            "task": task,
+            **params,
             "max_depth": max_depth,
             "min_samples_split": min_samples_split,
             "min_samples_leaf": min_samples_leaf,
@@ -534,9 +720,12 @@ class DualModelTrainer:
         min_samples_leaf: int = 1,
         criterion: str | None = None,
         clean: bool = True,
+        tune_boosters: bool = False,
+        risk_config: dict[str, Any] | None = None,
         context_sources: dict[str, pd.DataFrame | None] | None = None,
     ) -> dict[str, Any]:
         ticker = ticker.upper().strip()
+        normalized_risk_config = self._normalize_risk_config(risk_config)
         algorithms = self._normalize_algorithms(algorithms)
         horizons = self._normalize_horizons(horizons)
         primary_algorithm = (primary_algorithm or algorithms[0]).lower()
@@ -549,6 +738,7 @@ class DualModelTrainer:
             df=df,
             max_sequence_length=max_sequence,
             context_sources=context_sources,
+            risk_config=normalized_risk_config,
         )
         labeled_dataset = self._add_targets(prepared.feature_frame)
 
@@ -562,32 +752,64 @@ class DualModelTrainer:
             "ticker": ticker,
             "primary_algorithm": primary_algorithm,
             "feature_columns": prepared.feature_columns,
+            "base_feature_columns": prepared.base_feature_columns,
             "data_window": {
                 "start": prepared.data_start,
                 "end": prepared.data_end,
             },
             "raw_stats": prepared.raw_stats,
+            "advanced_risk": prepared.advanced_config,
+            "risk_summary": prepared.risk_summary or {},
+            "regime_distribution": prepared.regime_distribution or {},
+            "covar_config": {
+                "enabled": bool(
+                    normalized_risk_config.get("enable_covar")
+                    or normalized_risk_config.get("enable_risk_engine")
+                ),
+                "quantile": normalized_risk_config.get("covar_quantile"),
+                "window": normalized_risk_config.get("covar_window"),
+            },
             "horizons": {},
         }
 
         for horizon in horizons:
-            problem = self._build_horizon_problem(
+            horizon_problem = self._build_horizon_problem(
                 labeled_dataset,
-                prepared.feature_columns,
+                prepared.base_feature_columns,
                 horizon,
                 sequence_length,
             )
-            if problem is None:
+            if horizon_problem is None:
                 logger.warning("skipping_horizon", ticker=ticker, horizon=horizon, reason="insufficient_rows")
                 continue
 
             manifest["horizons"][horizon] = {
                 "days": HORIZON_DAYS[horizon],
-                "target_rows_lost": problem["target_rows_lost"],
-                "labeled_rows": problem["labeled_rows"],
+                "target_rows_lost": horizon_problem["target_rows_lost"],
+                "labeled_rows": horizon_problem["labeled_rows"],
                 "algorithms": {},
             }
             for algorithm in algorithms:
+                algorithm_feature_columns = self._select_algorithm_feature_columns(
+                    prepared,
+                    algorithm,
+                    normalized_risk_config,
+                )
+                problem = self._build_horizon_problem(
+                    labeled_dataset,
+                    algorithm_feature_columns,
+                    horizon,
+                    sequence_length,
+                )
+                if problem is None:
+                    logger.warning(
+                        "skipping_algorithm",
+                        ticker=ticker,
+                        algorithm=algorithm,
+                        horizon=horizon,
+                        reason="insufficient_rows_for_feature_set",
+                    )
+                    continue
                 use_sequence = algorithm in SEQUENCE_ALGORITHMS
                 inputs = problem["sequence" if use_sequence else "tabular"]
                 rows_lost_to_sequence = int(inputs.get("rows_lost", 0))
@@ -610,44 +832,42 @@ class DualModelTrainer:
                     )
                     continue
 
-                trend_model = create_model(
+                trend_params = self._model_params(
                     algorithm,
-                    **self._model_params(
-                        algorithm=algorithm,
-                        task="classification",
-                        sequence_length=sequence_length,
-                        hidden_size=hidden_size,
-                        num_layers=num_layers,
-                        dropout=dropout,
-                        learning_rate=learning_rate,
-                        batch_size=batch_size,
-                        epochs=epochs,
-                        patience=patience,
-                        max_depth=max_depth,
-                        min_samples_split=min_samples_split,
-                        min_samples_leaf=min_samples_leaf,
-                        criterion=criterion,
-                    ),
+                    "classification",
+                    sequence_length,
+                    hidden_size,
+                    num_layers,
+                    dropout,
+                    learning_rate,
+                    batch_size,
+                    epochs,
+                    patience,
+                    max_depth,
+                    min_samples_split,
+                    min_samples_leaf,
+                    criterion,
+                    tune_boosters,
                 )
-                return_model = create_model(
+                return_params = self._model_params(
                     algorithm,
-                    **self._model_params(
-                        algorithm=algorithm,
-                        task="regression",
-                        sequence_length=sequence_length,
-                        hidden_size=hidden_size,
-                        num_layers=num_layers,
-                        dropout=dropout,
-                        learning_rate=learning_rate,
-                        batch_size=batch_size,
-                        epochs=epochs,
-                        patience=patience,
-                        max_depth=max_depth,
-                        min_samples_split=min_samples_split,
-                        min_samples_leaf=min_samples_leaf,
-                        criterion=criterion,
-                    ),
+                    "regression",
+                    sequence_length,
+                    hidden_size,
+                    num_layers,
+                    dropout,
+                    learning_rate,
+                    batch_size,
+                    epochs,
+                    patience,
+                    max_depth,
+                    min_samples_split,
+                    min_samples_leaf,
+                    criterion,
+                    tune_boosters,
                 )
+                trend_model = create_model(algorithm, **trend_params)
+                return_model = create_model(algorithm, **return_params)
 
                 train_start = time.perf_counter()
                 trend_model.fit(
@@ -707,6 +927,7 @@ class DualModelTrainer:
                 algorithm_manifest = {
                     "artifact_type": self._artifact_type(algorithm),
                     "sequence_length": sequence_length if use_sequence else None,
+                    "feature_columns": algorithm_feature_columns,
                     "trend_model_file": trend_path.name,
                     "return_model_file": return_path.name,
                     "calibration": calibration,
@@ -718,6 +939,39 @@ class DualModelTrainer:
                         "inference_latency_ms": inference_latency_ms,
                     },
                 }
+                
+                # Forward static risk configs into manifest defaults if risk is enabled at training time
+                if normalized_risk_config.get("risk_enabled") or self._advanced_features_enabled(normalized_risk_config):
+                    # Choose residual_std if test set is large enough, else fallback to validation rmse/rmse.
+                    vol_val = regression.get("residual_std", regression.get("rmse", 0.05))
+                    vol_src = regression.get("volatility_proxy_source", "validation_rmse")
+                    
+                    algorithm_manifest["risk_config"] = {
+                        "risk_enabled": bool(normalized_risk_config.get("risk_enabled", False)),
+                        "risk_engine_enabled": bool(normalized_risk_config.get("enable_risk_engine", False)),
+                        "covar_enabled": bool(normalized_risk_config.get("enable_covar", False)),
+                        "regime_detection_enabled": bool(normalized_risk_config.get("enable_regime_detection", False)),
+                        "regime_switching_enabled": bool(normalized_risk_config.get("enable_regime_switching", False)),
+                        "risk_allocation_enabled": bool(normalized_risk_config.get("enable_risk_allocation", False)),
+                        "covar_quantile": float(normalized_risk_config.get("covar_quantile", 0.05)),
+                        "covar_window": int(normalized_risk_config.get("covar_window", 60)),
+                        "regime_method": normalized_risk_config.get("regime_method", "threshold"),
+                        "risk_penalty_strength": float(normalized_risk_config.get("risk_penalty_strength", 1.0)),
+                        "high_vol_exposure_cut": float(normalized_risk_config.get("high_vol_exposure_cut", 0.6)),
+                        "crisis_exposure_cut": float(normalized_risk_config.get("crisis_exposure_cut", 0.25)),
+                        "high_vol_threshold": float(normalized_risk_config.get("high_vol_threshold", 0.03)),
+                        "crisis_drawdown_threshold": float(normalized_risk_config.get("crisis_drawdown_threshold", -0.12)),
+                        "crisis_delta_covar_threshold": float(normalized_risk_config.get("crisis_delta_covar_threshold", 0.015)),
+                        "risk_simulations": normalized_risk_config.get("simulations", 10000),
+                        "risk_confidence_levels": normalized_risk_config.get("confidence_levels", [0.95, 0.99]),
+                        "risk_seed": normalized_risk_config.get("random_seed", 42),
+                        "volatility_proxy": float(vol_val),
+                        "volatility_proxy_source": vol_src,
+                        "risk_assumptions": "Normal distribution of residuals around forecast mean",
+                    }
+                else:
+                    algorithm_manifest["risk_config"] = {"risk_enabled": False}
+
                 manifest["horizons"][horizon]["algorithms"][algorithm] = algorithm_manifest
                 report_rows.append(
                     {
@@ -727,6 +981,7 @@ class DualModelTrainer:
                         "algorithm": algorithm,
                         "artifact_type": self._artifact_type(algorithm),
                         "sequence_length": sequence_length if use_sequence else "",
+                        "feature_columns": len(algorithm_feature_columns),
                         "data_start": prepared.data_start,
                         "data_end": prepared.data_end,
                         "raw_rows": prepared.raw_stats["raw_rows"],
@@ -734,6 +989,8 @@ class DualModelTrainer:
                         "target_rows_lost": problem["target_rows_lost"],
                         "sequence_rows_lost": rows_lost_to_sequence,
                         "final_usable_rows": int(len(inputs["X_train"]) + len(inputs["X_val"]) + len(inputs["X_test"])),
+                        "risk_engine_enabled": bool(normalized_risk_config.get("enable_risk_engine", False)),
+                        "regime_switching_enabled": bool(normalized_risk_config.get("enable_regime_switching", False)),
                         **algorithm_manifest["metrics"],
                     }
                 )
@@ -849,6 +1106,7 @@ class DualModelTrainer:
         features: np.ndarray | pd.Series | pd.DataFrame,
         horizon: str = "short",
         algorithm: str | None = None,
+        risk_config: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         ticker = ticker.upper().strip()
         horizon = horizon.lower()
@@ -871,7 +1129,7 @@ class DualModelTrainer:
         if algorithm_info is None:
             raise FileNotFoundError(f"No trained algorithm '{algorithm}' found for {ticker} horizon '{horizon}'")
 
-        feature_columns = manifest.get("feature_columns", [])
+        feature_columns = algorithm_info.get("feature_columns", manifest.get("feature_columns", []))
         if isinstance(features, pd.Series):
             feature_frame = pd.DataFrame([features.to_dict()])
         elif isinstance(features, pd.DataFrame):
@@ -907,7 +1165,7 @@ class DualModelTrainer:
         predicted_return = float(np.asarray(return_model.predict(model_input)).reshape(-1)[0])
         expected_range = self._expected_range(current_close, predicted_return, algorithm_info.get("calibration", {}))
 
-        return {
+        output = {
             "algorithm": algorithm,
             "artifact_type": algorithm_info.get("artifact_type"),
             "horizon": horizon,
@@ -917,3 +1175,99 @@ class DualModelTrainer:
             "expected_range": expected_range,
             "feature_set_version": f"ml_schema_v{ARTIFACT_SCHEMA_VERSION}",
         }
+
+        manifest_risk_config = algorithm_info.get("risk_config", {})
+        override_risk_config = self._normalize_risk_config(risk_config) if risk_config else {}
+        advanced_risk = manifest.get("advanced_risk", {})
+
+        if advanced_risk.get("enable_risk_engine") or advanced_risk.get("enable_covar"):
+            latest_risk = {}
+            for column in RISK_FEATURE_COLUMNS:
+                if column in feature_frame.columns:
+                    non_na = pd.to_numeric(feature_frame[column], errors="coerce").dropna()
+                    latest_risk[column] = None if non_na.empty else float(non_na.iloc[-1])
+            output["risk_summary"] = {
+                "asset": latest_risk,
+                "system": manifest.get("risk_summary", {}).get("system", {}),
+            }
+
+        if advanced_risk.get("enable_regime_detection") or advanced_risk.get("enable_regime_switching"):
+            regime_series = (
+                pd.to_numeric(feature_frame["regime_label"], errors="coerce").dropna()
+                if "regime_label" in feature_frame.columns
+                else pd.Series(dtype=float)
+            )
+            probability_series = (
+                pd.to_numeric(feature_frame["regime_probability"], errors="coerce").dropna()
+                if "regime_probability" in feature_frame.columns
+                else pd.Series(dtype=float)
+            )
+            regime_value = regime_series.iloc[-1] if not regime_series.empty else np.nan
+            probability_value = probability_series.iloc[-1] if not probability_series.empty else np.nan
+            regime_name = None
+            if pd.notna(regime_value):
+                reverse_map = {value: key for key, value in REGIME_TO_CODE.items()}
+                regime_name = reverse_map.get(int(regime_value))
+            output["regime"] = {
+                "label": regime_name,
+                "encoded": None if pd.isna(regime_value) else int(regime_value),
+                "probability": None if pd.isna(probability_value) else float(probability_value),
+            }
+
+        if advanced_risk.get("enable_risk_allocation"):
+            risk_snapshot = pd.DataFrame(
+                [
+                    {
+                        column: float(pd.to_numeric(feature_frame[column], errors="coerce").dropna().iloc[-1])
+                        if column in feature_frame.columns and not pd.to_numeric(feature_frame[column], errors="coerce").dropna().empty
+                        else 0.0
+                        for column in RISK_FEATURE_COLUMNS
+                    }
+                ],
+                index=[ticker],
+            )
+            regime_labels = None
+            if "regime" in output and output["regime"]["label"] is not None:
+                regime_labels = pd.Series({ticker: output["regime"]["label"]})
+            allocator = RiskAwareAllocator(
+                risk_penalty_strength=float(advanced_risk.get("risk_penalty_strength", 1.0)),
+                high_vol_exposure_cut=float(advanced_risk.get("high_vol_exposure_cut", 0.6)),
+                crisis_exposure_cut=float(advanced_risk.get("crisis_exposure_cut", 0.25)),
+            )
+            output["allocation"] = allocator.allocate(
+                risk_frame=risk_snapshot,
+                regime_labels=regime_labels,
+                base_weights=pd.Series({ticker: 1.0}),
+            ).to_dict()
+        
+        # If execution overrides risk config, merge over the manifest default
+        has_risk = bool(override_risk_config.get("risk_enabled")) or manifest_risk_config.get("risk_enabled", False)
+        if has_risk:
+            # Overrides take precedence
+            eval_config = manifest_risk_config.copy()
+            if risk_config:
+                eval_config.update(override_risk_config)
+                
+            from src.ml.risk import MonteCarloRiskSimulator
+            
+            simulator = MonteCarloRiskSimulator(
+                simulations=eval_config.get("risk_simulations", eval_config.get("simulations", 10000)),
+                random_seed=eval_config.get("risk_seed", eval_config.get("random_seed", 42))
+            )
+            
+            volatility_proxy = eval_config.get("volatility_proxy", 0.05)
+            if volatility_proxy <= 0:
+                volatility_proxy = 0.05
+
+            risk_assessment = simulator.simulate_risk(
+                forecast_mean=predicted_return,
+                volatility_proxy=float(volatility_proxy),
+                horizon=horizon,
+                confidence_levels=eval_config.get("risk_confidence_levels", [0.95, 0.99])
+            )
+            # Annotate with the source
+            risk_assessment["metadata"]["volatility_proxy_source"] = eval_config.get("volatility_proxy_source", "validation_rmse")
+            
+            output["risk_assessment"] = risk_assessment
+            
+        return output
