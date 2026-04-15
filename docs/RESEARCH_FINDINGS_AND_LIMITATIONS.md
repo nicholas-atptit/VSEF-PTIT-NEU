@@ -1,454 +1,268 @@
 # Research Findings and Limitations
 
-This document summarizes the empirical findings, limitations, and recommendations for future work based on the current framework.
+This document summarizes the current empirical findings from the saved artifacts and the main limitations that still constrain the system.
 
----
+The tone here is intentionally conservative. The repository has become much stronger as a research framework, but the results do not justify strong claims about a universal winning setup.
 
-## Executive Summary
+## 1. Current Findings
 
-The framework successfully demonstrates a **multi-horizon, regime-aware evaluation pipeline** for Vietnamese equities. However, empirical results show **modest predictability** with **high regime-dependency** and **limited cross-period stability**. The system is suitable for **research and benchmarking**, but **deployment should be cautious** without additional feature engineering or data.
+### 1.1 Real-data fixed-window close backtest
 
----
+Current result from `artifacts/backtest_model_comparison/overall_model_ranking.csv`:
 
-## Empirical Findings
+- `naive_previous_close` still has the best overall average rank.
+- `cart` slightly edges out naive on RMSE, but not on MAPE or directional accuracy.
+- `xgboost` and `lightgbm` are competitive, but neither is a decisive winner in that close-level framing.
 
-### 1. Prediction Quality by Horizon
+Takeaway:
 
-**Finding**: Longer-horizon predictions moderately outperform shorter horizons.
+- The repo now has a real and honest baseline.
+- Simple persistence is still hard to beat on broad aggregate metrics.
 
-- **3-day horizon**: 
-  - Directional accuracy: ~48-52% (barely above 50% random)
-  - MAE: 4.0-4.5% of return magnitude
-  - Interpretation: Very noisy; hard to predict daily behavior
+### 1.2 Forward-return forecasting
 
-- **5-day horizon**:
-  - Directional accuracy: ~50-54%
-  - MAE: 3.8-4.2%
-  - Interpretation: Marginally better; trend-following helps
+Current result from `artifacts/backtest_forward_return/overall_horizon_ranking.csv`:
 
-- **20-day horizon**:
-  - Directional accuracy: ~52-56%
-  - MAE: 3.5-4.0%
-  - Interpretation: Best results; longer trends more predictable
+- `xgboost` is the best RMSE model on `3d`, `5d`, and `20d`.
+- `xgboost` is also the best MAPE model on `3d` and `20d`.
+- `lightgbm` edges `5d` MAPE.
+- No horizon has `any_model_beats_naive_overall = True`.
 
-**Implication**: Traders should focus on medium-term strategies (5-20 days), not day-trading.
+Takeaway:
 
-### 2. Model Family Performance
+- Forward-return modeling is informative, but the naive flat-return baseline remains strong overall.
+- There is still no universally dominant return model once all metrics are considered together.
 
-**Finding**: Model family (tree vs. statistical) matters more than exact hyperparameters.
+### 1.3 Strategy backtest layer
 
-**Win rate comparison** (% of folds where model outperformed baseline):
-| Model Family | Win Rate | Notes |
-|-----|----------|-------|
-| XGBoost | 65-70% | Consistent, robust across regimes |
-| LightGBM | 60-65% | Fast training, similar performance to XGBoost |
-| CART | 55-60% | Simpler, more interpretable; less data-hungry |
-| SARIMAX | 45-55% | Struggles in trending markets, better sideways |
-| ETS | 40-50% | Smoothing helps in stable regimes only |
-| LSTM | 35-45% | Underperforms; insufficient data or poor hyperparams |
+Current result from `artifacts/strategy_backtest/summary/overall_strategy_ranking.csv`:
 
-**Key insight**: Boosting models (XGBoost, LightGBM) consistently beat statistical and deep learning models. **Recommendation**: Use boosting for operational deployment.
+- `20d / cart / threshold 0.02` is the best saved sample:
+  - `best_total_return = 0.0387`
+  - `best_sharpe_ratio = 1.6586`
+  - `any_model_beats_buy_and_hold = True`
+  - `any_model_positive_net_return_after_costs = True`
+- `3d / cart / threshold 0.02` is positive but much weaker.
+- `5d` remains unattractive in the saved sample because the best total return is still negative after costs.
 
-### 3. Regression vs. Classification
+Takeaway:
 
-**Finding**: Regression (forward return prediction) slightly easier than classification (profit/loss prediction).
+- Some strategy-style configurations are usable in the specific window tested.
+- That does not make them robust. The strategy evidence is still short-window and sample-dependent.
 
-- **Regression directional accuracy**: ~50-54%
-- **Classification accuracy**: ~50-53%
-  - Precision (false positive rate): 48-52%
-  - Recall (false negative rate): 45-55%
+### 1.4 Dual-task forecasting
 
-**Interpretation**: 
-- Predicting return MAGNITUDE is slightly easier than return SIGN
-- Profit classification is cost-sensitive; transaction fees make small winners into losses
-- Precision is often lower than recall: model predicts too many profits (optimistic bias)
+Current result from `artifacts/dual_task/summary/cross_task_model_ranking.csv`:
 
-**Implication**: **Use combined signal** (both regression + classification) to reduce false positives.
+- `xgboost` is the best regression model by RMSE on `3d`, `5d`, and `20d`.
+- The best classification model differs by horizon:
+  - `lightgbm` on `3d`
+  - `cart` on `5d`
+  - `cart` on `20d`
+- `20d` has the highest saved actionability score among the three horizons.
 
-### 4. Combined Signal Effectiveness
+Takeaway:
 
-**Finding**: Combining return prediction + profit probability slightly improves top-K selection.
+- Best return forecasting and best profit classification are not the same problem.
+- The repo is right to keep them as separate evaluation tasks.
 
-- **Single signal (return only)**: Top-3 accuracy ~51%
-- **Combined signal (return + profit)**: Top-3 accuracy ~54%
-- **Improvement**: +2-3 percentage points
+### 1.5 Combined-signal analysis
 
-**Interpretation**: Consensus reduces noise but does not eliminate bias. Both signals often agree, partly because they're derived from same model.
+Current result from `artifacts/combined_signal/summary/overall_combined_signal_summary.csv`:
 
-**Recommendation**: Combine signals but DO NOT expect large lifts. Consider adding **external features** (news sentiment, volume anomalies) for bigger gains.
+- Combined signals help on some slices, but not uniformly.
+- Clearer positive cases:
+  - `3d / xgboost` improved over return-only and probability-only ranking
+  - `5d / lightgbm` improved over both
+  - `5d / xgboost` improved over both
+- Mixed or weak cases:
+  - `3d / cart` and `3d / lightgbm` did not improve
+  - `20d / lightgbm` and `20d / xgboost` improved versus return-only but not versus probability-only
+  - `20d / cart` did not improve
 
-### 5. Regime-Aware Performance
+Takeaway:
 
-**Finding**: Method performance **strongly depends on market regime**.
+- Combining `predicted_return` and `predicted_profit_probability` can help signal quality.
+- The benefit is local, not universal.
 
-**Accuracy by regime** (5-day horizon example):
-| Regime | Model | Accuracy | Notes |
-|--------|-------|----------|-------|
-| Bull (trending up) | XGBoost | 56-58% | Models excel; momentum works |
-| Sideway (choppy) | CART | 52-54% | Simple rules better; mean-reversion |
-| Bear (trending down) | SARIMAX | 50-52% | All models struggle; panic correlations spike |
+### 1.6 Regime-aware analysis
 
-**Key insight**: 
-- **Bull regime is 60% of observations** (recent years favored long bias)
-- **Bear regime is <15% of observations** (limited samples for learning)
-- Models overfit to bull-regime patterns
+Current result from `artifacts/regime_aware_analysis/summary/overall_regime_summary.csv`:
 
-**Critical limitation**: Sparse bear samples make it **impossible to confidently learn bear-specific rules**. System may break in next downmarket.
+- Best regression model by regime:
+  - `xgboost / 3d` in `bull`
+  - `xgboost / 3d` in `bear`
+  - `xgboost / 3d` in `sideway`
+- Best classification model by regime:
+  - `xgboost / 5d` in `bull`
+  - `cart / 20d` in `bear`
+  - `cart / 20d` in `sideway`
+- Best combined method is still `combined_weighted_linear_gated`, but the winning model and horizon vary by regime.
 
-### 6. Walk-Forward Stability
+Takeaway:
 
-**Finding**: Cross-fold win rates are **moderate-to-low**, indicating **temporal overfitting**.
+- The best regression model is relatively stable.
+- The best classifier and best combined setup are regime-dependent.
+- Sideway remains harder to summarize cleanly than bull or bear.
 
-**Cross-fold win rate by model** (% of 4 folds where model beat baseline):
-| Model | Win Rate | Interpretation |
-|-------|----------|---|
-| XGBoost | 67% | Decent; wins 2-3 of 4 folds |
-| LightGBM | 63% | Similar to XGBoost |
-| CART | 58% | Moderate; more period-dependent |
-| SARIMAX | 50% | Coin flip; unreliable |
-| ETS | 42% | Often loses; not recommended |
+### 1.7 Walk-forward robustness
 
-**Interpretation**:
-- XGBoost's 67% win rate = **2.7x better than random** (33% baseline)
-- But also = **33% chance of loss** in future periods
-- Not sufficient confidence for high-conviction trading
+Current result from `artifacts/walk_forward_regime_robustness/summary/overall_robustness_report.csv`:
 
-**High-volatility folds**: In fold 3 (higher vol), accuracy often drops 2-3 percentage points across all models, suggesting models are not truly regime-aware.
+- `xgboost` is the most frequent regression winner, but stability is still labeled `low`.
+- `cart` is the most frequent classification winner, also with `low` stability.
+- `combined_weighted_linear_gated` is the most frequent combined-method winner.
+- `5d` is the most frequent winning horizon in the saved walk-forward summary, but still with `low` stability.
 
-### 7. Feature Contribution
+Takeaway:
 
-**Finding**: Most important features are **recent price momentum** and **market context**.
+- The most repeatable pattern is at the method-family level.
+- Exact model or horizon winners remain sample-sensitive.
 
-**Top features** (XGBoost feature importance):
-1. SMA(5) — recent trend
-2. Close-to-close return (lag 1) — momentum
-3. Market return (lag 1) — systematic factor
-4. Volatility (rolling std) — regime signal
-5. RSI — overbought/oversold
+### 1.8 Regime-conditioned meta-selector
 
-**Missing strong factors**: Transaction volume, implied volatility, news sentiment are NOT yet in models.
+Current result from `artifacts/meta_selector/summary/overall_meta_selector_report.csv`:
 
-**Implication**: **Significant headroom for improvement** via feature engineering. Current features are basic technicalsonly.
+- Best selector mode in the saved report is `fallback_global`.
+- The meta-selector edge versus fixed setups is narrow and explicitly labeled `low` stability.
+- The most frequent selected setup is `xgboost+20d+predicted_return`.
 
----
+Takeaway:
 
-## Limitations and Caveats
+- Adaptive selection helps only slightly in the saved folds.
+- Much of the selector behavior still collapses back toward globally strong families.
 
-### 1. Short Training Windows
+### 1.9 Benchmark audit
 
-**Limitation**: Models trained on 3+ years of data (2020-2023) during a **bull-dominated period**.
+Current result from `artifacts/meta_selector_audit/benchmark_audit_report.csv`:
 
-- 2020-2021: COVID recovery (strong bull)
-- 2022: Global recession (mixed)
-- 2023: Vietnam uptrend (bull)
+- Recomputed summaries match the saved summaries exactly.
+- No grouping bug was found.
+- Some baseline rows are effectively identical in practice because they resolve to the same selected `model/horizon` row universe.
 
-**Result**: Training data skew toward bull regime. Model learns "stocks usually go up" heuristic.
+Takeaway:
 
-**Real-world risk**: If bear market materializes (market drops 20%+), models trained on bull data will underperform significantly.
+- The suspiciously similar baseline summaries were mostly an interpretation issue, not a broken aggregation.
+- Broad averages and top-k metrics should be read together.
 
-**Mitigation**: 
-- Include 2008-2009 recession in training data (not available)
-- Use regime-specific models with adequate bear samples (requires more data)
-- Employ robust methods that don't overfit to regime (e.g., ensemble across regimes)
+### 1.10 Context-conditioned selector
 
-### 2. Sparse Bear Samples
+Current result from `artifacts/context_meta_selector/summary/overall_context_selector_report.csv`:
 
-**Limitation**: Only **5-10% of training/test data in bear regime** (depending on threshold selection).
+- Best context selector mode is `context_knn_selector`.
+- Fixed baselines are still stronger overall.
+- The context selector also does not clearly beat the simpler regime selector layer.
+- The most frequent context-selected setup is still `xgboost+20d+predicted_return`.
 
-- Sufficient for basic metrics (50-60 samples per fold)
-- Insufficient for high-precision decision rules
-- Impossible to confidently learn bear-specific features
+Takeaway:
 
-**Result**: Bear-regime recommendations are **tentative**; likely to underperform or fail in real bear markets.
+- Richer context features did not produce a broad selector improvement in the saved sample.
+- The current gains are narrow and still sample-sensitive.
 
-**Mitigation**: 
-- Lower bear threshold (e.g., -2% instead of -3%) to capture more data
-- Include synthetic bear scenarios via bootstrap or adversarial generation
-- Use uncertainty quantification to avoid high-confidence bad recommendations
+## 2. What Looks More Stable
 
-### 3. Calibration Issues
+The following findings look more repeatable than the rest:
 
-**Limitation**: Model confidence (probability) may not align with true accuracy.
+- `xgboost` is frequently strong on the regression side.
+- `combined_weighted_linear_gated` is the most repeatable combined-method family in walk-forward summaries.
+- Method-family conclusions are more stable than exact configuration conclusions.
+- The classification branch remains materially different from the regression branch, which supports the dual-task design.
 
-- **Observed**: Classification probability of 0.60 correlates with 52% accuracy (not 60%)
-- **Root cause**: Models are not well-calibrated; probabilities are relative ranks, not true likelihoods
+## 3. What Still Looks Unstable
 
-**Result**: Threshold selection (e.g., "only trade if probability > 0.65") may not yield expected accuracy improvements.
+The following findings remain unstable or conditional:
 
-**Mitigation**: 
-- Explicit calibration step (Platt scaling, isotonic regression)
-- Use probability outputs sparingly; prefer relative rankings
-- Conduct threshold sensitivity analysis before deploying
+- the exact best model-horizon pair
+- the exact best classifier
+- whether `3d`, `5d`, or `20d` is best overall
+- whether adaptive selectors truly beat strong fixed baselines
+- whether bear-regime conclusions can be trusted beyond the limited saved folds
 
-### 4. Lookahead Bias Risk (Residual)
+## 4. Limitations
 
-**Limitation**: Features are time-safe, but **data leakage can occur through target construction**.
+### 4.1 Short and uneven evaluation coverage
 
-Example:
-```python
-# Safe target:
-forward_return[t] = close[t+horizon] / close[t] - 1
+- The single-window workflows use short recent holdouts.
+- Even the walk-forward stack covers a limited number of folds.
+- That makes apparent winners vulnerable to period-specific noise.
 
-# Unsafe target (would be leakage):
-# forward_return[t] = average(returns[t:t+horizon])  # Uses future data computed at time t
-```
+### 4.2 Sparse bear samples
 
-**Current system**: Uses `shift(-horizon)` safely. But future refactoring could introduce bugs.
+- Bear observations are still relatively scarce in the saved studies.
+- Some bear conclusions look strong only because there are too few folds and too few matched rows.
 
-**Mitigation**: 
-- Add unit tests for All label generators (ensure no lookahead)
-- Review any custom target engineering carefully
-- Use data audit framework to flag anomalous accuracy (>70% = red flag)
+### 4.3 Calibration is still imperfect
 
-### 5. Benchmark Audit Need
+- Profit probabilities are useful ranking inputs, but the calibration summaries remain uneven.
+- Some probability buckets are overconfident or underconfident depending on regime and model.
 
-**Limitation**: No gold-standard benchmark to validate predictions against.
+### 4.4 Combined-layer gains are selective
 
-Currently:
-- Use actual returns as ground truth (correct)
-- Use simple baselines (naive forecast, momentum) for comparison (limited)
+- The combined layer improves signal quality in some horizon/model slices.
+- It does not beat return-only or probability-only ranking everywhere.
 
-Missing:
-- Professional analyst consensus (not publicly available)
-- Risk-adjusted return metrics (Sharpe ratio, ML, etc.)
-- Statistical significance tests (are 2% differences real or noise?)
+### 4.5 Classifier quality is still limited
 
-**Implication**: Cannot definitively say "XGBoost is better than SARIMAX" — only have empirical counts.
+- Positive-class precision is not yet strong enough to treat the classification branch as a hard gating oracle.
+- The classification branch is directionally useful, but not decisively reliable.
 
-**Recommendation**: 
-- Implement statistical significance testing (chi-squared for win rates)
-- Compare against published academic baselines
-- Consider external validation data (different market, different period)
+### 4.6 Strategy conclusions are sample-limited
 
-### 6. Regime Definition Limitations
+- The strategy layer shows that some forecast configurations can survive costs in the saved sample.
+- That is still a paper backtest, not proof of robust tradability.
 
-**Limitation**: Regime detection is **rule-based and backward-looking**, not prospective.
+### 4.7 No universal winner
 
-- Uses rolling 20-day return to classify regime (lagged signal)
-- If market switches from bull to bear today, models won't adapt immediately
-- Does not predict regime transitions (would need separate regime-forecasting model)
+- There is still no single model, horizon, or selector mode that wins broadly across all layers and all conditions.
 
-**Result**: Regime conditioning helps explain past performance but **does not improve future predictions much** (only 2-3% combined signal lift).
+## 5. Recommended Next Steps
 
-**Mitigation**: 
-- Build explicit regime forecasting model (separate from price prediction)
-- Use multi-timeframe regimes (daily + weekly + monthly)
-- Incorporate forward-looking indicators (options skew, credit spreads, etc.)
+### 5.1 Increase history and fold coverage
 
-### 7. Small Prediction Magnitudes
+- Extend walk-forward evaluation over more periods.
+- Prioritize periods with deeper bearish coverage.
 
-**Limitation**: Typical predictions are small (0.5% - 2% return), while transaction costs are 0.35%.
+### 5.2 Improve classifier calibration and precision
 
-- **Profit margin**: Expected return - costs = 1.5% - 0.35% = 1.15% (thin edge)
-- **Implication**: Model needs ~55% accuracy just to break even after costs
-- **Observed accuracy**: 51-54% → Small positive expected value, but high variance
+- Add calibration-specific tuning or post-processing.
+- Focus on positive-class precision and false-positive control, not just accuracy.
 
-**Result**: Even  if model is correct, single-position trades are too noisy. **Portfolio approach essential** (diversify across tickers and time).
+### 5.3 Add stronger exogenous context
 
-### 8. Missing Context Features
+- Benchmark-relative features are already in place.
+- The next gains are more likely to come from better external context than from more selector complexity alone.
 
-**Limitation**: Currently use only **basic technical + simple market/sector context**. Missing:
+Examples:
 
-- Order book imbalance
-- Implied volatility (options market)
-- News sentiment and surprises
-- Insider trading signals
-- Macroeconomic calendar events
-- Relative strength vs. region peers
+- cleaner benchmark and sector features
+- event and sentiment signals
+- uncertainty-aware features
+- model-dispersion features
 
-**Impact**: Likely leaving 30-50% of available signal on the table.
+### 5.4 Keep benchmark audits in the loop
 
-**Opportunity**: Adding sentiment + macro → potential 2-3% accuracy improvement (to 54-57%).
+- The selector audit did not find a grouping bug, but it did show that some baselines become effectively identical in practice.
+- Future selector work should continue to write audit traces so summary tables stay interpretable.
 
----
+### 5.5 Prefer method-family decisions over fragile exact picks
 
-## Method-Specific Findings
+- Current evidence supports using model families and combination families as the more stable unit of comparison.
+- For example, "boosting regressor + gated combined method" is more defensible than claiming one exact model-horizon-threshold tuple is robust.
 
-### Statistical Models (SARIMAX, ETS)
+## 6. Bottom Line
 
-**Finding**: Underperform boosting in most cases but **win in stable/mean-reverting regimes**.
+The repository has matured into a strong research framework, but the empirical picture is still mixed.
 
-**Pros**:
-- Interpretable parameters (AR/MA terms)
-- Work well with strong seasonality (e.g., retail stocks at year-end)
-- Robust to feature engineering mistakes (uses only price series)
+What is defensible today:
 
-**Cons**:
-- Ignore available context features (market, sector)
-- Struggle in trending markets (oversmooth)
-- Sensitive to hyperparameter choice (p,d,q)
+- the evaluation stack is much more rigorous than before
+- some improvements are real in specific slices
+- combined-signal and regime-aware views add useful structure
+- exact winners are still unstable
 
-**Recommendation**: Keep as ensemble member; don't rely as primary model.
+What is not yet defensible:
 
-### Deep Learning (LSTM)
-
-**Finding**: **Underperforms boosting** despite extra complexity.
-
-**Root causes**:
-- Vietnamese stock data has only ~1500 trading days available (only ~75 20-day sequences)
-- LSTM needs 1000s+ sequences to avoid overfitting
-- Hyperparameter tuning (layers, dropout) not done; using defaults
-
-**Result**: High variance, low average accuracy.
-
-**Recommendation**: **Skip LSTM for now** unless:
-- Aggregate across 50+ tickers (more data)
-- Implement rigorous cross-validation
-- Add explicit regularization (L2, dropout, early stopping)
-- Or use transfer learning (pretrain on US/global data)
-
-### Tree Models (CART, XGBoost, LightGBM)
-
-**Finding**: **Most robust and practical**.
-
-**Pros**:
-- Handle mixed feature types (continuous + categorical)
-- Integrate market/sector context naturally
-- Interpretable via feature importance
-- Fast to train 
-- Graceful degradation (work with missing features)
-
-**Cons**:
-- Can overfit if tree depth too deep
-- Hyperparameters affect stability (no strong universal tuning)
-- Don't capture non-stationary regime shifts
-
-**Recommendation**: **Use as primary model class**. XGBoost or LightGBM both good; XGBoost slightly more stable.
-
----
-
-## Meta-Findings: Model Integration Lessons
-
-### 1. Ensemble ≠ Magic
-
-**Finding**: Naive ensembles (average predictions) of diverse models yield **minimal gains** (0.5-1% accuracy improvement).
-
-**Why**:
-- Models are trained on same features → correlated errors
-- Diversification only works if models fail in different regimes (not observed)
-- Averaging low-signal predictions is like averaging noise
-
-**Implication**: **Need fundamentally different signals** (not just different models) for ensemble gains. Example: technical (price-based) + sentiment (news-based) + fundamental (earnings-based).
-
-### 2. Parameter Tuning Matters Less Than Model Choice
-
-**Finding**: **Model family >> exact hyperparameters**.
-
-- XGBoost with default params: 64% win rate
-- XGBoost with tuned params (Optuna): 67% win rate
-- SARIMAX with default params: 48% win rate
-- SARIMAX with tuned params: 52% win rate
-
-**Implication**: Spend energy on **feature engineering and data quality**, not hyperparameter tuning. Diminishing returns on tuning.
-
-### 3. Stability is the Real Metric
-
-**Finding**: Cross-fold win rate is **more predictive of future performance** than single-fold accuracy.
-
-- Single-fold accuracy: 52-56% (varies ±3% randomly)
-- Win rate across 4 folds: 50-70% (consistent within ±5%)
-
-**Implication**: For **forward performance assessment**, use walk-forward test with 4+ folds. Single backtest is unreliable.
-
----
-
-## Recommendations for Future Work
-
-### Short-Term (Weeks)
-
-1. **Feature Engineering**
-   - Add volume-based features (order imbalance, volume surprise)
-   - Add risk features from options market (if data available)
-   - Add relative strength vs. sector/region peers
-
-2. **Benchmark Audit**
-   - Implement statistical significance tests (chi-squared for accuracy differences)
-   - Compare against published academic baselines (or random model)
-   - Sensitivity analysis: how much does accuracy change if train data shifted by 1 year?
-
-3. **Calibration**
-   - Apply Platt scaling to classification probabilities
-   - Validate that probability 0.60 truly predicts 60% accuracy
-   - Use calibrated probabilities for threshold selection
-
-### Medium-Term (Months)
-
-1. **Regime Forecasting**
-   - Build separate model to predict regime transitions (1-2 weeks ahead)
-   - Use regime forecasts to dynamically adjust parameters
-   - Measure lift from **predictive** regime awareness (not backward-looking)
-
-2. **Context-Conditioned Meta-Selector**
-   - Instead of regime-conditioned (3 classes), condition on **continuous market features**
-   - Example: "If VN-100 volatility > 2%, use SARIMAX; else use XGBoost"
-   - Learn decision boundaries from walk-forward data
-
-3. **Extended Data**
-   - Backfill 2008-2009 recession data (if available) to address bear-sample sparsity
-   - Synthetic data generation (bootstrap or VAE) for bear scenarios
-
-### Long-Term (6+ months)
-
-1. **Multi-Asset Framework**
-   - Expand beyond stock selection to include asset allocation (stocks vs. bonds vs. cash)
-   - Build regime-aware tactical asset allocation on top of stock selection
-
-2. **Live Trading Validation**
-   - Paper trade top 3-5 candidates on real market data (forward-validation)
-   - Measure real costs (slippage, market impact) vs. simulated 35 bps
-
-3. **Transfer Learning**
-   - Pretrain models on US/global market data → transfer to Vietnam
-   - Leverage larger, more diverse datasets for better generalization
-
-4. **Causal Discovery**
-   - Identify which features causally affect returns (not just correlate)
-   - Use causal methods to reduce overfitting to historical patterns
-
----
-
-## Honest Assessment
-
-### What Works
-✅ Multi-horizon regression framework (technically sound)  
-✅ Real-data integration via vnstock (no synthetic data bias)  
-✅ Time-aware validation (no lookahead bias)  
-✅ Regime-aware evaluation (transparent about limitations)  
-✅ Walk-forward robustness testing (catches overfitting)  
-
-### What Doesn't Work (Yet)
-❌ Deep learning (insufficient data)  
-❌ Naive ensembles (correlated models)  
-❌ Bear-regime predictions (sparse samples)  
-❌ Profit prediction with high confidence (margins too thin)  
-
-### What's Feasible
-✓ 52-54% directional accuracy (vs. 50% baseline)  
-✓ XGBoost/LightGBM as reliable backbone  
-✓ Regime-aware strategy (exploit momentum in bull markets)  
-✓ Research-grade evaluation framework (decision-support for humans)  
-
-### What Requires More Work
-⚠ Production deployment (needs real cost validation)  
-⚠ Strategy backtesting with realistic slippage  
-⚠ Live optimization under non-stationary markets  
-
----
-
-## Conclusion
-
-The **framework is a solid foundation** for quantitative research and backtesting. **Empirical results show modest edge** (2-4% above baseline) that is **regime-dependent and temporally unstable**.
-
-**For research**: Use as-is; framework is accurate and time-safe.  
-**For trading**: Apply with caution; expect 2-3% returns with high variance; focus on diversification and cost management.  
-
-The next major lift will come from **feature engineering** (sentiment, volume,  macro) and **regime forecasting** (predicting regime shifts in advance), not from tuning models.
-
----
-
-## References and Related Docs
-
-- [CHANGELOG_SUMMARY.md](./CHANGELOG_SUMMARY.md) — System evolution
-- [ML_IMPLEMENTATION_GUIDE.md](./ML_IMPLEMENTATION_GUIDE.md) — How it works internally
-- [USAGE_GUIDE.md](./USAGE_GUIDE.md) — How to use it
-- [EVALUATION_WORKFLOWS.md](./EVALUATION_WORKFLOWS.md) — Detailed evaluation methods
+- claiming a universal best model
+- claiming the selector layer is robustly superior
+- claiming bear-regime conclusions are well established
+- treating the saved strategy outcomes as production-ready trading evidence
