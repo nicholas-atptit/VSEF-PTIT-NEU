@@ -1,0 +1,5 @@
+ticker,source,rows,fetched_min_date,fetched_max_date,train_rows,eval_rows
+ACB,vnstock,1686,2019-07-05,2026-04-10,1494,65
+DGC,vnstock,1685,2019-07-05,2026-04-10,1493,65
+HPG,vnstock,1691,2019-07-05,2026-04-10,1499,65
+MWG,vnstock,1691,2019-07-05,2026-04-10,1499,65

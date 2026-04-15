@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import datetime as dt
+import time
 from typing import List, Optional
 
 import pandas as pd
@@ -17,6 +18,9 @@ from config.settings import get_settings
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+MAX_FETCH_RETRIES = 3
+BASE_RETRY_DELAY_SECONDS = 0.75
 
 
 class VnstockAdapter:
@@ -60,27 +64,70 @@ class VnstockAdapter:
         Returns:
             DataFrame with columns [date, open, high, low, close, volume].
         """
-        logger.debug("fetching_ticker_ohlcv", symbol=symbol, start=start_date, end=end_date)
-        try:
-            stock = self.vn.stock(symbol=symbol.upper(), source="VCI")
-            df = stock.quote.history(
-                start=start_date, 
-                end=end_date, 
-                interval=interval
-            )
-            
-            if df is not None and not df.empty:
-                # Standardize column names if necessary (vnstock 3.0 uses 'time')
-                if 'time' in df.columns:
-                    df = df.rename(columns={"time": "date"})
-                
-                # Ensure date is datetime
-                df["date"] = pd.to_datetime(df["date"]).dt.normalize()
-                return df
-                
-        except Exception as e:
-            logger.error("ohlcv_fetch_error", symbol=symbol, error=str(e))
-            
+        ticker = symbol.upper().strip()
+        logger.debug("fetching_ticker_ohlcv", symbol=ticker, start=start_date, end=end_date)
+        last_error: Exception | None = None
+        for attempt in range(1, MAX_FETCH_RETRIES + 1):
+            try:
+                stock = self.vn.stock(symbol=ticker, source="VCI")
+                df = stock.quote.history(
+                    start=start_date,
+                    end=end_date,
+                    interval=interval
+                )
+                if df is None or df.empty:
+                    raise ValueError(f"Empty OHLCV response from vnstock for {ticker}")
+
+                standardized = df.copy()
+                if "time" in standardized.columns and "date" not in standardized.columns:
+                    standardized = standardized.rename(columns={"time": "date"})
+
+                required = {"date", "open", "high", "low", "close", "volume"}
+                missing = required - set(standardized.columns)
+                if missing:
+                    raise ValueError(f"Missing OHLCV columns from vnstock for {ticker}: {sorted(missing)}")
+
+                standardized["date"] = pd.to_datetime(standardized["date"]).dt.normalize()
+                start_ts = pd.Timestamp(start_date).normalize()
+                end_ts = pd.Timestamp(end_date).normalize()
+                standardized = standardized[
+                    (standardized["date"] >= start_ts) & (standardized["date"] <= end_ts)
+                ].copy()
+                if standardized.empty:
+                    raise ValueError(
+                        f"Filtered OHLCV response is empty for {ticker} inside {start_ts.date()} to {end_ts.date()}"
+                    )
+                for column in ("open", "high", "low", "close", "volume"):
+                    standardized[column] = pd.to_numeric(standardized[column], errors="coerce")
+                standardized = standardized.dropna(subset=["date", "open", "high", "low", "close"])
+                standardized["volume"] = standardized["volume"].fillna(0.0)
+                standardized["ticker"] = ticker
+                standardized = (
+                    standardized.sort_values("date")
+                    .drop_duplicates(subset=["date"], keep="last")
+                    .reset_index(drop=True)
+                )
+                if standardized.empty:
+                    raise ValueError(f"Standardized OHLCV response is empty for {ticker}")
+                return standardized[["date", "ticker", "open", "high", "low", "close", "volume"]]
+            except Exception as e:
+                last_error = e
+                if attempt < MAX_FETCH_RETRIES:
+                    logger.warning(
+                        "ohlcv_fetch_retry",
+                        symbol=ticker,
+                        attempt=attempt,
+                        max_attempts=MAX_FETCH_RETRIES,
+                        error=str(e),
+                    )
+                    time.sleep(BASE_RETRY_DELAY_SECONDS * attempt)
+                else:
+                    logger.error(
+                        "ohlcv_fetch_error",
+                        symbol=ticker,
+                        attempts=MAX_FETCH_RETRIES,
+                        error=str(e),
+                    )
         return pd.DataFrame()
 
     def get_ohlc(

@@ -1,0 +1,2 @@
+fold_id,fold_number,train_start,train_end,eval_start,eval_end,training_window_mode,status,benchmark_source_used,rows_analyzed,bull_count,sideway_count,bear_count,available_algorithms,skipped_algorithms
+fold_004,4,2020-01-01,2024-06-23,2024-06-24,2024-08-22,expanding,completed,vnstock_index,1584,120,1200,264,"cart,xgboost,lightgbm",[]

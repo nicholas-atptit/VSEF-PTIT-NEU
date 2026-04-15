@@ -28,12 +28,12 @@ def test_get_ohlcv_standardization(mock_vnstock):
     """Test that get_ohlcv renames 'time' to 'date' and normalizes it."""
     # Setup mock data
     mock_df = pd.DataFrame({
-        "time": ["2024-01-01"],
-        "open": [30.0],
-        "high": [31.0],
-        "low": [29.0],
-        "close": [30.5],
-        "volume": [1000000]
+        "time": ["2024-01-02", "2024-01-01", "2024-01-01"],
+        "open": [31.0, 30.0, 29.9],
+        "high": [32.0, 31.0, 31.0],
+        "low": [30.0, 29.0, 29.1],
+        "close": [31.5, 30.5, 30.4],
+        "volume": [1100000, 1000000, 1000001]
     })
     
     mock_stock = MagicMock()
@@ -46,6 +46,10 @@ def test_get_ohlcv_standardization(mock_vnstock):
     assert "date" in df.columns
     assert "time" not in df.columns
     assert pd.api.types.is_datetime64_any_dtype(df["date"])
+    assert list(df.columns) == ["date", "ticker", "open", "high", "low", "close", "volume"]
+    assert df["ticker"].nunique() == 1
+    assert df["ticker"].iloc[0] == "SSI"
+    assert df["date"].tolist() == sorted(df["date"].tolist())
 
 def test_get_ohlc_compatibility_wrapper(mock_vnstock):
     """Legacy get_ohlc should delegate to the canonical get_ohlcv path."""

@@ -1,0 +1,66 @@
+{
+  "tickers": [
+    "DGC",
+    "ACB",
+    "MWG",
+    "HPG"
+  ],
+  "train_start": "2020-01-01",
+  "train_end": "2025-12-31",
+  "eval_start": "2026-01-01",
+  "eval_end": "2026-04-10",
+  "output_dir": "artifacts\\backtest_model_comparison",
+  "algorithms": [
+    "cart",
+    "xgboost",
+    "lightgbm",
+    "sarimax",
+    "ets"
+  ],
+  "primary_algorithm": null,
+  "interval": "1D",
+  "horizon_name": "daily",
+  "horizon_days": 1,
+  "sequence_length": 20,
+  "hidden_size": 64,
+  "num_layers": 2,
+  "dropout": 0.2,
+  "learning_rate": 0.001,
+  "batch_size": 32,
+  "epochs": 30,
+  "patience": 5,
+  "max_depth": 4,
+  "min_samples_split": 2,
+  "min_samples_leaf": 1,
+  "criterion": null,
+  "validation_fraction": 0.15,
+  "validation_min_rows": 20,
+  "min_train_rows": 60,
+  "clean_model_dir": true,
+  "beats_baseline_rule": "majority_of_metrics",
+  "source": "vnstock",
+  "fetch_start": "2019-07-05",
+  "available_algorithms": [
+    "cart",
+    "xgboost",
+    "lightgbm"
+  ],
+  "skipped_algorithms": [
+    {
+      "algorithm": "sarimax",
+      "reason": "No module named 'statsmodels'"
+    },
+    {
+      "algorithm": "ets",
+      "reason": "No module named 'statsmodels'"
+    }
+  ],
+  "output_files": {
+    "predicted_vs_actual": "artifacts\\backtest_model_comparison\\predicted_vs_actual.csv",
+    "model_comparison": "artifacts\\backtest_model_comparison\\model_comparison.csv",
+    "overall_model_ranking": "artifacts\\backtest_model_comparison\\overall_model_ranking.csv",
+    "run_config": "artifacts\\backtest_model_comparison\\run_config.json",
+    "fetch_summary": "artifacts\\backtest_model_comparison\\fetch_summary.csv",
+    "training_summary": "artifacts\\backtest_model_comparison\\training_summary.csv"
+  }
+}

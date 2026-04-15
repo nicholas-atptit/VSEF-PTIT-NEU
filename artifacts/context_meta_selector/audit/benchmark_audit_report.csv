@@ -1,0 +1,6 @@
+check_name,status,details
+saved_summary_matches_recomputed_summary,pass,max_numeric_delta=0.000000000000
+fixed_best_global_distinct_from_naive_definition,pass,At least one fold selected a distinct candidate definition.
+aggregation_grouping_bug_detected,pass,No duplicate entity rows or summary recomputation mismatch was found.
+effectively_identical_baselines_found,warning,Some baselines share the same broad row-universe averages because they resolve to the same selected model/horizon.
+metric_scope_interpretation,pass,average_actual_return and profit_label_hit_rate summarize all selected rows for the chosen candidate; ranking differentiation appears mainly in top-k metrics when candidate row universes overlap.

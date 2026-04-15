@@ -21,6 +21,7 @@ MODEL_EXTENSIONS = {
 TASK_PREFIXES = {
     "trend": "trend_classifier",
     "return": "return_regressor",
+    "profit": "profit_classifier",
 }
 
 

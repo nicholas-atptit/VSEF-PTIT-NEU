@@ -1,0 +1,16 @@
+selector_mode,regime,selected_model_name,selected_horizon,selected_combined_method,selected_return_threshold,selected_probability_threshold,folds_selected,rows_selected,mean_prior_utility_score,utility_score_std,fallback_count,candidate_label
+fallback_global,bear,xgboost,5d,combined_weighted_linear_gated,0.0,0.5,1,44,0.4350582444988179,1.1102230246251565e-16,0,xgboost+5d+combined_weighted_linear_gated+rt=0.000+pt=0.50
+fallback_global,bull,xgboost,20d,predicted_return,,,3,192,0.9938572257469055,0.002486998808805691,0,xgboost+20d+predicted_return
+fallback_global,bull,xgboost,20d,combined_weighted_linear_gated,0.0,0.5,1,48,0.9999999999999999,0.0,0,xgboost+20d+combined_weighted_linear_gated+rt=0.000+pt=0.50
+fallback_global,sideway,xgboost,20d,predicted_return,,,3,296,0.9959926334672982,0.0024747073769948924,0,xgboost+20d+predicted_return
+fallback_global,sideway,xgboost,20d,combined_weighted_linear_gated,0.0,0.5,1,100,0.9999999999999999,0.0,0,xgboost+20d+combined_weighted_linear_gated+rt=0.000+pt=0.50
+regime_weighted_rank,bear,xgboost,5d,combined_weighted_linear_gated,0.0,0.5,1,44,0.4350582444988179,1.1102230246251565e-16,44,xgboost+5d+combined_weighted_linear_gated+rt=0.000+pt=0.50
+regime_weighted_rank,bull,lightgbm,20d,combined_weighted_linear_gated,0.0,0.65,3,104,0.9921710988541856,0.0015765127100423252,0,lightgbm+20d+combined_weighted_linear_gated+rt=0.000+pt=0.65
+regime_weighted_rank,bull,xgboost,20d,predicted_return,,,1,136,0.9924280728712612,0.0,136,xgboost+20d+predicted_return
+regime_weighted_rank,sideway,xgboost,20d,predicted_return,,,3,296,0.9606767428029939,0.011055189571219076,32,xgboost+20d+predicted_return
+regime_weighted_rank,sideway,xgboost,20d,combined_rank_based,,,1,100,0.9612291805157294,3.3306690738754696e-16,0,xgboost+20d+combined_rank_based
+simple_regime_lookup,bear,xgboost,5d,combined_weighted_linear_gated,0.0,0.5,1,44,0.4350582444988179,1.1102230246251565e-16,44,xgboost+5d+combined_weighted_linear_gated+rt=0.000+pt=0.50
+simple_regime_lookup,bull,lightgbm,20d,combined_weighted_linear_gated,0.0,0.65,3,104,0.9921710988541856,0.0015765127100423252,0,lightgbm+20d+combined_weighted_linear_gated+rt=0.000+pt=0.65
+simple_regime_lookup,bull,xgboost,20d,predicted_return,,,1,136,0.9924280728712612,0.0,136,xgboost+20d+predicted_return
+simple_regime_lookup,sideway,xgboost,20d,predicted_return,,,3,296,0.9606767428029939,0.011055189571219076,32,xgboost+20d+predicted_return
+simple_regime_lookup,sideway,xgboost,20d,combined_rank_based,,,1,100,0.9612291805157294,3.3306690738754696e-16,0,xgboost+20d+combined_rank_based

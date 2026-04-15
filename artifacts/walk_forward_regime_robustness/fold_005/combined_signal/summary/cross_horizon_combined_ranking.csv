@@ -1,0 +1,4 @@
+horizon,best_model_by_combined_topk_return,best_model_by_combined_topk_profit_rate,best_model_by_strong_positive_precision,models_combined_improve_over_return_only,models_combined_improve_over_probability_only,mean_combined_minus_return_only_avg_return,mean_combined_minus_probability_only_profit_rate,horizon_improvement_score,horizon_rank
+20d,cart,cart,cart,2,2,0.0006328846531883561,0.015432098765432103,4,1
+5d,cart,cart,cart,2,2,0.0003927136147901071,-0.00037037037037035425,4,2
+3d,cart,lightgbm,cart,0,1,-0.0034201745070508147,0.03745148123106201,1,3

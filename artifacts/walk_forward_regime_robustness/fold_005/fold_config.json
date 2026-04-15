@@ -1,0 +1,68 @@
+{
+  "tickers": [
+    "DGC",
+    "ACB",
+    "MWG",
+    "HPG"
+  ],
+  "train_start": "2020-01-01",
+  "first_eval_start": "2023-01-01",
+  "last_eval_end": "2026-04-10",
+  "eval_window_days": 60,
+  "step_size_days": 180,
+  "max_folds": 5,
+  "horizons": [
+    "3d",
+    "5d",
+    "20d"
+  ],
+  "algorithms": [
+    "cart",
+    "xgboost",
+    "lightgbm"
+  ],
+  "training_window_mode": "expanding",
+  "rolling_train_window_days": null,
+  "output_dir": "artifacts\\walk_forward_regime_robustness",
+  "benchmark_symbol": "VNINDEX",
+  "benchmark_source": "vnindex_or_market_proxy",
+  "benchmark_path": null,
+  "regime_lookback_days": 20,
+  "bull_threshold": 0.03,
+  "bear_threshold": -0.03,
+  "return_thresholds": [
+    0.0,
+    0.005,
+    0.01,
+    0.02
+  ],
+  "probability_thresholds": [
+    0.5,
+    0.55,
+    0.6,
+    0.65
+  ],
+  "w_return": 0.5,
+  "w_profit": 0.5,
+  "top_k_values": [
+    1,
+    3,
+    5
+  ],
+  "fold_retry_count": 2,
+  "fold_retry_backoff_seconds": 2.0,
+  "continue_on_fold_error": true,
+  "reuse_completed_folds": true,
+  "fold_id": "fold_005",
+  "fold_number": 5,
+  "train_end": "2024-12-20",
+  "eval_start": "2024-12-21",
+  "eval_end": "2025-02-18",
+  "status": "completed",
+  "analysis_only": true,
+  "live_execution_enabled": false,
+  "dual_task_output_dir": "H:\\AI-ML-LLM in Stock_march26_PTIT_NEU\\artifacts\\walk_forward_regime_robustness\\fold_005\\dual_task",
+  "combined_signal_output_dir": "H:\\AI-ML-LLM in Stock_march26_PTIT_NEU\\artifacts\\walk_forward_regime_robustness\\fold_005\\combined_signal",
+  "regime_aware_output_dir": "H:\\AI-ML-LLM in Stock_march26_PTIT_NEU\\artifacts\\walk_forward_regime_robustness\\fold_005\\regime_aware",
+  "benchmark_source_used": "vnstock_index"
+}

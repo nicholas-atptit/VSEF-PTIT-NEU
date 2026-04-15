@@ -1,0 +1,25 @@
+entity_name_left,entity_name_right,same_average_actual_return,same_profit_label_hit_rate,same_top_3_avg_return,same_top_3_profit_rate,same_candidate_label_across_folds,same_model_horizon_across_folds,interpretation
+fixed_best_classifier_model,fixed_best_combined_method,True,True,False,False,False,True,effectively identical in practice
+fixed_best_classifier_model,fixed_best_global_setup,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_classifier_model,fixed_best_horizon,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_classifier_model,fixed_best_regression_model,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_classifier_model,naive_global_baseline,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_classifier_model,regime_agnostic_top_ranked_setup,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_combined_method,fixed_best_global_setup,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_combined_method,fixed_best_horizon,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_combined_method,fixed_best_regression_model,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_combined_method,naive_global_baseline,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_combined_method,regime_agnostic_top_ranked_setup,True,True,False,False,False,False,metrics align but candidate definitions differ
+fixed_best_global_setup,fixed_best_horizon,True,True,True,True,True,True,effectively identical in practice
+fixed_best_global_setup,fixed_best_regression_model,True,True,True,True,True,True,effectively identical in practice
+fixed_best_global_setup,naive_global_baseline,True,True,False,False,False,True,effectively identical in practice
+fixed_best_global_setup,regime_agnostic_top_ranked_setup,True,True,True,True,True,True,effectively identical in practice
+fixed_best_horizon,fixed_best_regression_model,True,True,True,True,True,True,effectively identical in practice
+fixed_best_horizon,naive_global_baseline,True,True,False,False,False,True,effectively identical in practice
+fixed_best_horizon,regime_agnostic_top_ranked_setup,True,True,True,True,True,True,effectively identical in practice
+fixed_best_regression_model,naive_global_baseline,True,True,False,False,False,True,effectively identical in practice
+fixed_best_regression_model,regime_agnostic_top_ranked_setup,True,True,True,True,True,True,effectively identical in practice
+naive_global_baseline,regime_agnostic_top_ranked_setup,True,True,False,False,False,True,effectively identical in practice
+fallback_global,regime_weighted_rank,True,True,False,False,False,False,metrics align but candidate definitions differ
+fallback_global,simple_regime_lookup,True,True,False,False,False,False,metrics align but candidate definitions differ
+regime_weighted_rank,simple_regime_lookup,True,True,True,True,False,False,metrics align but candidate definitions differ

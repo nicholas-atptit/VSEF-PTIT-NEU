@@ -1,0 +1,6 @@
+component,best_overall_choice,stability_level,supporting_evidence,caution_note
+best context selector,context_knn_selector,medium,"context_knn_selector avg_return=0.0170, top3=0.0195",Treat any edge as provisional until more folds accumulate.
+context selector vs fixed baselines,fixed baseline still stronger,low,best_context=context_knn_selector (0.0170) vs best_baseline=naive_global_baseline (0.0211),The strongest baseline remains competitive on top-k metrics.
+context selector vs regime selector,context_bin_lookup,low,context_bin_lookup vs fallback_global top3_delta=-0.0059,The context edge is modest and can disappear in weaker folds.
+most frequent context-conditioned setup,xgboost+20d+predicted_return,medium,selected in 3 folds and 287 rows,"Frequent reuse suggests family-level stability, not configuration-level certainty."
+benchmark audit,audited,low,Some baselines share the same broad row-universe averages because they resolve to the same selected model/horizon.,"Equal summary rows need interpretation through candidate traces, not raw averages alone."

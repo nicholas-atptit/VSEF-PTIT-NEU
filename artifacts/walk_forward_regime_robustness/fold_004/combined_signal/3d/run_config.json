@@ -1,0 +1,48 @@
+{
+  "analysis_only": true,
+  "live_execution_enabled": false,
+  "dual_task_source_dir": "H:\\AI-ML-LLM in Stock_march26_PTIT_NEU\\artifacts\\walk_forward_regime_robustness\\fold_004\\dual_task",
+  "joined_evaluation_path": "H:\\AI-ML-LLM in Stock_march26_PTIT_NEU\\artifacts\\walk_forward_regime_robustness\\fold_004\\dual_task\\summary\\joined_regression_classification_evaluation.csv",
+  "horizon": "3d",
+  "ranking_group": "date",
+  "top_k_values": [
+    1,
+    3,
+    5
+  ],
+  "return_thresholds": [
+    0.0,
+    0.005,
+    0.01,
+    0.02
+  ],
+  "probability_thresholds": [
+    0.5,
+    0.55,
+    0.6,
+    0.65
+  ],
+  "w_return": 0.5,
+  "w_profit": 0.5,
+  "label_thresholds": {
+    "return_base": 0.0,
+    "return_low": 0.005,
+    "return_high": 0.02,
+    "probability_base": 0.5,
+    "probability_low": 0.55,
+    "probability_high": 0.65
+  },
+  "rows_analyzed": 528,
+  "models": [
+    "cart",
+    "lightgbm",
+    "xgboost"
+  ],
+  "tickers": [
+    "ACB",
+    "DGC",
+    "HPG",
+    "MWG"
+  ],
+  "no_leakage_reused_from_dual_task_outputs": true
+}

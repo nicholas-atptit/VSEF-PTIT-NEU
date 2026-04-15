@@ -33,23 +33,45 @@ LEGACY_COMPATIBILITY_COLUMNS = {
 VN100_DAILY_FEATURES: List[str] = [
     "prev_close",
     "close_to_close_return_1d",
+    "close_return_2d",
+    "close_return_3d",
     "open_to_close_return_1d",
     "overnight_return_1d",
+    "open_close_spread",
+    "open_close_spread_pct",
+    "high_low_range",
     "high_low_range_pct",
     "true_range",
     "atr_14",
+    "atr_proxy_5",
+    "atr_proxy_10",
+    "close_mean_5",
+    "close_mean_10",
+    "close_mean_20",
+    "close_std_5",
+    "close_std_10",
+    "close_std_20",
     "return_3d",
     "return_5d",
     "return_10d",
     "return_20d",
     "volume_ma_5",
+    "volume_ma_10",
     "volume_ma_20",
+    "volume_shock_5",
+    "volume_shock_10",
+    "volume_shock_20",
     "volume_ratio_5",
     "volume_ratio_20",
     "value_ratio_5",
     "value_ratio_20",
     "rolling_volatility_5",
+    "rolling_volatility_10",
     "rolling_volatility_20",
+    "rsi_14",
+    "macd_line",
+    "macd_signal",
+    "macd_hist",
 ]
 
 
@@ -95,6 +117,20 @@ def compute_bollinger_bands(series: pd.Series, window: int = 20, num_std: float 
     upper = rolling_mean + (rolling_std * num_std)
     lower = rolling_mean - (rolling_std * num_std)
     return upper, lower
+
+
+def compute_macd(
+    series: pd.Series,
+    fast: int = 12,
+    slow: int = 26,
+    signal: int = 9,
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    ema_fast = series.ewm(span=fast, adjust=False, min_periods=fast).mean()
+    ema_slow = series.ewm(span=slow, adjust=False, min_periods=slow).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False, min_periods=signal).mean()
+    hist = macd_line - signal_line
+    return macd_line, signal_line, hist
 
 class FeatureEngineer:
     """Computes quantitative features from daily OHLCV data."""
@@ -165,7 +201,13 @@ class FeatureEngineer:
 
     def _add_delta_features(self, df: pd.DataFrame) -> pd.DataFrame:
         exclude = {"date", "ticker", "open", "high", "low", "close", "volume"}
-        feat_cols = [c for c in df.columns if c not in exclude and not c.startswith('d_')]
+        feat_cols = [
+            c
+            for c in df.columns
+            if c not in exclude
+            and not c.startswith('d_')
+            and pd.api.types.is_numeric_dtype(df[c])
+        ]
         delta_map = {f"d_{col}": df[col] - df[col].shift(1) for col in feat_cols}
         if not delta_map:
             return df
@@ -202,6 +244,11 @@ class FeatureEngineer:
 
     def _add_advanced_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         df["rsi"] = compute_rsi(df["close"], window=14)
+        df["rsi_14"] = df["rsi"]
+        macd_line, signal_line, macd_hist = compute_macd(df["close"])
+        df["macd_line"] = macd_line
+        df["macd_signal"] = signal_line
+        df["macd_hist"] = macd_hist
         bb_upper, bb_lower = compute_bollinger_bands(df["close"], window=20, num_std=2.0)
         df["bb_upper"] = bb_upper
         df["bb_lower"] = bb_lower
@@ -218,20 +265,35 @@ class FeatureEngineer:
     def _add_vn100_daily_features(self, df: pd.DataFrame) -> pd.DataFrame:
         df["prev_close"] = df["close"].shift(1)
         df["close_to_close_return_1d"] = df["close"].pct_change()
+        df["close_return_1d"] = df["close_to_close_return_1d"]
+        df["close_return_2d"] = df["close"].pct_change(2)
+        df["close_return_3d"] = df["close"].pct_change(3)
+        df["close_return_5d"] = df["close"].pct_change(5)
+        df["close_return_10d"] = df["close"].pct_change(10)
+        df["close_return_20d"] = df["close"].pct_change(20)
         df["open_to_close_return_1d"] = (df["close"] - df["open"]) / (df["open"] + 1e-9)
+        df["open_close_spread"] = df["open"] - df["close"]
+        df["open_close_spread_pct"] = (df["open"] - df["close"]) / (df["close"] + 1e-9)
         df["overnight_return_1d"] = (df["open"] - df["close"].shift(1)) / (df["close"].shift(1) + 1e-9)
+        df["high_low_range"] = df["high"] - df["low"]
         df["high_low_range_pct"] = (df["high"] - df["low"]) / (df["low"] + 1e-9)
         df["true_range"] = np.maximum(df["high"] - df["low"], 
                                       np.maximum(abs(df["high"] - df["close"].shift(1)), 
                                                  abs(df["low"] - df["close"].shift(1))))
         df["atr_14"] = df["true_range"].rolling(14).mean()
+        df["atr_proxy_5"] = df["true_range"].rolling(5).mean()
+        df["atr_proxy_10"] = df["true_range"].rolling(10).mean()
         df["return_3d"] = df["close"].pct_change(3)
         df["return_5d"] = df["close"].pct_change(5)
         df["return_10d"] = df["close"].pct_change(10)
         df["return_20d"] = df["close"].pct_change(20)
+        for w in [5, 10, 20]:
+            df[f"close_mean_{w}"] = df["close"].rolling(w).mean()
+            df[f"close_std_{w}"] = df["close"].rolling(w).std()
         
-        for w in [5, 20]:
+        for w in [5, 10, 20]:
             df[f"volume_ma_{w}"] = df["volume"].rolling(w).mean()
+            df[f"volume_shock_{w}"] = df["volume"] / (df[f"volume_ma_{w}"] + 1e-9)
             df[f"rolling_volatility_{w}"] = df["pct_return"].rolling(w).std()
             _turnover = df["close"] * df["volume"]
             df[f"value_ratio_{w}"] = _turnover / (_turnover.rolling(w).mean() + 1e-9)

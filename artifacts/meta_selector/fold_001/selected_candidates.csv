@@ -1,0 +1,1 @@
+date,prediction_date,ticker,regime,selector_mode,selected_model_name,selected_horizon,selected_combined_method,selection_reason,actual_return,predicted_return,predicted_profit_probability,combined_score,actual_profit_label

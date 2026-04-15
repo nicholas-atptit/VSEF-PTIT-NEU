@@ -1,0 +1,3 @@
+regime,best_regression_model,best_regression_horizon,best_classification_model,best_classification_horizon,best_combined_method,best_combined_model,best_horizon,key_takeaway
+bull,lightgbm,5d,cart,3d,combined_weighted_linear_gated,xgboost,5d,Combined ranking is selective and profitable in this regime.
+sideway,lightgbm,3d,cart,5d,combined_weighted_linear_gated,cart,5d,"Return forecasts are relatively stable, but combined ranking remains mixed."

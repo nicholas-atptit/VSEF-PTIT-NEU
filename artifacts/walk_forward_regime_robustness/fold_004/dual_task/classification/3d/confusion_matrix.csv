@@ -1,0 +1,16 @@
+ticker,model_name,true_negative,false_positive,false_negative,true_positive
+ACB,cart,25,4,13,2
+ACB,lightgbm,28,1,15,0
+ACB,xgboost,29,0,15,0
+DGC,cart,10,15,5,14
+DGC,lightgbm,23,2,18,1
+DGC,xgboost,20,5,19,0
+HPG,cart,24,10,4,6
+HPG,lightgbm,27,7,7,3
+HPG,xgboost,28,6,5,5
+MWG,cart,13,8,7,16
+MWG,lightgbm,15,6,10,13
+MWG,xgboost,18,3,11,12
+OVERALL,cart,72,37,29,38
+OVERALL,lightgbm,93,16,50,17
+OVERALL,xgboost,95,14,50,17

@@ -1,0 +1,4 @@
+regime,best_regression_model,best_regression_horizon,best_classification_model,best_classification_horizon,best_combined_method,best_combined_model,best_horizon,key_takeaway
+bull,xgboost,3d,lightgbm,20d,combined_weighted_linear_gated,cart,3d,Combined ranking is selective and profitable in this regime.
+sideway,lightgbm,3d,xgboost,20d,combined_rank_based,lightgbm,20d,Combined ranking is selective and profitable in this regime.
+bear,lightgbm,3d,lightgbm,5d,combined_weighted_linear_gated,xgboost,3d,Combined ranking is selective and profitable in this regime.

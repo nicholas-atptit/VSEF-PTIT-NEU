@@ -1,0 +1,5 @@
+ticker,source,rows,requested_eval_start,requested_eval_end,first_tradable_date,last_tradable_date,fetched_min_date,fetched_max_date,eval_rows,horizon,strategy_signal_rows,strategy_signal_start,strategy_signal_end
+ACB,vnstock,65,2026-01-01,2026-04-10,2026-01-05,2026-04-10,2026-01-05,2026-04-10,65,5d,60,2026-01-05,2026-04-03
+DGC,vnstock,65,2026-01-01,2026-04-10,2026-01-05,2026-04-10,2026-01-05,2026-04-10,65,5d,60,2026-01-05,2026-04-03
+HPG,vnstock,65,2026-01-01,2026-04-10,2026-01-05,2026-04-10,2026-01-05,2026-04-10,65,5d,60,2026-01-05,2026-04-03
+MWG,vnstock,65,2026-01-01,2026-04-10,2026-01-05,2026-04-10,2026-01-05,2026-04-10,65,5d,60,2026-01-05,2026-04-03
