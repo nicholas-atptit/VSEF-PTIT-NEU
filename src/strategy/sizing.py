@@ -43,6 +43,8 @@ def _row_position_size(
     max_position_size: float,
     min_position_size: float,
     volatility_floor: float,
+    regime_size_multipliers: dict[str, float],
+    drawdown_state_multipliers: dict[str, float],
 ) -> float:
     signal = float(row.get("signal", 0.0) or 0.0)
     if signal == 0.0:
@@ -54,13 +56,18 @@ def _row_position_size(
     conviction = float(np.clip(conviction, 0.0, 1.0))
 
     risk_scale = max_position_size
-    for column in ("cvar_loss_95", "var_loss_95", "volatility"):
+    for column in ("vol_forecast", "volatility", "cvar_loss_95", "var_loss_95"):
         value = pd.to_numeric(pd.Series([row.get(column)]), errors="coerce").iloc[0]
         if pd.notna(value) and float(value) > 0:
             risk_scale = min(max_position_size, float(risk_budget) / max(float(value), volatility_floor))
             break
 
-    size = max(min_position_size, conviction * risk_scale)
+    regime_label = str(row.get("regime_label", "sideway") or "sideway").lower()
+    drawdown_state = str(row.get("drawdown_state", "normal") or "normal").lower()
+    regime_multiplier = float(regime_size_multipliers.get(regime_label, 1.0))
+    drawdown_multiplier = float(drawdown_state_multipliers.get(drawdown_state, 1.0))
+
+    size = max(min_position_size, conviction * risk_scale * regime_multiplier * drawdown_multiplier)
     return float(np.clip(size, 0.0, max_position_size))
 
 
@@ -78,6 +85,22 @@ def size_positions(
     max_position_size = float(config.get("max_position_size", 1.0))
     min_position_size = float(config.get("min_position_size", 0.0))
     volatility_floor = float(config.get("volatility_floor", 0.005))
+    regime_size_multipliers = {
+        "bull": 1.0,
+        "sideway": 0.75,
+        "bear": 0.35,
+    }
+    regime_size_multipliers.update(
+        {str(key).lower(): float(value) for key, value in dict(config.get("regime_size_multipliers", {})).items()}
+    )
+    drawdown_state_multipliers = {
+        "normal": 1.0,
+        "elevated": 0.6,
+        "severe": 0.25,
+    }
+    drawdown_state_multipliers.update(
+        {str(key).lower(): float(value) for key, value in dict(config.get("drawdown_state_multipliers", {})).items()}
+    )
 
     merged = _merge_signal_and_risk(validated, risk_df)
     merged["position_size"] = merged.apply(
@@ -87,6 +110,8 @@ def size_positions(
         max_position_size=max_position_size,
         min_position_size=min_position_size,
         volatility_floor=volatility_floor,
+        regime_size_multipliers=regime_size_multipliers,
+        drawdown_state_multipliers=drawdown_state_multipliers,
     )
     position_columns = [
         "timestamp",
@@ -103,9 +128,20 @@ def size_positions(
         "horizon",
         "window_id",
         "target_timestamp",
+        "regime_label",
+        "regime_prob_bull",
+        "regime_prob_bear",
+        "regime_prob_sideway",
+        "regime_source_model",
+        "vol_forecast",
         "volatility",
         "var_loss_95",
         "cvar_loss_95",
+        "drawdown_state",
+        "current_drawdown",
+        "max_drawdown",
+        "risk_source_model",
+        "risk_model",
     ]
     keep_columns = position_columns + [column for column in optional_columns if column in merged.columns]
     return validate_position_frame(merged[keep_columns])
