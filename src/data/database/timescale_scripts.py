@@ -1,7 +1,8 @@
-"""Raw SQL Scripts for TimescaleDB Setup and Adjustments.
+"""TimescaleDB helper utilities aligned with the Alembic-owned schema.
 
-Sets up Hypertables, Continuous Aggregates, and triggers for
-automatic backward adjustment of prices on corporate actions.
+The canonical candle source is `raw_prices`. Continuous aggregates should be
+built from raw market data by default because `adjusted_prices` is a derived
+table that may be refreshed after new corporate actions arrive.
 """
 
 from __future__ import annotations
@@ -9,118 +10,218 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.utils.logging import get_logger
 
-async def create_stock_price_hypertable(session: AsyncSession) -> None:
-    """Turn the standard PostgreSQL table into a TimescaleDB Hypertable.
-    
-    Partitions data by `timestamp` column and additionally by `ticker`
-    to optimize chunk exclusion during standard single-stock querying.
+logger = get_logger(__name__)
+
+_ALLOWED_AGGREGATE_SOURCES = {"raw_prices", "adjusted_prices"}
+
+_REFRESH_ADJUSTED_PRICES_SQL = text(
     """
-    # Requires existing standard table `stock_prices` with primary key (ticker, timestamp)
+    WITH refreshed AS (
+        SELECT
+            rp.timestamp,
+            rp.ticker,
+            rp.exchange,
+            rp.timeframe,
+            rp.open,
+            rp.high,
+            rp.low,
+            rp.close,
+            rp.volume,
+            COALESCE(
+                EXP(
+                    SUM(
+                        LN(ca.factor::double precision)
+                    ) FILTER (
+                        WHERE ca.event_date > rp.timestamp::date
+                    )
+                ),
+                1.0
+            ) AS cumulative_factor,
+            STRING_AGG(
+                COALESCE(ca.description, ca.action_type || ' @ ' || ca.event_date::text),
+                '; ' ORDER BY ca.event_date
+            ) FILTER (
+                WHERE ca.event_date > rp.timestamp::date
+            ) AS adjustment_reason
+        FROM raw_prices rp
+        LEFT JOIN corporate_actions ca
+            ON ca.ticker = rp.ticker
+        WHERE (:ticker IS NULL OR rp.ticker = :ticker)
+        GROUP BY
+            rp.timestamp,
+            rp.ticker,
+            rp.exchange,
+            rp.timeframe,
+            rp.open,
+            rp.high,
+            rp.low,
+            rp.close,
+            rp.volume
+    )
+    INSERT INTO adjusted_prices (
+        timestamp,
+        ticker,
+        exchange,
+        timeframe,
+        open,
+        high,
+        low,
+        close,
+        volume,
+        adjustment_factor,
+        adjustment_reason,
+        source
+    )
+    SELECT
+        timestamp,
+        ticker,
+        exchange,
+        timeframe,
+        ROUND((open * cumulative_factor)::numeric, 2),
+        ROUND((high * cumulative_factor)::numeric, 2),
+        ROUND((low * cumulative_factor)::numeric, 2),
+        ROUND((close * cumulative_factor)::numeric, 2),
+        CASE
+            WHEN cumulative_factor = 0 THEN volume
+            ELSE GREATEST(0, ROUND((volume / cumulative_factor)::numeric))::bigint
+        END,
+        ROUND(cumulative_factor::numeric, 8),
+        adjustment_reason,
+        'computed'
+    FROM refreshed
+    ON CONFLICT (timestamp, ticker) DO UPDATE SET
+        exchange = EXCLUDED.exchange,
+        timeframe = EXCLUDED.timeframe,
+        open = EXCLUDED.open,
+        high = EXCLUDED.high,
+        low = EXCLUDED.low,
+        close = EXCLUDED.close,
+        volume = EXCLUDED.volume,
+        adjustment_factor = EXCLUDED.adjustment_factor,
+        adjustment_reason = EXCLUDED.adjustment_reason,
+        source = EXCLUDED.source
+    """
+)
+
+
+async def ensure_price_hypertables(session: AsyncSession) -> None:
+    """Ensure the canonical price tables are Timescale hypertables."""
     sql = """
-    -- 1. Create Hypertable
     SELECT create_hypertable(
-        'stock_prices',
+        'raw_prices',
         'timestamp',
-        chunk_time_interval => INTERVAL '1 day',
+        chunk_time_interval => INTERVAL '1 month',
         if_not_exists => TRUE
     );
 
-    -- 2. Add an index on ticker to speed up filtering
-    CREATE INDEX IF NOT EXISTS ix_stock_prices_ticker_time ON stock_prices (ticker, timestamp DESC);
-    """
-    await session.execute(text(sql))
-    await session.commit()
-
-
-async def create_continuous_aggregates(session: AsyncSession) -> None:
-    """Create Materialized Views for M5, M15, H1 charting."""
-    # Assuming the base table stores M1 (1-minute) data
-    sql = """
-    -- M5 Candle Aggregation
-    CREATE MATERIALIZED VIEW IF NOT EXISTS ohlcv_m5
-    WITH (timescaledb.continuous) AS
-    SELECT 
-        ticker,
-        time_bucket('5 minutes', timestamp) AS bucket,
-        first(open, timestamp) as open,
-        max(high) as high,
-        min(low) as low,
-        last(close, timestamp) as close,
-        sum(volume) as volume
-    FROM stock_prices
-    GROUP BY ticker, bucket;
-
-    -- Add refresh policy (e.g., refresh every 5 mins)
-    SELECT add_continuous_aggregate_policy('ohlcv_m5',
-        start_offset => INTERVAL '1 hour',
-        end_offset => NULL,
-        schedule_interval => INTERVAL '5 minutes'
-    ) ON CONFLICT DO NOTHING;
-    """
-    await session.execute(text(sql))
-    await session.commit()
-
-
-async def setup_backward_adjustment_triggers(session: AsyncSession) -> None:
-    """Setup trigger to recalculate `adj_factor` for backward prices.
-
-    When a dividend/split event is inserted into a hypothetial `corporate_actions` table,
-    this trigger mathematically walks backwards through the `stock_prices` hypertable
-    and updates `adj_factor`.
-    """
-    sql = """
-    -- 1. Ensure stock_prices has an adj_factor column
-    ALTER TABLE stock_prices ADD COLUMN IF NOT EXISTS adj_factor DOUBLE PRECISION DEFAULT 1.0;
-
-    -- 2. Create the Trigger Function
-    CREATE OR REPLACE FUNCTION apply_backward_adj_factor()
-    RETURNS TRIGGER AS $$
-    BEGIN
-        -- NEW contains (ticker, ex_date, multiplier)
-        -- Update all historical rows BEFORE the ex_date
-        UPDATE stock_prices
-        SET adj_factor = adj_factor * NEW.multiplier
-        WHERE ticker = NEW.ticker 
-          AND timestamp < NEW.ex_date;
-
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-
-    -- 3. Attach Trigger to corporate_actions table
-    -- (Assuming corporate_actions schema: id, ticker, ex_date, multiplier, event_type)
-    DROP TRIGGER IF EXISTS trigger_adj_factor ON corporate_actions;
-    
-    CREATE TRIGGER trigger_adj_factor
-    AFTER INSERT ON corporate_actions
-    FOR EACH ROW
-    EXECUTE FUNCTION apply_backward_adj_factor();
-    """
-    
-    # Needs a mock corporate_actions table schema just to compile trigger safely
-    setup_corp_table = """
-    CREATE TABLE IF NOT EXISTS corporate_actions (
-        id SERIAL PRIMARY KEY,
-        ticker VARCHAR(10) NOT NULL,
-        ex_date TIMESTAMP WITH TIME ZONE NOT NULL,
-        multiplier DOUBLE PRECISION NOT NULL,
-        event_type VARCHAR(50)
+    SELECT create_hypertable(
+        'adjusted_prices',
+        'timestamp',
+        chunk_time_interval => INTERVAL '1 month',
+        if_not_exists => TRUE
     );
+
+    CREATE INDEX IF NOT EXISTS ix_raw_prices_lookup
+        ON raw_prices (ticker, exchange, timeframe, timestamp DESC);
+
+    CREATE INDEX IF NOT EXISTS ix_adjusted_prices_lookup
+        ON adjusted_prices (ticker, exchange, timeframe, timestamp DESC);
+
+    CREATE INDEX IF NOT EXISTS ix_corp_actions_ticker_date
+        ON corporate_actions (ticker, event_date);
     """
-    await session.execute(text(setup_corp_table))
     await session.execute(text(sql))
     await session.commit()
 
 
-async def init_timescaledb_features(session: AsyncSession) -> None:
-    """Run all TimescaleDB infrastructural upgrades."""
+async def create_continuous_aggregates(
+    session: AsyncSession,
+    *,
+    source_table: str = "raw_prices",
+    base_timeframe: str = "1m",
+) -> None:
+    """Create idempotent Timescale continuous aggregates for candle rollups."""
+    if source_table not in _ALLOWED_AGGREGATE_SOURCES:
+        raise ValueError(f"Unsupported aggregate source table: {source_table}")
+
+    for view_name, bucket, schedule in (
+        ("ohlcv_5m", "5 minutes", "5 minutes"),
+        ("ohlcv_15m", "15 minutes", "15 minutes"),
+        ("ohlcv_1h", "1 hour", "1 hour"),
+    ):
+        sql = f"""
+        CREATE MATERIALIZED VIEW IF NOT EXISTS {view_name}
+        WITH (timescaledb.continuous) AS
+        SELECT
+            ticker,
+            exchange,
+            time_bucket(INTERVAL '{bucket}', timestamp) AS bucket,
+            first(open, timestamp) AS open,
+            max(high) AS high,
+            min(low) AS low,
+            last(close, timestamp) AS close,
+            sum(volume) AS volume
+        FROM {source_table}
+        WHERE timeframe = :base_timeframe
+        GROUP BY ticker, exchange, bucket
+        WITH NO DATA;
+        """
+        await session.execute(text(sql), {"base_timeframe": base_timeframe})
+        await session.execute(
+            text(
+                f"""
+                DO $$
+                BEGIN
+                    PERFORM add_continuous_aggregate_policy(
+                        '{view_name}',
+                        start_offset => INTERVAL '7 days',
+                        end_offset => INTERVAL '5 minutes',
+                        schedule_interval => INTERVAL '{schedule}'
+                    );
+                EXCEPTION
+                    WHEN duplicate_object THEN NULL;
+                END
+                $$;
+                """
+            )
+        )
+
+    await session.commit()
+
+
+async def refresh_adjusted_prices_from_corporate_actions(
+    session: AsyncSession,
+    *,
+    ticker: str | None = None,
+) -> None:
+    """Explicitly rebuild adjusted prices from `raw_prices` and `corporate_actions`.
+
+    This helper intentionally does not install an automatic trigger. Blind
+    backwards adjustments are risky because `adjusted_prices` is derived state
+    and the current schema still carries a non-trivial multi-timeframe key
+    design issue. Call this utility after loading or modifying corporate
+    actions instead.
+    """
+    normalized_ticker = ticker.upper().strip() if ticker else None
+    await session.execute(_REFRESH_ADJUSTED_PRICES_SQL, {"ticker": normalized_ticker})
+    await session.commit()
+
+
+async def init_timescaledb_features(
+    session: AsyncSession,
+    *,
+    aggregate_source_table: str = "raw_prices",
+    base_timeframe: str = "1m",
+) -> None:
+    """Initialize non-destructive Timescale features for canonical tables."""
     try:
-        await create_stock_price_hypertable(session)
-        await create_continuous_aggregates(session)
-        await setup_backward_adjustment_triggers(session)
-    except Exception as e:
-        # Ignore errors if TimescaleDB extension is not installed or tables don't exist
-        # This allows tests to pass gracefully on standard SQLite/Postgres setups.
-        import logging
-        logging.getLogger(__name__).warning(f"TimescaleDB init failed (expected in test env): {str(e)}")
+        await ensure_price_hypertables(session)
+        await create_continuous_aggregates(
+            session,
+            source_table=aggregate_source_table,
+            base_timeframe=base_timeframe,
+        )
+    except Exception as exc:
+        logger.warning("timescaledb_init_failed", error=str(exc))

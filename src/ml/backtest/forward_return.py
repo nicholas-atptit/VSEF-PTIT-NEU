@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
+from src.ml.metrics import compare_prediction_metric_sets, compute_prediction_error_metrics
 from src.ml.backtest.real_data import FixedWindowBacktestConfig, RealDataBacktestRunner
 from src.ml.models.factory import create_model
 from src.ml.trainer import DualModelTrainer
@@ -61,41 +62,7 @@ def _return_sign(values: pd.Series | np.ndarray | list[float]) -> pd.Series:
 
 
 def _compute_error_metrics(actual: pd.Series, predicted: pd.Series) -> dict[str, float]:
-    actual_numeric = pd.to_numeric(actual, errors="coerce")
-    predicted_numeric = pd.to_numeric(predicted, errors="coerce")
-    mask = actual_numeric.notna() & predicted_numeric.notna()
-    if not mask.any():
-        return {
-            "observations": 0,
-            "mae": np.nan,
-            "rmse": np.nan,
-            "mape": np.nan,
-            "directional_accuracy": np.nan,
-        }
-
-    actual_filtered = actual_numeric.loc[mask]
-    predicted_filtered = predicted_numeric.loc[mask]
-    errors = predicted_filtered - actual_filtered
-    abs_errors = errors.abs()
-    non_zero_actual = actual_filtered.abs() > 0
-    mape = np.nan
-    if non_zero_actual.any():
-        mape = float((abs_errors.loc[non_zero_actual] / actual_filtered.loc[non_zero_actual].abs()).mean() * 100.0)
-    actual_sign = _return_sign(actual_filtered)
-    predicted_sign = _return_sign(predicted_filtered)
-    directional_mask = actual_sign.notna() & predicted_sign.notna()
-    directional_accuracy = np.nan
-    if directional_mask.any():
-        directional_accuracy = float(
-            (actual_sign.loc[directional_mask] == predicted_sign.loc[directional_mask]).mean()
-        )
-    return {
-        "observations": int(mask.sum()),
-        "mae": float(abs_errors.mean()),
-        "rmse": float(np.sqrt(np.mean(np.square(errors)))),
-        "mape": mape,
-        "directional_accuracy": directional_accuracy,
-    }
+    return compute_prediction_error_metrics(actual, predicted)
 
 
 class ForwardReturnBacktestRunner(RealDataBacktestRunner):
@@ -296,21 +263,7 @@ class ForwardReturnBacktestRunner(RealDataBacktestRunner):
 
     @staticmethod
     def _beats_baseline(model_metrics: dict[str, Any], baseline_metrics: dict[str, Any], *, rule: str) -> tuple[bool, dict[str, bool]]:
-        metric_wins = {
-            "mae": bool(model_metrics["mae"] < baseline_metrics["mae"]),
-            "rmse": bool(model_metrics["rmse"] < baseline_metrics["rmse"]),
-            "mape": bool(model_metrics["mape"] < baseline_metrics["mape"])
-            if not np.isnan(model_metrics["mape"]) and not np.isnan(baseline_metrics["mape"])
-            else False,
-            "directional_accuracy": bool(model_metrics["directional_accuracy"] > baseline_metrics["directional_accuracy"])
-            if not np.isnan(model_metrics["directional_accuracy"]) and not np.isnan(baseline_metrics["directional_accuracy"])
-            else False,
-        }
-        if rule == "majority_of_metrics":
-            beats = sum(metric_wins.values()) >= 3
-        else:
-            beats = metric_wins["rmse"]
-        return beats, metric_wins
+        return compare_prediction_metric_sets(model_metrics, baseline_metrics, rule=rule)
 
     def _build_metrics_summary(
         self,
@@ -717,6 +670,17 @@ class ForwardReturnBacktestRunner(RealDataBacktestRunner):
                 "source": "vnstock",
                 "task_type": self.config.task_type,
                 "target_type": self.config.target_type,
+                "benchmark_basis": "forward_return_regression_with_directional_sign_check_vs_naive_and_optional_momentum_baselines",
+                "comparable_tasks_only": True,
+                "evaluation_context": "fixed_window_target_date_forward_return_backtest",
+                "metric_semantics": {
+                    "artifact_scope": "forward_return_prediction_backtest",
+                    "prediction_metrics": "forward-return error metrics; not portfolio PnL metrics",
+                    "metric_basis": "evaluation window target dates",
+                    "financial_performance_metrics_included": False,
+                    "heuristic_scenario_risk_included": False,
+                    "comparability_warning": "These rankings compare forecast error and sign accuracy on a shared forward-return task only. They do not compare strategy PnL or risk calibration.",
+                },
                 "horizon_name": horizon_name,
                 "horizon": horizon_name,
                 "horizon_days": horizon_days,

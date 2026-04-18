@@ -270,6 +270,8 @@ Important design choice:
 
 - evaluation window is enforced on realized `target_date`
 - `prediction_date` is `target_date minus horizon trading days`
+- rankings in this layer compare forecast error and sign accuracy on the same forward-return task only
+- they do not measure portfolio PnL quality or uncertainty calibration quality
 
 ### 7.4 `strategy_backtest.py`
 
@@ -357,6 +359,45 @@ Purpose:
 
 - audit selector baselines
 - test context-conditioned selectors that use richer continuous market and prediction-state features
+
+## 8. Trust Boundaries
+
+The canonical research path is:
+
+- `src.ml.trainer.DualModelTrainer`
+- manifest-driven inference via `src.ml.inference.engine.InferenceEngine`
+- fixed-window benchmark layers under `src.ml.backtest`
+
+Interpretation boundaries:
+
+- `heuristic_scenario_risk` is a residual-based scenario layer around the point forecast
+- scenario `VaR` and `CVaR` values are simulated tail summaries, not calibrated forecast confidence and not guaranteed loss bounds
+- validation metrics, held-out test metrics, and backtest metrics are intentionally stored with explicit split semantics and should not be compared as if they came from the same evaluation regime
+- model-comparison artifacts rank comparable shared prediction tasks only; they do not provide a single unified truth ranking across prediction quality, portfolio performance, and uncertainty quality
+
+## 9. Artifact Schema Versioning
+
+Modern ML manifests now carry:
+
+- `manifest_schema_version`
+- `compatibility_version`
+- `artifact_created_by`
+
+Loader policy:
+
+- current manifests use the latest schema version
+- recently older manifests are normalized on load with backward-compatible defaults for risk semantics and evaluation metadata
+- deprecated compatibility surfaces such as `risk_assessment` remain additive aliases, not canonical output names
+
+## 10. Recommended Validation Path
+
+Before demo or research use, run:
+
+```bash
+python scripts/verify_ml_baseline.py --skip-inference
+```
+
+Use `--full-suite` only when the local environment can run the full `tests/ml/` tree cleanly. The focused gate is the intended reliability subset for the canonical modern path.
 
 It still builds on saved walk-forward and meta-selector artifacts instead of introducing a separate framework.
 

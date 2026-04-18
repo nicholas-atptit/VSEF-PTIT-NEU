@@ -48,3 +48,6 @@ def test_monte_carlo_output_structure():
     assert res["metadata"]["horizon"] == "mid"
     assert res["metadata"]["random_seed"] == 42
     assert res["metadata"]["simulations"] == 1000
+    assert res["metadata"]["risk_model_type"] == "residual_normal_scenario_simulation"
+    assert res["metadata"]["calibration_status"] == "heuristic_not_calibrated"
+    assert "not calibrated forecast confidence" in res["metadata"]["assumptions"]

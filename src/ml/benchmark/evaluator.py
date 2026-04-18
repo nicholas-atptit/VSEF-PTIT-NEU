@@ -2,6 +2,21 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Any
 from src.data.database.decision_card_schema import DecisionCard
+from src.ml.metrics import (
+    compute_annualized_volatility,
+    compute_average_drawdown,
+    compute_calmar_ratio,
+    compute_drawdown_series,
+    compute_exposure_ratio,
+    compute_max_drawdown,
+    compute_prediction_error_metrics,
+    compute_profit_factor,
+    compute_sharpe_ratio,
+    compute_signal_turnover,
+    compute_sortino_ratio,
+    compute_tail_loss,
+    compute_win_rate,
+)
 
 class MetricsEvaluator:
     """
@@ -45,8 +60,7 @@ class MetricsEvaluator:
 
     @staticmethod
     def drawdown_series(equity: np.ndarray) -> np.ndarray:
-        peak = np.maximum.accumulate(equity)
-        return (equity - peak) / (peak + 1e-9)
+        return compute_drawdown_series(equity).to_numpy(dtype=float)
 
     def evaluate_strategy(self, 
                           signal: np.ndarray | pd.Series, 
@@ -113,70 +127,38 @@ class MetricsEvaluator:
         return float((equity[-1] / equity[0])**(252 / n) - 1)
 
     def _calculate_annualized_volatility(self, returns: np.ndarray) -> float:
-        if len(returns) == 0:
-            return 0.0
-        return float(np.std(returns) * np.sqrt(252))
+        return compute_annualized_volatility(returns)
 
     def _calculate_sharpe(self, returns: np.ndarray, rfr: float = 0.0) -> float:
         """Annualized Sharpe = (Mean/Std) * sqrt(252)"""
-        std = np.std(returns)
-        mean_excess = np.mean(returns) - rfr
-        if std < 1e-12:
-            if mean_excess > 0:
-                return 1e6
-            if mean_excess < 0:
-                return -1e6
-            return 0.0
-        return float(mean_excess / std * np.sqrt(252))
+        if rfr != 0.0:
+            returns = np.asarray(returns, dtype=float) - float(rfr)
+        return compute_sharpe_ratio(returns)
 
     def _calculate_sortino(self, returns: np.ndarray, rfr: float = 0.0) -> float:
         """Annualized Sortino = (Mean/DownsideStd) * sqrt(252)"""
-        downside_returns = returns[returns < 0]
-        downside_std = np.std(downside_returns) if len(downside_returns) > 0 else 0.0
-        mean_excess = np.mean(returns) - rfr
-        if downside_std < 1e-12:
-            if mean_excess > 0:
-                return 1e6
-            if mean_excess < 0:
-                return -1e6
-            return 0.0
-        return float(mean_excess / downside_std * np.sqrt(252))
+        if rfr != 0.0:
+            returns = np.asarray(returns, dtype=float) - float(rfr)
+        return compute_sortino_ratio(returns)
 
     def _calculate_max_drawdown(self, equity: np.ndarray) -> float:
         """Max Drawdown = Peak-to-Trough percentage drop."""
-        return float(np.min(self.drawdown_series(equity)))
+        return compute_max_drawdown(equity)
 
     def _calculate_average_drawdown(self, drawdown: np.ndarray) -> float:
-        negative = drawdown[drawdown < 0]
-        if len(negative) == 0:
-            return 0.0
-        return float(np.mean(negative))
+        return compute_average_drawdown(drawdown)
 
     def _calculate_calmar(self, cagr: float, max_drawdown: float) -> float:
-        if abs(max_drawdown) < 1e-12:
-            return 0.0 if cagr == 0 else 1e6
-        return float(cagr / abs(max_drawdown))
+        return compute_calmar_ratio(cagr, max_drawdown)
 
     def _calculate_tail_loss(self, returns: np.ndarray, quantile: float = 0.05) -> float:
-        if len(returns) == 0:
-            return 0.0
-        cutoff = np.quantile(returns, quantile)
-        tail = returns[returns <= cutoff]
-        if len(tail) == 0:
-            return float(cutoff)
-        return float(np.mean(tail))
+        return compute_tail_loss(returns, quantile=quantile)
 
     def _calculate_turnover(self, signal: np.ndarray | pd.Series) -> float:
-        sig = np.asarray(signal, dtype=float)
-        if len(sig) < 2:
-            return 0.0
-        return float(np.sum(np.abs(np.diff(sig))))
+        return compute_signal_turnover(signal)
 
     def _calculate_exposure(self, signal: np.ndarray | pd.Series) -> float:
-        sig = np.asarray(signal, dtype=float)
-        if len(sig) == 0:
-            return 0.0
-        return float(np.mean(np.abs(sig)))
+        return compute_exposure_ratio(np.abs(np.asarray(signal, dtype=float)))
 
     def evaluate_prediction_quality(
         self,
@@ -185,33 +167,27 @@ class MetricsEvaluator:
         predicted_direction: np.ndarray | pd.Series,
         realized_direction: np.ndarray | pd.Series,
     ) -> Dict[str, float]:
-        pred_ret = np.asarray(predicted_returns, dtype=float)
-        real_ret = np.asarray(realized_returns, dtype=float)
-        pred_dir = np.asarray(predicted_direction, dtype=int)
-        real_dir = np.asarray(realized_direction, dtype=int)
-        if len(pred_ret) == 0:
+        metrics = compute_prediction_error_metrics(
+            actual=realized_returns,
+            predicted=predicted_returns,
+            actual_direction=realized_direction,
+            predicted_direction=predicted_direction,
+        )
+        if metrics["observations"] == 0:
             return {"rmse": 0.0, "mae": 0.0, "directional_accuracy": 0.0}
-        rmse = float(np.sqrt(np.mean((pred_ret - real_ret) ** 2)))
-        mae = float(np.mean(np.abs(pred_ret - real_ret)))
-        directional_accuracy = float(np.mean(pred_dir == real_dir)) if len(pred_dir) else 0.0
         return {
-            "rmse": round(rmse, 6),
-            "mae": round(mae, 6),
-            "directional_accuracy": round(directional_accuracy, 6),
+            "rmse": round(float(metrics["rmse"]), 6),
+            "mae": round(float(metrics["mae"]), 6),
+            "directional_accuracy": round(float(metrics["directional_accuracy"]), 6),
         }
 
     def _calculate_win_rate(self, returns: np.ndarray) -> float:
         """Win Rate = count_positive / count_nonzero."""
-        active_returns = returns[returns != 0]
-        if len(active_returns) == 0: return 0.0
-        return float(np.sum(active_returns > 0) / len(active_returns))
+        return compute_win_rate(returns, ignore_zero_returns=True)
 
     def _calculate_profit_factor(self, returns: np.ndarray) -> float:
         """Profit Factor = Sum(Gains) / |Sum(Losses)|."""
-        gains = returns[returns > 0]
-        losses = returns[returns < 0]
-        if len(losses) == 0: return 10.0 if len(gains) > 0 else 0.0 # Cap at 10
-        return float(np.sum(gains) / np.abs(np.sum(losses)))
+        return compute_profit_factor(returns)
 
     def compare_vs_baseline(self, model_metrics: Dict[str, Any], baseline_metrics: Dict[str, Any]) -> Dict[str, Any]:
         """Comparison helper for reports."""
@@ -223,7 +199,11 @@ class MetricsEvaluator:
     
     # ── Legacy Compatibility ─────────────────────────────────────
     def evaluate_financial_metrics(self, decisions: List[DecisionCard]) -> Dict[str, Any]:
-        """Legacy hook used by existing simulators."""
+        """Legacy hook used by older simulator code paths.
+
+        The canonical research and demo path should use the manifest-driven
+        trainer and backtest layers instead of decision-card replay.
+        """
         if not decisions or len(decisions) < 2:
             return {"cagr": 0.0, "sharpe": 0.0, "max_drawdown": 0.0}
             

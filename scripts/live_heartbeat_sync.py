@@ -16,19 +16,31 @@ from sqlalchemy import create_engine, text
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
-from vnstock import Vnstock
+from src.data.adapters.vnstock_adapter import VnstockAdapter
 from src.utils.logging import get_logger
 
 logger = get_logger("live_sync")
 
-async def sync_ticker(engine, ticker, stock):
+async def sync_ticker(engine, ticker, days=1):
     try:
-        # Fetch 1m historical price (latest)
-        df = await asyncio.get_event_loop().run_in_executor(None, lambda: stock.quote.history(interval="1m", count_back=1))
+        import datetime as _dt
+        end_d = _dt.date.today()
+        start_d = end_d - _dt.timedelta(days=days)
+        adapter = VnstockAdapter(symbol_list=[ticker.upper()])
+        # Fetch via vnstock_data (canonical provider)
+        df = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: adapter.get_ohlcv(
+                ticker.upper(),
+                start_date=start_d.strftime("%Y-%m-%d"),
+                end_date=end_d.strftime("%Y-%m-%d"),
+                interval="1D",
+            )
+        )
         if df is None or df.empty: return
-        
+
         last = df.iloc[-1]
-        ts = last["time"]
+        ts = last["date"]
         price = float(last["close"])
         vol = int(last["volume"])
         
@@ -45,11 +57,11 @@ async def sync_ticker(engine, ticker, stock):
         # 3. Insert into raw_prices and adjusted_prices
         query = text("""
             INSERT INTO raw_prices (timestamp, ticker, open, high, low, close, volume, timeframe, source, exchange)
-            VALUES (:ts, :t, :o, :h, :l, :c, :v, '1m', 'PRO', 'HOSE')
+            VALUES (:ts, :t, :o, :h, :l, :c, :v, '1D', 'VNSTOCK_DATA', 'HOSE')
             ON CONFLICT (timestamp, ticker) DO UPDATE SET close = EXCLUDED.close, volume = EXCLUDED.volume;
             
             INSERT INTO adjusted_prices (timestamp, ticker, open, high, low, close, volume, timeframe, source, exchange, adjustment_factor)
-            VALUES (:ts, :t, :o, :h, :l, :c, :v, '1m', 'PRO', 'HOSE', 1.0)
+            VALUES (:ts, :t, :o, :h, :l, :c, :v, '1D', 'VNSTOCK_DATA', 'HOSE', 1.0)
             ON CONFLICT (timestamp, ticker) DO UPDATE SET close = EXCLUDED.close, volume = EXCLUDED.volume;
         """)
         
@@ -65,43 +77,28 @@ async def sync_ticker(engine, ticker, stock):
 
 async def main():
     settings = get_settings()
-    # Set API Key in environment for the library to pick up
-    os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
-    
     engine = create_engine(settings.timescale_sync_url)
-    
-    # Standard initialization (API key from environment)
-    vn = Vnstock()
-    
+
     # Target tickers (VN100 and any active from TUI locks)
     watchlist = ["TCB", "VGI", "DXG", "HPG", "VHM", "SSI", "FPT", "VIC", "VNM", "MBB"]
-    
-    print(f"🚀 Starting Real-time Heartbeat Sync for {len(watchlist)} tickers...")
-    
-    sources = ['VCI'] # Most stable Pro source
-    source_idx = 0
-    
+
+    print(f"Starting Real-time Heartbeat Sync for {len(watchlist)} tickers (vnstock_data)...")
+
     while True:
         start_time = time.time()
-        current_source = sources[source_idx % len(sources)]
-        
-        # SPONSOR-LEVEL HIGH PERFORMANCE SYNC
+
         for ticker in watchlist:
             try:
-                stock = vn.stock(symbol=ticker, source=current_source)
-                await sync_ticker(engine, ticker, stock)
-                await asyncio.sleep(0.1) # Fast-track for Sponsor/Pro
+                await sync_ticker(engine, ticker, days=2)
+                await asyncio.sleep(0.2)
             except Exception as e:
-                logger.debug("ticker_failed", ticker=ticker, source=current_source, error=str(e))
-        
-        # Rotate source for next round to balance load
-        source_idx += 1
-        
-        # Sleep until next round (Faster cycle for Sponsor)
+                logger.debug("ticker_failed", ticker=ticker, error=str(e))
+
         elapsed = time.time() - start_time
-        sleep_time = max(1, 10 - elapsed)
-        logger.info("sync_round_complete", source=current_source, duration=f"{elapsed:.1f}s", next_in=f"{sleep_time:.1f}s")
+        sleep_time = max(1, 60 - elapsed)
+        logger.info("sync_round_complete", duration=f"{elapsed:.1f}s", next_in=f"{sleep_time:.1f}s")
         await asyncio.sleep(sleep_time)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

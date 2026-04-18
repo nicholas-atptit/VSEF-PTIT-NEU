@@ -1,4 +1,4 @@
-"""Monte Carlo Risk Layer for Value-at-Risk (VaR) and Expected Shortfall (CVaR).
+"""Heuristic residual-scenario tail summaries for forecast interpretation.
 
 This module deliberately avoids the ML model registry to cleanly separate
 predictive models from post-prediction portfolio risk assessment.
@@ -11,7 +11,7 @@ import numpy as np
 
 
 class MonteCarloRiskSimulator:
-    """Monte Carlo simulator for portfolio risk assessment on forecasted returns."""
+    """Residual-based Monte Carlo simulator for heuristic forecast-risk scenarios."""
 
     def __init__(self, simulations: int = 10000, random_seed: int = 42) -> None:
         """
@@ -32,16 +32,16 @@ class MonteCarloRiskSimulator:
         confidence_levels: List[float] | None = None,
     ) -> Dict[str, Any]:
         """
-        Simulates outcome distributions to calculate VaR and CVaR.
+        Simulate residual-based scenarios to calculate approximate scenario VaR and CVaR.
 
         Args:
             forecast_mean: Expected return over the horizon.
             volatility_proxy: Standard deviation of residuals or market vol proxy over the horizon.
             horizon: Forward timeframe identifier (e.g. "short", "mid", "long") or integer days (for metadata).
-            confidence_levels: Target confidence bounds (e.g. 0.95, 0.99). Defaults to [0.95, 0.99].
+            confidence_levels: Scenario quantile levels (e.g. 0.95, 0.99). Defaults to [0.95, 0.99].
 
         Returns:
-            Dictionary containing VaR, CVaR, stats, and metadata for the run.
+            Dictionary containing scenario VaR, scenario CVaR, stats, and methodology metadata.
         """
         if confidence_levels is None:
             confidence_levels = [0.95, 0.99]
@@ -52,8 +52,8 @@ class MonteCarloRiskSimulator:
         # Guaranteed deterministic generation per seed
         rng = np.random.default_rng(self.random_seed)
 
-        # Assuming the forecast error is normally distributed around the mean.
-        # This matches the linear forecasting properties inside the ML pipeline.
+        # This is an approximate residual-driven scenario layer, not a calibrated
+        # forecast-confidence model.
         scenarios = rng.normal(loc=forecast_mean, scale=volatility_proxy, size=self.simulations)
         
         # Sort for rapid quantile evaluation
@@ -96,7 +96,20 @@ class MonteCarloRiskSimulator:
                 "median": float(np.median(scenarios)),
             },
             "metadata": {
-                "assumptions": "Normal distribution of residuals around forecast mean",
+                "assumptions": (
+                    "Residual-based normal scenarios around the point forecast; "
+                    "not calibrated forecast confidence."
+                ),
+                "risk_model_type": "residual_normal_scenario_simulation",
+                "uncertainty_methodology": (
+                    "residual_based_normal_scenario_simulation_using_point_forecast_and_volatility_proxy"
+                ),
+                "calibration_status": "heuristic_not_calibrated",
+                "interpretation_warning": (
+                    "Scenario VaR/CVaR values are heuristic tail summaries from residual-based simulated returns. "
+                    "They are not calibrated confidence intervals or guaranteed loss bounds."
+                ),
+                "tail_metric_context": "scenario_quantiles_of_simulated_return_distribution",
                 "simulations": self.simulations,
                 "horizon": horizon,
                 "random_seed": self.random_seed,

@@ -1,4 +1,6 @@
-# Core Dependencies (Corrected from pyproject.toml)
+# Core runtime dependencies.
+# Authoritative source: pyproject.toml [project.dependencies].
+# Optional RL-only extras live in pyproject.toml [project.optional-dependencies].ml-rl.
 # google-generativeai==0.8.6  # Legacy - Optional Cloud Provider
 dnse>=0.1.0
 sqlalchemy[asyncio]>=2.0
@@ -9,6 +11,7 @@ chromadb>=0.4
 sentence-transformers>=2.2
 apscheduler>=3.10
 pandas>=2.1
+pandas-ta>=0.3.14b0
 numpy>=1.26
 httpx>=0.27
 aiohttp>=3.9
@@ -19,7 +22,9 @@ python-dotenv>=1.0
 structlog>=24.1
 beautifulsoup4>=4.12
 lxml>=5.1
-vnstock>=3.0
+vnstock_data  # Canonical VN market data provider (primary, required)
+# vnstock>=3.0  # LEGACY: Do NOT use as canonical provider. Listed for reference only.
+
 scikit-learn>=1.4
 xgboost>=2.0
 lightgbm>=4.2
@@ -30,5 +35,3 @@ openai>=1.12
 langchain-text-splitters>=0.2
 rich>=13.7.0
 torch>=2.5
-gymnasium
-stable-baselines3

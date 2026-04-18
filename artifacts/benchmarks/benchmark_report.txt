@@ -1,0 +1,57 @@
+PHASE 4 PERFORMANCE BENCHMARK REPORT
+================================================================================
+
+BUILD MODES
+- fast_core_mode: 115.84 ms/ticker, 3.63 MiB peak, 226 columns
+  stage returns: 1.59ms
+  stage volatility: 3.66ms
+  stage momentum: 5.48ms
+  stage structure: 5.76ms
+  stage volume: 7.07ms
+  stage advanced_indicators: 11.21ms
+  stage lagged_features: 6.27ms
+  stage rolling_features: 4.49ms
+  stage vn100_daily: 15.48ms
+  stage context_features: 47.29ms
+- regime_risk_mode: 132.67 ms/ticker, 3.98 MiB peak, 245 columns
+  stage returns: 1.47ms
+  stage volatility: 3.96ms
+  stage momentum: 5.13ms
+  stage structure: 5.40ms
+  stage volume: 8.13ms
+  stage advanced_indicators: 10.78ms
+  stage lagged_features: 5.76ms
+  stage rolling_features: 3.50ms
+  stage vn100_daily: 16.69ms
+  stage context_features: 47.42ms
+  stage regime_features: 12.78ms
+  stage corporate_action_diagnostics: 3.64ms
+- full_research_mode: 158.64 ms/ticker, 7.78 MiB peak, 491 columns
+  stage returns: 1.70ms
+  stage volatility: 3.83ms
+  stage momentum: 5.26ms
+  stage structure: 5.73ms
+  stage volume: 7.86ms
+  stage advanced_indicators: 11.30ms
+  stage lagged_features: 5.78ms
+  stage kalman_filter: 6.59ms
+  stage rolling_features: 3.89ms
+  stage vn100_daily: 16.47ms
+  stage context_features: 48.03ms
+  stage regime_features: 12.55ms
+  stage corporate_action_diagnostics: 3.89ms
+  stage legacy_compatibility: 4.93ms
+  stage delta_features: 8.46ms
+
+PREPARE_TICKER
+- 701.09 ms/ticker, 28.21 MiB peak, 200 warmup rows
+
+SCALING
+- 10 tickers x 500 rows: 1273.42 ms total, 127.34 ms/ticker
+
+CACHE IMPACT
+- sector_proxies: miss=38.95 ms, hit=0.41 ms, speedup=94.141, cache=hit, rows=8015
+- market_breadth: miss=130.69 ms, hit=0.40 ms, speedup=327.696, cache=hit, rows=2897
+- macro_context: miss=3.85 ms, hit=0.15 ms, speedup=26.285, cache=hit, rows=0
+- foreign_flow: miss=0.86 ms, hit=0.17 ms, speedup=5.041, cache=hit, rows=0
+  note: Foreign-flow artifact is missing and live vnstock_data fetch requires an explicit ticker list.

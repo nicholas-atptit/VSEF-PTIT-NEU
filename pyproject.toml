@@ -22,6 +22,7 @@ dependencies = [
     "apscheduler>=3.10",
     # Data Processing
     "pandas>=2.1",
+    "pandas-ta>=0.3.14b0",
     "numpy>=1.26",
     # HTTP & Async
     "httpx>=0.27",
@@ -37,8 +38,8 @@ dependencies = [
     # Web Crawling (Module 4)
     "beautifulsoup4>=4.12",
     "lxml>=5.1",
-    # Fallback historical data
-    "vnstock>=3.0",
+    # Canonical VN market data provider
+    "vnstock_data",
     # ML Pipeline (Phase 2)
     "scikit-learn>=1.4",
     "xgboost>=2.0",
@@ -55,6 +56,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ml-rl = [
+    "gymnasium>=0.29",
+    "stable-baselines3>=2.3",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",

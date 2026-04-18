@@ -36,9 +36,8 @@ logger = get_logger(__name__)
 # Khởi tạo repository & orchestrator dùng chung
 _decision_repo = DecisionRepository()
 # Tự động lấy provider từ env hoặc default 'ollama'
-_orchestrator = TradingOrchestrator(use_llm_provider=os.getenv('LLM_PROVIDER', 'ollama'))
 
-router = APIRouter(prefix="/api/v2", tags=["Phase 1 — Agentic Master Plan"])
+
 
 # In-memory price cache: { ticker: { price, change, source, ts } }
 import time as _time
@@ -49,22 +48,22 @@ _PRICE_CACHE_TTL = 5  # seconds
 @router.get("/price", tags=["Real-time Price"])
 async def get_price(ticker: str = "FPT"):
     """Ultra-fast price lookup for the web dashboard (no ML pipeline).
-    
-    Uses a 5-second in-memory cache to avoid flooding the DB/VNStock
+
+    Uses a 5-second in-memory cache to avoid flooding the DB/vnstock_data
     with requests during 100ms polling from the frontend.
     """
     ticker = ticker.upper().strip()
     now = _time.time()
-    
+
     # Check in-memory cache first (instant, <1ms)
     cached = _price_cache.get(ticker)
     if cached and (now - cached["ts"]) < _PRICE_CACHE_TTL:
         return {"ticker": ticker, "price": cached["price"], "change": cached["change"], "source": cached["source"]}
-    
+
     price = 0.0
     change = 0.0
     source = "none"
-    
+
     # 1. Try Redis (fastest)
     try:
         import json
@@ -81,7 +80,7 @@ async def get_price(ticker: str = "FPT"):
             source = "redis"
     except Exception:
         pass
-    
+
     # 2. Try Database
     if price == 0:
         try:
@@ -105,23 +104,25 @@ async def get_price(ticker: str = "FPT"):
             await engine.dispose()
         except Exception:
             pass
-    
-    # 3. Try VNStock REST (slowest fallback)
+
+    # 3. Try vnstock_data REST (canonical provider, slowest fallback)
     if price == 0:
         try:
-            from vnstock import Vnstock
-            import os
-            from config.settings import get_settings
-            conf = get_settings()
-            os.environ["VNSTOCK_API_KEY"] = conf.vnstock_api_key
-            vn = Vnstock()
-            stock = vn.stock(symbol=ticker, source='VCI')
-            df = stock.quote.history(symbol=ticker, start='2025-01-01', interval='1D')
+            from src.data.adapters.vnstock_adapter import VnstockAdapter
+            import datetime as _dt
+            end_d = _dt.date.today()
+            start_d = end_d - _dt.timedelta(days=10)
+            df = VnstockAdapter().get_ohlcv(
+                ticker,
+                start_date=start_d.strftime("%Y-%m-%d"),
+                end_date=end_d.strftime("%Y-%m-%d"),
+                interval="1D",
+            )
             if df is not None and not df.empty:
-                price = float(df.iloc[-1]['close'])
-                source = "vnstock"
+                price = float(df.iloc[-1]["close"])
+                source = "vnstock_data"
                 if len(df) >= 2:
-                    prev = float(df.iloc[-2]['close'])
+                    prev = float(df.iloc[-2]["close"])
                     change = ((price - prev) / prev * 100) if prev > 0 else 0.0
         except Exception:
             pass
@@ -144,10 +145,10 @@ async def get_price(ticker: str = "FPT"):
                     source = "cache"
         except Exception:
             pass
-    
+
     # Store in memory cache
     _price_cache[ticker] = {"price": price, "change": change, "source": source, "ts": now}
-    
+
     return {"ticker": ticker, "price": price, "change": change, "source": source}
 
 
@@ -163,7 +164,7 @@ async def get_market_summary():
         engine = create_async_engine(conf.timescale_url)
         async with engine.connect() as conn:
             # 1. Prediction Stats
-            pred_query = text("SELECT prediction_label, COUNT(*) FROM agent_predictions GROUP BY prediction_label")
+            pred_query = text("SELECT trend, COUNT(*) FROM agent_predictions GROUP BY trend")
             pred_res = await conn.execute(pred_query)
             predictions = {row[0]: row[1] for row in pred_res.fetchall()}
             
@@ -312,7 +313,7 @@ async def run_debate(ticker: str = Query(...)):
         decision_card = DecisionCard(**card_data)
         
         # Save audit trail
-        _decision_repo.save_decision(decision_card)
+        await _decision_repo.save_decision(decision_card)
         
         return decision_card
         
@@ -363,7 +364,21 @@ async def chat_interactive(req: ChatRequest):
                         context_str += f"- Xu hướng tin tức: {news_row[2]}\n"
                     
                     # Lấy dự báo kỹ thuật (nếu có)
-                    quant_query = text("SELECT prediction_label, confidence, target_price FROM agent_predictions WHERE ticker = :t ORDER BY created_at DESC LIMIT 1")
+                    quant_query = text("""
+                        SELECT
+                            ap.trend,
+                            GREATEST(ap.probability_up, ap.probability_down) AS confidence,
+                            CASE
+                                WHEN ap.trend = 'UP' THEN ap.target_ceiling
+                                WHEN ap.trend = 'DOWN' THEN ap.target_floor
+                                ELSE NULL
+                            END AS target_price
+                        FROM agent_predictions ap
+                        JOIN agent_runs ar ON ar.id = ap.run_id
+                        WHERE ar.ticker = :t
+                        ORDER BY ap.created_at DESC
+                        LIMIT 1
+                    """)
                     quant_res = await conn.execute(quant_query, {"t": ticker_to_use})
                     quant_row = quant_res.fetchone()
                     
@@ -376,7 +391,7 @@ async def chat_interactive(req: ChatRequest):
             except Exception as db_err:
                 logger.warning("db_context_error", error=str(db_err))
                 # Fallback to file-based legacy
-                latest_cards = _decision_repo.get_decisions_by_ticker(ticker_to_use)
+                latest_cards = _decision_repo.get_decisions_by_ticker_from_artifacts(ticker_to_use)
                 if latest_cards:
                     latest_card = latest_cards[-1]
                     context_str += f"[Dữ liệu Replay]: {latest_card.get('news_summary')}\n"

@@ -9,6 +9,7 @@ Calculates:
 from __future__ import annotations
 
 import numpy as np
+from src.ml.metrics import compute_max_drawdown, compute_sharpe_ratio, compute_sortino_ratio
 
 
 def calculate_veto_standby_rates(
@@ -39,10 +40,7 @@ def calculate_risk_adjusted_returns(
     daily_returns: list[float],
     risk_free_rate: float = 0.04,  # e.g., 4% bond yield
 ) -> dict[str, float]:
-    """Calculate Sharpe, Sortino, and Max Drawdown.
-
-    Requires an array of daily percentage returns (e.g. 0.015 for +1.5%).
-    """
+    """Compatibility wrapper over the canonical ML metric helpers."""
     if not daily_returns or len(daily_returns) < 2:
         return {"error": 1.0}
 
@@ -55,24 +53,14 @@ def calculate_risk_adjusted_returns(
     annualized_vol = std_dev * np.sqrt(252)
 
     # Sharpe Ratio
-    sharpe_ratio = 0.0
-    if annualized_vol > 0:
-        sharpe_ratio = (annualized_return - risk_free_rate) / annualized_vol
+    sharpe_ratio = compute_sharpe_ratio(returns_array - (risk_free_rate / 252.0))
 
     # Sortino Ratio (only downside volatility)
-    downside_returns = returns_array[returns_array < 0]
-    sortino_ratio = 0.0
-    if len(downside_returns) > 0:
-        downside_std = np.std(downside_returns)
-        annualized_downside_vol = downside_std * np.sqrt(252)
-        if annualized_downside_vol > 0:
-            sortino_ratio = (annualized_return - risk_free_rate) / annualized_downside_vol
+    sortino_ratio = compute_sortino_ratio(returns_array - (risk_free_rate / 252.0))
 
     # Max Drawdown
     cumulative_returns = np.cumprod(1 + returns_array)
-    peak = np.maximum.accumulate(cumulative_returns)
-    drawdown = (cumulative_returns - peak) / peak
-    max_drawdown = np.min(drawdown)
+    max_drawdown = compute_max_drawdown(cumulative_returns)
 
     return {
         "annualized_return": round(annualized_return, 4),

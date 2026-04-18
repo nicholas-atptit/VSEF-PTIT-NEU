@@ -190,22 +190,23 @@ class BackdateIngestor:
         start: dt.date,
         end: dt.date,
     ) -> pd.DataFrame | None:
-        """Fetch historical data using basic vnstock library."""
+        """Fetch historical data using vnstock_data library (canonical provider)."""
         try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=ticker, source="VCI")
-            df = stock.quote.history(
+            from vnstock_data import Quote
+            df = Quote(source="VCI", symbol=ticker.upper()).history(
                 start=start.strftime("%Y-%m-%d"),
                 end=end.strftime("%Y-%m-%d"),
-                interval="1D"
+                interval="1D",
+                get_all=True,
             )
             if df is not None and not df.empty:
-                # Rename to standard schema
-                df = df.rename(columns={"time": "timestamp"})
-                logger.info("vnstock_basic_fetch_ok", ticker=ticker, rows=len(df))
+                # Rename time -> timestamp to match standard schema
+                if "time" in df.columns and "timestamp" not in df.columns:
+                    df = df.rename(columns={"time": "timestamp"})
+                logger.info("vnstock_data_fetch_ok", ticker=ticker, rows=len(df))
                 return df
         except Exception as e:
-            logger.debug("vnstock_basic_error", ticker=ticker, error=str(e))
+            logger.debug("vnstock_data_basic_error", ticker=ticker, error=str(e))
         return None
 
     async def _fetch_via_vnstock(
@@ -216,10 +217,9 @@ class BackdateIngestor:
     ) -> pd.DataFrame | None:
         """Fetch historical data using vnstock_data library in chunks."""
         try:
-            from vnstock_data import QuoteHistory
+            from vnstock_data import Quote
             
-            # Chunking loop (respecting constraints if necessary, though QuoteHistory 
-            # often fetches long ranges without chunks)
+            # Chunking loop for quote history while keeping provider calls simple.
             all_dfs = []
             current_start = start
             
@@ -227,10 +227,11 @@ class BackdateIngestor:
                 current_end = min(current_start + dt.timedelta(days=365), end) # 1 year chunks
                 
                 try:
-                    df_chunk = QuoteHistory(source='vci', symbol=ticker).history(
-                        start_date=current_start.strftime("%Y-%m-%d"),
-                        end_date=current_end.strftime("%Y-%m-%d"),
-                        timeframe="1D"
+                    df_chunk = Quote(source="VCI", symbol=ticker).history(
+                        start=current_start.strftime("%Y-%m-%d"),
+                        end=current_end.strftime("%Y-%m-%d"),
+                        interval="1D",
+                        get_all=True,
                     )
                 except Exception as api_e:
                     logger.debug("quote_history_api_error", ticker=ticker, err=str(api_e))
@@ -364,44 +365,5 @@ class BackdateIngestor:
         logger.info("progress_saved", ticker=ticker, last_date=last_date.isoformat())
 
     async def _fetch_and_store_company(self, ticker: str) -> None:
-        """Fetch company context data from vnstock."""
-        try:
-            from vnstock import Vnstock
-            from sqlalchemy.dialects.postgresql import insert as pg_insert
-
-            stock = Vnstock().stock(symbol=ticker, source="VCI")
-            df = stock.company.overview()
-            
-            if df is None or df.empty:
-                return
-                
-            # Extract basic data
-            row = df.iloc[0]
-            
-            # Using defaults for fields that might not exist in VCI overview
-            values = {
-                "ticker": ticker.upper(),
-                "exchange": str(row.get("exchange", "HOSE")),
-                "industry": str(row.get("industry", "")),
-                "company_name": str(row.get("company_name", "")),
-                "short_name": str(row.get("short_name", "")),
-                "issue_share": float(row.get("issue_share", 0)),
-                "charter_capital": float(row.get("charter_capital", 0)),
-                "market_cap": float(row.get("market_cap", 0)),
-                "established_year": str(row.get("established_year", "")),
-                "no_employees": int(row.get("no_employees", 0)),
-                "no_shareholders": int(row.get("no_shareholders", 0)),
-                "foreign_percent": float(row.get("foreign_percent", 0.0)),
-                "website": str(row.get("website", "")),
-            }
-            
-            async with get_session() as session:
-                stmt = pg_insert(CompanyProfile).values([values])
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=["ticker"],
-                    set_={k: v for k, v in values.items() if k != "ticker"}
-                )
-                await session.execute(stmt)
-                
-        except Exception as e:
-            logger.debug("company_info_fetch_error", ticker=ticker, error=str(e))
+        """Fetch company context data — not available via vnstock_data; skips gracefully."""
+        logger.debug("company_info_fetch_skipped", ticker=ticker, reason="vnstock_data_has_no_company_overview_api")

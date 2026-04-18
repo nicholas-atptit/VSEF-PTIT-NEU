@@ -1,49 +1,54 @@
-import pandas as pd
-from vnstock import Vnstock
-import os
-import time
-import glob
-from pathlib import Path
-from tqdm import tqdm
+"""Fetch latest fundamental ratios from vnstock_data and cache them locally."""
 
-def fetch_top_fundamentals(limit=300):
-    v = Vnstock()
+from __future__ import annotations
+
+import glob
+import os
+from pathlib import Path
+
+import pandas as pd
+
+from src.data.adapters.vnstock_adapter import VnstockAdapter
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    def tqdm(iterable, **kwargs):  # type: ignore[no-redef]
+        return iterable
+
+
+def fetch_top_fundamentals(limit: int = 300) -> None:
     data_dir = "data/daily_market_split_data"
-    # Find all CSVs and sort by size (proxy for market interest/history)
-    files = sorted(glob.glob(f"{data_dir}/*.csv"), key=lambda x: os.path.getsize(x), reverse=True)[:limit]
-    tickers = [Path(f).stem for f in files]
-    
-    print(f"🚀 Fetching fundamentals for top {len(tickers)} tickers...")
-    results = []
-    
-    for ticker in tqdm(tickers):
-        try:
-            # Fetch quarterly ratios from TCBS or VCI (VCI is more reliable in some versions)
-            df = v.stock(symbol=ticker, source='VCI').finance.ratio(period='quarterly', lang='vi')
-            if df is not None and not df.empty:
-                # Take latest 4 quarters to get recent trend
-                latest = df.iloc[-4:].copy()
-                latest['ticker'] = ticker
-                # Track the quarter/year if possible
-                if 'Meta' in latest.columns and 'CP' in latest['Meta'].columns:
-                     pass # Multi-index handling done later
-                results.append(latest)
-            time.sleep(0.3) # Rate limit to prevent IP block
-        except Exception:
+    files = sorted(glob.glob(f"{data_dir}/*.csv"), key=lambda path: os.path.getsize(path), reverse=True)[:limit]
+    tickers = [Path(path).stem.upper() for path in files]
+
+    if not tickers:
+        print("No cached ticker universe found under data/daily_market_split_data.")
+        return
+
+    adapter = VnstockAdapter(symbol_list=tickers)
+    results: list[pd.DataFrame] = []
+
+    for ticker in tqdm(tickers, desc="Fetching finance.ratio"):
+        frame = adapter.get_financial_ratios(ticker)
+        if frame is None or frame.empty:
             continue
-            
-    if results:
-        # Flatten Multi-index and combine
-        master = pd.concat(results)
-        if isinstance(master.columns, pd.MultiIndex):
-            master.columns = ['_'.join(col).strip() for col in master.columns.values]
-        
-        # Save to data/
-        os.makedirs('data', exist_ok=True)
-        master.to_csv('data/fundamentals_latest.csv', index=False)
-        print(f"✅ Saved fundamentals for {len(results)} tickers to data/fundamentals_latest.csv")
-    else:
-        print("❌ No fundamental data retrieved.")
+        local = frame.copy()
+        local["ticker"] = ticker
+        results.append(local)
+
+    if not results:
+        print("No fundamental data retrieved from vnstock_data Finance.ratio.")
+        return
+
+    master = pd.concat(results, ignore_index=True)
+    if isinstance(master.columns, pd.MultiIndex):
+        master.columns = ["_".join(map(str, col)).strip("_") for col in master.columns.values]
+
+    os.makedirs("data", exist_ok=True)
+    master.to_csv("data/fundamentals_latest.csv", index=False)
+    print(f"Saved fundamentals for {master['ticker'].nunique()} tickers to data/fundamentals_latest.csv")
+
 
 if __name__ == "__main__":
     fetch_top_fundamentals(limit=300)

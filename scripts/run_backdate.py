@@ -16,6 +16,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config.settings import get_settings
+from src.data.adapters.vnstock_adapter import VnstockAdapter
 from src.data.historical.backdate import BackdateIngestor
 from src.utils.logging import setup_logging, get_logger
 
@@ -65,24 +66,15 @@ async def main() -> None:
         df_listing = None
         try:
             # Lấy dữ liệu siêu tốc bằng quyền Insider (nguồn vnd)
-            from vnstock_data import Listing
-            logger.info("using_vnstock_data_insider_source")
-            df_listing = Listing(source='vnd').all_symbols()
-        except ImportError:
-            logger.warning("vnstock_data_not_found_falling_back_to_vnstock_vci")
-            try:
-                from vnstock import Vnstock
-                df_listing = Vnstock().stock(symbol="VND", source="VCI").listing.all_symbols()
-            except Exception as backup_e:
-                logger.error("failed_to_fetch_symbols_backup", error=str(backup_e))
-                sys.exit(1)
+            logger.info("using_vnstock_data_listing")
+            df_listing = VnstockAdapter().get_all_symbols()
         except Exception as e:
             logger.error("failed_to_fetch_symbols", error=str(e))
             sys.exit(1)
 
         if df_listing is not None and not df_listing.empty:
             # Determine ticker column
-            ticker_col = 'ticker' if 'ticker' in df_listing.columns else df_listing.columns[0]
+            ticker_col = 'symbol' if 'symbol' in df_listing.columns else df_listing.columns[0]
             tickers = df_listing[ticker_col].tolist()
             
             # Export CSV (Requested by user)

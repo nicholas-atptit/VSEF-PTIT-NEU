@@ -7,12 +7,22 @@ from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+
+class TechnicalIndicatorDependencyError(ImportError):
+    """Raised when required technical-indicator dependencies are unavailable."""
+
+
 class TechnicalFeatures:
     """Calculate technical indicators from OHLC data."""
 
     @staticmethod
     def add_all_indicators(df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate a standard set of technical indicators."""
+        """Calculate a standard set of technical indicators.
+
+        This path must be deterministic across environments. Missing indicator
+        dependencies therefore raise explicitly instead of silently degrading to
+        the input frame.
+        """
         if df.empty or 'close' not in df.columns:
             return df
             
@@ -36,9 +46,18 @@ class TechnicalFeatures:
                 df_ta = pd.concat([df_ta, macd], axis=1)
                 
             return df_ta
+        except ImportError as exc:
+            logger.error("technical_indicator_dependency_missing", error=str(exc))
+            raise TechnicalIndicatorDependencyError(
+                "Technical indicator generation requires the dependency "
+                "'pandas-ta'. Install it with `pip install pandas-ta`."
+            ) from exc
         except Exception as e:
             logger.error("technical_indicator_error", error=str(e))
-            return df
+            raise RuntimeError(
+                "Technical indicator generation failed after loading pandas-ta. "
+                "Inspect the OHLC schema and indicator inputs."
+            ) from e
 
     @staticmethod
     def add_momentum_features(df: pd.DataFrame) -> pd.DataFrame:

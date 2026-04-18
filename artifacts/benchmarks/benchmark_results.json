@@ -1,0 +1,159 @@
+{
+  "build_modes": {
+    "fast_core_mode": {
+      "build_mode": "fast_core_mode",
+      "ticker": "TEST",
+      "rows": 500,
+      "n_runs": 3,
+      "time_ms_mean": 115.843,
+      "time_ms_std": 0.687,
+      "time_ms_min": 115.07,
+      "time_ms_max": 116.739,
+      "time_per_row_us": 231.686,
+      "rows_per_sec": 4316.182,
+      "memory_peak_mb_mean": 3.629,
+      "memory_peak_mb_max": 3.629,
+      "stage_timings": {
+        "returns": "1.59ms",
+        "volatility": "3.66ms",
+        "momentum": "5.48ms",
+        "structure": "5.76ms",
+        "volume": "7.07ms",
+        "advanced_indicators": "11.21ms",
+        "lagged_features": "6.27ms",
+        "rolling_features": "4.49ms",
+        "vn100_daily": "15.48ms",
+        "context_features": "47.29ms"
+      },
+      "output_cols": 226,
+      "output_rows": 500
+    },
+    "regime_risk_mode": {
+      "build_mode": "regime_risk_mode",
+      "ticker": "TEST",
+      "rows": 500,
+      "n_runs": 3,
+      "time_ms_mean": 132.671,
+      "time_ms_std": 0.401,
+      "time_ms_min": 132.268,
+      "time_ms_max": 133.218,
+      "time_per_row_us": 265.343,
+      "rows_per_sec": 3768.711,
+      "memory_peak_mb_mean": 3.983,
+      "memory_peak_mb_max": 3.984,
+      "stage_timings": {
+        "returns": "1.47ms",
+        "volatility": "3.96ms",
+        "momentum": "5.13ms",
+        "structure": "5.40ms",
+        "volume": "8.13ms",
+        "advanced_indicators": "10.78ms",
+        "lagged_features": "5.76ms",
+        "rolling_features": "3.50ms",
+        "vn100_daily": "16.69ms",
+        "context_features": "47.42ms",
+        "regime_features": "12.78ms",
+        "corporate_action_diagnostics": "3.64ms"
+      },
+      "output_cols": 245,
+      "output_rows": 500
+    },
+    "full_research_mode": {
+      "build_mode": "full_research_mode",
+      "ticker": "TEST",
+      "rows": 500,
+      "n_runs": 3,
+      "time_ms_mean": 158.641,
+      "time_ms_std": 2.393,
+      "time_ms_min": 155.257,
+      "time_ms_max": 160.365,
+      "time_per_row_us": 317.281,
+      "rows_per_sec": 3151.777,
+      "memory_peak_mb_mean": 7.78,
+      "memory_peak_mb_max": 7.78,
+      "stage_timings": {
+        "returns": "1.70ms",
+        "volatility": "3.83ms",
+        "momentum": "5.26ms",
+        "structure": "5.73ms",
+        "volume": "7.86ms",
+        "advanced_indicators": "11.30ms",
+        "lagged_features": "5.78ms",
+        "kalman_filter": "6.59ms",
+        "rolling_features": "3.89ms",
+        "vn100_daily": "16.47ms",
+        "context_features": "48.03ms",
+        "regime_features": "12.55ms",
+        "corporate_action_diagnostics": "3.89ms",
+        "legacy_compatibility": "4.93ms",
+        "delta_features": "8.46ms"
+      },
+      "output_cols": 491,
+      "output_rows": 500
+    }
+  },
+  "prepare_ticker": {
+    "ticker": "PREP",
+    "rows": 1250,
+    "n_runs": 3,
+    "time_ms_mean": 701.094,
+    "time_ms_std": 7.628,
+    "memory_peak_mb_mean": 28.206,
+    "feature_rows": 1050,
+    "feature_columns": 443,
+    "indicator_warmup_rows": 200,
+    "feature_build_mode": "full_research_mode"
+  },
+  "scaling": {
+    "n_tickers": 10,
+    "rows_per_ticker": 500,
+    "total_rows": 5000,
+    "total_time_ms": 1273.423,
+    "time_per_ticker_ms": 127.342,
+    "time_per_row_us": 254.685,
+    "rows_per_sec": 3926.426
+  },
+  "cache_impact": {
+    "sector_proxies": {
+      "name": "sector_proxies",
+      "miss_ms": 38.946,
+      "hit_ms": 0.414,
+      "speedup": 94.141,
+      "rows": 8015,
+      "cache_status": "hit",
+      "source_name": "sector_proxies.csv",
+      "source_provenance": "derived_from_vnstock_data"
+    },
+    "market_breadth": {
+      "name": "market_breadth",
+      "miss_ms": 130.685,
+      "hit_ms": 0.399,
+      "speedup": 327.696,
+      "rows": 2897,
+      "cache_status": "hit",
+      "source_name": "market_breadth.csv",
+      "source_provenance": "derived_from_vnstock_data"
+    },
+    "macro_context": {
+      "name": "macro_context",
+      "miss_ms": 3.853,
+      "hit_ms": 0.147,
+      "speedup": 26.285,
+      "rows": 0,
+      "cache_status": "hit",
+      "source_name": "macro_context.csv",
+      "source_provenance": "derived_from_vnstock_data"
+    },
+    "foreign_flow": {
+      "name": "foreign_flow",
+      "miss_ms": 0.856,
+      "hit_ms": 0.17,
+      "speedup": 5.041,
+      "rows": 0,
+      "cache_status": "hit",
+      "source_name": "foreign_flow.csv",
+      "source_provenance": "stub_todo",
+      "note": "Foreign-flow artifact is missing and live vnstock_data fetch requires an explicit ticker list."
+    }
+  }
+}

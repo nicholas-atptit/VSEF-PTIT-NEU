@@ -10,24 +10,23 @@ import datetime as dt
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
-from vnstock import Vnstock
+from src.data.adapters.vnstock_adapter import VnstockAdapter
 from src.utils.logging import setup_logging, get_logger
-from vnstock_data import Listing
 
 setup_logging()
 logger = get_logger("daily_extractor")
 
 
 async def fetch_daily_data(ticker: str, days: int = 730) -> pd.DataFrame | None:
-    """Fetch daily history for a ticker."""
+    """Fetch daily history for a ticker via vnstock_data (canonical provider)."""
     try:
         end_date = dt.date.today()
         start_date = end_date - dt.timedelta(days=days)
-        stock = Vnstock().stock(symbol=ticker, source="VCI")
-        df = stock.quote.history(
-            start=start_date.strftime("%Y-%m-%d"),
-            end=end_date.strftime("%Y-%m-%d"),
-            interval="1D"
+        df = VnstockAdapter(symbol_list=[ticker.upper()]).get_ohlcv(
+            ticker.upper(),
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
+            interval="1D",
         )
         return df
     except Exception as e:
@@ -48,8 +47,8 @@ async def main():
         symbols = [s.upper() for s in args.tickers]
     elif args.all:
         try:
-            df_listing = Listing(source='vnd').all_symbols()
-            ticker_col = 'ticker' if 'ticker' in df_listing.columns else df_listing.columns[0]
+            df_listing = VnstockAdapter().get_all_symbols()
+            ticker_col = "symbol" if "symbol" in df_listing.columns else df_listing.columns[0]
             symbols = df_listing[ticker_col].tolist()
         except Exception as e:
             logger.error("failed_to_get_symbols", error=str(e))

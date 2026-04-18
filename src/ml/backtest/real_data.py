@@ -16,6 +16,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 from src.data.adapters.vnstock_adapter import VnstockAdapter
+from src.ml.metrics import compare_prediction_metric_sets, compute_prediction_error_metrics
 from src.ml.trainer import DualModelTrainer
 from src.utils.logging import get_logger
 from src.validators.data_quality import DataQualityValidator
@@ -328,47 +329,44 @@ class RealDataBacktestRunner:
         groups.append(("OVERALL", comparison_df.copy()))
 
         for label, group in groups:
-            errors = pd.to_numeric(group["predicted_close"], errors="coerce") - pd.to_numeric(group["actual_close"], errors="coerce")
-            baseline_errors = pd.to_numeric(group["predicted_close_baseline"], errors="coerce") - pd.to_numeric(group["actual_close"], errors="coerce")
-            pct_errors = pd.to_numeric(group["pct_error"], errors="coerce")
-            baseline_pct_errors = pd.to_numeric(group["pct_error_baseline"], errors="coerce")
-            model_dir_acc = float(
-                (group["predicted_direction"].astype(int) == group["actual_direction"].astype(int)).mean()
+            model_metrics = compute_prediction_error_metrics(
+                actual=group["actual_close"],
+                predicted=group["predicted_close"],
+                actual_direction=group["actual_direction"],
+                predicted_direction=group["predicted_direction"],
+                mape_denominator=group["actual_close"],
             )
-            baseline_dir_acc = float(
-                (group["predicted_direction_baseline"].astype(int) == group["actual_direction"].astype(int)).mean()
+            baseline_metrics = compute_prediction_error_metrics(
+                actual=group["actual_close"],
+                predicted=group["predicted_close_baseline"],
+                actual_direction=group["actual_direction"],
+                predicted_direction=group["predicted_direction_baseline"],
+                mape_denominator=group["actual_close"],
             )
-            model_mae = float(pd.to_numeric(group["absolute_error"], errors="coerce").mean())
-            baseline_mae = float(pd.to_numeric(group["absolute_error_baseline"], errors="coerce").mean())
-            model_rmse = float(np.sqrt(np.mean(np.square(errors))))
-            baseline_rmse = float(np.sqrt(np.mean(np.square(baseline_errors))))
-            model_mape = float(pct_errors.dropna().mean()) if not pct_errors.dropna().empty else np.nan
-            baseline_mape = (
-                float(baseline_pct_errors.dropna().mean()) if not baseline_pct_errors.dropna().empty else np.nan
-            )
-            metric_wins = {
-                "mae": bool(model_mae < baseline_mae),
-                "rmse": bool(model_rmse < baseline_rmse),
-                "mape": bool(model_mape < baseline_mape) if not np.isnan(model_mape) and not np.isnan(baseline_mape) else False,
-                "directional_accuracy": bool(model_dir_acc > baseline_dir_acc),
-            }
+            _, metric_wins = compare_prediction_metric_sets(model_metrics, baseline_metrics, rule="majority_of_metrics")
             wins_vs_baseline = int(sum(metric_wins.values()))
             rows.append(
                 {
                     "ticker": label,
-                    "observations": int(len(group)),
-                    "model_mae": model_mae,
-                    "baseline_mae": baseline_mae,
-                    "mae_improvement_vs_baseline": baseline_mae - model_mae,
-                    "model_rmse": model_rmse,
-                    "baseline_rmse": baseline_rmse,
-                    "rmse_improvement_vs_baseline": baseline_rmse - model_rmse,
-                    "model_mape": model_mape,
-                    "baseline_mape": baseline_mape,
-                    "mape_improvement_vs_baseline": baseline_mape - model_mape if not np.isnan(model_mape) and not np.isnan(baseline_mape) else np.nan,
-                    "model_directional_accuracy": model_dir_acc,
-                    "baseline_directional_accuracy": baseline_dir_acc,
-                    "directional_accuracy_improvement_vs_baseline": model_dir_acc - baseline_dir_acc,
+                    "observations": int(model_metrics["observations"]),
+                    "model_mae": float(model_metrics["mae"]),
+                    "baseline_mae": float(baseline_metrics["mae"]),
+                    "mae_improvement_vs_baseline": float(baseline_metrics["mae"] - model_metrics["mae"]),
+                    "model_rmse": float(model_metrics["rmse"]),
+                    "baseline_rmse": float(baseline_metrics["rmse"]),
+                    "rmse_improvement_vs_baseline": float(baseline_metrics["rmse"] - model_metrics["rmse"]),
+                    "model_mape": model_metrics["mape"],
+                    "baseline_mape": baseline_metrics["mape"],
+                    "mape_improvement_vs_baseline": (
+                        float(baseline_metrics["mape"] - model_metrics["mape"])
+                        if not np.isnan(model_metrics["mape"]) and not np.isnan(baseline_metrics["mape"])
+                        else np.nan
+                    ),
+                    "model_directional_accuracy": float(model_metrics["directional_accuracy"]),
+                    "baseline_directional_accuracy": float(baseline_metrics["directional_accuracy"]),
+                    "directional_accuracy_improvement_vs_baseline": float(
+                        model_metrics["directional_accuracy"] - baseline_metrics["directional_accuracy"]
+                    ),
                     "beats_baseline_mae": metric_wins["mae"],
                     "beats_baseline_rmse": metric_wins["rmse"],
                     "beats_baseline_mape": metric_wins["mape"],
@@ -500,6 +498,17 @@ class RealDataBacktestRunner:
                 "source": "vnstock",
                 "model_root": str(self.model_root),
                 "baseline_model": "naive_previous_close",
+                "benchmark_basis": "close_level_regression_with_directional_sign_check_vs_naive_previous_close",
+                "comparable_tasks_only": True,
+                "evaluation_context": "fixed_window_holdout_target_date_evaluation",
+                "metric_semantics": {
+                    "artifact_scope": "fixed_window_close_level_backtest",
+                    "prediction_metrics": "close-level held-out backtest error metrics versus naive previous-close baseline",
+                    "metric_basis": "evaluation window target dates",
+                    "financial_performance_metrics_included": False,
+                    "heuristic_scenario_risk_included": False,
+                    "comparability_warning": "These outputs compare close-level prediction quality only. They do not rank portfolio performance or scenario-risk quality.",
+                },
                 "fetch_start": str(fetch_start.date()),
                 "train_start": str(dates["train_start"].date()),
                 "train_end": str(dates["train_end"].date()),

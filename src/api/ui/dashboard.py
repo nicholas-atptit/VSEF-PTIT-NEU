@@ -101,14 +101,12 @@ except (ImportError, ModuleNotFoundError) as e:
 except Exception as e:
     DB_ERR = f"ConfigError: {str(e).split(':')[-1]}"
 
-# --- VNSTOCK PRO AUTH ---
+# --- VNSTOCK_DATA PRO AUTH ---
 HAS_VNSTOCK = False
 try:
-    import os
-    os.environ["VNSTOCK_API_KEY"] = SETTINGS.vnstock_api_key
-    from vnstock import Vnstock
+    from vnstock_data import Quote as _Quote
     HAS_VNSTOCK = True
-    VNSTOCK_CLIENT = Vnstock()
+    VNSTOCK_CLIENT = None  # vnstock_data uses functional API, no global client needed
 except Exception:
     HAS_VNSTOCK = False
     VNSTOCK_CLIENT = None
@@ -668,44 +666,62 @@ class AlgoTradingTUI:
         except Exception: pass
 
     async def _poll_rest(self):
-        if not HAS_VNSTOCK or VNSTOCK_CLIENT is None: return
         try:
             loop = asyncio.get_event_loop()
-            sources = ["VCI", "TCBS", "DNSE"]
-            
+            import datetime as _dt
+
             # 1. ALWAYS try DB first for Heuristics (Fastest & No API limit)
-            # Use data from DB as the master "Analytical" source if available
             await self._compute_heuristics_from_db()
 
-            for src in sources:
-                try:
-                    stock = await loop.run_in_executor(None, lambda: VNSTOCK_CLIENT.stock(symbol=self.pinned_ticker, source=src))
-                    
-                    # 2. REST Heuristic Fallback
+            # 2. Try vnstock_data REST fallback for price update
+            if not HAS_VNSTOCK:
+                if self.data.get("ml_up", 0) == 0:
+                    self.data["status"] = "DATA_GAP"
+                return
+
+            try:
+                from src.data.adapters.vnstock_adapter import VnstockAdapter
+                end_d = _dt.date.today()
+                start_d = end_d - _dt.timedelta(days=5)
+
+                df_daily = await loop.run_in_executor(
+                    None,
+                    lambda: VnstockAdapter().get_ohlcv(
+                        self.pinned_ticker,
+                        start_date=start_d.strftime("%Y-%m-%d"),
+                        end_date=end_d.strftime("%Y-%m-%d"),
+                        interval="1D",
+                    )
+                )
+                if df_daily is not None and not df_daily.empty:
+                    last_row = df_daily.iloc[-1]
+                    price = float(last_row["close"])
+                    time_val = last_row.get("date") if hasattr(last_row, "get") else None
+                    ts = _dt.datetime.now().timestamp()
+                    if time_val is not None:
+                        try:
+                            ts = _dt.datetime.fromisoformat(str(time_val)).timestamp()
+                        except Exception:
+                            pass
+
+                    if ts >= self.data.get("last_price_ts", 0):
+                        self.data["price"] = price
+                        self.data["last_price_ts"] = ts
+
+                    if self.data.get("ml_up", 0) > 0:
+                        self.data["status"] = "ANALYZED (vnstock_data)"
+                    else:
+                        self.data["status"] = "LIVE (vnstock_data)"
+                    # Compute basic heuristics if DB heuristics weren't available
                     if self.data.get("ml_up", 0) == 0:
-                        self.data["status"] = f"ANALYZING ({src})"
-                        await loop.run_in_executor(None, self._compute_heuristics, stock)
-                        
-                    # 3. Latest Price
-                    df_m = await loop.run_in_executor(None, lambda: stock.quote.history(interval="1m", count=1))
-                    if df_m is not None and not df_m.empty:
-                        last_row = df_m.iloc[-1]
-                        price = float(last_row["close"])
-                        ts = last_row["time"].timestamp()
-                        
-                        if ts >= self.data.get("last_price_ts", 0):
-                            self.data["price"] = price
-                            self.data["last_price_ts"] = ts
-                            
-                        if self.data.get("ml_up", 0) > 0:
-                            self.data["status"] = f"ANALYZED ({src})"
-                        else:
-                            self.data["status"] = f"LIVE ({src})"
-                        return
-                except Exception: continue
-                
-            if self.data.get("ml_up", 0) == 0: self.data["status"] = "DATA_GAP"
-        except Exception: 
+                        self._compute_heuristics(df_daily)
+                    return
+            except Exception:
+                pass
+
+            if self.data.get("ml_up", 0) == 0:
+                self.data["status"] = "DATA_GAP"
+        except Exception:
             self.data["status"] = "REST_ERR"
 
     async def _compute_heuristics_from_db(self):

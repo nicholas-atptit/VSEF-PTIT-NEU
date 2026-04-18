@@ -1,25 +1,20 @@
-from vnstock import Vnstock
+"""Discover VN100 constituents using vnstock_data.Listing (canonical provider)."""
+from vnstock_data import Listing
 import pandas as pd
 
 try:
-    # Try common 3.x patterns
-    vn = Vnstock()
-    # 1. Try listing
-    try:
-        df = vn.market.index_components(symbol='VN100')
-        print("index_components method found")
-        print(df.head())
-    except Exception as e:
-        print(f"index_components failed: {e}")
+    df = Listing(source="vnd").all_symbols()
+    print(f"Total symbols from vnstock_data Listing: {len(df)}")
+    print(df.head(10))
 
-    # 2. Try legacy listing_components if it exists in namespace
+    # Try index-specific filter if available
     try:
-        from vnstock import listing_components
-        df = listing_components("VN100")
-        print("listing_components function found")
-        print(df.head())
+        df_vn100 = Listing(source="vnd").symbols_by_group("VN100")
+        if df_vn100 is not None and not df_vn100.empty:
+            print(f"\nVN100 constituents: {len(df_vn100)}")
+            print(df_vn100.head())
     except Exception as e:
-        print(f"listing_components failed: {e}")
+        print(f"symbols_by_group('VN100') not supported: {e}")
 
 except Exception as e:
-    print(f"Vnstock init failed: {e}")
+    print(f"vnstock_data Listing failed: {e}")

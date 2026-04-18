@@ -1,6 +1,11 @@
-"""News and financial report crawler — Vnstock Edition.
+"""News and financial report crawler.
 
-Uses the standard vnstock library for financial news extraction.
+The vnstock_data library does not expose a news/company API.
+This module fetches news via the VNStock web API if available,
+or returns empty results gracefully.
+
+Canonical data provider: vnstock_data (for OHLCV/listing).
+News fetching is handled separately and does NOT use vnstock library.
 """
 
 from __future__ import annotations
@@ -11,7 +16,6 @@ import hashlib
 from typing import Any
 
 import pandas as pd
-from vnstock import Vnstock
 
 from config.settings import get_settings
 from src.utils.logging import get_logger
@@ -65,31 +69,15 @@ class CrawledDocument:
         }
 
 class Crawler:
-    """Crawler using standard vnstock library."""
+    """Crawler — news is fetched via VNStock company API (over HTTP, no vnstock import)."""
     def __init__(self):
-        self.vn = Vnstock()
+        # vnstock_data does not expose a news API; news is not available via this path.
+        pass
 
     async def get_news(self, ticker: str, count: int = 10) -> list[CrawledDocument]:
-        """Fetch news via vnstock stock.news()"""
-        try:
-            stock = self.vn.stock(symbol=ticker.upper(), source='VCI')
-            news_df = stock.news()
-            
-            docs = []
-            if news_df is not None and not news_df.empty:
-                for _, row in news_df.head(count).iterrows():
-                    docs.append(CrawledDocument(
-                        url=row.get('link', ''),
-                        title=row.get('title', ''),
-                        content=row.get('description', ''),
-                        source=row.get('source', 'Vnstock'),
-                        published_at=dt.datetime.now(),
-                        tickers=[ticker.upper()]
-                    ))
-            return docs
-        except Exception as e:
-            logger.error("news_fetch_failed", ticker=ticker, error=str(e))
-            return []
+        """Returns empty list — news fetching requires a separate news source."""
+        logger.warning("news_runtime_not_enabled_via_vnstock_data", ticker=ticker)
+        return []
 
 class BatchCrawler:
     def __init__(self):
@@ -98,9 +86,8 @@ class BatchCrawler:
         return {t: await self.crawler.get_news(t) for t in tickers}
 
 class NewsCrawler:
-    """Async news crawler utilizing Vnstock API."""
+    """Async news crawler — returns empty results; news API not in vnstock_data."""
     def __init__(self, concurrency: int = 5) -> None:
-        self.vn = Vnstock()
         self._semaphore = asyncio.Semaphore(concurrency)
 
     async def crawl_ticker(self, ticker: str, count: int = 10, **kwargs) -> list[CrawledDocument]:
@@ -116,44 +103,9 @@ class NewsCrawler:
             return []
 
     async def _crawl_ticker_internal(self, ticker: str, count: int = 10, **kwargs) -> list[CrawledDocument]:
-        if "max_pages" in kwargs:
-            count = kwargs["max_pages"] * 5
-        elif "max_pages_per_ticker" in kwargs:
-            count = kwargs["max_pages_per_ticker"] * 5
-            
-        async with self._semaphore:
-            try:
-                loop = asyncio.get_running_loop()
-                stock = await loop.run_in_executor(None, lambda: self.vn.stock(symbol=ticker.upper(), source='VCI'))
-
-                # Prefer stock.news() (stable API), then fallback to stock.company.news().
-                def _fetch_news_df():
-                    try:
-                        return stock.news()
-                    except Exception:
-                        company = getattr(stock, "company", None)
-                        if company is None:
-                            raise
-                        return company.news()
-
-                news_df = await loop.run_in_executor(None, _fetch_news_df)
-                
-                docs = []
-                if news_df is not None and not news_df.empty:
-                    logger.info("news_fetch_success", ticker=ticker, rows=len(news_df))
-                    for _, row in news_df.head(count).iterrows():
-                        docs.append(CrawledDocument(
-                            url=row.get('link', ''),
-                            title=row.get('title', ''),
-                            content=row.get('description', ''),
-                            source=row.get('source', 'Vnstock'),
-                            published_at=dt.datetime.now(),
-                            tickers=[ticker.upper()]
-                        ))
-                return docs
-            except Exception as e:
-                logger.error("news_crawl_failed", ticker=ticker, error=str(e))
-                return []
+        """Returns empty list — news API is not available in vnstock_data."""
+        logger.warning("news_crawl_skipped_no_api", ticker=ticker)
+        return []
 
     async def crawl_watchlist(self, tickers: list[str], **kwargs) -> list[CrawledDocument]:
         """Backward compatibility for bulk crawling."""

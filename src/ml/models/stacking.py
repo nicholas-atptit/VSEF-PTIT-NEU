@@ -137,21 +137,77 @@ class StackingModel(BaseModel):
             base_model.fit(X, y)
             self.fitted_base_models.append(base_model)
 
-    def predict(self, X: Any) -> np.ndarray:
-        meta_features = np.zeros((len(X), len(self.fitted_base_models)))
+    def _execute_with_fallback(self, X: Any, is_proba: bool = False) -> np.ndarray:
+        num_models = len(self.fitted_base_models)
+        meta_features = np.zeros((len(X), num_models))
+        
+        self.last_healthy_count = 0
+        self.last_failed_count = 0
+        self.last_fallback_policy = "none"
+        
+        healthy_predictions = []
         for j, model in enumerate(self.fitted_base_models):
-            meta_features[:, j] = self._predict_base(model, X)
-        return self.meta_model.predict(meta_features)
+            try:
+                if is_proba:
+                    val = model.predict_proba(X)
+                else:
+                    val = self._predict_base(model, X)
+                
+                if np.isnan(val).any() or np.isinf(val).any():
+                    raise ValueError("NaN/Inf in prediction")
+                    
+                if not is_proba:
+                    meta_features[:, j] = val
+                else:
+                    # For meta features, we extract the positive probability if classification
+                    if val.ndim == 2 and val.shape[1] > 1:
+                        meta_features[:, j] = val[:, 1]
+                    else:
+                        meta_features[:, j] = val.ravel()
+                        
+                healthy_predictions.append(val)
+                self.last_healthy_count += 1
+            except Exception:
+                meta_features[:, j] = np.nan
+                self.last_failed_count += 1
+                
+        meta_success = False
+        meta_pred = None
+        if self.last_failed_count == 0:
+            try:
+                if is_proba:
+                    meta_pred = self.meta_model.predict_proba(meta_features)
+                else:
+                    meta_pred = self.meta_model.predict(meta_features)
+                    
+                if not (np.isnan(meta_pred).any() or np.isinf(meta_pred).any()):
+                    meta_success = True
+            except Exception:
+                pass
+                
+        if meta_success:
+            self.last_fallback_policy = "none"
+            return meta_pred
+            
+        if self.last_healthy_count == 0:
+            self.last_fallback_policy = "failed"
+            raise RuntimeError("[stacking_base_model_failed] 0 healthy base models available")
+            
+        if self.last_healthy_count == 1:
+            self.last_fallback_policy = "single_model"
+            return healthy_predictions[0]
+            
+        self.last_fallback_policy = "average"
+        stack = np.stack(healthy_predictions, axis=0)
+        return np.mean(stack, axis=0)
+
+    def predict(self, X: Any) -> np.ndarray:
+        return self._execute_with_fallback(X, is_proba=False)
 
     def predict_proba(self, X: Any) -> np.ndarray:
         if self.task != "classification":
             raise NotImplementedError("Stacking regression models do not expose predict_proba")
-        
-        meta_features = np.zeros((len(X), len(self.fitted_base_models)))
-        for j, model in enumerate(self.fitted_base_models):
-            meta_features[:, j] = self._predict_base(model, X)
-            
-        return self.meta_model.predict_proba(meta_features)
+        return self._execute_with_fallback(X, is_proba=True)
 
     def save(self, artifact_path: Path) -> None:
         artifact_path.parent.mkdir(parents=True, exist_ok=True)

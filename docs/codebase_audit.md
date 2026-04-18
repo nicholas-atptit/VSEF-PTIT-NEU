@@ -26,7 +26,8 @@ The project follows a modular architecture centered around a Vietnamese stock tr
 
 ### Reusable Components
 - **`Settings` (config/settings.py)**: Centralized Pydantic settings for API keys, DB URLs, and ML parameters.
-- **`FeatureEngineer` (src/ml/feature_engineering.py)**: Robust technical indicator computation using `pandas-ta`.
+- **`FeatureEngineer` (src/ml/feature_engineering.py)**: Canonical feature generation for the supported trainer and backtest path.
+- **`TechnicalFeatures` (src/ml/features/technical.py)**: Optional technical-indicator helper that now fails loudly if `pandas-ta` is unavailable.
 - **`DataLoader` (src/ml/data_loader.py)**: Ready-to-use functions for loading OHLCV from DB or Vnstock.
 - **Logging/Utils**: Consistent logging style using `structlog`.
 
@@ -38,7 +39,8 @@ The project follows a modular architecture centered around a Vietnamese stock tr
 ### Constraints & Precautions
 - **Vnstock Version**: Strictly stick to `vnstock>=3.0` API patterns.
 - **Database Schema**: TimescaleDB hypertables require Careful timestamp handling (VN Timezone).
-- **Model Storage**: Models are stored in `models/<TICKER>/` using `joblib`. Maintain this structure for compatibility with `DualModelTrainer`.
+- **Model Storage**: The supported ML path is manifest-driven via `src/ml/trainer.py`; preserve the `models/<TICKER>/manifest.json` + per-task artifact layout.
+- **Legacy ML scaffold**: `src/ml/pipelines/training_pipeline.py`, `src/data/datasets/loader.py`, and `src/ml/training/baseline_model.py` are reference-only legacy code and should not be treated as supported architecture.
 
 ## 3. Proposed Module Expansion
 
@@ -50,7 +52,7 @@ To implement the VN100 prediction system, the following structure is proposed:
 | **Pipelines** | `src/pipelines/daily_ingestion.py` | Automated daily sync for VN100 tickers. |
 | **Features** | `src/ml/features/` | Specialized features (Alpha factors, Fundamental ratios). |
 | **Labels** | `src/ml/labels/` | Quantitative labels (Binary, Ternary, Regressive). |
-| **Training** | `src/ml/training_pipeline/` | Orchestrated training for the entire VN100 cohort. |
+| **Training** | `src/ml/trainer.py` | Supported manifest-driven training and inference facade for the current ML system. |
 | **Inference** | `src/ml/batch_inference.py` | Batch prediction for VN100 per session/day. |
 | **Reports** | `src/reporting/daily_brief.py` | Automated report generation (LLM + Stats). |
 

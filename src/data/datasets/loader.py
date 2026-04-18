@@ -1,4 +1,4 @@
-"""Dataset preparation and loading module."""
+"""Legacy dataset preparation helper kept only for historical compatibility."""
 
 from __future__ import annotations
 
@@ -9,9 +9,15 @@ from src.utils.logging import get_logger
 logger = get_logger(__name__)
 
 class DatasetLoader:
-    """Prepares training, validation, and test datasets."""
+    """Legacy loader used only by the blocked ``TrainingPipeline`` path."""
 
-    def __init__(self, symbols: List[str]) -> None:
+    def __init__(self, symbols: List[str], *, allow_legacy: bool = False) -> None:
+        if not allow_legacy:
+            raise RuntimeError(
+                "DatasetLoader is legacy scaffold and is intentionally blocked by default. "
+                "Use DualModelTrainer.prepare_ticker_data(...) or compute_features_for_ticker(...) "
+                "for the supported ML path. Pass allow_legacy=True only for historical debugging."
+            )
         self.symbols = symbols
 
     def create_features_labels(self) -> pd.DataFrame:

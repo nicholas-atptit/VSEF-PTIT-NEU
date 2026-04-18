@@ -316,7 +316,7 @@ class PaperTradingEngine:
                 return generate_mock_data(ticker=ticker)
 
     def _fetch_market_snapshot(self, ticker: str, use_mock: bool = False) -> dict[str, Any]:
-        """Fetch the latest trade price for a ticker."""
+        """Fetch the latest trade price for a ticker using vnstock_data."""
         if use_mock:
             df = generate_mock_data(ticker=ticker)
             return {
@@ -325,32 +325,23 @@ class PaperTradingEngine:
             }
 
         try:
-            import os
-            from vnstock import Vnstock
+            import datetime as _dt
+            from src.data.adapters.vnstock_adapter import VnstockAdapter
 
-            settings = get_settings()
-            os.environ["VNAI_API_KEY"] = settings.vnstock_api_key
-            os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
-
-            stock = Vnstock().stock(symbol=ticker, source="VCI")
-            intraday = stock.quote.intraday()
-            if intraday is not None and not intraday.empty:
-                latest = intraday.iloc[-1]
-                price = float(latest.get("price", latest.get("close", 0.0)))
-                timestamp = self._normalize_timestamp(latest.get("time"))
+            end_d = _dt.date.today()
+            start_d = end_d - _dt.timedelta(days=10)
+            df = VnstockAdapter().get_ohlcv(
+                ticker,
+                start_date=start_d.strftime("%Y-%m-%d"),
+                end_date=end_d.strftime("%Y-%m-%d"),
+                interval="1D",
+            )
+            if df is not None and not df.empty:
+                latest = df.iloc[-1]
+                price = float(latest["close"])
+                timestamp = self._normalize_timestamp(latest.get("date", None))
                 if price > 0:
                     return {"price": price, "timestamp": timestamp}
-
-            history = stock.quote.history(
-                start=(dt.date.today() - dt.timedelta(days=10)).strftime("%Y-%m-%d"),
-                end=dt.date.today().strftime("%Y-%m-%d"),
-            )
-            if history is not None and not history.empty:
-                latest = history.iloc[-1]
-                return {
-                    "price": float(latest["close"]),
-                    "timestamp": self._normalize_timestamp(latest.get("time")),
-                }
         except Exception as exc:
             logger.warning("paper_trade_price_fetch_failed", ticker=ticker, error=str(exc))
 
@@ -361,27 +352,19 @@ class PaperTradingEngine:
         }
 
     def _fetch_news_context(self, ticker: str) -> str:
-        """Fetch the latest company news headlines for the LLM prompt."""
-        try:
-            import os
-            from vnstock import Vnstock
+        """News fetching — not available in vnstock_data; returns empty string."""
+        from src.data.adapters.vnstock_adapter import VnstockAdapter
 
-            settings = get_settings()
-            os.environ["VNAI_API_KEY"] = settings.vnstock_api_key
-            os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
-
-            stock = Vnstock().stock(symbol=ticker)
-            news_df = stock.company.news()
-            if news_df is None or news_df.empty:
-                return ""
-
-            headlines = []
-            for _, row in news_df.head(5).iterrows():
-                headlines.append(f"- {row['title']} ({row['publish_time']})")
-            return "\n".join(headlines)
-        except Exception as exc:
-            logger.warning("paper_trade_news_fetch_failed", ticker=ticker, error=str(exc))
+        news_df = VnstockAdapter().get_news(ticker, count=5)
+        if news_df is None or news_df.empty:
+            logger.warning("news_context_unavailable_in_vnstock_data", ticker=ticker)
             return ""
+        titles = []
+        for _, row in news_df.iterrows():
+            title = row.get("title") or row.get("name") or row.get("description") or row.get("news_title")
+            if title:
+                titles.append(str(title))
+        return "\n".join(titles[:5])
 
     def _apply_execution(
         self,

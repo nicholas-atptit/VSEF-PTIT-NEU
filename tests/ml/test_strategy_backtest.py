@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from src.ml.backtest.strategy_backtest import (
     BENCHMARK_STRATEGY_TYPE,
@@ -13,6 +14,7 @@ from src.ml.backtest.strategy_backtest import (
     StrategyBacktestConfig,
     StrategyBacktestRunner,
     build_trade_daily_returns,
+    compute_weight_turnover,
     calculate_net_trade_return,
     compute_strategy_metrics,
     generate_signal_label,
@@ -181,6 +183,66 @@ def test_compute_strategy_metrics_uses_trade_and_equity_series() -> None:
     assert metrics["win_rate"] == 2 / 3
     assert metrics["total_return"] > 0
     assert metrics["turnover"] >= 2.0
+
+
+def test_compute_weight_turnover_counts_rebalance_between_active_names() -> None:
+    weights = pd.DataFrame(
+        {
+            "AAA": [1.0, 0.0],
+            "BBB": [0.0, 1.0],
+        },
+        index=pd.to_datetime(["2026-01-02", "2026-01-05"]),
+    )
+
+    assert compute_weight_turnover(weights) == pytest.approx(4.0)
+
+
+def test_portfolio_metrics_label_trade_diagnostics_and_use_weight_turnover(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("src.ml.backtest.strategy_backtest.VnstockAdapter", _FakeAdapter)
+    runner = StrategyBacktestRunner(
+        StrategyBacktestConfig(
+            tickers=["AAA", "BBB"],
+            train_start="2020-01-01",
+            train_end="2025-12-31",
+            eval_start="2026-01-02",
+            eval_end="2026-01-15",
+            output_dir=str(tmp_path / "artifacts" / "strategy_backtest"),
+            forecast_output_dir=str(tmp_path / "artifacts" / "backtest_forward_return"),
+            horizons=["3d"],
+            algorithms=["cart"],
+            thresholds=[0.0],
+        )
+    )
+
+    ticker_equity_df = pd.DataFrame(
+        [
+            {"horizon": "3d", "ticker": "AAA", "model_name": "cart", "strategy_type": MODEL_STRATEGY_TYPE, "threshold": 0.0, "date": "2026-01-02", "daily_return": 0.01, "equity_curve": 1.01, "drawdown": 0.0, "position": 1.0, "active_trade_count": 1},
+            {"horizon": "3d", "ticker": "BBB", "model_name": "cart", "strategy_type": MODEL_STRATEGY_TYPE, "threshold": 0.0, "date": "2026-01-02", "daily_return": 0.0, "equity_curve": 1.0, "drawdown": 0.0, "position": 0.0, "active_trade_count": 0},
+            {"horizon": "3d", "ticker": "AAA", "model_name": "cart", "strategy_type": MODEL_STRATEGY_TYPE, "threshold": 0.0, "date": "2026-01-05", "daily_return": 0.0, "equity_curve": 1.0, "drawdown": 0.0, "position": 0.0, "active_trade_count": 0},
+            {"horizon": "3d", "ticker": "BBB", "model_name": "cart", "strategy_type": MODEL_STRATEGY_TYPE, "threshold": 0.0, "date": "2026-01-05", "daily_return": 0.02, "equity_curve": 1.02, "drawdown": 0.0, "position": 1.0, "active_trade_count": 1},
+        ]
+    )
+    trades_df = pd.DataFrame(
+        [
+            {"horizon": "3d", "ticker": "AAA", "model_name": "cart", "strategy_type": MODEL_STRATEGY_TYPE, "threshold": 0.0, "net_trade_return": 0.01},
+            {"horizon": "3d", "ticker": "BBB", "model_name": "cart", "strategy_type": MODEL_STRATEGY_TYPE, "threshold": 0.0, "net_trade_return": 0.02},
+        ]
+    )
+
+    _, portfolio_metrics_df = runner._build_portfolio_artifacts(
+        horizon_name="3d",
+        ticker_equity_df=ticker_equity_df,
+        trades_df=trades_df,
+    )
+
+    row = portfolio_metrics_df.iloc[0]
+    assert row["turnover"] == pytest.approx(4.0)
+    assert row["trade_diagnostic_basis"] == "raw constituent trade diagnostics; not portfolio-weighted equity metrics"
+    assert row["trade_diagnostic_count"] == 2
+    assert "win_rate" not in portfolio_metrics_df.columns
+    assert "profit_factor" not in portfolio_metrics_df.columns
+    assert "number_of_trades" not in portfolio_metrics_df.columns
+    assert "average_trade_return" not in portfolio_metrics_df.columns
 
 
 def test_strategy_runner_writes_artifacts_and_benchmark_summaries(monkeypatch, tmp_path) -> None:

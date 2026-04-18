@@ -3,23 +3,21 @@
 import asyncio
 import datetime as dt
 import pandas as pd
-from vnstock import Vnstock
+from vnstock_data import Quote
 from src.utils.logging import get_logger
 
 logger = get_logger("hourly_service")
 
 async def fetch_hourly_data(ticker: str, days: int = 30) -> pd.DataFrame | None:
-    """Fetch hourly history for a ticker using VCI source."""
+    """Fetch hourly history for a ticker using vnstock_data (canonical provider)."""
     try:
         end_date = dt.date.today()
         start_date = end_date - dt.timedelta(days=days)
-        
-        # Use Vnstock wrapper which confirmed 1H support for VCI
-        stock = Vnstock().stock(symbol=ticker, source="VCI")
-        df = stock.quote.history(
+
+        df = Quote(source="VCI", symbol=ticker.upper()).history(
             start=start_date.strftime("%Y-%m-%d"),
             end=end_date.strftime("%Y-%m-%d"),
-            interval="1H"
+            interval="1H",
         )
         return df
     except Exception as e:

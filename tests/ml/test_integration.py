@@ -33,7 +33,7 @@ def _make_synthetic_csv(n_rows: int = 300) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 1. Legacy non-risk path still works
+# 1. Modern non-risk path still works
 # ---------------------------------------------------------------------------
 
 def test_legacy_path_no_risk(tmp_path):
@@ -85,9 +85,11 @@ def test_risk_deterministic_seed(tmp_path):
             assert rc.get("risk_enabled") is True
             assert rc.get("risk_seed") == 42
             assert rc.get("risk_simulations") == 5000
-            assert rc.get("risk_confidence_levels") == [0.95, 0.99]
+            assert rc.get("scenario_confidence_levels") == [0.95, 0.99]
             assert rc.get("volatility_proxy_source") in ("test_residuals_std", "validation_rmse")
             assert "risk_assumptions" in rc
+            assert rc.get("risk_model_type") == "residual_normal_scenario_simulation"
+            assert rc.get("calibration_status") == "heuristic_not_calibrated"
             risk_entries.append(rc)
 
     assert len(risk_entries) > 0
@@ -119,11 +121,13 @@ def test_manifest_risk_metadata_schema(tmp_path):
             required_keys = {
                 "risk_enabled",
                 "risk_simulations",
-                "risk_confidence_levels",
+                "scenario_confidence_levels",
                 "risk_seed",
                 "volatility_proxy",
                 "volatility_proxy_source",
                 "risk_assumptions",
+                "risk_model_type",
+                "calibration_status",
             }
             assert required_keys.issubset(set(rc.keys())), f"Missing keys: {required_keys - set(rc.keys())}"
             assert isinstance(rc["volatility_proxy"], float)

@@ -1,0 +1,7 @@
+scope,step_size,ticker,horizon,competitor_model,stacking_mae_minus_model,stacking_rmse_minus_model,stacking_directional_accuracy_minus_model,stacking_better_mae,stacking_better_rmse,stacking_better_directional_accuracy
+overall_horizon,1,OVERALL,short_5d,cart,0.0027873662647439554,0.005904952424464097,0.0,False,False,False
+overall_horizon,1,OVERALL,short_5d,lightgbm,-0.001571118104536945,-0.001810115175246263,0.0,True,True,False
+overall_horizon,1,OVERALL,short_5d,xgboost,-0.003562956907426123,-0.005278488337268503,-0.10000000000000003,True,True,False
+ticker,1,ACB,short_5d,cart,0.0027873662647439554,0.005904952424464097,0.0,False,False,False
+ticker,1,ACB,short_5d,lightgbm,-0.001571118104536945,-0.001810115175246263,0.0,True,True,False
+ticker,1,ACB,short_5d,xgboost,-0.003562956907426123,-0.005278488337268503,-0.10000000000000003,True,True,False

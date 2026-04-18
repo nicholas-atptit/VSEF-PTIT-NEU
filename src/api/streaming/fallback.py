@@ -113,20 +113,20 @@ class FallbackFiller:
         from_dt: dt.datetime,
         to_dt: dt.datetime,
     ) -> None:
-        """Fallback: use vnstock library to fetch gap data."""
+        """Fallback: use vnstock_data library to fetch gap data (canonical provider)."""
         try:
-            import vnstock
+            from vnstock_data import Quote
 
             logger.info(
-                "vnstock_fallback",
+                "vnstock_data_fallback",
                 from_dt=from_dt.isoformat(),
                 to_dt=to_dt.isoformat(),
             )
-            # vnstock integration for gap filling
+            # vnstock_data integration for gap filling
             # This is a secondary fallback when DNSE REST is unavailable
 
         except ImportError:
-            logger.error("vnstock_not_installed", msg="Cannot fill gap — no data source available")
+            logger.error("vnstock_data_not_installed", msg="Cannot fill gap — no data source available")
 
     @property
     def pending_gaps(self) -> list[dict]:

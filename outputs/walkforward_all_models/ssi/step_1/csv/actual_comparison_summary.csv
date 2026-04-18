@@ -1,0 +1,7 @@
+step_size,horizon,total_predictions,evaluation_eligible_predictions,evaluation_ineligible_predictions,coverage_ratio
+1,long_3m,26,26,0,1.0
+1,long_6m,26,26,0,1.0
+1,short_10d,26,26,0,1.0
+1,short_20d,26,26,0,1.0
+1,short_30d,26,26,0,1.0
+1,short_5d,26,26,0,1.0

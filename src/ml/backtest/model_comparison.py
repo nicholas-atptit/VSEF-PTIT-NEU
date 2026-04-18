@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from src.ml.backtest.real_data import FixedWindowBacktestConfig, RealDataBacktestRunner
+from src.ml.metrics import compare_prediction_metric_sets, compute_prediction_error_metrics
 from src.ml.models.factory import create_model
 from src.ml.trainer import DualModelTrainer
 from src.utils.logging import get_logger
@@ -194,45 +195,53 @@ class BacktestModelComparisonRunner(RealDataBacktestRunner):
         *,
         rule: str,
     ) -> tuple[bool, dict[str, bool]]:
-        metric_wins = {
-            "mae": bool(model_row["mae"] < model_row["baseline_mae"]),
-            "rmse": bool(model_row["rmse"] < model_row["baseline_rmse"]),
-            "mape": bool(model_row["mape"] < model_row["baseline_mape"])
-            if not np.isnan(model_row["mape"]) and not np.isnan(model_row["baseline_mape"])
-            else False,
-            "directional_accuracy": bool(model_row["directional_accuracy"] > model_row["baseline_directional_accuracy"]),
-        }
-        if rule == "majority_of_metrics":
-            beats = sum(metric_wins.values()) >= 3
-        else:
-            beats = metric_wins["rmse"]
-        return beats, metric_wins
+        return compare_prediction_metric_sets(
+            {
+                "mae": model_row["mae"],
+                "rmse": model_row["rmse"],
+                "mape": model_row["mape"],
+                "directional_accuracy": model_row["directional_accuracy"],
+            },
+            {
+                "mae": model_row["baseline_mae"],
+                "rmse": model_row["baseline_rmse"],
+                "mape": model_row["baseline_mape"],
+                "directional_accuracy": model_row["baseline_directional_accuracy"],
+            },
+            rule=rule,
+        )
 
     def _build_model_comparison(self, comparison_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         rows: list[dict[str, Any]] = []
         ranking_rows: list[dict[str, Any]] = []
 
         for (ticker, model_name), group in comparison_df.groupby(["ticker", "model_name"], sort=True):
-            errors = pd.to_numeric(group["predicted_close"], errors="coerce") - pd.to_numeric(group["actual_close"], errors="coerce")
-            baseline_errors = pd.to_numeric(group["predicted_close_baseline"], errors="coerce") - pd.to_numeric(group["actual_close"], errors="coerce")
-            pct_errors = pd.to_numeric(group["pct_error"], errors="coerce")
-            baseline_pct_errors = pd.to_numeric(group["pct_error_baseline"], errors="coerce")
+            model_metrics = compute_prediction_error_metrics(
+                actual=group["actual_close"],
+                predicted=group["predicted_close"],
+                actual_direction=group["actual_direction"],
+                predicted_direction=group["predicted_direction"],
+                mape_denominator=group["actual_close"],
+            )
+            baseline_metrics = compute_prediction_error_metrics(
+                actual=group["actual_close"],
+                predicted=group["predicted_close_baseline"],
+                actual_direction=group["actual_direction"],
+                predicted_direction=group["predicted_direction_baseline"],
+                mape_denominator=group["actual_close"],
+            )
             row = {
                 "ticker": str(ticker),
                 "model_name": str(model_name),
-                "observations": int(len(group)),
-                "mae": float(pd.to_numeric(group["absolute_error"], errors="coerce").mean()),
-                "rmse": float(np.sqrt(np.mean(np.square(errors)))),
-                "mape": float(pct_errors.dropna().mean()) if not pct_errors.dropna().empty else np.nan,
-                "directional_accuracy": float(
-                    (group["predicted_direction"].astype(int) == group["actual_direction"].astype(int)).mean()
-                ),
-                "baseline_mae": float(pd.to_numeric(group["absolute_error_baseline"], errors="coerce").mean()),
-                "baseline_rmse": float(np.sqrt(np.mean(np.square(baseline_errors)))),
-                "baseline_mape": float(baseline_pct_errors.dropna().mean()) if not baseline_pct_errors.dropna().empty else np.nan,
-                "baseline_directional_accuracy": float(
-                    (group["predicted_direction_baseline"].astype(int) == group["actual_direction"].astype(int)).mean()
-                ),
+                "observations": int(model_metrics["observations"]),
+                "mae": float(model_metrics["mae"]),
+                "rmse": float(model_metrics["rmse"]),
+                "mape": model_metrics["mape"],
+                "directional_accuracy": float(model_metrics["directional_accuracy"]),
+                "baseline_mae": float(baseline_metrics["mae"]),
+                "baseline_rmse": float(baseline_metrics["rmse"]),
+                "baseline_mape": baseline_metrics["mape"],
+                "baseline_directional_accuracy": float(baseline_metrics["directional_accuracy"]),
             }
             beats, metric_wins = self._beats_baseline(row, rule=self.config.beats_baseline_rule)
             row.update(
@@ -252,18 +261,21 @@ class BacktestModelComparisonRunner(RealDataBacktestRunner):
         model_comparison_df = pd.DataFrame(rows).sort_values(["ticker", "model_name"]).reset_index(drop=True)
 
         for model_name, group in comparison_df.groupby("model_name", sort=True):
-            errors = pd.to_numeric(group["predicted_close"], errors="coerce") - pd.to_numeric(group["actual_close"], errors="coerce")
-            pct_errors = pd.to_numeric(group["pct_error"], errors="coerce")
+            model_metrics = compute_prediction_error_metrics(
+                actual=group["actual_close"],
+                predicted=group["predicted_close"],
+                actual_direction=group["actual_direction"],
+                predicted_direction=group["predicted_direction"],
+                mape_denominator=group["actual_close"],
+            )
             ranking_rows.append(
                 {
                     "model_name": str(model_name),
-                    "observations": int(len(group)),
-                    "mae": float(pd.to_numeric(group["absolute_error"], errors="coerce").mean()),
-                    "rmse": float(np.sqrt(np.mean(np.square(errors)))),
-                    "mape": float(pct_errors.dropna().mean()) if not pct_errors.dropna().empty else np.nan,
-                    "directional_accuracy": float(
-                        (group["predicted_direction"].astype(int) == group["actual_direction"].astype(int)).mean()
-                    ),
+                    "observations": int(model_metrics["observations"]),
+                    "mae": float(model_metrics["mae"]),
+                    "rmse": float(model_metrics["rmse"]),
+                    "mape": model_metrics["mape"],
+                    "directional_accuracy": float(model_metrics["directional_accuracy"]),
                     "tickers_beating_naive": int(
                         model_comparison_df[
                             (model_comparison_df["model_name"] == str(model_name))
@@ -275,27 +287,22 @@ class BacktestModelComparisonRunner(RealDataBacktestRunner):
 
         baseline_rows: list[dict[str, Any]] = []
         for ticker, group in comparison_df.groupby("ticker", sort=True):
-            pct_errors = pd.to_numeric(group["pct_error_baseline"], errors="coerce")
+            baseline_metrics = compute_prediction_error_metrics(
+                actual=group["actual_close"],
+                predicted=group["predicted_close_baseline"],
+                actual_direction=group["actual_direction"],
+                predicted_direction=group["predicted_direction_baseline"],
+                mape_denominator=group["actual_close"],
+            )
             baseline_rows.append(
                 {
                     "ticker": str(ticker),
                     "model_name": "naive_previous_close",
-                    "observations": int(group["date"].nunique()),
-                    "mae": float(pd.to_numeric(group["absolute_error_baseline"], errors="coerce").mean()),
-                    "rmse": float(
-                        np.sqrt(
-                            np.mean(
-                                np.square(
-                                    pd.to_numeric(group["predicted_close_baseline"], errors="coerce")
-                                    - pd.to_numeric(group["actual_close"], errors="coerce")
-                                )
-                            )
-                        )
-                    ),
-                    "mape": float(pct_errors.dropna().mean()) if not pct_errors.dropna().empty else np.nan,
-                    "directional_accuracy": float(
-                        (group["predicted_direction_baseline"].astype(int) == group["actual_direction"].astype(int)).mean()
-                    ),
+                    "observations": int(baseline_metrics["observations"]),
+                    "mae": float(baseline_metrics["mae"]),
+                    "rmse": float(baseline_metrics["rmse"]),
+                    "mape": baseline_metrics["mape"],
+                    "directional_accuracy": float(baseline_metrics["directional_accuracy"]),
                     "baseline_mae": np.nan,
                     "baseline_rmse": np.nan,
                     "baseline_mape": np.nan,
@@ -313,30 +320,21 @@ class BacktestModelComparisonRunner(RealDataBacktestRunner):
             .reset_index(drop=True)
         )
 
-        baseline_overall = comparison_df.copy()
-        baseline_overall_pct = pd.to_numeric(baseline_overall["pct_error_baseline"], errors="coerce")
+        baseline_overall_metrics = compute_prediction_error_metrics(
+            actual=comparison_df["actual_close"],
+            predicted=comparison_df["predicted_close_baseline"],
+            actual_direction=comparison_df["actual_direction"],
+            predicted_direction=comparison_df["predicted_direction_baseline"],
+            mape_denominator=comparison_df["actual_close"],
+        )
         ranking_rows.append(
             {
                 "model_name": "naive_previous_close",
-                "observations": int(len(baseline_overall)),
-                "mae": float(pd.to_numeric(baseline_overall["absolute_error_baseline"], errors="coerce").mean()),
-                "rmse": float(
-                    np.sqrt(
-                        np.mean(
-                            np.square(
-                                pd.to_numeric(baseline_overall["predicted_close_baseline"], errors="coerce")
-                                - pd.to_numeric(baseline_overall["actual_close"], errors="coerce")
-                            )
-                        )
-                    )
-                ),
-                "mape": float(baseline_overall_pct.dropna().mean()) if not baseline_overall_pct.dropna().empty else np.nan,
-                "directional_accuracy": float(
-                    (
-                        baseline_overall["predicted_direction_baseline"].astype(int)
-                        == baseline_overall["actual_direction"].astype(int)
-                    ).mean()
-                ),
+                "observations": int(baseline_overall_metrics["observations"]),
+                "mae": float(baseline_overall_metrics["mae"]),
+                "rmse": float(baseline_overall_metrics["rmse"]),
+                "mape": baseline_overall_metrics["mape"],
+                "directional_accuracy": float(baseline_overall_metrics["directional_accuracy"]),
                 "tickers_beating_naive": 0,
             }
         )
@@ -405,6 +403,17 @@ class BacktestModelComparisonRunner(RealDataBacktestRunner):
         run_config.update(
             {
                 "source": "vnstock",
+                "benchmark_basis": "shared_close_level_regression_task_with_directional_sign_check",
+                "comparable_tasks_only": True,
+                "evaluation_context": "fixed_window_holdout_target_date_model_family_comparison",
+                "metric_semantics": {
+                    "artifact_scope": "fixed_window_model_comparison",
+                    "prediction_metrics": "close-level held-out backtest error metrics by model family",
+                    "metric_basis": "evaluation window target dates",
+                    "financial_performance_metrics_included": False,
+                    "heuristic_scenario_risk_included": False,
+                    "comparability_warning": "Models are ranked only on the shared close-level prediction task. Do not read these ranks as portfolio-performance or uncertainty-calibration rankings.",
+                },
                 "fetch_start": str(fetch_start.date()),
                 "train_start": str(dates["train_start"].date()),
                 "train_end": str(dates["train_end"].date()),

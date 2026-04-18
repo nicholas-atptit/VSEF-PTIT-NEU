@@ -1,1 +1,53 @@
 from __future__ import annotations
+
+from .registry import (
+    FEATURE_REGISTRY_PATH,
+    FEATURE_REGISTRY_VERSION,
+    approved_feature_sets,
+    feature_build_modes,
+    feature_selection_evidence,
+    feature_entries,
+    feature_lookup,
+    final_task_feature_sets,
+    load_feature_registry,
+    price_reference_semantics,
+    resolve_feature_set,
+    resolve_task_feature_set,
+    validate_feature_registry_against_columns,
+)
+from .selection import (
+    WalkForwardFeatureSelectionConfig,
+    add_phase3_targets,
+    build_feature_panel,
+    build_walk_forward_folds,
+    detect_forward_fill_boundary_leakage,
+    detect_future_join_leakage,
+    run_walk_forward_feature_selection,
+    validate_walk_forward_folds,
+    write_phase3_reports,
+)
+
+__all__ = [
+    "FEATURE_REGISTRY_PATH",
+    "FEATURE_REGISTRY_VERSION",
+    "approved_feature_sets",
+    "feature_build_modes",
+    "feature_selection_evidence",
+    "feature_entries",
+    "feature_lookup",
+    "final_task_feature_sets",
+    "load_feature_registry",
+    "price_reference_semantics",
+    "resolve_feature_set",
+    "resolve_task_feature_set",
+    "validate_feature_registry_against_columns",
+    "WalkForwardFeatureSelectionConfig",
+    "add_phase3_targets",
+    "build_feature_panel",
+    "build_walk_forward_folds",
+    "detect_forward_fill_boundary_leakage",
+    "detect_future_join_leakage",
+    "run_walk_forward_feature_selection",
+    "validate_walk_forward_folds",
+    "write_phase3_reports",
+]

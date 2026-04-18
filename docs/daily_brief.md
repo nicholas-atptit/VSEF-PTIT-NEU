@@ -41,7 +41,7 @@ python -m src.reporting.daily_brief --file data/processed/batch_inference_202604
 
 ### 3. High Risk / Volatility
 - **Volatility Score**: Predicted annualized volatility.
-- **Confidence**: The model's internal confidence score (0.0 to 1.0).
+- **Heuristic Scenario Risk**: Residual-based scenario VaR/CVaR summary around the point forecast. This is not calibrated confidence.
 
 ### 4. Data Quality Warnings
-- Alerts for missing tickers or extremely low-confidence predictions.
+- Alerts for missing tickers or predictions with unusually weak scenario-risk or data-quality context.

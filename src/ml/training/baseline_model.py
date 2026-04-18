@@ -1,4 +1,4 @@
-"""Baseline model training and evaluation."""
+"""Deprecated baseline scaffold retained only for historical reference."""
 
 from __future__ import annotations
 
@@ -14,9 +14,20 @@ from config.settings import get_settings
 logger = get_logger(__name__)
 
 class BaselineModel:
-    """Simple ML model for baseline comparison."""
+    """Legacy baseline helper that is no longer part of the supported ML path."""
 
-    def __init__(self, model_params: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        model_params: Optional[Dict[str, Any]] = None,
+        *,
+        allow_legacy: bool = False,
+    ) -> None:
+        if not allow_legacy:
+            raise RuntimeError(
+                "BaselineModel is legacy scaffold and is intentionally blocked by default. "
+                "Use DualModelTrainer for supported training workflows. "
+                "Pass allow_legacy=True only for historical debugging."
+            )
         self.params = model_params or {}
         self.model = None
 

@@ -9,12 +9,10 @@ import feedparser
 import time
 from datetime import datetime
 
-# Attempt to load vnstock
-try:
-    import vnstock 
-    from vnstock import Vnstock
-except (ImportError, ModuleNotFoundError):
-    Vnstock = None
+# Canonical provider: vnstock_data (NOT vnstock)
+# Note: vnstock_data does not expose a company news API.
+# News crawling uses Google News RSS feed as primary source.
+Vnstock = None  # Explicitly disabled — use news from RSS/other sources
 
 from config.settings import get_settings
 from src.ml.llm.news_intel import NewsIntelEngine
@@ -46,55 +44,13 @@ def crawl_google_news(ticker, query, start_year=2021):
     return articles
 
 def crawl_vnstock_news(ticker, start_year=2021):
-    """Crawl from VNStock API"""
-    articles = []
-    if not Vnstock:
-        print(f"[{ticker}] vnstock not installed. Skipping.")
-        return articles
-        
-    print(f"[{ticker}] Fetching VNStock corporate news...")
-    try:
-        settings = get_settings()
-        # Set API Key in environment if available
-        if hasattr(settings, 'vnstock_api_key') and settings.vnstock_api_key:
-            os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
-            
-        vn = Vnstock()
-        # Use VCI as a reliable source for news in vnstock v3
-        stock = vn.stock(symbol=ticker, source='VCI')
-        df = stock.company.news()
-        
-        if df is None or df.empty:
-            return articles
-            
-        for _, row in df.iterrows():
-            title = row.get('news_title', '')
-            public_date = row.get('public_date', '')
-            
-            date_str = ""
-            if public_date:
-                try:
-                    # public_date can be an int (ms timestamp) or a string
-                    if isinstance(public_date, (int, float)):
-                        # Convert ms to seconds if it's too large
-                        ts = public_date / 1000.0 if public_date > 1e12 else public_date
-                        dt_obj = datetime.fromtimestamp(ts)
-                        year = dt_obj.year
-                        date_str = dt_obj.strftime('%Y-%m-%d %H:%M:%S')
-                    else:
-                        date_str = str(public_date)
-                        year = int(date_str.split('-')[0][:4])
-                        
-                    if year < start_year: continue
-                except: pass
-            
-            # Use news_title as both title and content if content is missing
-            content = row.get('news_short_content', title)
-            articles.append(CrawledArticle(title, content, "VNStock", date_str))
-    except Exception as e:
-        print(f"[{ticker}] Lỗi khi chạy vnstock: {e}")
-        
-    return articles  # No cap — push 100% to LLM
+    """Company news via vnstock — not available with vnstock_data canonical provider.
+
+    vnstock_data does not expose a company news API.
+    Returns empty list; use crawl_google_news for news.
+    """
+    print(f"[{ticker}] Note: Company news not available via vnstock_data. Use Google News crawler.")
+    return []
 
 async def process_ticker(ticker, query_news, negative_list=None):
     print(f"=== Bắt đầu Crawl tin tức mã: {ticker} ===")

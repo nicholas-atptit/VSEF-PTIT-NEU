@@ -21,7 +21,7 @@ from .risk_engine import RiskEngine, RiskSummary
 
 
 class MonteCarloRiskSimulator:
-    """Deterministic point-estimate Monte Carlo wrapper used at inference time."""
+    """Deterministic residual-scenario wrapper used for heuristic forecast risk."""
 
     def __init__(self, simulations: int = 10000, random_seed: int = 42) -> None:
         self.simulations = simulations
@@ -72,7 +72,20 @@ class MonteCarloRiskSimulator:
                 "median": float(np.median(scenarios)),
             },
             "metadata": {
-                "assumptions": "Normal distribution of residuals around forecast mean",
+                "assumptions": (
+                    "Residual-based normal scenarios around the point forecast; "
+                    "not calibrated forecast confidence."
+                ),
+                "risk_model_type": "residual_normal_scenario_simulation",
+                "uncertainty_methodology": (
+                    "residual_based_normal_scenario_simulation_using_point_forecast_and_volatility_proxy"
+                ),
+                "calibration_status": "heuristic_not_calibrated",
+                "interpretation_warning": (
+                    "Scenario VaR/CVaR values are heuristic tail summaries from residual-based simulated returns. "
+                    "They are not calibrated confidence intervals or guaranteed loss bounds."
+                ),
+                "tail_metric_context": "scenario_quantiles_of_simulated_return_distribution",
                 "simulations": int(self.simulations),
                 "horizon": horizon,
                 "random_seed": int(self.random_seed),

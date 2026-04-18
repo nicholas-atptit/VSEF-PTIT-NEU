@@ -409,25 +409,21 @@ async def health() -> dict:
 @router.get("/market-index")
 async def market_index() -> dict:
     """Fetch latest VN-Index and HNX-Index data."""
-    import os
-    from vnstock import Vnstock
-    from config.settings import get_settings
     import datetime as _dt
-
-    settings = get_settings()
-    os.environ["VNAI_API_KEY"] = settings.vnstock_api_key
-    os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
+    from src.data.adapters.vnstock_adapter import VnstockAdapter
 
     end = _dt.date.today()
     start = end - _dt.timedelta(days=10)
+    adapter = VnstockAdapter()
 
     indices = []
     for symbol, name in [("VNINDEX", "VN-Index"), ("HNX-INDEX", "HNX-Index")]:
         try:
-            stock = Vnstock().stock(symbol=symbol, source="VCI")
-            df = stock.quote.history(
-                start=start.strftime("%Y-%m-%d"),
-                end=end.strftime("%Y-%m-%d"),
+            df = adapter.get_index_ohlcv(
+                symbol=symbol,
+                start_date=start.strftime("%Y-%m-%d"),
+                end_date=end.strftime("%Y-%m-%d"),
+                interval="1D",
             )
             if df is not None and not df.empty:
                 latest = df.iloc[-1]
@@ -441,7 +437,7 @@ async def market_index() -> dict:
                     "change": round(change, 2),
                     "change_pct": round(change_pct, 2),
                     "volume": int(latest["volume"]),
-                    "date": str(latest["time"])[:10],
+                    "date": str(latest["date"])[:10],
                 })
         except Exception as e:
             logger.warning("market_index_error", symbol=symbol, error=str(e))
@@ -459,24 +455,19 @@ async def stock_history(
     days: int = Query(90, description="Number of days of history"),
 ) -> dict:
     """Fetch recent OHLCV history for a ticker (for frontend charting)."""
-    import os
     import datetime as _dt
-    from vnstock import Vnstock
-    from config.settings import get_settings
-
-    settings = get_settings()
-    os.environ["VNAI_API_KEY"] = settings.vnstock_api_key
-    os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
+    from src.data.adapters.vnstock_adapter import VnstockAdapter
 
     ticker = ticker.upper().strip()
     end = _dt.date.today()
     start = end - _dt.timedelta(days=int(days * 1.5))
 
     try:
-        stock = Vnstock().stock(symbol=ticker, source="VCI")
-        df = stock.quote.history(
-            start=start.strftime("%Y-%m-%d"),
-            end=end.strftime("%Y-%m-%d"),
+        df = VnstockAdapter().get_ohlcv(
+            ticker,
+            start_date=start.strftime("%Y-%m-%d"),
+            end_date=end.strftime("%Y-%m-%d"),
+            interval="1D",
         )
         if df is None or df.empty:
             raise HTTPException(status_code=404, detail=f"No history for {ticker}")
@@ -484,7 +475,7 @@ async def stock_history(
         records = []
         for _, row in df.iterrows():
             records.append({
-                "time": str(row["time"])[:10],
+                "time": str(row["date"])[:10],
                 "open": round(float(row["open"]), 2),
                 "high": round(float(row["high"]), 2),
                 "low": round(float(row["low"]), 2),
@@ -508,28 +499,28 @@ async def search_tickers(
     q: str = Query(..., min_length=1, description="Search query"),
 ) -> dict:
     """Search stock tickers from HOSE, HNX, UPCOM listings."""
-    import os
-    from vnstock import Vnstock
-    from config.settings import get_settings
-
-    settings = get_settings()
-    os.environ["VNAI_API_KEY"] = settings.vnstock_api_key
-    os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
+    from src.data.adapters.vnstock_adapter import VnstockAdapter
 
     q = q.upper().strip()
 
     try:
-        stock = Vnstock().stock(symbol="SSI", source="VCI")
-        all_results = []
-        for group in ["HOSE", "HNX", "UPCOM"]:
-            try:
-                symbols = stock.listing.symbols_by_group(group)
-                matched = [s for s in symbols.tolist() if q in s]
-                all_results.extend(matched)
-            except Exception:
-                continue
-        
-        return {"query": q, "results": list(set(all_results))[:30]}
+        listing = VnstockAdapter().get_all_symbols()
+        if listing is None or listing.empty:
+            return {"query": q, "results": []}
+        symbol_col = "symbol" if "symbol" in listing.columns else listing.columns[0]
+        organ_col = "organ_name" if "organ_name" in listing.columns else None
+        mask = listing[symbol_col].astype(str).str.upper().str.contains(q, na=False)
+        if organ_col:
+            mask = mask | listing[organ_col].astype(str).str.upper().str.contains(q, na=False)
+        results = (
+            listing.loc[mask, symbol_col]
+            .astype(str)
+            .str.upper()
+            .drop_duplicates()
+            .head(30)
+            .tolist()
+        )
+        return {"query": q, "results": results}
     except Exception as e:
         logger.error("search_error", query=q, error=str(e))
         return {"query": q, "results": []}
@@ -541,22 +532,19 @@ async def search_tickers(
 @router.get("/ticker-info")
 async def ticker_info(ticker: str = Query(...)) -> dict:
     """Fetch basic company information."""
-    import os
-    from vnstock import Vnstock
-    from config.settings import get_settings
-
-    settings = get_settings()
-    os.environ["VNAI_API_KEY"] = settings.vnstock_api_key
-    os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
-
+    from src.data.adapters.vnstock_adapter import VnstockAdapter
     ticker = ticker.upper().strip()
     try:
-        # Since v3 info API is complex/unstable across sources, 
-        # we return a clean metadata object.
+        overview = VnstockAdapter().get_company_overview(ticker)
+        if overview is not None and not overview.empty:
+            row = overview.iloc[0].to_dict()
+            return {"ticker": ticker, "source": overview.attrs.get("source_name", "Company.overview"), **row}
+        # Company.overview exists in the installed provider, but this endpoint
+        # keeps a clean fallback object when the live runtime call fails.
         return {
             "ticker": ticker,
-            "name": f"Công ty Cổ phần {ticker}", # Fallback naming
-            "exchange": "HOSE", # Default
+            "name": f"Công ty Cổ phần {ticker}",
+            "exchange": "HOSE",
             "industry": "Tài chính / Sản xuất",
             "description": f"Thông tin chi tiết về mã {ticker} đang được tải..."
         }
@@ -570,20 +558,13 @@ async def ticker_info(ticker: str = Query(...)) -> dict:
 @router.get("/order-book")
 async def order_book(ticker: str = Query(...)) -> dict:
     """Fetch Bid/Ask depth (Mocked if API fails)."""
-    import os
     import random
-    from vnstock import Vnstock
-    from config.settings import get_settings
-
-    settings = get_settings()
-    os.environ["VNAI_API_KEY"] = settings.vnstock_api_key
-    os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
 
     ticker = ticker.upper().strip()
     try:
-        # Mocking Order Book for now as price_depth is unstable in current v3/VCI
-        last_price = 30.0 # Base price for mock
-        
+        # Mocking Order Book for now as price_depth is unstable
+        last_price = 30.0  # Base price for mock
+
         bids = []
         asks = []
         for i in range(3):
@@ -595,7 +576,7 @@ async def order_book(ticker: str = Query(...)) -> dict:
                 "price": round(last_price + (i * 0.1) + 0.05, 2),
                 "volume": random.randint(1000, 50000)
             })
-            
+
         return {
             "ticker": ticker,
             "bids": sorted(bids, key=lambda x: x["price"], reverse=True),
@@ -611,33 +592,29 @@ async def order_book(ticker: str = Query(...)) -> dict:
 
 @router.get("/time-sales")
 async def time_sales(ticker: str = Query(...)) -> dict:
-    """Fetch latest intraday matches."""
-    import os
+    """Fetch latest intraday matches via vnstock_data."""
     import datetime as _dt
-    from vnstock import Vnstock
-    from config.settings import get_settings
-
-    settings = get_settings()
-    os.environ["VNAI_API_KEY"] = settings.vnstock_api_key
-    os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
+    from src.data.adapters.vnstock_adapter import VnstockAdapter
 
     ticker = ticker.upper().strip()
     try:
-        stock = Vnstock().stock(symbol=ticker, source="VCI")
-        df = stock.quote.intraday()
-        
+        today = _dt.date.today().strftime("%Y-%m-%d")
+        trades = VnstockAdapter().get_trade_history(ticker, start_date=today, end_date=today)
+        if trades is None or trades.empty:
+            logger.warning("time_sales_unavailable_via_vnstock_data", ticker=ticker)
+            return {
+                "ticker": ticker,
+                "matches": [],
+                "timezone": "GMT+7 Hanoi"
+            }
         matches = []
-        if df is not None and not df.empty:
-            # Sort by time descending
-            df = df.sort_values("time", ascending=False).head(30)
-            for _, row in df.iterrows():
-                matches.append({
-                    "time": str(row["time"])[11:19], # HH:MM:SS
-                    "price": round(float(row["price"]), 2),
-                    "volume": int(row["volume"]),
-                    "type": str(row["match_type"]).upper()
-                })
-                
+        for _, row in trades.head(50).iterrows():
+            matches.append({
+                "time": str(row.get("time", "")),
+                "side": str(row.get("side", "")),
+                "price": float(row.get("price", 0.0)),
+                "volume": int(row.get("match_volume", row.get("volume", 0)) or 0),
+            })
         return {
             "ticker": ticker,
             "matches": matches,
@@ -653,38 +630,33 @@ async def time_sales(ticker: str = Query(...)) -> dict:
 
 @router.get("/news")
 async def ticker_news(ticker: str = Query(...)) -> dict:
-    """Fetch latest news headlines for a ticker from vnstock."""
-    import os
-    from vnstock import Vnstock
-    from config.settings import get_settings
+    """Fetch latest news headlines for a ticker.
 
-    settings = get_settings()
-    os.environ["VNAI_API_KEY"] = settings.vnstock_api_key
-    os.environ["VNSTOCK_API_KEY"] = settings.vnstock_api_key
+    Company.news exists in the installed provider, but this endpoint still
+    degrades gracefully to an empty list if the runtime call fails.
+    """
+    from src.data.adapters.vnstock_adapter import VnstockAdapter
 
     ticker = ticker.upper().strip()
-    try:
-        stock = Vnstock().stock(symbol=ticker)
-        news_df = stock.company.news()
-        
-        news_list = []
-        if news_df is not None and not news_df.empty:
-            # Take top 10 news items
-            for _, row in news_df.head(10).iterrows():
-                news_list.append({
-                    "title": str(row["title"]),
-                    "publish_time": str(row["publish_time"]),
-                    "url": str(row["url"]) if "url" in row else None
-                })
-                
+    news_df = VnstockAdapter().get_news(ticker, count=10)
+    if news_df is None or news_df.empty:
+        logger.warning("news_unavailable_via_vnstock_data", ticker=ticker)
         return {
             "ticker": ticker,
-            "news": news_list,
-            "count": len(news_list)
+            "news": [],
+            "count": 0
         }
-    except Exception as e:
-        logger.error("news_fetch_error", ticker=ticker, error=str(e))
-        return {"ticker": ticker, "news": [], "error": str(e)}
+    items = []
+    for _, row in news_df.iterrows():
+        title = row.get("title") or row.get("name") or row.get("description") or row.get("news_title") or ""
+        publish_time = row.get("date") or row.get("publish_time") or row.get("published_at") or ""
+        link = row.get("link") or row.get("url") or ""
+        items.append({"title": str(title), "publish_time": str(publish_time), "link": str(link)})
+    return {
+        "ticker": ticker,
+        "news": items,
+        "count": len(items)
+    }
 
 
 # ── Data Ingestion Pipeline Endpoints ────────────────────────

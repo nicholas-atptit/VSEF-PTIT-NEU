@@ -13,6 +13,7 @@ Exit code:
 Usage:
   python scripts/verify_ml_baseline.py
   python scripts/verify_ml_baseline.py --skip-inference   # skip live inference if no models exist
+  python scripts/verify_ml_baseline.py --full-suite       # run the entire tests/ml tree
 """
 
 from __future__ import annotations
@@ -27,6 +28,16 @@ PYTHON = sys.executable
 
 PASS = "PASS"
 FAIL = "FAIL"
+FOCUSED_ML_TESTS = [
+    "tests/ml/test_phase1_hardening.py",
+    "tests/ml/test_phase2_hardening.py",
+    "tests/ml/test_phase3_hardening.py",
+    "tests/ml/test_strategy_backtest.py",
+    "tests/ml/test_real_data_backtest.py",
+    "tests/ml/test_model_comparison.py",
+    "tests/ml/test_integration.py",
+    "tests/ml/test_risk.py",
+]
 
 
 def run(cmd: list[str], *, label: str) -> bool:
@@ -59,10 +70,11 @@ def check_cli_help() -> bool:
     )
 
 
-def check_ml_tests() -> bool:
+def check_ml_tests(*, full_suite: bool) -> bool:
+    test_args = ["tests/ml/"] if full_suite else FOCUSED_ML_TESTS
     return run(
-        [PYTHON, "-m", "pytest", "tests/ml/", "-v", "--tb=short", "-q"],
-        label="ML unit tests (tests/ml/)",
+        [PYTHON, "-m", "pytest", *test_args, "-v", "--tb=short", "-q"],
+        label="ML unit tests (focused reliability subset)" if not full_suite else "ML unit tests (tests/ml/)",
     )
 
 
@@ -117,12 +129,17 @@ def main() -> None:
         action="store_true",
         help="Skip the live smoke inference check (use when no data CSVs available)",
     )
+    parser.add_argument(
+        "--full-suite",
+        action="store_true",
+        help="Run the entire tests/ml tree instead of the focused reliability subset",
+    )
     args = parser.parse_args()
 
     results: dict[str, bool] = {}
     results["import_smoke"] = check_imports()
     results["cli_help"] = check_cli_help()
-    results["ml_unit_tests"] = check_ml_tests()
+    results["ml_unit_tests"] = check_ml_tests(full_suite=args.full_suite)
     results["smoke_inference"] = check_smoke_inference(skip=args.skip_inference)
 
     print(f"\n{'='*60}")

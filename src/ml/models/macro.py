@@ -54,7 +54,7 @@ class MacroIndicator(Base):
         String(50),
         nullable=False,
         default="api",
-        comment="Data source: dnse, vnstock, yfinance, manual",
+        comment="Data source provenance, with vnstock_data as the canonical provider for supported series",
     )
     unit: Mapped[str | None] = mapped_column(
         String(20),

@@ -1,6 +1,6 @@
 # VN100 Stock Prediction System Skeleton
 
-I have established a modular, scalable architecture for the VN100 stock prediction system. This skeleton provides the foundation for data ingestion, feature engineering, model training, and automated reporting without breaking any existing functionality.
+This document describes an older scaffold. The supported ML path now runs through `src/ml/trainer.py` and the real backtest scripts, not the legacy `TrainingPipeline`.
 
 ## Changes Made
 
@@ -8,15 +8,15 @@ I have established a modular, scalable architecture for the VN100 stock predicti
 - `src/adapters/`: Standardized interface for `vnstock`.
 - `src/features/`: Separate modules for technical and fundamental indicators.
 - `src/labels/`: Label engineering for regression and classification tasks.
-- `src/datasets/`: Data loading and temporal splitting logic.
-- `src/training/`: Baseline model implementation.
-- `src/pipelines/`: Orchestration for ingestion, training, and inference.
-- `src/inference/`: Prediction engine.
+- `src/data/datasets/`: Legacy dataset loading scaffold retained for reference only.
+- `src/ml/training/`: Legacy baseline scaffold retained for reference only.
+- `src/ml/trainer.py`: Supported manifest-driven trainer and inference path.
+- `src/ml/inference/`: Prediction engine.
 - `src/validators/`: Data quality and schema verification.
-- `src/reports/`: Daily summary report generation.
+- `src/reporting/reports/`: Daily summary report generation.
 
 ### 2. Documentation
-- Created [architecture_map.md](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/architecture_map.md) detailing the system flow and components.
+- See [architecture_map.md](/h:/AI-ML-LLM in Stock_march26_PTIT_NEU/docs/architecture_map.md) for the current system flow and canonical ML path.
 
 ### 3. Verification & Testing
 - Added smoke tests in `tests/test_vn100_adapters.py` and `tests/test_vn100_features.py`.
@@ -31,10 +31,9 @@ graph TD
     ingestion --> store[(Data Store)]
     store --> gen[FeatureGenerator]
     store --> labels[LabelGenerator]
-    gen --> loader[DatasetLoader]
-    labels --> loader
-    loader --> training[TrainingPipeline]
-    training --> model[Model Registry]
+    gen --> trainer[DualModelTrainer]
+    labels --> trainer
+    trainer --> model[Model Registry]
     model --> inference[InferencePipeline]
     inference --> report[DailyReport]
 ```

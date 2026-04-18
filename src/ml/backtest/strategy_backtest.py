@@ -24,6 +24,13 @@ from src.ml.backtest.forward_return import (
     ForwardReturnBacktestRunner,
 )
 from src.ml.backtest.real_data import STANDARD_COLUMNS
+from src.ml.metrics import (
+    compute_max_drawdown,
+    compute_profit_factor,
+    compute_sharpe_ratio,
+    compute_sortino_ratio,
+    compute_weight_turnover as canonical_compute_weight_turnover,
+)
 from src.utils.logging import get_logger
 from src.validators.data_quality import DataQualityValidator
 
@@ -35,6 +42,13 @@ NAIVE_FLAT_STRATEGY_NAME = "naive_flat_strategy"
 PORTFOLIO_TICKER = "PORTFOLIO_EQUAL_WEIGHT"
 MODEL_STRATEGY_TYPE = "model"
 BENCHMARK_STRATEGY_TYPE = "benchmark"
+PORTFOLIO_CAPITAL_MODEL = "equal_weight_active_positions_with_cash_when_flat"
+PORTFOLIO_TURNOVER_DEFINITION = (
+    "gross sum of absolute changes in risky-asset portfolio weights, including opening and terminal liquidation"
+)
+PORTFOLIO_TRADE_DIAGNOSTIC_BASIS = (
+    "raw constituent trade diagnostics; not portfolio-weighted equity metrics"
+)
 
 
 @dataclass(slots=True)
@@ -112,6 +126,8 @@ def compute_strategy_metrics(
     daily_returns: pd.Series,
     positions: pd.Series,
     trade_returns: pd.Series,
+    *,
+    weight_history: pd.DataFrame | None = None,
 ) -> dict[str, float]:
     clean_daily = pd.to_numeric(daily_returns, errors="coerce").fillna(0.0).astype(float)
     clean_positions = pd.to_numeric(positions, errors="coerce").fillna(0.0).astype(float)
@@ -139,32 +155,17 @@ def compute_strategy_metrics(
         if equity_curve.iloc[-1] > 0
         else 0.0
     )
-    volatility = float(clean_daily.std(ddof=0))
-    if volatility < 1e-12:
-        sharpe_ratio = 1e6 if clean_daily.mean() > 0 else (-1e6 if clean_daily.mean() < 0 else 0.0)
-    else:
-        sharpe_ratio = float((clean_daily.mean() / volatility) * np.sqrt(252.0))
-
-    downside = clean_daily[clean_daily < 0.0]
-    downside_vol = float(downside.std(ddof=0)) if not downside.empty else 0.0
-    if downside_vol < 1e-12:
-        sortino_ratio = 1e6 if clean_daily.mean() > 0 else (-1e6 if clean_daily.mean() < 0 else 0.0)
-    else:
-        sortino_ratio = float((clean_daily.mean() / downside_vol) * np.sqrt(252.0))
-
-    running_peak = equity_curve.cummax()
-    max_drawdown = float((equity_curve / running_peak - 1.0).min())
-
-    gains = clean_trade_returns[clean_trade_returns > 0.0]
-    losses = clean_trade_returns[clean_trade_returns < 0.0]
-    if losses.empty:
-        profit_factor = 10.0 if not gains.empty else 0.0
-    else:
-        profit_factor = float(gains.sum() / abs(losses.sum()))
+    sharpe_ratio = compute_sharpe_ratio(clean_daily)
+    sortino_ratio = compute_sortino_ratio(clean_daily)
+    max_drawdown = compute_max_drawdown(equity_curve)
+    profit_factor = compute_profit_factor(clean_trade_returns)
 
     win_rate = float((clean_trade_returns > 0.0).mean()) if not clean_trade_returns.empty else 0.0
-    position_states = clean_positions.round().astype(int).to_numpy()
-    turnover = float(np.abs(np.diff(np.r_[0, position_states, 0])).sum())
+    if weight_history is not None and not weight_history.empty:
+        turnover = compute_weight_turnover(weight_history)
+    else:
+        position_states = clean_positions.round().astype(int).to_numpy()
+        turnover = float(np.abs(np.diff(np.r_[0, position_states, 0])).sum())
     exposure_ratio = float(clean_positions.mean()) if not clean_positions.empty else 0.0
 
     return {
@@ -180,6 +181,35 @@ def compute_strategy_metrics(
         "exposure_ratio": exposure_ratio,
         "turnover": turnover,
     }
+
+
+def aggregate_active_position_portfolio(
+    pivot_return: pd.DataFrame,
+    pivot_position: pd.DataFrame,
+) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+    """Use active-position-only equal weights and keep idle days in cash."""
+    weights, active_count, cash_weight = build_active_position_weight_frame(pivot_position)
+    sanitized_returns = pivot_return.fillna(0.0).astype(float)
+    portfolio_daily_return = (sanitized_returns * weights).sum(axis=1).astype(float)
+    portfolio_position = weights.sum(axis=1).astype(float)
+    return portfolio_daily_return, portfolio_position, active_count.astype(int), cash_weight
+
+
+def build_active_position_weight_frame(
+    pivot_position: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
+    """Build risky-asset weights for the active-position equal-weight capital model."""
+    active_mask = pivot_position.fillna(0.0).astype(float) > 0.0
+    active_count = active_mask.sum(axis=1)
+    divisor = active_count.where(active_count > 0, 1).astype(float)
+    weights = active_mask.astype(float).div(divisor, axis=0).where(active_mask, 0.0).astype(float)
+    cash_weight = (1.0 - weights.sum(axis=1)).clip(lower=0.0, upper=1.0).astype(float)
+    return weights, active_count.astype(int), cash_weight
+
+
+def compute_weight_turnover(weight_history: pd.DataFrame) -> float:
+    """Compatibility wrapper around the canonical risky-asset weight turnover helper."""
+    return canonical_compute_weight_turnover(weight_history)
 
 
 class StrategyBacktestRunner:
@@ -678,6 +708,7 @@ class StrategyBacktestRunner:
             "average_trade_return": metrics["average_trade_return"],
             "exposure_ratio": metrics["exposure_ratio"],
             "turnover": metrics["turnover"],
+            "turnover_definition": "binary position-state transitions including entry and terminal exit",
             "candidate_signals": int((diagnostics or {}).get("candidate_signals", 0)),
             "buy_signals": int((diagnostics or {}).get("buy_signals", 0)),
             "skipped_overlap_signals": int((diagnostics or {}).get("skipped_overlap_signals", 0)),
@@ -703,8 +734,10 @@ class StrategyBacktestRunner:
         ):
             pivot_return = group.pivot_table(index="date", columns="ticker", values="daily_return", aggfunc="first").fillna(0.0)
             pivot_position = group.pivot_table(index="date", columns="ticker", values="position", aggfunc="first").fillna(0.0)
-            portfolio_daily_return = pivot_return.mean(axis=1)
-            portfolio_position = pivot_position.mean(axis=1)
+            portfolio_weights, active_trade_count, cash_weight = build_active_position_weight_frame(pivot_position)
+            portfolio_daily_return, portfolio_position, active_trade_count, cash_weight = (
+                aggregate_active_position_portfolio(pivot_return, pivot_position)
+            )
             portfolio_equity = (1.0 + portfolio_daily_return).cumprod()
             portfolio_drawdown = (portfolio_equity / portfolio_equity.cummax()) - 1.0
 
@@ -720,7 +753,9 @@ class StrategyBacktestRunner:
                     "equity_curve": portfolio_equity.to_numpy(dtype=float),
                     "drawdown": portfolio_drawdown.to_numpy(dtype=float),
                     "position": portfolio_position.to_numpy(dtype=float),
-                    "active_trade_count": (pivot_position > 0).sum(axis=1).to_numpy(dtype=int),
+                    "active_trade_count": active_trade_count.to_numpy(dtype=int),
+                    "cash_weight": cash_weight.to_numpy(dtype=float),
+                    "capital_model": PORTFOLIO_CAPITAL_MODEL,
                     "scope": "portfolio",
                 }
             )
@@ -740,6 +775,7 @@ class StrategyBacktestRunner:
                 portfolio_daily_return,
                 portfolio_position,
                 pd.to_numeric(matching_trades.get("net_trade_return", pd.Series(dtype=float)), errors="coerce"),
+                weight_history=portfolio_weights,
             )
             metric_rows.append(
                 {
@@ -753,13 +789,18 @@ class StrategyBacktestRunner:
                     "sharpe_ratio": metrics["sharpe_ratio"],
                     "sortino_ratio": metrics["sortino_ratio"],
                     "max_drawdown": metrics["max_drawdown"],
-                    "win_rate": metrics["win_rate"],
-                    "profit_factor": metrics["profit_factor"],
-                    "number_of_trades": metrics["number_of_trades"],
-                    "average_trade_return": metrics["average_trade_return"],
                     "exposure_ratio": metrics["exposure_ratio"],
                     "turnover": metrics["turnover"],
                     "positive_net_return_after_costs": bool(metrics["total_return"] > 0.0),
+                    "capital_model": PORTFOLIO_CAPITAL_MODEL,
+                    "turnover_definition": PORTFOLIO_TURNOVER_DEFINITION,
+                    "average_active_positions": float(active_trade_count.mean()) if len(active_trade_count) else 0.0,
+                    "cash_days_ratio": float(cash_weight.mean()) if len(cash_weight) else 0.0,
+                    "trade_diagnostic_basis": PORTFOLIO_TRADE_DIAGNOSTIC_BASIS,
+                    "trade_diagnostic_win_rate": metrics["win_rate"],
+                    "trade_diagnostic_profit_factor": metrics["profit_factor"],
+                    "trade_diagnostic_count": metrics["number_of_trades"],
+                    "trade_diagnostic_average_trade_return": metrics["average_trade_return"],
                 }
             )
 
@@ -982,6 +1023,11 @@ class StrategyBacktestRunner:
                 "transaction_fee_bps": float(self.config.transaction_fee_bps),
                 "slippage_bps": float(self.config.slippage_bps),
                 "costs_applied_on": ["entry", "exit"],
+            },
+            "portfolio_construction": {
+                "capital_model": PORTFOLIO_CAPITAL_MODEL,
+                "turnover_definition": PORTFOLIO_TURNOVER_DEFINITION,
+                "trade_diagnostic_basis": PORTFOLIO_TRADE_DIAGNOSTIC_BASIS,
             },
             "forecast_output_dir": str(self.forecast_output_dir),
             "forecast_metadata": forecast_metadata,

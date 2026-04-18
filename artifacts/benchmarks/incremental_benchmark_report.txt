@@ -1,0 +1,11 @@
+PHASE 4 INCREMENTAL UPDATE BENCHMARK REPORT
+================================================================================
+
+DERIVED LOCAL ARTIFACT REBUILDS
+- market_breadth: full=10238.22 ms, incremental=9131.58 ms, speedup=1.12x
+- sector_proxies: full=2760.02 ms, incremental=2871.42 ms, speedup=0.96x
+
+LOADER MISS/HIT BEHAVIOR
+- macro_context: miss=3.96 ms, hit=0.04 ms, speedup=89.146, cache=hit
+- foreign_flow: miss=0.36 ms, hit=0.08 ms, speedup=4.7, cache=hit
+  note: Foreign-flow artifact is missing and live vnstock_data fetch requires an explicit ticker list.

@@ -1,0 +1,13 @@
+step_size,ticker,horizon,model_name,total_predictions,evaluation_eligible_predictions,evaluation_ineligible_predictions,coverage_ratio,first_prediction_date,last_prediction_date,last_eligible_prediction_date
+1,SSI,long_3m,cart,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,long_3m,stacking_final,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,long_6m,cart,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,long_6m,stacking_final,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,short_10d,cart,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,short_10d,stacking_final,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,short_20d,cart,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,short_20d,stacking_final,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,short_30d,cart,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,short_30d,stacking_final,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,short_5d,cart,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
+1,SSI,short_5d,stacking_final,13,13,0,1.0,2025-01-02,2025-01-20,2025-01-20
