@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from src.core.contracts import WalkForwardWindow, validate_forecast_frame
+from src.evaluation.targets import apply_target_spec, build_target_spec
 from src.forecast.base import ForecastModel
 from src.ml.features.registry import resolve_feature_set, resolve_task_feature_set
 from src.utils.logging import get_logger
@@ -45,6 +46,7 @@ class WalkForwardConfig:
     feature_columns: list[str] | None = None
     target_column: str = "target_forward_return"
     target_type: str = "forward_return"
+    target_params: dict[str, Any] | None = None
     start_date: str | None = None
     end_date: str | None = None
     seed: int = 42
@@ -188,9 +190,10 @@ class WalkForwardEvaluator:
         self.splitter = WalkForwardSplitter(config)
         self.prepared_dir = Path(config.prepared_dir)
         self.raw_dir = Path(config.raw_dir)
+        self._dataset_cache: dict[str, PreparedEvaluationData] = {}
 
     def _resolve_feature_columns(self, frame: pd.DataFrame) -> list[str]:
-        if self.config.feature_columns:
+        if self.config.feature_columns is not None:
             selected = [column for column in self.config.feature_columns if column in frame.columns]
         else:
             selected = resolve_task_feature_set(
@@ -202,7 +205,7 @@ class WalkForwardEvaluator:
                     "forecast_core_features",
                     available_columns=frame.columns,
                 )
-        if not selected:
+        if self.config.feature_columns is None and not selected:
             raise ValueError("No approved forecast feature columns were available in the prepared dataset")
         return selected
 
@@ -234,6 +237,10 @@ class WalkForwardEvaluator:
         return prepared.feature_frame, "raw_csv_feature_build"
 
     def load_ticker_data(self, ticker: str) -> PreparedEvaluationData:
+        normalized_ticker = str(ticker).upper().strip()
+        cached = self._dataset_cache.get(normalized_ticker)
+        if cached is not None:
+            return cached
         frame, source = self._load_prepared_frame(ticker)
         prepared = frame.copy()
         if "timestamp" not in prepared.columns:
@@ -258,19 +265,26 @@ class WalkForwardEvaluator:
         if not {"open", "high", "low", "close", "volume"} <= set(prepared.columns):
             raise ValueError(f"{ticker} dataset is missing required OHLCV columns")
 
-        prepared = add_forward_return_target(
+        target_spec = build_target_spec(
+            self.config.target_type,
+            target_column=self.config.target_column,
+            **dict(self.config.target_params or {}),
+        )
+        prepared = apply_target_spec(
             prepared,
             horizon=self.config.horizon,
-            target_column=self.config.target_column,
+            target_spec=target_spec,
         )
         feature_columns = self._resolve_feature_columns(prepared)
-        return PreparedEvaluationData(
+        dataset = PreparedEvaluationData(
             ticker=ticker.upper(),
             frame=prepared.reset_index(drop=True),
             feature_columns=feature_columns,
-            target_column=self.config.target_column,
+            target_column=target_spec.target_column,
             source=source,
         )
+        self._dataset_cache[normalized_ticker] = dataset
+        return dataset
 
     def build_windows(self, dataset: PreparedEvaluationData) -> list[WalkForwardWindow]:
         return self.splitter.split(dataset.frame)
