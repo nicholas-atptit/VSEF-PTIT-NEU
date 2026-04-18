@@ -33,7 +33,10 @@ def _merge_signal_and_risk(signal_df: pd.DataFrame, risk_df: pd.DataFrame | None
     join_keys = [column for column in RISK_JOIN_PRIORITY if column in signal_df.columns and column in prepared_risk.columns]
     if not join_keys:
         raise ValueError("risk_df must share at least one join key with the signal frame")
-    return signal_df.merge(prepared_risk, on=join_keys, how="left", suffixes=("", "_risk"))
+    additional_columns = [column for column in prepared_risk.columns if column not in join_keys and column not in signal_df.columns]
+    if not additional_columns:
+        return signal_df.copy()
+    return signal_df.merge(prepared_risk[[*join_keys, *additional_columns]], on=join_keys, how="left", suffixes=("", "_risk"))
 
 
 def _row_position_size(
@@ -62,9 +65,10 @@ def _row_position_size(
             risk_scale = min(max_position_size, float(risk_budget) / max(float(value), volatility_floor))
             break
 
-    regime_label = str(row.get("regime_label", "sideway") or "sideway").lower()
+    raw_regime_label = row.get("regime_label")
+    regime_label = str(raw_regime_label).lower() if pd.notna(raw_regime_label) else ""
     drawdown_state = str(row.get("drawdown_state", "normal") or "normal").lower()
-    regime_multiplier = float(regime_size_multipliers.get(regime_label, 1.0))
+    regime_multiplier = float(regime_size_multipliers.get(regime_label, 1.0)) if regime_label else 1.0
     drawdown_multiplier = float(drawdown_state_multipliers.get(drawdown_state, 1.0))
 
     size = max(min_position_size, conviction * risk_scale * regime_multiplier * drawdown_multiplier)
