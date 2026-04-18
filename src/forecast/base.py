@@ -40,7 +40,7 @@ class ForecastModel(ABC):
         config: dict[str, Any] | None = None,
     ) -> "ForecastModel":
         train_frame = self._prepare_frame(train_df, require_target=True)
-        self.feature_columns = list(features or [])
+        self.feature_columns = list(features or []) if self.requires_features else []
         self.target_column = str(target)
         self.horizon = int(horizon)
         self.config = dict(config or {})
@@ -72,6 +72,11 @@ class ForecastModel(ABC):
             "horizon": int(self.horizon),
             "config": dict(self.config),
         }
+
+    @staticmethod
+    def _coerce_numeric_series(values: pd.Series) -> pd.Series:
+        numeric = pd.to_numeric(values, errors="coerce").replace([np.inf, -np.inf], np.nan)
+        return numeric.astype(float)
 
     @abstractmethod
     def _fit_model(self, train_frame: pd.DataFrame) -> None:
@@ -147,6 +152,7 @@ class SklearnForecastModel(ForecastModel):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(model_name=kwargs.pop("model_name", None), target_type=kwargs.pop("target_type", "forward_return"))
         self.estimator_params = dict(kwargs)
+        self._feature_fill_values = pd.Series(dtype=float)
         self.estimator = self._build_estimator()
 
     def _build_estimator(self) -> Any:
@@ -155,22 +161,31 @@ class SklearnForecastModel(ForecastModel):
         return self.estimator_cls(**self.estimator_params)
 
     def _fit_model(self, train_frame: pd.DataFrame) -> None:
-        target = pd.to_numeric(train_frame[self.target_column], errors="coerce")
-        features = train_frame[self.feature_columns].apply(pd.to_numeric, errors="coerce")
+        target = self._coerce_numeric_series(train_frame[self.target_column])
+        features = self._prepare_feature_matrix(train_frame, fit=True)
         mask = target.notna() & features.notna().all(axis=1)
         if not mask.any():
             raise ValueError(f"{self.model_name} could not find usable rows after numeric coercion")
         self.estimator.fit(features.loc[mask], target.loc[mask])
 
     def _predict_values(self, frame: pd.DataFrame) -> np.ndarray:
-        features = frame[self.feature_columns].apply(pd.to_numeric, errors="coerce")
+        features = self._prepare_feature_matrix(frame, fit=False)
         if features.isna().any().any():
             raise ValueError(f"{self.model_name} received NaN features during prediction")
         return np.asarray(self.estimator.predict(features), dtype=float)
+
+    def _prepare_feature_matrix(self, frame: pd.DataFrame, *, fit: bool) -> pd.DataFrame:
+        features = frame[self.feature_columns].apply(self._coerce_numeric_series)
+        if fit:
+            fill_values = features.median(axis=0, skipna=True).fillna(0.0).astype(float)
+            self._feature_fill_values = fill_values
+        elif self._feature_fill_values.empty:
+            raise RuntimeError(f"{self.model_name} does not have fitted feature fill values")
+        return features.fillna(self._feature_fill_values)
 
     def get_metadata(self) -> dict[str, Any]:
         metadata = super().get_metadata()
         metadata["estimator_params"] = dict(self.estimator_params)
         metadata["estimator_class"] = self.estimator.__class__.__name__
+        metadata["feature_fill_values"] = self._feature_fill_values.to_dict()
         return metadata
-
