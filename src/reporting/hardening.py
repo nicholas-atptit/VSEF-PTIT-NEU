@@ -458,8 +458,8 @@ def build_phase25_report(
     )
     elevated_cost = cost_sensitivity_summary[cost_sensitivity_summary.get("cost_mode") == "elevated"].copy()
     most_cost_resilient = (
-        elevated_cost.sort_values("mean_delta_sharpe_vs_baseline_cost", ascending=False).head(1)
-        if not elevated_cost.empty and "mean_delta_sharpe_vs_baseline_cost" in elevated_cost.columns
+        elevated_cost.sort_values(["median_sharpe", "median_max_drawdown"], ascending=[False, False]).head(1)
+        if not elevated_cost.empty and {"median_sharpe", "median_max_drawdown"} <= set(elevated_cost.columns)
         else pd.DataFrame()
     )
 
@@ -533,7 +533,7 @@ def build_phase25_report(
     else:
         row = most_cost_resilient.iloc[0]
         lines.append(
-            f"- Most cost-resilient mode under elevated costs was `{row['strategy_variant']}` with mean Sharpe delta `{row['mean_delta_sharpe_vs_baseline_cost']:.6f}`."
+            f"- Under elevated costs, `{row['strategy_variant']}` kept the best median Sharpe `{row['median_sharpe']:.6f}` and median max drawdown `{row['median_max_drawdown']:.6f}`, but no mode stayed economically robust."
         )
 
     lines.extend(
