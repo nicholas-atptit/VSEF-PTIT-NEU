@@ -42,6 +42,8 @@ def _merge_signal_and_risk(signal_df: pd.DataFrame, risk_df: pd.DataFrame | None
 def _row_position_size(
     row: pd.Series,
     *,
+    sizing_mode: str,
+    fixed_position_size: float,
     risk_budget: float,
     max_position_size: float,
     min_position_size: float,
@@ -52,6 +54,10 @@ def _row_position_size(
     signal = float(row.get("signal", 0.0) or 0.0)
     if signal == 0.0:
         return 0.0
+    if sizing_mode == "fixed_fraction":
+        return float(np.clip(fixed_position_size, 0.0, max_position_size))
+    if sizing_mode != "adaptive":
+        raise ValueError(f"Unsupported sizing_mode '{sizing_mode}'")
 
     barrier = max(float(row.get("threshold", 0.0) or 0.0), 0.0)
     signal_strength = float(abs(row.get("y_pred", 0.0)))
@@ -85,10 +91,12 @@ def size_positions(
 
     validated = validate_signal_frame(signal_df)
     config = dict(capital_config or {})
+    sizing_mode = str(config.get("sizing_mode", "adaptive") or "adaptive").lower()
     risk_budget = float(config.get("risk_budget", 0.02))
     max_position_size = float(config.get("max_position_size", 1.0))
     min_position_size = float(config.get("min_position_size", 0.0))
     volatility_floor = float(config.get("volatility_floor", 0.005))
+    fixed_position_size = float(config.get("fixed_position_size", max_position_size))
     regime_size_multipliers = {
         "bull": 1.0,
         "sideway": 0.75,
@@ -110,6 +118,8 @@ def size_positions(
     merged["position_size"] = merged.apply(
         _row_position_size,
         axis=1,
+        sizing_mode=sizing_mode,
+        fixed_position_size=fixed_position_size,
         risk_budget=risk_budget,
         max_position_size=max_position_size,
         min_position_size=min_position_size,
@@ -117,6 +127,9 @@ def size_positions(
         regime_size_multipliers=regime_size_multipliers,
         drawdown_state_multipliers=drawdown_state_multipliers,
     )
+    scale = max(max_position_size, 1e-12)
+    merged["size_multiplier"] = pd.to_numeric(merged["position_size"], errors="coerce").fillna(0.0) / scale
+    merged["sizing_mode"] = sizing_mode
     position_columns = [
         "timestamp",
         "ticker",
@@ -146,6 +159,8 @@ def size_positions(
         "max_drawdown",
         "risk_source_model",
         "risk_model",
+        "size_multiplier",
+        "sizing_mode",
     ]
     keep_columns = position_columns + [column for column in optional_columns if column in merged.columns]
     return validate_position_frame(merged[keep_columns])

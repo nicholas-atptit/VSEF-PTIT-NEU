@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,72 @@ from src.risk.garch import GARCHRiskModel
 from src.strategy.execution_policy import BasicExecutionPolicy, RegimeAwareExecutionPolicy
 
 
+DEFAULT_STRATEGY_MODES = (
+    "forecast_only",
+    "forecast_plus_risk",
+    "forecast_plus_risk_and_regime",
+)
+
+
+@dataclass(frozen=True)
+class Phase2BenchmarkSpec:
+    tickers: list[str]
+    models: list[str]
+    horizon: int = 5
+    train_size: int = 252
+    test_size: int = 21
+    step_size: int = 21
+    gap_size: int = 0
+    max_windows: int = 2
+    threshold: float = 0.005
+    risk_budget: float = 0.02
+    max_position_size: float = 1.0
+    transaction_fee_bps: float = 15.0
+    slippage_bps: float = 20.0
+    seed: int = 42
+    output_dir: str = "artifacts/phase2_benchmark"
+    allow_short: bool = False
+    regime_lookback: int = 20
+    regime_bull_threshold: float = 0.03
+    regime_bear_threshold: float = -0.03
+    strategy_modes: tuple[str, ...] = DEFAULT_STRATEGY_MODES
+    sizing_mode: str = "adaptive"
+    fixed_position_size: float | None = None
+    group_name: str | None = None
+    cost_mode: str | None = None
+    run_label: str | None = None
+
+    @classmethod
+    def from_namespace(cls, args: argparse.Namespace) -> "Phase2BenchmarkSpec":
+        return cls(
+            tickers=[ticker.upper().strip() for ticker in args.tickers],
+            models=[model.lower() for model in args.models],
+            horizon=args.horizon,
+            train_size=args.train_size,
+            test_size=args.test_size,
+            step_size=args.step_size,
+            gap_size=args.gap_size,
+            max_windows=args.max_windows,
+            threshold=args.threshold,
+            risk_budget=args.risk_budget,
+            max_position_size=args.max_position_size,
+            transaction_fee_bps=args.transaction_fee_bps,
+            slippage_bps=args.slippage_bps,
+            seed=args.seed,
+            output_dir=args.output_dir,
+            allow_short=args.allow_short,
+            regime_lookback=args.regime_lookback,
+            regime_bull_threshold=args.regime_bull_threshold,
+            regime_bear_threshold=args.regime_bear_threshold,
+            strategy_modes=tuple(args.strategy_modes),
+            sizing_mode=args.sizing_mode,
+            fixed_position_size=args.fixed_position_size,
+            group_name=args.group_name,
+            cost_mode=args.cost_mode,
+            run_label=args.run_label,
+        )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a small Phase 2 forecasting benchmark.")
     parser.add_argument("--tickers", nargs="+", required=True, help="Ticker subset to benchmark")
@@ -58,6 +125,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--regime-lookback", type=int, default=20)
     parser.add_argument("--regime-bull-threshold", type=float, default=0.03)
     parser.add_argument("--regime-bear-threshold", type=float, default=-0.03)
+    parser.add_argument("--strategy-modes", nargs="+", default=list(DEFAULT_STRATEGY_MODES))
+    parser.add_argument("--sizing-mode", choices=["adaptive", "fixed_fraction"], default="adaptive")
+    parser.add_argument("--fixed-position-size", type=float, default=None)
+    parser.add_argument("--group-name", default=None)
+    parser.add_argument("--cost-mode", default=None)
+    parser.add_argument("--run-label", default=None)
     return parser.parse_args()
 
 
@@ -174,7 +247,18 @@ def build_window_regime_frame(
             regime_history[regime_history["timestamp"].isin(pd.to_datetime(test_df["timestamp"], errors="coerce"))].copy()
         )
     if not regime_frames:
-        return pd.DataFrame(columns=["timestamp", "ticker", "regime_label", "regime_prob_bull", "regime_prob_bear", "regime_prob_sideway", "source_model", "window_id"])
+        return pd.DataFrame(
+            columns=[
+                "timestamp",
+                "ticker",
+                "regime_label",
+                "regime_prob_bull",
+                "regime_prob_bear",
+                "regime_prob_sideway",
+                "source_model",
+                "window_id",
+            ]
+        )
     return pd.concat(regime_frames, ignore_index=True).sort_values(["timestamp", "ticker", "window_id"]).reset_index(drop=True)
 
 
@@ -197,11 +281,17 @@ def execute_strategy_variant(
     regime_df: pd.DataFrame | None,
     risk_budget: float,
     max_position_size: float,
+    sizing_mode: str = "adaptive",
+    fixed_position_size: float | None = None,
 ) -> dict[str, pd.DataFrame]:
     capital_config = {
         "risk_budget": risk_budget,
         "max_position_size": max_position_size,
+        "sizing_mode": sizing_mode,
     }
+    if fixed_position_size is not None:
+        capital_config["fixed_position_size"] = float(fixed_position_size)
+
     if strategy_variant == "forecast_only":
         policy = BasicExecutionPolicy(
             threshold=threshold,
@@ -243,63 +333,23 @@ def execute_strategy_variant(
     }
 
 
-def build_phase2_report(manifest: dict[str, Any]) -> str:
-    return "\n".join(
-        [
-            "# Phase 2 Implementation Report",
-            "",
-            "## Added",
-            "",
-            "- Regime layer v1 with `MarkovSwitchingRegimeModel` and deterministic fallback",
-            "- Risk layer v2 with `GARCHRiskModel` volatility and tail-risk forecasts",
-            "- Regime-aware thresholding plus volatility/drawdown-aware sizing",
-            "- Conditioning-mode evaluation for `forecast_only`, `forecast_plus_risk`, and `forecast_plus_risk_and_regime`",
-            "",
-            "## Reused From Phase 1",
-            "",
-            "- Shared forecast contracts and model registry",
-            "- Leakage-safe `WalkForwardEvaluator`",
-            "- Cost-aware `CostAwareBacktester`",
-            "- Weighted ensemble forecast combiner",
-            "",
-            "## Validated",
-            "",
-            f"- Runtime: `{manifest.get('runtime', {}).get('python_executable')}`",
-            f"- Dependencies: `statsmodels={manifest.get('dependency_versions', {}).get('statsmodels')}`, `arch={manifest.get('dependency_versions', {}).get('arch')}`",
-            f"- Benchmark modes: `{', '.join(manifest.get('benchmark_modes', []))}`",
-            "",
-            "## Deferred To Phase 3",
-            "",
-            "- Regime-aware forecast routing",
-            "- Stacking/meta-model orchestration",
-            "- Portfolio allocator",
-            "- Broad hyperparameter search",
-        ]
-    )
-
-
-def main() -> int:
-    args = parse_args()
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    started_at = datetime.now(timezone.utc).isoformat()
-
+def run_phase2_core(spec: Phase2BenchmarkSpec) -> dict[str, Any]:
     evaluator = WalkForwardEvaluator(
         WalkForwardConfig(
-            tickers=[ticker.upper().strip() for ticker in args.tickers],
-            horizon=args.horizon,
-            train_size=args.train_size,
-            test_size=args.test_size,
-            step_size=args.step_size,
-            gap_size=args.gap_size,
-            max_windows=args.max_windows,
-            seed=args.seed,
+            tickers=[ticker.upper().strip() for ticker in spec.tickers],
+            horizon=spec.horizon,
+            train_size=spec.train_size,
+            test_size=spec.test_size,
+            step_size=spec.step_size,
+            gap_size=spec.gap_size,
+            max_windows=spec.max_windows,
+            seed=spec.seed,
         )
     )
 
     forecast_df, forecast_summary, window_summary, datasets, skipped_models, evaluated_models = evaluate_requested_models(
         evaluator,
-        [model.lower() for model in args.models],
+        [model.lower() for model in spec.models],
     )
 
     per_model_frames = [group.copy() for _, group in forecast_df.groupby("model_name", sort=True)]
@@ -314,48 +364,62 @@ def main() -> int:
     all_forecast_summary = summarize_forecasts(all_forecasts)
     forecast_summary_by_horizon = summarize_forecasts(all_forecasts, group_columns=["model_name", "horizon"])
 
-    risk_df = build_window_garch_risk_frame(datasets, window_summary, horizon=args.horizon)
+    risk_df = build_window_garch_risk_frame(datasets, window_summary, horizon=spec.horizon)
     regime_df = build_window_regime_frame(
         datasets,
         window_summary,
-        lookback=args.regime_lookback,
-        bull_threshold=args.regime_bull_threshold,
-        bear_threshold=args.regime_bear_threshold,
+        lookback=spec.regime_lookback,
+        bull_threshold=spec.regime_bull_threshold,
+        bear_threshold=spec.regime_bear_threshold,
     )
 
+    return {
+        "datasets": datasets,
+        "forecasts": all_forecasts,
+        "forecast_summary": all_forecast_summary,
+        "forecast_summary_by_horizon": forecast_summary_by_horizon,
+        "window_summary": window_summary,
+        "risk_summary": risk_df,
+        "regime_summary": regime_df,
+        "market_data": build_market_data(datasets),
+        "evaluated_models": evaluated_models + [ensemble.model_name],
+        "skipped_models": skipped_models,
+    }
+
+
+def run_phase2_strategy_suite(
+    core_result: dict[str, Any],
+    spec: Phase2BenchmarkSpec,
+) -> dict[str, pd.DataFrame]:
     backtester = CostAwareBacktester(
         BacktestConfig(
-            horizon=args.horizon,
-            transaction_fee_bps=args.transaction_fee_bps,
-            slippage_bps=args.slippage_bps,
-            allow_short=args.allow_short,
+            horizon=spec.horizon,
+            transaction_fee_bps=spec.transaction_fee_bps,
+            slippage_bps=spec.slippage_bps,
+            allow_short=spec.allow_short,
         )
     )
-    market_data = build_market_data(datasets)
 
-    strategy_modes = [
-        "forecast_only",
-        "forecast_plus_risk",
-        "forecast_plus_risk_and_regime",
-    ]
     signal_frames: list[pd.DataFrame] = []
     position_frames: list[pd.DataFrame] = []
     trade_frames: list[pd.DataFrame] = []
     strategy_metric_frames: list[pd.DataFrame] = []
     equity_frames: list[pd.DataFrame] = []
 
-    for strategy_variant in strategy_modes:
+    for strategy_variant in spec.strategy_modes:
         result = execute_strategy_variant(
             strategy_variant=strategy_variant,
-            forecasts=all_forecasts,
+            forecasts=core_result["forecasts"],
             backtester=backtester,
-            market_data=market_data,
-            threshold=args.threshold,
-            allow_short=args.allow_short,
-            risk_df=risk_df if strategy_variant != "forecast_only" else None,
-            regime_df=regime_df if strategy_variant == "forecast_plus_risk_and_regime" else None,
-            risk_budget=args.risk_budget,
-            max_position_size=args.max_position_size,
+            market_data=core_result["market_data"],
+            threshold=spec.threshold,
+            allow_short=spec.allow_short,
+            risk_df=core_result["risk_summary"] if strategy_variant != "forecast_only" else None,
+            regime_df=core_result["regime_summary"] if strategy_variant == "forecast_plus_risk_and_regime" else None,
+            risk_budget=spec.risk_budget,
+            max_position_size=spec.max_position_size,
+            sizing_mode=spec.sizing_mode,
+            fixed_position_size=spec.fixed_position_size,
         )
         signal_frames.append(result["signals"])
         position_frames.append(result["positions"])
@@ -379,29 +443,98 @@ def main() -> int:
         ["strategy_variant", "model_name", "timestamp"]
     ).reset_index(drop=True)
 
-    mode_summary = build_conditioning_mode_summary(all_strategy_metrics)
-    phase2_comparison_summary = build_phase2_conditioning_summary(all_forecast_summary, all_strategy_metrics)
+    return {
+        "signals": all_signals,
+        "positions": all_positions,
+        "trades": all_trades,
+        "strategy_metrics": all_strategy_metrics,
+        "equity_curve": all_equity,
+        "conditioning_mode_summary": build_conditioning_mode_summary(all_strategy_metrics),
+        "phase2_comparison_summary": build_phase2_conditioning_summary(
+            core_result["forecast_summary"],
+            all_strategy_metrics,
+        ),
+    }
+
+
+def build_phase2_report(manifest: dict[str, Any]) -> str:
+    strategy = manifest.get("strategy", {})
+    return "\n".join(
+        [
+            "# Phase 2 Implementation Report",
+            "",
+            "## Added",
+            "",
+            "- Regime layer v1 with `MarkovSwitchingRegimeModel` and deterministic fallback",
+            "- Risk layer v2 with `GARCHRiskModel` volatility and tail-risk forecasts",
+            "- Regime-aware thresholding plus volatility/drawdown-aware sizing",
+            "- Conditioning-mode evaluation for `forecast_only`, `forecast_plus_risk`, and `forecast_plus_risk_and_regime`",
+            "",
+            "## Reused From Phase 1",
+            "",
+            "- Shared forecast contracts and model registry",
+            "- Leakage-safe `WalkForwardEvaluator`",
+            "- Cost-aware `CostAwareBacktester`",
+            "- Weighted ensemble forecast combiner",
+            "",
+            "## Validated",
+            "",
+            f"- Runtime: `{manifest.get('runtime', {}).get('python_executable')}`",
+            f"- Dependencies: `statsmodels={manifest.get('dependency_versions', {}).get('statsmodels')}`, `arch={manifest.get('dependency_versions', {}).get('arch')}`",
+            f"- Benchmark modes: `{', '.join(manifest.get('benchmark_modes', []))}`",
+            f"- Sizing mode: `{strategy.get('sizing_mode')}`",
+            "",
+            "## Deferred To Phase 3",
+            "",
+            "- Regime-aware forecast routing",
+            "- Stacking/meta-model orchestration",
+            "- Portfolio allocator",
+            "- Broad hyperparameter search",
+        ]
+    )
+
+
+def write_phase2_artifacts(
+    spec: Phase2BenchmarkSpec,
+    core_result: dict[str, Any],
+    strategy_result: dict[str, Any],
+    *,
+    started_at: str,
+    completed_at: str,
+    command: str,
+) -> dict[str, Any]:
+    output_dir = Path(spec.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     table_paths = write_summary_tables(
         output_dir,
         {
-            "forecasts": all_forecasts,
-            "forecast_summary": all_forecast_summary,
-            "forecast_summary_by_horizon": forecast_summary_by_horizon,
-            "window_summary": window_summary,
-            "risk_summary": risk_df,
-            "regime_summary": regime_df,
-            "signals": all_signals,
-            "positions": all_positions,
-            "trades": all_trades,
-            "strategy_metrics": all_strategy_metrics,
-            "equity_curve": all_equity,
-            "conditioning_mode_summary": mode_summary,
-            "phase2_comparison_summary": phase2_comparison_summary,
+            "forecasts": core_result["forecasts"],
+            "forecast_summary": core_result["forecast_summary"],
+            "forecast_summary_by_horizon": core_result["forecast_summary_by_horizon"],
+            "window_summary": core_result["window_summary"],
+            "risk_summary": core_result["risk_summary"],
+            "regime_summary": core_result["regime_summary"],
+            "signals": strategy_result["signals"],
+            "positions": strategy_result["positions"],
+            "trades": strategy_result["trades"],
+            "strategy_metrics": strategy_result["strategy_metrics"],
+            "equity_curve": strategy_result["equity_curve"],
+            "conditioning_mode_summary": strategy_result["conditioning_mode_summary"],
+            "phase2_comparison_summary": strategy_result["phase2_comparison_summary"],
         },
     )
 
-    completed_at = datetime.now(timezone.utc).isoformat()
+    strategy_context = {
+        "threshold_policy": "regime_aware_thresholding_v1",
+        "sizing_policy": "fixed_fraction_v1" if spec.sizing_mode == "fixed_fraction" else "volatility_drawdown_aware_v1",
+        "base_threshold": spec.threshold,
+        "risk_budget": spec.risk_budget,
+        "max_position_size": spec.max_position_size,
+        "allow_short": spec.allow_short,
+        "sizing_mode": spec.sizing_mode,
+        "fixed_position_size": spec.fixed_position_size,
+    }
     manifest = build_run_manifest(
         manifest_type="phase2_run_manifest_v1",
         git_metadata=collect_git_metadata(Path.cwd()),
@@ -409,70 +542,117 @@ def main() -> int:
         dependency_versions=collect_dependency_versions(
             ["pandas", "numpy", "statsmodels", "arch", "scikit-learn", "xgboost", "lightgbm"]
         ),
-        command=" ".join(sys.argv),
-        tickers=[ticker.upper().strip() for ticker in args.tickers],
-        requested_models=[model.lower() for model in args.models],
-        evaluated_models=evaluated_models + [ensemble.model_name],
-        skipped_models=skipped_models,
-        benchmark_modes=strategy_modes,
+        command=command,
+        tickers=[ticker.upper().strip() for ticker in spec.tickers],
+        requested_models=[model.lower() for model in spec.models],
+        evaluated_models=core_result["evaluated_models"],
+        skipped_models=core_result["skipped_models"],
+        benchmark_modes=list(spec.strategy_modes),
         target_type="forward_return",
-        horizon=args.horizon,
-        seed=args.seed,
+        horizon=spec.horizon,
+        seed=spec.seed,
         costs={
-            "transaction_fee_bps": args.transaction_fee_bps,
-            "slippage_bps": args.slippage_bps,
+            "transaction_fee_bps": spec.transaction_fee_bps,
+            "slippage_bps": spec.slippage_bps,
         },
         evaluation_config={
-            "train_size": args.train_size,
-            "test_size": args.test_size,
-            "step_size": args.step_size,
-            "gap_size": args.gap_size,
-            "max_windows": args.max_windows,
+            "train_size": spec.train_size,
+            "test_size": spec.test_size,
+            "step_size": spec.step_size,
+            "gap_size": spec.gap_size,
+            "max_windows": spec.max_windows,
         },
         regime_context={
             "model_name": "markov_switching",
-            "lookback": args.regime_lookback,
-            "bull_threshold": args.regime_bull_threshold,
-            "bear_threshold": args.regime_bear_threshold,
+            "lookback": spec.regime_lookback,
+            "bull_threshold": spec.regime_bull_threshold,
+            "bear_threshold": spec.regime_bear_threshold,
         },
         risk_context={
             "model_name": "garch",
             "distribution": "t",
             "confidence_levels": [0.95, 0.99],
         },
-        strategy_context={
-            "threshold_policy": "regime_aware_thresholding_v1",
-            "sizing_policy": "volatility_drawdown_aware_v1",
-            "base_threshold": args.threshold,
-            "risk_budget": args.risk_budget,
-            "max_position_size": args.max_position_size,
-            "allow_short": args.allow_short,
-        },
+        strategy_context=strategy_context,
         artifact_paths=table_paths,
         started_at=started_at,
         completed_at=completed_at,
     )
+    if spec.group_name:
+        manifest["ticker_group"] = spec.group_name
+    if spec.cost_mode:
+        manifest["cost_mode"] = spec.cost_mode
+    if spec.run_label:
+        manifest["run_label"] = spec.run_label
+
     manifest_path = write_run_manifest(output_dir, manifest)
     summary_path = write_summary_markdown(
         output_dir,
-        render_phase2_summary_markdown(manifest, mode_summary, phase2_comparison_summary),
+        render_phase2_summary_markdown(
+            manifest,
+            strategy_result["conditioning_mode_summary"],
+            strategy_result["phase2_comparison_summary"],
+        ),
     )
     report_path = write_summary_markdown(output_dir, build_phase2_report(manifest), filename="phase2_report.md")
+    return {
+        "artifact_paths": table_paths,
+        "manifest": manifest,
+        "manifest_path": manifest_path,
+        "summary_path": summary_path,
+        "report_path": report_path,
+    }
 
-    print(f"Forecast rows: {len(all_forecasts)}")
-    print(f"Evaluated models: {', '.join(evaluated_models + [ensemble.model_name])}")
-    print(f"Benchmark modes: {', '.join(strategy_modes)}")
-    if skipped_models:
+
+def run_phase2_benchmark(
+    spec: Phase2BenchmarkSpec,
+    *,
+    command: str | None = None,
+    write_artifacts: bool = True,
+) -> dict[str, Any]:
+    started_at = datetime.now(timezone.utc).isoformat()
+    core_result = run_phase2_core(spec)
+    strategy_result = run_phase2_strategy_suite(core_result, spec)
+    completed_at = datetime.now(timezone.utc).isoformat()
+
+    payload: dict[str, Any] = {
+        **core_result,
+        **strategy_result,
+        "started_at": started_at,
+        "completed_at": completed_at,
+    }
+    if write_artifacts:
+        payload.update(
+            write_phase2_artifacts(
+                spec,
+                core_result,
+                strategy_result,
+                started_at=started_at,
+                completed_at=completed_at,
+                command=command or " ".join(sys.argv),
+            )
+        )
+    return payload
+
+
+def main() -> int:
+    spec = Phase2BenchmarkSpec.from_namespace(parse_args())
+    result = run_phase2_benchmark(spec)
+
+    print(f"Forecast rows: {len(result['forecasts'])}")
+    print(f"Evaluated models: {', '.join(result['evaluated_models'])}")
+    print(f"Benchmark modes: {', '.join(spec.strategy_modes)}")
+    if result["skipped_models"]:
         print("Skipped models:")
-        for item in skipped_models:
+        for item in result["skipped_models"]:
             print(f"  - {item['model_name']}: {item['reason']}")
     print("Conditioning mode summary:")
-    print(mode_summary.to_string(index=False))
+    print(result["conditioning_mode_summary"].to_string(index=False))
     print("Top phase 2 comparison rows:")
-    print(phase2_comparison_summary.head(8).to_string(index=False))
-    print(f"Manifest: {manifest_path}")
-    print(f"Summary: {summary_path}")
-    print(f"Phase 2 report: {report_path}")
+    print(result["phase2_comparison_summary"].head(8).to_string(index=False))
+    print(f"Manifest: {result['manifest_path']}")
+    print(f"Summary: {result['summary_path']}")
+    print(f"Phase 2 report: {result['report_path']}")
     return 0
 
 
