@@ -152,8 +152,9 @@ class CostAwareBacktester:
     @staticmethod
     def _group_columns(positions: pd.DataFrame) -> list[str]:
         columns = ["model_name"]
-        if "strategy_variant" in positions.columns:
-            columns = ["strategy_variant", *columns]
+        for column in ("strategy_variant", "policy_variant"):
+            if column in positions.columns:
+                columns = [column, *columns]
         return columns
 
     def run(
@@ -270,7 +271,7 @@ class CostAwareBacktester:
                     model_trades = model_trades[model_trades[column] == value]
             trade_returns = model_trades["net_trade_return"] if not model_trades.empty else pd.Series(dtype=float)
             metrics = compute_strategy_metrics(daily_returns, position_series, trade_returns)
-            metric_rows.append({**group_identity, **metrics})
+            metric_rows.append({**group_identity, **metrics, "trade_count": int(len(model_trades))})
             if not daily_returns.empty:
                 equity_payload = {
                     "timestamp": daily_returns.index,
@@ -286,7 +287,7 @@ class CostAwareBacktester:
 
         metric_sort_columns = group_columns
         metrics_df = pd.DataFrame(metric_rows).sort_values(metric_sort_columns).reset_index(drop=True) if metric_rows else pd.DataFrame(
-            columns=[*group_columns, "total_return", "cagr", "sharpe", "sortino", "max_drawdown", "calmar", "win_rate", "turnover"]
+            columns=[*group_columns, "total_return", "cagr", "sharpe", "sortino", "max_drawdown", "calmar", "win_rate", "turnover", "trade_count"]
         )
         equity_df = pd.concat(equity_rows, ignore_index=True) if equity_rows else pd.DataFrame(
             columns=["timestamp", *group_columns, "daily_return", "equity_curve", "position_size"]

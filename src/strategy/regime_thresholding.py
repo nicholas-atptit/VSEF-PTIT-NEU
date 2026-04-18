@@ -9,7 +9,7 @@ from src.core.contracts import validate_forecast_frame, validate_signal_frame
 from src.strategy.thresholding import generate_signal_value
 
 
-def _prepare_context_frame(frame: pd.DataFrame | None, *, source: str) -> pd.DataFrame | None:
+def prepare_context_frame(frame: pd.DataFrame | None, *, source: str) -> pd.DataFrame | None:
     if frame is None or frame.empty:
         return None
     prepared = frame.copy()
@@ -31,14 +31,14 @@ def _prepare_context_frame(frame: pd.DataFrame | None, *, source: str) -> pd.Dat
     return prepared
 
 
-def _merge_context(
+def merge_strategy_context(
     forecast_df: pd.DataFrame,
     *,
     risk_df: pd.DataFrame | None = None,
     regime_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     merged = forecast_df.copy()
-    prepared_risk = _prepare_context_frame(risk_df, source="risk")
+    prepared_risk = prepare_context_frame(risk_df, source="risk")
     if prepared_risk is not None:
         join_keys = [
             column
@@ -47,7 +47,7 @@ def _merge_context(
         ]
         if join_keys:
             merged = merged.merge(prepared_risk, on=join_keys, how="left", suffixes=("", "_risk"))
-    prepared_regime = _prepare_context_frame(regime_df, source="regime")
+    prepared_regime = prepare_context_frame(regime_df, source="regime")
     if prepared_regime is not None:
         join_keys = [
             column
@@ -89,7 +89,7 @@ def generate_regime_aware_signals(
     """Generate thresholded signals after joining regime and risk context."""
 
     validated = validate_forecast_frame(forecast_df, require_y_true=False)
-    merged = _merge_context(validated, risk_df=risk_df, regime_df=regime_df)
+    merged = merge_strategy_context(validated, risk_df=risk_df, regime_df=regime_df)
     applied_threshold = merged.apply(
         resolve_regime_threshold,
         axis=1,

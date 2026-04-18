@@ -39,6 +39,11 @@ def _merge_signal_and_risk(signal_df: pd.DataFrame, risk_df: pd.DataFrame | None
     return signal_df.merge(prepared_risk[[*join_keys, *additional_columns]], on=join_keys, how="left", suffixes=("", "_risk"))
 
 
+def _blend_multiplier(base_value: float, *, strength: float) -> float:
+    clipped_strength = float(np.clip(float(strength), 0.0, 1.0))
+    return float(1.0 - clipped_strength * (1.0 - float(base_value)))
+
+
 def _row_position_size(
     row: pd.Series,
     *,
@@ -50,6 +55,12 @@ def _row_position_size(
     volatility_floor: float,
     regime_size_multipliers: dict[str, float],
     drawdown_state_multipliers: dict[str, float],
+    use_volatility_sizing: bool,
+    use_regime_sizing: bool,
+    use_drawdown_control: bool,
+    volatility_target_scale: float,
+    regime_multiplier_strength: float,
+    drawdown_haircut_strength: float,
 ) -> float:
     signal = float(row.get("signal", 0.0) or 0.0)
     if signal == 0.0:
@@ -65,17 +76,29 @@ def _row_position_size(
     conviction = float(np.clip(conviction, 0.0, 1.0))
 
     risk_scale = max_position_size
-    for column in ("vol_forecast", "volatility", "cvar_loss_95", "var_loss_95"):
-        value = pd.to_numeric(pd.Series([row.get(column)]), errors="coerce").iloc[0]
-        if pd.notna(value) and float(value) > 0:
-            risk_scale = min(max_position_size, float(risk_budget) / max(float(value), volatility_floor))
-            break
+    if use_volatility_sizing:
+        scaled_risk_budget = max(float(risk_budget) * max(float(volatility_target_scale), 0.0), 0.0)
+        for column in ("vol_forecast", "volatility", "cvar_loss_95", "var_loss_95"):
+            value = pd.to_numeric(pd.Series([row.get(column)]), errors="coerce").iloc[0]
+            if pd.notna(value) and float(value) > 0:
+                risk_scale = min(max_position_size, scaled_risk_budget / max(float(value), volatility_floor))
+                break
 
     raw_regime_label = row.get("regime_label")
     regime_label = str(raw_regime_label).lower() if pd.notna(raw_regime_label) else ""
     drawdown_state = str(row.get("drawdown_state", "normal") or "normal").lower()
-    regime_multiplier = float(regime_size_multipliers.get(regime_label, 1.0)) if regime_label else 1.0
-    drawdown_multiplier = float(drawdown_state_multipliers.get(drawdown_state, 1.0))
+    regime_multiplier = 1.0
+    if use_regime_sizing and regime_label:
+        regime_multiplier = _blend_multiplier(
+            float(regime_size_multipliers.get(regime_label, 1.0)),
+            strength=regime_multiplier_strength,
+        )
+    drawdown_multiplier = 1.0
+    if use_drawdown_control:
+        drawdown_multiplier = _blend_multiplier(
+            float(drawdown_state_multipliers.get(drawdown_state, 1.0)),
+            strength=drawdown_haircut_strength,
+        )
 
     size = max(min_position_size, conviction * risk_scale * regime_multiplier * drawdown_multiplier)
     return float(np.clip(size, 0.0, max_position_size))
@@ -97,6 +120,12 @@ def size_positions(
     min_position_size = float(config.get("min_position_size", 0.0))
     volatility_floor = float(config.get("volatility_floor", 0.005))
     fixed_position_size = float(config.get("fixed_position_size", max_position_size))
+    use_volatility_sizing = bool(config.get("use_volatility_sizing", sizing_mode == "adaptive"))
+    use_regime_sizing = bool(config.get("use_regime_sizing", sizing_mode == "adaptive"))
+    use_drawdown_control = bool(config.get("use_drawdown_control", sizing_mode == "adaptive"))
+    volatility_target_scale = float(config.get("volatility_target_scale", 1.0))
+    regime_multiplier_strength = float(config.get("regime_multiplier_strength", 1.0))
+    drawdown_haircut_strength = float(config.get("drawdown_haircut_strength", 1.0))
     regime_size_multipliers = {
         "bull": 1.0,
         "sideway": 0.75,
@@ -126,10 +155,22 @@ def size_positions(
         volatility_floor=volatility_floor,
         regime_size_multipliers=regime_size_multipliers,
         drawdown_state_multipliers=drawdown_state_multipliers,
+        use_volatility_sizing=use_volatility_sizing,
+        use_regime_sizing=use_regime_sizing,
+        use_drawdown_control=use_drawdown_control,
+        volatility_target_scale=volatility_target_scale,
+        regime_multiplier_strength=regime_multiplier_strength,
+        drawdown_haircut_strength=drawdown_haircut_strength,
     )
     scale = max(max_position_size, 1e-12)
     merged["size_multiplier"] = pd.to_numeric(merged["position_size"], errors="coerce").fillna(0.0) / scale
     merged["sizing_mode"] = sizing_mode
+    merged["use_volatility_sizing"] = use_volatility_sizing
+    merged["use_regime_sizing"] = use_regime_sizing
+    merged["use_drawdown_control"] = use_drawdown_control
+    merged["volatility_target_scale"] = volatility_target_scale
+    merged["regime_multiplier_strength"] = regime_multiplier_strength
+    merged["drawdown_haircut_strength"] = drawdown_haircut_strength
     position_columns = [
         "timestamp",
         "ticker",
@@ -161,6 +202,12 @@ def size_positions(
         "risk_model",
         "size_multiplier",
         "sizing_mode",
+        "use_volatility_sizing",
+        "use_regime_sizing",
+        "use_drawdown_control",
+        "volatility_target_scale",
+        "regime_multiplier_strength",
+        "drawdown_haircut_strength",
     ]
     keep_columns = position_columns + [column for column in optional_columns if column in merged.columns]
     return validate_position_frame(merged[keep_columns])
