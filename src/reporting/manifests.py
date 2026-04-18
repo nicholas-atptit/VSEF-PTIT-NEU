@@ -133,6 +133,49 @@ def build_run_manifest(
     return manifest
 
 
+def build_batch_manifest(
+    *,
+    git_metadata: dict[str, Any],
+    command: str,
+    requested_models: list[str],
+    evaluated_models: list[str],
+    skipped_models: list[dict[str, str]],
+    target_type: str,
+    seed: int,
+    matrix_config: dict[str, Any],
+    run_counts: dict[str, int],
+    artifact_paths: dict[str, str],
+    started_at: str,
+    completed_at: str,
+    manifest_type: str = "phase25_hardening_manifest_v1",
+    runtime: dict[str, Any] | None = None,
+    dependency_versions: dict[str, str | None] | None = None,
+) -> dict[str, Any]:
+    """Build a serializable batch manifest for Phase 2.5 hardening sweeps."""
+
+    manifest = {
+        "manifest_type": manifest_type,
+        "created_at": completed_at,
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "git": dict(git_metadata),
+        "command": command,
+        "requested_models": list(requested_models),
+        "evaluated_models": list(evaluated_models),
+        "skipped_models": list(skipped_models),
+        "target_type": str(target_type),
+        "seed": int(seed),
+        "matrix": dict(matrix_config),
+        "run_counts": {str(key): int(value) for key, value in run_counts.items()},
+        "artifact_paths": dict(artifact_paths),
+    }
+    if runtime:
+        manifest["runtime"] = dict(runtime)
+    if dependency_versions:
+        manifest["dependency_versions"] = dict(dependency_versions)
+    return manifest
+
+
 def write_run_manifest(output_dir: str | Path, manifest: dict[str, Any], filename: str = "run_manifest.json") -> Path:
     """Write a run manifest into the requested output directory."""
 
