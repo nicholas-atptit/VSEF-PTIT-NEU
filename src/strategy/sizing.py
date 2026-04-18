@@ -1,0 +1,111 @@
+"""Position sizing helpers for Phase 1 threshold-based strategies."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from src.core.contracts import validate_position_frame, validate_signal_frame
+
+
+RISK_JOIN_PRIORITY = ["timestamp", "ticker", "model_name", "window_id"]
+
+
+def _prepare_risk_frame(risk_df: pd.DataFrame | None) -> pd.DataFrame | None:
+    if risk_df is None or risk_df.empty:
+        return None
+    prepared = risk_df.copy()
+    if "timestamp" in prepared.columns:
+        prepared["timestamp"] = pd.to_datetime(prepared["timestamp"], errors="coerce")
+    if "ticker" in prepared.columns:
+        prepared["ticker"] = prepared["ticker"].astype(str).str.upper()
+    if "model_name" in prepared.columns:
+        prepared["model_name"] = prepared["model_name"].astype(str)
+    return prepared
+
+
+def _merge_signal_and_risk(signal_df: pd.DataFrame, risk_df: pd.DataFrame | None) -> pd.DataFrame:
+    if risk_df is None or risk_df.empty:
+        return signal_df.copy()
+    prepared_risk = _prepare_risk_frame(risk_df)
+    join_keys = [column for column in RISK_JOIN_PRIORITY if column in signal_df.columns and column in prepared_risk.columns]
+    if not join_keys:
+        raise ValueError("risk_df must share at least one join key with the signal frame")
+    return signal_df.merge(prepared_risk, on=join_keys, how="left", suffixes=("", "_risk"))
+
+
+def _row_position_size(
+    row: pd.Series,
+    *,
+    risk_budget: float,
+    max_position_size: float,
+    min_position_size: float,
+    volatility_floor: float,
+) -> float:
+    signal = float(row.get("signal", 0.0) or 0.0)
+    if signal == 0.0:
+        return 0.0
+
+    barrier = max(float(row.get("threshold", 0.0) or 0.0), 0.0)
+    signal_strength = float(abs(row.get("y_pred", 0.0)))
+    conviction = signal_strength / max(barrier, volatility_floor) if barrier > 0 else min(signal_strength, 1.0)
+    conviction = float(np.clip(conviction, 0.0, 1.0))
+
+    risk_scale = max_position_size
+    for column in ("cvar_loss_95", "var_loss_95", "volatility"):
+        value = pd.to_numeric(pd.Series([row.get(column)]), errors="coerce").iloc[0]
+        if pd.notna(value) and float(value) > 0:
+            risk_scale = min(max_position_size, float(risk_budget) / max(float(value), volatility_floor))
+            break
+
+    size = max(min_position_size, conviction * risk_scale)
+    return float(np.clip(size, 0.0, max_position_size))
+
+
+def size_positions(
+    signal_df: pd.DataFrame,
+    *,
+    risk_df: pd.DataFrame | None = None,
+    capital_config: dict[str, Any] | None = None,
+) -> pd.DataFrame:
+    """Size threshold-based signals from volatility or risk-budget constraints."""
+
+    validated = validate_signal_frame(signal_df)
+    config = dict(capital_config or {})
+    risk_budget = float(config.get("risk_budget", 0.02))
+    max_position_size = float(config.get("max_position_size", 1.0))
+    min_position_size = float(config.get("min_position_size", 0.0))
+    volatility_floor = float(config.get("volatility_floor", 0.005))
+
+    merged = _merge_signal_and_risk(validated, risk_df)
+    merged["position_size"] = merged.apply(
+        _row_position_size,
+        axis=1,
+        risk_budget=risk_budget,
+        max_position_size=max_position_size,
+        min_position_size=min_position_size,
+        volatility_floor=volatility_floor,
+    )
+    position_columns = [
+        "timestamp",
+        "ticker",
+        "model_name",
+        "signal",
+        "position_size",
+    ]
+    optional_columns = [
+        "threshold",
+        "y_pred",
+        "y_true",
+        "target_type",
+        "horizon",
+        "window_id",
+        "target_timestamp",
+        "volatility",
+        "var_loss_95",
+        "cvar_loss_95",
+    ]
+    keep_columns = position_columns + [column for column in optional_columns if column in merged.columns]
+    return validate_position_frame(merged[keep_columns])
