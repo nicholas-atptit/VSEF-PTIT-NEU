@@ -149,6 +149,13 @@ class CostAwareBacktester:
         timestamps = pd.to_datetime(frame["timestamp"], errors="coerce").dt.normalize()
         return {timestamp: idx for idx, timestamp in enumerate(timestamps)}
 
+    @staticmethod
+    def _group_columns(positions: pd.DataFrame) -> list[str]:
+        columns = ["model_name"]
+        if "strategy_variant" in positions.columns:
+            columns = ["strategy_variant", *columns]
+        return columns
+
     def run(
         self,
         position_df: pd.DataFrame,
@@ -156,10 +163,14 @@ class CostAwareBacktester:
     ) -> dict[str, Any]:
         positions = validate_position_frame(position_df)
         trades: list[dict[str, Any]] = []
-        daily_returns_by_model: dict[str, pd.Series] = {}
-        position_history_by_model: dict[str, pd.Series] = {}
+        group_columns = self._group_columns(positions)
+        daily_returns_by_group: dict[tuple[str, ...], pd.Series] = {}
+        position_history_by_group: dict[tuple[str, ...], pd.Series] = {}
 
-        for model_name, model_group in positions.groupby("model_name", sort=True):
+        for group_key, model_group in positions.groupby(group_columns, sort=True):
+            if not isinstance(group_key, tuple):
+                group_key = (group_key,)
+            group_identity = dict(zip(group_columns, group_key))
             model_daily_returns: list[pd.Series] = []
             model_position_points: list[tuple[pd.Timestamp, float]] = []
 
@@ -211,7 +222,7 @@ class CostAwareBacktester:
                     )
                     trades.append(
                         {
-                            "model_name": model_name,
+                            **group_identity,
                             "ticker": ticker,
                             "signal_timestamp": str(signal_ts.date()),
                             "entry_timestamp": str(pd.Timestamp(history.loc[entry_idx, "timestamp"]).date()),
@@ -242,48 +253,43 @@ class CostAwareBacktester:
                 )
             else:
                 position_series = pd.Series(dtype=float)
-            daily_returns_by_model[model_name] = combined_returns
-            position_history_by_model[model_name] = position_series
+            daily_returns_by_group[group_key] = combined_returns
+            position_history_by_group[group_key] = position_series
 
-        trade_df = pd.DataFrame(trades).sort_values(["model_name", "ticker", "entry_timestamp"]).reset_index(drop=True) if trades else pd.DataFrame(
-            columns=[
-                "model_name",
-                "ticker",
-                "signal_timestamp",
-                "entry_timestamp",
-                "exit_timestamp",
-                "signal",
-                "position_size",
-                "entry_open",
-                "exit_close",
-                "net_trade_return",
-            ]
-        )
+        trade_sort_columns = [*group_columns, "ticker", "entry_timestamp"]
+        trade_columns = [*group_columns, "ticker", "signal_timestamp", "entry_timestamp", "exit_timestamp", "signal", "position_size", "entry_open", "exit_close", "net_trade_return"]
+        trade_df = pd.DataFrame(trades).sort_values(trade_sort_columns).reset_index(drop=True) if trades else pd.DataFrame(columns=trade_columns)
         metric_rows: list[dict[str, Any]] = []
         equity_rows: list[pd.DataFrame] = []
-        for model_name, daily_returns in daily_returns_by_model.items():
-            position_series = position_history_by_model.get(model_name, pd.Series(dtype=float)).reindex(daily_returns.index, method="ffill").fillna(0.0)
-            model_trades = trade_df[trade_df["model_name"] == model_name]["net_trade_return"] if not trade_df.empty else pd.Series(dtype=float)
-            metrics = compute_strategy_metrics(daily_returns, position_series, model_trades)
-            metric_rows.append({"model_name": model_name, **metrics})
+        for group_key, daily_returns in daily_returns_by_group.items():
+            group_identity = dict(zip(group_columns, group_key))
+            position_series = position_history_by_group.get(group_key, pd.Series(dtype=float)).reindex(daily_returns.index, method="ffill").fillna(0.0)
+            model_trades = trade_df.copy() if not trade_df.empty else pd.DataFrame(columns=trade_columns)
+            for column, value in group_identity.items():
+                if not model_trades.empty:
+                    model_trades = model_trades[model_trades[column] == value]
+            trade_returns = model_trades["net_trade_return"] if not model_trades.empty else pd.Series(dtype=float)
+            metrics = compute_strategy_metrics(daily_returns, position_series, trade_returns)
+            metric_rows.append({**group_identity, **metrics})
             if not daily_returns.empty:
+                equity_payload = {
+                    "timestamp": daily_returns.index,
+                    "daily_return": daily_returns.to_numpy(),
+                    "equity_curve": (1.0 + daily_returns).cumprod().to_numpy(),
+                    "position_size": position_series.to_numpy(),
+                }
+                for column, value in group_identity.items():
+                    equity_payload[column] = value
                 equity_rows.append(
-                    pd.DataFrame(
-                        {
-                            "timestamp": daily_returns.index,
-                            "model_name": model_name,
-                            "daily_return": daily_returns.to_numpy(),
-                            "equity_curve": (1.0 + daily_returns).cumprod().to_numpy(),
-                            "position_size": position_series.to_numpy(),
-                        }
-                    )
+                    pd.DataFrame(equity_payload)
                 )
 
-        metrics_df = pd.DataFrame(metric_rows).sort_values("model_name").reset_index(drop=True) if metric_rows else pd.DataFrame(
-            columns=["model_name", "total_return", "cagr", "sharpe", "sortino", "max_drawdown", "calmar", "win_rate", "turnover"]
+        metric_sort_columns = group_columns
+        metrics_df = pd.DataFrame(metric_rows).sort_values(metric_sort_columns).reset_index(drop=True) if metric_rows else pd.DataFrame(
+            columns=[*group_columns, "total_return", "cagr", "sharpe", "sortino", "max_drawdown", "calmar", "win_rate", "turnover"]
         )
         equity_df = pd.concat(equity_rows, ignore_index=True) if equity_rows else pd.DataFrame(
-            columns=["timestamp", "model_name", "daily_return", "equity_curve", "position_size"]
+            columns=["timestamp", *group_columns, "daily_return", "equity_curve", "position_size"]
         )
         return {
             "trades": trade_df,
