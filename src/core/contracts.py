@@ -18,6 +18,17 @@ FORECAST_REQUIRED_COLUMNS = (
     "window_id",
 )
 
+REGIME_REQUIRED_COLUMNS = (
+    "timestamp",
+    "ticker",
+    "regime_label",
+    "regime_prob_bull",
+    "regime_prob_bear",
+    "regime_prob_sideway",
+    "source_model",
+    "window_id",
+)
+
 SIGNAL_REQUIRED_COLUMNS = (
     "timestamp",
     "ticker",
@@ -111,6 +122,41 @@ def validate_signal_frame(frame: pd.DataFrame) -> pd.DataFrame:
     return prepared.sort_values(["timestamp", "ticker", "model_name"]).reset_index(drop=True)
 
 
+def validate_regime_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    missing = [column for column in REGIME_REQUIRED_COLUMNS if column not in frame.columns]
+    if missing:
+        raise ValueError(f"Regime frame missing required columns: {missing}")
+    prepared = _ensure_datetime(frame, "timestamp")
+    if prepared["timestamp"].isna().any():
+        raise ValueError("Regime frame contains invalid timestamps")
+    prepared["ticker"] = prepared["ticker"].astype(str).str.upper()
+    prepared["regime_label"] = prepared["regime_label"].astype(str).str.lower()
+    prepared["source_model"] = prepared["source_model"].astype(str)
+    prepared["window_id"] = prepared["window_id"].astype(str)
+
+    probability_columns = [
+        "regime_prob_bull",
+        "regime_prob_bear",
+        "regime_prob_sideway",
+    ]
+    for column in probability_columns:
+        prepared[column] = pd.to_numeric(prepared[column], errors="coerce").astype(float)
+    if prepared[probability_columns].isna().any().any():
+        raise ValueError("Regime frame contains invalid probabilities")
+    if ((prepared[probability_columns] < -1e-9) | (prepared[probability_columns] > 1.0 + 1e-9)).any().any():
+        raise ValueError("Regime probabilities must remain within [0, 1]")
+
+    probability_sum = prepared[probability_columns].sum(axis=1)
+    if not ((probability_sum - 1.0).abs() <= 1e-6).all():
+        raise ValueError("Regime probabilities must sum to 1.0 row-wise")
+
+    allowed = {"bull", "bear", "sideway"}
+    invalid_labels = sorted(set(prepared["regime_label"]) - allowed)
+    if invalid_labels:
+        raise ValueError(f"Unsupported regime labels: {invalid_labels}")
+    return prepared.sort_values(["timestamp", "ticker", "source_model"]).reset_index(drop=True)
+
+
 def validate_position_frame(frame: pd.DataFrame) -> pd.DataFrame:
     missing = [column for column in POSITION_REQUIRED_COLUMNS if column not in frame.columns]
     if missing:
@@ -121,4 +167,3 @@ def validate_position_frame(frame: pd.DataFrame) -> pd.DataFrame:
     prepared["signal"] = pd.to_numeric(prepared["signal"], errors="coerce").fillna(0.0).astype(float)
     prepared["position_size"] = pd.to_numeric(prepared["position_size"], errors="coerce").fillna(0.0).astype(float)
     return prepared.sort_values(["timestamp", "ticker", "model_name"]).reset_index(drop=True)
-
