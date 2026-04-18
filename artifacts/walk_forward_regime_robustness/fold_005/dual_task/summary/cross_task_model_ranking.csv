@@ -1,4 +1,0 @@
-horizon,best_regression_model_by_rmse,best_regression_rmse,best_classification_model_by_f1,best_classification_f1,best_classification_model_by_positive_precision,best_classification_positive_precision,same_model_for_both_tasks,actionability_score,actionability_rank
-20d,xgboost,0.07742457728119875,cart,0.28846153846153844,cart,0.234375,False,0.266826923076923,3
-3d,lightgbm,0.026885079221623167,lightgbm,0.2857142857142857,lightgbm,0.27906976744186046,True,0.28305647840531556,2
-5d,xgboost,0.03897357472605299,cart,0.34234234234234234,cart,0.2878787878787879,False,0.32055692055692053,1

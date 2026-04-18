@@ -1,4 +1,0 @@
-training_window_mode,eval_end,eval_start,train_end,train_start,fold_number,fold_id,regime,best_regression_model,best_regression_horizon,best_classification_model,best_classification_horizon,best_combined_method,best_combined_model,best_horizon,key_takeaway,benchmark_source_used,bull_count,sideway_count,bear_count
-expanding,2023-03-01,2023-01-01,2022-12-31,2020-01-01,1,fold_001,bull,xgboost,3d,lightgbm,20d,combined_weighted_linear_gated,cart,3d,Combined ranking is selective and profitable in this regime.,vnstock_index,504,672,156
-expanding,2023-03-01,2023-01-01,2022-12-31,2020-01-01,1,fold_001,sideway,lightgbm,3d,xgboost,20d,combined_rank_based,lightgbm,20d,Combined ranking is selective and profitable in this regime.,vnstock_index,504,672,156
-expanding,2023-03-01,2023-01-01,2022-12-31,2020-01-01,1,fold_001,bear,lightgbm,3d,lightgbm,5d,combined_weighted_linear_gated,xgboost,3d,Combined ranking is selective and profitable in this regime.,vnstock_index,504,672,156

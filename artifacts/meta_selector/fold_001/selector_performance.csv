@@ -1,4 +1,0 @@
-fold_id,fold_number,entity_name,selection_family,status,selection_reason
-fold_001,1,simple_regime_lookup,selector,insufficient_prior_history,No prior folds are available for meta-selection.
-fold_001,1,regime_weighted_rank,selector,insufficient_prior_history,No prior folds are available for meta-selection.
-fold_001,1,fallback_global,selector,insufficient_prior_history,No prior folds are available for meta-selection.

@@ -1,4 +1,0 @@
-horizon,best_model_by_total_return,best_threshold_by_total_return,best_total_return,best_model_by_sharpe_ratio,best_threshold_by_sharpe_ratio,best_sharpe_ratio,best_model_by_max_drawdown_control,best_threshold_by_max_drawdown_control,best_max_drawdown,any_model_beats_buy_and_hold,any_model_beats_naive_flat_strategy,any_model_positive_net_return_after_costs
-20d,cart,0.02,0.03867859694225384,cart,0.02,1.6585683372351216,cart,0.02,-0.02585297708910239,True,True,True
-3d,cart,0.02,0.011076759872628239,cart,0.02,0.5262114338210234,xgboost,0.02,-0.04183197461271737,True,True,True
-5d,lightgbm,0.005,-0.045360435720797176,lightgbm,0.005,-0.789791474839109,cart,0.005,-0.09506503000737043,True,False,False

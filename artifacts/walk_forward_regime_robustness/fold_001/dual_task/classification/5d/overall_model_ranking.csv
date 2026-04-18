@@ -1,4 +1,0 @@
-ticker,model_name,observations,accuracy,precision,recall,f1,roc_auc,positive_class_precision,true_negative,false_positive,false_negative,true_positive,rank_f1,rank_positive_precision,rank_recall,rank_roc_auc,average_rank
-OVERALL,xgboost,148,0.527027027027027,0.5203252032520326,0.8533333333333334,0.6464646464646465,0.575890410958904,0.5203252032520326,14,59,11,64,1,1,1,2,1.25
-OVERALL,lightgbm,148,0.5,0.504,0.84,0.63,0.6085844748858448,0.504,11,62,12,63,2,2,2,1,1.75
-OVERALL,cart,148,0.4797297297297297,0.4891304347826087,0.6,0.5389221556886228,0.4780821917808219,0.4891304347826087,26,47,30,45,3,3,3,3,3.0

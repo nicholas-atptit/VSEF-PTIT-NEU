@@ -1,4 +1,0 @@
-horizon,best_model_by_rmse,best_model_by_mape,best_model_by_directional_accuracy,any_model_beats_naive_overall
-20d,xgboost,xgboost,lightgbm,False
-3d,xgboost,xgboost,cart,False
-5d,xgboost,lightgbm,xgboost,False

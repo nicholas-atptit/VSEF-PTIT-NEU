@@ -1,5 +1,0 @@
-scope,step_size,ticker,horizon,competitor_model,stacking_mae_minus_model,stacking_rmse_minus_model,stacking_directional_accuracy_minus_model,stacking_better_mae,stacking_better_rmse,stacking_better_directional_accuracy
-overall_horizon,1,OVERALL,short_5d,cart,0.0,0.0,-0.14285714285714285,False,False,False
-overall_horizon,2,OVERALL,short_5d,cart,0.0,0.0,-0.25,False,False,False
-ticker,1,MSN,short_5d,cart,0.0,0.0,-0.14285714285714285,False,False,False
-ticker,2,MSN,short_5d,cart,0.0,0.0,-0.25,False,False,False

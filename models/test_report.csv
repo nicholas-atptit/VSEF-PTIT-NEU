@@ -1,4 +1,0 @@
-ticker,dir_acc_pct,best_cv_acc,n_features,has_hourly,train_rows,test_rows,overfit_flag
-HPG,57.758620689655174,54.166666666666664,19,True,354,116,False
-SSI,54.310344827586206,54.166666666666664,19,True,354,116,False
-VND,49.137931034482754,54.92424242424242,20,True,354,116,False

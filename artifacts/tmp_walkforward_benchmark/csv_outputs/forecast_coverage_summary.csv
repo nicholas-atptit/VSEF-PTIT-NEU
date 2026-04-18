@@ -1,5 +1,0 @@
-step_size,ticker,horizon,model_name,total_predictions,evaluation_eligible_predictions,evaluation_ineligible_predictions,coverage_ratio,first_prediction_date,last_prediction_date,last_eligible_prediction_date
-1,ACB,short_5d,cart,10,10,0,1.0,2025-01-02,2025-01-15,2025-01-15
-1,ACB,short_5d,lightgbm,10,10,0,1.0,2025-01-02,2025-01-15,2025-01-15
-1,ACB,short_5d,stacking_final,10,10,0,1.0,2025-01-02,2025-01-15,2025-01-15
-1,ACB,short_5d,xgboost,10,10,0,1.0,2025-01-02,2025-01-15,2025-01-15
