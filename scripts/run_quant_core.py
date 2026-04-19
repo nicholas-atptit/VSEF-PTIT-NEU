@@ -14,6 +14,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.core.model_governance import RUN_MODES, get_run_mode_spec
+from src.evaluation.consensus import build_model_consensus_summary
 from src.evaluation.quant_core import (
     PRESET_CONFIGS,
     build_quant_core_core_frame,
@@ -22,6 +23,11 @@ from src.evaluation.quant_core import (
 )
 from src.evaluation.targets import supported_target_specs
 from src.forecast.registry import forecast_model_governance_table, supported_forecast_models
+from src.reporting.analysis_packets import (
+    build_analysis_packets,
+    build_decision_lane_candidates,
+    write_analysis_packets_jsonl,
+)
 from src.reporting.manifests import (
     build_batch_manifest,
     collect_dependency_versions,
@@ -176,6 +182,20 @@ def main() -> int:
     equity_curve = pd.concat(aggregate_equity_curve, ignore_index=True) if aggregate_equity_curve else pd.DataFrame()
     policy_summary = pd.concat(aggregate_policy_summary, ignore_index=True) if aggregate_policy_summary else pd.DataFrame()
     model_execution_log = pd.concat(aggregate_execution_log, ignore_index=True) if aggregate_execution_log else pd.DataFrame()
+    model_consensus_summary = build_model_consensus_summary(
+        forecasts,
+        signals_df=signals,
+    )
+    analysis_packets = build_analysis_packets(
+        forecasts,
+        model_consensus_summary,
+        risk_df=risk_summary,
+        regime_df=regime_summary,
+        signals_df=signals,
+        positions_df=positions,
+        strategy_metrics_df=strategy_metrics,
+    )
+    decision_lane_candidates = build_decision_lane_candidates(analysis_packets)
 
     table_paths = write_summary_tables(
         output_dir,
@@ -195,8 +215,11 @@ def main() -> int:
             "strategy_metrics": strategy_metrics,
             "equity_curve": equity_curve,
             "model_execution_log": model_execution_log,
+            "model_consensus_summary": model_consensus_summary,
+            "decision_lane_candidates": decision_lane_candidates,
         },
     )
+    analysis_packets_path = write_analysis_packets_jsonl(output_dir, analysis_packets)
 
     completed_at = datetime.now(timezone.utc).isoformat()
     manifest = build_batch_manifest(
@@ -218,6 +241,7 @@ def main() -> int:
             "risk_rows": int(len(risk_summary)),
             "regime_rows": int(len(regime_summary)),
             "strategy_rows": int(len(strategy_metrics)),
+            "analysis_packet_rows": int(len(analysis_packets)),
         },
         artifact_paths=table_paths,
         started_at=started_at,
@@ -231,7 +255,10 @@ def main() -> int:
         "model_count": int(len(governance_frame)),
         "artifact_path": table_paths["model_governance"],
     }
-    manifest["artifact_paths"] = dict(table_paths)
+    manifest["artifact_paths"] = {
+        **dict(table_paths),
+        "analysis_packets": str(analysis_packets_path),
+    }
 
     manifest_path = write_run_manifest(output_dir, manifest)
     summary_path = write_summary_markdown(
