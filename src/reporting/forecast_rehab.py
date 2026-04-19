@@ -299,7 +299,10 @@ def build_forecast_rehab_assessment(
     regression_da = _safe_median(regression_direction.get(quality_da_column, pd.Series(dtype=float)))
     direction_da = _safe_median(direction_only.get(quality_da_column, pd.Series(dtype=float)))
 
-    policy_sharpe = _safe_mean(forecast_vs_policy_summary.get("sharpe", pd.Series(dtype=float)))
+    policy_sharpe = _safe_median(forecast_vs_policy_summary.get("sharpe", pd.Series(dtype=float)))
+    positive_policy_sharpe_share = _safe_share(
+        pd.to_numeric(forecast_vs_policy_summary.get("sharpe", pd.Series(dtype=float)), errors="coerce") > 0.0
+    )
     edge_not_monetized_share = _safe_share(forecast_vs_policy_summary.get("edge_but_not_monetized", pd.Series(dtype=bool)))
     strong_slice_share = _safe_mean(forecast_quality_summary.get("strong_directional_accuracy_share", pd.Series(dtype=float)))
     instability = _safe_mean(model_stability_summary.get("directional_accuracy_dispersion", pd.Series(dtype=float)))
@@ -337,7 +340,8 @@ def build_forecast_rehab_assessment(
         "regression_mean_directional_accuracy": regression_da,
         "direction_mean_directional_accuracy": direction_da,
         "edge_but_not_monetized_share": edge_not_monetized_share,
-        "mean_policy_sharpe": policy_sharpe,
+        "median_policy_sharpe": policy_sharpe,
+        "positive_policy_sharpe_share": positive_policy_sharpe_share,
         "mean_strong_slice_share": strong_slice_share,
         "mean_directional_accuracy_dispersion": instability,
         "phase3_blocked": True,
@@ -570,7 +574,8 @@ def build_forecast_rehab_report(
                 "",
                 "## Forecast Vs Policy",
                 "",
-                f"- Mean policy Sharpe under the fixed Phase 2.6 execution baseline: `{assessment.get('mean_policy_sharpe', float('nan')):.6f}`",
+                f"- Median policy Sharpe under the fixed Phase 2.6 execution baseline: `{assessment.get('median_policy_sharpe', float('nan')):.6f}`",
+                f"- Positive-policy-Sharpe share under the fixed Phase 2.6 execution baseline: `{assessment.get('positive_policy_sharpe_share', float('nan')):.2%}`",
                 f"- Edge-but-not-monetized share: `{assessment.get('edge_but_not_monetized_share', float('nan')):.2%}`",
             ]
         )
