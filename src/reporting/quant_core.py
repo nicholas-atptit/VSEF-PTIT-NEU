@@ -7,6 +7,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.core.model_governance import get_run_mode_spec
+from src.reporting.manifests import build_batch_manifest
+
 
 def _csv_list(values: list[str] | tuple[str, ...] | None) -> str:
     return ", ".join(str(value) for value in (values or []))
@@ -100,3 +103,52 @@ def render_quant_core_summary_markdown(
             )
 
     return "\n".join(lines)
+
+
+def build_quant_core_manifest(
+    *,
+    git_metadata: dict[str, Any],
+    runtime: dict[str, Any],
+    dependency_versions: dict[str, str | None],
+    command: str,
+    requested_models: list[str],
+    evaluated_models: list[str],
+    skipped_models: list[dict[str, Any]],
+    seed: int,
+    matrix_config: dict[str, Any],
+    run_counts: dict[str, int],
+    artifact_paths: dict[str, str],
+    started_at: str,
+    completed_at: str,
+    run_mode: str,
+    requested_model_roles: list[str] | None,
+    governance_frame: pd.DataFrame,
+) -> dict[str, Any]:
+    """Build the quant-core manifest with explicit governance metadata."""
+
+    manifest = build_batch_manifest(
+        git_metadata=git_metadata,
+        runtime=runtime,
+        dependency_versions=dependency_versions,
+        command=command,
+        requested_models=requested_models,
+        evaluated_models=evaluated_models,
+        skipped_models=skipped_models,
+        target_type="quant_core_multi_target",
+        seed=seed,
+        matrix_config=matrix_config,
+        run_counts=run_counts,
+        artifact_paths=artifact_paths,
+        started_at=started_at,
+        completed_at=completed_at,
+        manifest_type="quant_core_run_manifest_v1",
+    )
+    manifest["run_mode"] = run_mode
+    manifest["run_mode_spec"] = get_run_mode_spec(run_mode).to_dict()
+    manifest["requested_model_roles"] = list(requested_model_roles or [])
+    manifest["governance_output"] = {
+        "model_count": int(len(governance_frame)),
+        "artifact_path": artifact_paths.get("model_governance"),
+    }
+    manifest["artifact_paths"] = dict(artifact_paths)
+    return manifest

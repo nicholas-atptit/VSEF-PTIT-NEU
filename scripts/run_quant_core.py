@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.core.model_governance import RUN_MODES, get_run_mode_spec
+from src.core.model_governance import RUN_MODES
 from src.evaluation.consensus import build_model_consensus_summary
 from src.evaluation.quant_core import (
     PRESET_CONFIGS,
@@ -29,13 +29,13 @@ from src.reporting.analysis_packets import (
     write_analysis_packets_jsonl,
 )
 from src.reporting.manifests import (
-    build_batch_manifest,
     collect_dependency_versions,
     collect_git_metadata,
     collect_runtime_metadata,
     write_run_manifest,
 )
-from src.reporting.quant_core import render_quant_core_summary_markdown
+from src.reporting.model_health import build_model_health_summary
+from src.reporting.quant_core import build_quant_core_manifest, render_quant_core_summary_markdown
 from src.reporting.summary import write_summary_markdown, write_summary_tables
 
 
@@ -196,6 +196,11 @@ def main() -> int:
         strategy_metrics_df=strategy_metrics,
     )
     decision_lane_candidates = build_decision_lane_candidates(analysis_packets)
+    model_health_summary = build_model_health_summary(
+        model_execution_log,
+        forecasts,
+        strategy_metrics,
+    )
 
     table_paths = write_summary_tables(
         output_dir,
@@ -216,13 +221,14 @@ def main() -> int:
             "equity_curve": equity_curve,
             "model_execution_log": model_execution_log,
             "model_consensus_summary": model_consensus_summary,
+            "model_health_summary": model_health_summary,
             "decision_lane_candidates": decision_lane_candidates,
         },
     )
     analysis_packets_path = write_analysis_packets_jsonl(output_dir, analysis_packets)
 
     completed_at = datetime.now(timezone.utc).isoformat()
-    manifest = build_batch_manifest(
+    manifest = build_quant_core_manifest(
         git_metadata=collect_git_metadata(Path.cwd()),
         runtime=collect_runtime_metadata(),
         dependency_versions=collect_dependency_versions(
@@ -232,7 +238,6 @@ def main() -> int:
         requested_models=requested_models,
         evaluated_models=sorted(evaluated_models),
         skipped_models=skipped_models,
-        target_type="quant_core_multi_target",
         seed=args.seed,
         matrix_config=matrix_config,
         run_counts={
@@ -243,22 +248,16 @@ def main() -> int:
             "strategy_rows": int(len(strategy_metrics)),
             "analysis_packet_rows": int(len(analysis_packets)),
         },
-        artifact_paths=table_paths,
+        artifact_paths={
+            **dict(table_paths),
+            "analysis_packets": str(analysis_packets_path),
+        },
         started_at=started_at,
         completed_at=completed_at,
-        manifest_type="quant_core_run_manifest_v1",
+        run_mode=args.run_mode,
+        requested_model_roles=list(args.model_roles or []),
+        governance_frame=governance_frame,
     )
-    manifest["run_mode"] = args.run_mode
-    manifest["run_mode_spec"] = get_run_mode_spec(args.run_mode).to_dict()
-    manifest["requested_model_roles"] = list(args.model_roles or [])
-    manifest["governance_output"] = {
-        "model_count": int(len(governance_frame)),
-        "artifact_path": table_paths["model_governance"],
-    }
-    manifest["artifact_paths"] = {
-        **dict(table_paths),
-        "analysis_packets": str(analysis_packets_path),
-    }
 
     manifest_path = write_run_manifest(output_dir, manifest)
     summary_path = write_summary_markdown(

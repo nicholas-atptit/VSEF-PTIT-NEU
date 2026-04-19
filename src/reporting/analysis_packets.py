@@ -112,6 +112,11 @@ def build_analysis_packets(
     signals_frame = signals_df if signals_df is not None else pd.DataFrame()
     positions_frame = positions_df if positions_df is not None else pd.DataFrame()
     strategy_metrics_frame = strategy_metrics_df if strategy_metrics_df is not None else pd.DataFrame()
+    scenario_metric_columns = _shared_columns(
+        ranked,
+        strategy_metrics_frame,
+        scenario_group_columns(ranked),
+    )
 
     risk_lookup = _lookup_by_keys(risk_frame, _shared_columns(ranked, risk_frame, group_columns))
     regime_lookup = _lookup_by_keys(regime_frame, _shared_columns(ranked, regime_frame, group_columns))
@@ -133,11 +138,7 @@ def build_analysis_packets(
     )
     scenario_metric_groups = _lookup_groups(
         strategy_metrics_frame,
-        _shared_columns(
-            ranked,
-            strategy_metrics_frame,
-            scenario_group_columns(ranked),
-        ),
+        scenario_metric_columns,
     )
     consensus_lookup = _lookup_by_keys(consensus_summary, group_columns)
 
@@ -148,7 +149,7 @@ def build_analysis_packets(
             keys = (keys,)
         packet = dict(zip(group_columns, keys))
         key_tuple = tuple(packet.get(column) for column in group_columns)
-        scenario_key_columns = scenario_group_columns(group)
+        scenario_key_columns = scenario_metric_columns
         scenario_key = tuple(packet.get(column) for column in scenario_key_columns)
 
         ordered = group.sort_values(["research_priority", "model_rank", "model_name"]).reset_index(drop=True)
