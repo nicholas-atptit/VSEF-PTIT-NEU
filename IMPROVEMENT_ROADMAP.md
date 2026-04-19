@@ -1,19 +1,19 @@
-# Improvement Roadmap - Low-Resource Deployment Branch
+# Improvement Roadmap - Quant-Core Forecasting
 
-## P0: Core Functionality (Immediate)
-- **Local Model Configuration**: Set up `settings.py` to use Ollama with `qwen3:8b` as the default.
-- **Explain-Only Mode**: Ensure `enable_llm_explainer` is `True` and its output is correctly captured in reports.
-- **Asynchronous Execution**: Verify that the orchestrator's `await` calls prevent UI blocking during inference.
+## P0: Operational Reliability (Immediate)
+- [x] **Interpreter Lock**: Standardize on `.venv_py313` for all quantitative execution.
+- [x] **Statistical Calibration**: Verify `ETS` and `SARIMAX` execution on real market data.
+- [x] **Risk/Regime Stability**: Ensure `GARCH` and `MarkovSwitching` execute without universal fallbacks.
 
 ## P1: Performance & UX (Short-Term)
-- **Prompt Optimization**: Streamline the quantitative context passed to the 8B model to reduce token count and latency.
-- **Vietnamese Language Support**: Add explicit system instructions for consistent, professional Vietnamese financial analysis.
-- **Memory Management**: Implement conditional LLM loading (if possible via Ollama's `keep_alive` or similar) to save resources for the ML pipeline.
+- **Fallback Diagnostics**: Improve the `model_execution_log.csv` to explicitly capture the exact numerical error or data gap triggering a fallback.
+- **Convergence Optimization**: Review initialization methods for `SARIMAX` to reduce optimization failures.
+- **Reporting Clarity**: Add visual flags in `summary.md` for scenarios where statistical comparators were out-performed by baselines.
 
 ## P2: Long-Term Enhancements
-- **Multi-Ticker Batching**: Optimize `explain_batch` to handle multiple tickers efficiently on low-resource hardware.
-- **Quantization Support**: Add documentation for using GGUF-quantized models (e.g., Q4_K_M) for even lower resource usage.
-- **Model Switching Logic**: Create a fallback mechanism if the local LLM is down (e.g., use a simple rule-based summary).
+- **Dynamic Ensemble Weighting**: Move from static weighted ensemble to a Kalman-filter or variance-based dynamic weight allocator in `src/ensemble/`.
+- **Regime-Specific Risk Budgets**: Wire the `regime_multiplier_strength` directly into a more granular portfolio allocator.
+- **CI/CD Quant-Gating**: Implement a "Quant-Smoke" check in the main GitHub Action to catch dependency regressions early.
 
 ---
 *Signed: Antigravity - Senior Software Architect*

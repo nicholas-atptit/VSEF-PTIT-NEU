@@ -3,58 +3,34 @@
 This directory contains retrospective documentation for all major implementation tasks and prompt runs in the VN100 stock prediction system.
 
 ## Summary Status
-- **Overall Completion**: Phase 1 (Core Pipeline) Completed.
+- **Overall Completion**: Phase 1 & Quant Core Validation Completed.
 - **Traceability**: All logs are "best-effort reconstructions" based on system state and documentation audits.
 
 ## Task Logs
 
 | Task Name | Status | Key Files | Reconstruction Source |
 | :--- | :--- | :--- | :--- |
-| [vnstock-integration-audit](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/vnstock-integration-audit.md) | COMPLETED | `docs/codebase_audit.md` | audit |
-| [adapter-layer](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/adapter-layer.md) | COMPLETED | `src/adapters/vnstock_adapter.py` | documentation |
-| [universe-loader](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/universe-loader.md) | COMPLETED | `src/data/universe.py` | codebase |
-| [daily-sync](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/daily-sync.md) | COMPLETED | `scripts/sync_all_data.py` | logic |
-| [data-loader-extension](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/data-loader-extension.md) | COMPLETED | `src/ml/data_loader.py` | codebase |
-| [feature-engineering-extension](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/feature-engineering-extension.md) | COMPLETED | `src/ml/feature_engineering.py` | technical indicators |
-| [label-engineering](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/label-engineering.md) | COMPLETED | `src/ml/labels/` | modular logic |
-| [training-pipeline-integration](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/training-pipeline-integration.md) | COMPLETED | `scripts/train_ml_tickers.py` | adapter pattern |
-| [batch-vn100-training](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/batch-vn100-training.md) | COMPLETED | `scripts/train_ml_tickers.py` | batch mode |
-| [batch-inference](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/batch-inference.md) | COMPLETED | `scripts/per_session_predict.py` | output mapping |
-| [ranked-predictions](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/ranked-predictions.md) | COMPLETED | `src/reporting/ranked_predictions.py` | reporting |
-| [daily-brief](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/daily-brief.md) | COMPLETED | `src/reporting/daily_brief.py` | insight generation |
-| [experiment-tracking](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/experiment-tracking.md) | COMPLETED | `src/ml/experiment_tracker.py` | metadata logging |
-# VN100 Stock Prediction - Prompt Run Index
-
-This directory contains retrospective documentation for all major implementation tasks and prompt runs in the VN100 stock prediction system.
-
-## Summary Status
-- **Overall Completion**: Phase 1 (Core Pipeline) Completed.
-- **Traceability**: All logs are "best-effort reconstructions" based on system state and documentation audits.
-
-## Task Logs
-
-| Task Name | Status | Key Files | Reconstruction Source |
-| :--- | :--- | :--- | :--- |
-| [vnstock-integration-audit](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/vnstock-integration-audit.md) | COMPLETED | `docs/codebase_audit.md` | audit |
-| [adapter-layer](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/adapter-layer.md) | COMPLETED | `src/adapters/vnstock_adapter.py` | documentation |
-| [universe-loader](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/universe-loader.md) | COMPLETED | `src/data/universe.py` | codebase |
-| [daily-sync](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/daily-sync.md) | COMPLETED | `scripts/sync_all_data.py` | logic |
-| [data-loader-extension](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/data-loader-extension.md) | COMPLETED | `src/ml/data_loader.py` | codebase |
-| [feature-engineering-extension](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/feature-engineering-extension.md) | COMPLETED | `src/ml/feature_engineering.py` | technical indicators |
-| [label-engineering](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/label-engineering.md) | COMPLETED | `src/ml/labels/` | modular logic |
-| [training-pipeline-integration](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/training-pipeline-integration.md) | COMPLETED | `scripts/train_ml_tickers.py` | adapter pattern |
-| [batch-vn100-training](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/batch-vn100-training.md) | COMPLETED | `scripts/train_ml_tickers.py` | batch mode |
-| [batch-inference](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/batch-inference.md) | COMPLETED | `scripts/per_session_predict.py` | output mapping |
-| [ranked-predictions](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/ranked-predictions.md) | COMPLETED | `src/reporting/ranked_predictions.py` | reporting |
-| [daily-brief](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/daily-brief.md) | COMPLETED | `src/reporting/daily_brief.py` | insight generation |
-| [experiment-tracking](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/experiment-tracking.md) | COMPLETED | `src/ml/experiment_tracker.py` | metadata logging |
-| [data-quality](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/data-quality.md) | COMPLETED | `src/validators/data_quality.py` | integrity checks |
-| [15_experiment_tracking_validation](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/15_experiment_tracking_validation.md) | COMPLETED | `src/ml/experiment_tracker.py` | Fresh diff analysis |
-| [16_feature_parity_unification](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/16_feature_parity_unification.md) | COMPLETED | `src/ml/feature_engineering.py` | Full Parity Sync |
-| [17_batch2_patch_cleanup](file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/docs/prompt_runs/17_batch2_patch_cleanup.md) | COMPLETED | `scripts/train_ml_tickers.py` | Alignment Fixes |
-| [18_quantitative_architecture_expansion](18_quantitative_architecture_expansion.md) | COMPLETED | src/ml/models/ | Architecture Expansion |
-| [19_ml_engine_stability_hardening](19_ml_engine_stability_hardening.md) | COMPLETED | scripts/verify_stability.py | Architecture Hardening |
-| [20_walk_forward_experiment_hard_requirements](20_walk_forward_experiment_hard_requirements.md) | COMPLETED | src/ml/backtest/walk_forward_all_models_stacking.py | Isolated Cadence Engine |
+| [vnstock-integration-audit](archive/phase1/01_vnstock_integration_audit.md) | COMPLETED | `docs/codebase_audit.md` | audit |
+| [adapter-layer](archive/phase1/02_adapter_layer.md) | COMPLETED | `src/adapters/vnstock_adapter.py` | documentation |
+| [universe-loader](archive/phase1/03_universe_loader.md) | COMPLETED | `src/data/universe.py` | codebase |
+| [daily-sync](archive/phase1/04_daily_sync.md) | COMPLETED | `scripts/sync_all_data.py` | logic |
+| [data-loader-extension](archive/phase2/05_data_loader_extension.md) | COMPLETED | `src/ml/data_loader.py` | codebase |
+| [feature-engineering-extension](archive/phase2/06_feature_engineering_extension.md) | COMPLETED | `src/ml/feature_engineering.py` | technical indicators |
+| [label-engineering](archive/phase2/07_label_engineering.md) | COMPLETED | `src/ml/labels/` | modular logic |
+| [training-pipeline-integration](archive/phase2/08_training_pipeline_integration.md) | COMPLETED | `scripts/train_ml_tickers.py` | adapter pattern |
+| [batch-vn100-training](archive/phase2/09_batch_vn100_training.md) | COMPLETED | `scripts/train_ml_tickers.py` | batch mode |
+| [batch-inference](archive/phase2/10_batch_inference.md) | COMPLETED | `scripts/per_session_predict.py` | output mapping |
+| [ranked-predictions](archive/analysis_feed/11_ranked_predictions.md) | COMPLETED | `src/reporting/ranked_predictions.py` | reporting |
+| [daily-brief](archive/analysis_feed/12_daily_brief.md) | COMPLETED | `src/reporting/daily_brief.py` | insight generation |
+| [experiment-tracking](archive/phase2/13_experiment_tracking.md) | COMPLETED | `src/ml/experiment_tracker.py` | metadata logging |
+| [data-quality](archive/phase1/14_data_quality.md) | COMPLETED | `src/validators/data_quality.py` | integrity checks |
+| [15_experiment_tracking_validation](archive/phase2/15_experiment_tracking_validation.md) | COMPLETED | `src/ml/experiment_tracker.py` | Fresh diff analysis |
+| [16_feature_parity_unification](archive/phase2/16_feature_parity_unification.md) | COMPLETED | `src/ml/feature_engineering.py` | Full Parity Sync |
+| [17_batch2_patch_cleanup](archive/phase2/17_batch2_patch_cleanup.md) | COMPLETED | `scripts/train_ml_tickers.py` | Alignment Fixes |
+| [18_quantitative_architecture_expansion](archive/quant_core/18_quantitative_architecture_expansion.md) | COMPLETED | `src/ml/models/` | Architecture Expansion |
+| [19_ml_engine_stability_hardening](archive/phase2/19_ml_engine_stability_hardening.md) | COMPLETED | `scripts/verify_stability.py` | Architecture Hardening |
+| [20_walk_forward_experiment_hard_requirements](archive/quant_core/20_walk_forward_experiment_hard_requirements.md) | COMPLETED | `src/ml/backtest/walk_forward_all_models_stacking.py` | Isolated Cadence Engine |
+| [21_quant_core_operational_validation](archive/quant_core/21_quant_core_operational_validation.md) | COMPLETED | `scripts/run_quant_core.py` | Operational Validation |
 
 ---
-*Generated by Antigravity AI - 2026-04-16*
+*Generated by Antigravity AI - 2026-04-19*

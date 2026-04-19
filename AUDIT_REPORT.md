@@ -1,49 +1,49 @@
-# Repository Audit Report - Low-Resource Deployment Branch
+# Repository Audit Report - Quant-Core Operational Validation
 
 ## 1. Current Architecture Analysis
 
 ### Entry Points & Orchestration
-- **Main Entry**: `src/ml/signal_generator.py` acts as the primary interface for generating trading signals.
-- **Orchestrator**: `src/agents/orchestrator.py` (`AgentOrchestrator`) coordinates the multi-agent flow.
-- **Deterministic Core**: `AnalystAgent`, `RiskAgent`, and `PortfolioAgent` perform cascading logic based on quantitative data.
+- **Main Entry**: `scripts/run_quant_core.py` is the primary orchestrator for governed model execution.
+- **Core Orchestrator**: `src/evaluation/quant_core.py` provides the logic for scenario matrix builds and multi-model execution.
+- **Model Governance**: `src/core/model_governance.py` and `src/forecast/registry.py` define the "Model Zoo" roles (primary, comparator, baseline, shadow).
 
 ### Data Flow (End-to-End)
-1. **ML Pipeline**: Produces raw predictions (trend probabilities, expected ranges).
-2. **Signal Builder**: Normalizes raw data into a `MarketSignal` dataclass (`src/signals/builder.py`).
-3. **Analyst Agent**: Makes a raw directional decision based on the signal.
-4. **Risk Agent**: Reviews the analyst's decision against hard constraints (volatility, max position).
-5. **Portfolio Agent**: Consolidates approved risk decisions into a portfolio proposal.
-6. **Explainer Agent**: (Optional) Generates a natural language narrative for the final decision.
+1. **Scenario Matrix**: Built in `src/evaluation/quant_core.py` based on presets (smoke, medium, full_forecast_daily).
+2. **Walk-Forward Evaluator**: `src/evaluation/walkforward.py` handles the time-series splitting.
+3. **Model Execution**: Forecasters from `src/forecast/` are instantiated and fitted.
+4. **Risk & Regime Layer**: 
+   - **Risk**: `GARCHRiskModel` (primary) or `VaRCVaRRiskModel` (fallback) in `src/risk/`.
+   - **Regime**: `MarkovSwitchingRegimeModel` (primary) or deterministic threshold (fallback) in `src/regime/`.
+5. **Reporting**: Results aggregated into analysis packets (`src/reporting/analysis_packets.py`) and manifests.
 
-### LLM / Explainer Integration
-- **Current Logic**: `src/agents/explainer.py` calls an LLM client.
-- **Client Implementation**: `src/ml/llm/client.py` uses `AsyncOpenAI` pointing to either cloud (OpenAI/Gemini/Groq) or local (Ollama).
-- **Placement**: The explainer is placed **LAST** in the orchestrator, ensuring it has no feedback loop into the trading logic.
+### Environment & Dependencies
+- **Validated Runtime**: `.venv_py313` (Python 3.13.5)
+- **Verified Packages**: `statsmodels 0.14.6`, `arch 8.0.0`, `scikit-learn 1.8.0`, `xgboost 3.2.0`, `lightgbm 4.6.0`.
 
 ## 2. Completed vs. Incomplete Components
 
 | Component | Status | Location |
 | :--- | :--- | :--- |
-| ML Prediction Pipeline | Completed | `src/ml/` |
-| Risk & Portfolio Logic | Completed | `src/engine/risk.py`, `src/engine/portfolio/` |
-| Multi-Agent Orchestration | Completed | `src/agents/orchestrator.py` |
-| Local LLM (Ollama) Client | Implemented | `src/ml/llm/client.py` |
-| Explainer Logic | Implemented | `src/agents/explainer.py` |
-| Local Explainer Optimization | **Incomplete** | Needs branch-specific tuning |
+| Model Governance & Zoo | Fully Implemented | `src/core/`, `src/forecast/` |
+| Statistical Forecasters (ETS/SARIMAX) | Operationally Validated | `src/forecast/statistical/` |
+| Risk Layer (GARCH) | Operationally Validated | `src/risk/garch.py` |
+| Regime Layer (Markov Switching) | Operationally Validated | `src/regime/markov_switching.py` |
+| Analysis Packet Synthesis | Fully Implemented | `src/reporting/analysis_packets.py` |
+| Full-Forecast Validation | **Verified** | 27 scenarios in `.venv_py313` |
 
 ## 3. Technical Debt & Risks
 
-- **LLM Latency**: Local models (Ollama) can be slow on CPU/Low-GPU systems. Needs asynchronous handling (already handled by `asyncio.gather` in orchestrator).
-- **Hardcoded Configs**: Some default models in `settings.py` point to `qwen2.5:7b` instead of the requested `qwen3:8b`.
-- **Prompt Complexity**: Current prompts might be too verbose for an 8B model to handle quickly while maintaining Vietnamese output quality.
+- **Convergence Stability**: `SARIMAX` and `MarkovSwitching` occasionally trigger `ConvergenceWarning` on small or volatile data segments.
+- **PowerShell Stderr Sensitivity**: External runners (like CI/CD or Antigravity) may interpret warnings as errors due to PowerShell's default behavior.
+- **Data Density Requirements**: Markov Switching requires at least 80 observations (hard constraint in `markov_switching.py`).
 
 ## 4. Code Smells & Architectural Weaknesses
-- **Tight coupling in SignalGenerator**: The `SignalGenerator` directly instantiates `AgentOrchestrator`. While acceptable for now, it makes testing harder. 
-- **Explain-only enforcement**: It is currently enforced by code ordering, but there is no structural interface preventing a "Controller Agent" from being added.
+- **Fallback Transparency**: While the manifest tracks fallbacks, the summary reporting could make the "Reason for Fallback" more prominent.
+- **Script Coupling**: `scripts/run_quant_core.py` is quite large; reporting logic is partially centralized in `src/reporting/` but also present in the runner.
 
-## 5. Major Risks for Low-Resource Branch
-- **Memory Exhaustion**: Running an 8B model alongside the ML pipeline might hit RAM limits on 16GB machines.
-- **Hallucinations**: Qwen models can sometimes deviate from the quantitative facts if the prompt isn't strict.
+## 5. Major Operational Risks
+- **Interpreter Drift**: Using `.venv` or `.venv313` (which are misconfigured or missing packages) breaks statistical models.
+- **Memory Usage**: The full zoo (10+ models) across many tickers/horizons can be memory-intensive.
 
 ---
 *Signed: Antigravity - Senior Software Architect*
