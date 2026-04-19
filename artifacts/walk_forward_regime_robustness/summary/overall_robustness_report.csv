@@ -1,8 +1,0 @@
-component,best_overall_choice,stability_level,supporting_evidence,caution_note
-regression model,xgboost,low,Top choice won 7 of 17 fold-regime slots,Results are mixed across folds; treat as provisional.
-classification model,cart,low,Top choice won 7 of 27 fold-regime slots,Results are mixed across folds; treat as provisional.
-combined method,combined_weighted_linear_gated,low,Top method won 22 of 93 fold-regime-horizon slots,Results are mixed across folds; treat as provisional.
-horizon,5d,low,Top horizon won 5 of 12 combined-horizon slots,Results are mixed across folds; treat as provisional.
-bull regime setup,combined_weighted_linear_gated,high,combined_method repeated in 5/5 fold summaries,Regime-specific pattern appears repeatable in this sample.
-bear regime setup,combined_weighted_linear_gated,high,combined_method repeated in 2/2 fold summaries,Regime-specific pattern appears repeatable in this sample.
-sideway regime setup,combined_weighted_linear_gated,high,combined_method repeated in 4/5 fold summaries,Regime-specific pattern appears repeatable in this sample.

@@ -27,6 +27,6 @@
 | volatility_shock | legacy_forecast_only | -4.94 | -0.3656 | -0.0345 | 0.4127 | 15.0 | 0.98 | -0.0163 | -0.1079 | 0.0 | 0.0 |
 
 ## Output Files
-- Detail CSV: `H:\AI-ML-LLM in Stock_march26_PTIT_NEU\tmp\pytest_tmpdirs\case_dabbb9b241c44b03952b56da95e01bc2\reports\stress_alignment.csv`
-- Summary CSV: `H:\AI-ML-LLM in Stock_march26_PTIT_NEU\tmp\pytest_tmpdirs\case_dabbb9b241c44b03952b56da95e01bc2\reports\stress_alignment_summary.csv`
-- JSON: `H:\AI-ML-LLM in Stock_march26_PTIT_NEU\tmp\pytest_tmpdirs\case_dabbb9b241c44b03952b56da95e01bc2\reports\stress_alignment.json`
+- Detail CSV: `reports/stress_alignment.csv`
+- Summary CSV: `reports/stress_alignment_summary.csv`
+- JSON: `reports/stress_alignment.json`

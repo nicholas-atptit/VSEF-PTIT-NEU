@@ -1,7 +1,0 @@
-component,best_overall_choice,stability_level,supporting_evidence,caution_note
-best selector mode,fallback_global,low,"fallback_global avg_return=0.0233, profit_rate=0.5463",Selector gains remain sample-sensitive across folds.
-selector vs fixed baselines,selector beats fixed baseline,low,best_selector=fallback_global (0.0233) vs best_baseline=fixed_best_classifier_model (0.0211),Treat any edge as provisional until more folds accumulate.
-bull regime,fallback_global,medium,"fallback_global avg_return=0.0470, top3=0.0563",Regime benefit is not uniform across folds.
-bear regime,fallback_global,medium,"fallback_global avg_return=0.0203, top3=0.0132",Bear evidence is especially fragile when fold coverage is sparse.
-sideway regime,fallback_global,medium,"fallback_global avg_return=0.0053, top3=0.0088",Regime benefit is not uniform across folds.
-most frequent adaptive setup,xgboost+20d+predicted_return,medium,selected in 3 folds and 296 rows,Method-family stability is stronger than exact setup stability.

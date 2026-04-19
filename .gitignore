@@ -24,6 +24,14 @@ venv/
 data/hourly_data_split_data/
 data/hourly/
 data/prediction_cache/
+data/processed/
+data/macro_context.csv
+data/foreign_flow.csv
+data/market_breadth.csv
+data/sector_proxies.csv
+data/fundamentals_latest.csv
+data/market_proxy.csv
+data/latest_predictions.json
 
 # ── OS ──
 Thumbs.db
@@ -35,3 +43,11 @@ docker-compose.override.yml
 # ── Temp ──
 scripts/_patch_settings.py
 .gemini/
+.pytest_cache/
+pytest-cache-files-*/
+tmp/
+tmp*/
+artifacts/
+outputs/
+logs/
+models/
