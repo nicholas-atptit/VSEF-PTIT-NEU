@@ -378,7 +378,7 @@ def render_forecast_rehab_summary_markdown(
                 "",
                 "## Feature Families",
                 "",
-                "| feature_family | mean_rmse | mean_directional_accuracy | strong_slice_share |",
+                "| feature_family | median_rmse | median_directional_accuracy | strong_slice_share |",
                 "| --- | ---: | ---: | ---: |",
             ]
         )
@@ -399,7 +399,7 @@ def render_forecast_rehab_summary_markdown(
                 "",
                 "## Models",
                 "",
-                "| model_name | mean_rmse | mean_directional_accuracy | strong_directional_accuracy_share | tradable_slice_share |",
+                "| model_name | median_rmse | median_directional_accuracy | strong_directional_accuracy_share | tradable_slice_share |",
                 "| --- | ---: | ---: | ---: | ---: |",
             ]
         )
@@ -543,10 +543,15 @@ def build_forecast_rehab_report(
     regression_da = assessment.get("regression_mean_directional_accuracy", float("nan"))
     direction_da = assessment.get("direction_mean_directional_accuracy", float("nan"))
     if pd.notna(direction_da) and pd.notna(regression_da):
-        framing = "direction framing" if direction_da > regression_da else "return regression"
-        lines.append(
-            f"6. More promising framing: `{framing}`. Mean directional accuracy was `{direction_da:.6f}` for direction framing versus `{regression_da:.6f}` for return-regression targets."
-        )
+        if abs(float(direction_da) - float(regression_da)) < 0.01:
+            lines.append(
+                f"6. More promising framing: `inconclusive`. Mean directional accuracy was `{direction_da:.6f}` for direction framing versus `{regression_da:.6f}` for return-regression targets."
+            )
+        else:
+            framing = "direction framing" if direction_da > regression_da else "return regression"
+            lines.append(
+                f"6. More promising framing: `{framing}`. Mean directional accuracy was `{direction_da:.6f}` for direction framing versus `{regression_da:.6f}` for return-regression targets."
+            )
     else:
         lines.append("6. Regression versus direction framing could not be ranked cleanly in this bounded run.")
 
