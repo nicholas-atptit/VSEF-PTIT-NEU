@@ -1,0 +1,261 @@
+"""Top-level quant-core governance and orchestration runner."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+import pandas as pd
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.core.model_governance import RUN_MODES, get_run_mode_spec
+from src.evaluation.quant_core import (
+    PRESET_CONFIGS,
+    build_quant_core_core_frame,
+    build_quant_core_matrix_config,
+    run_quant_core_scenario,
+)
+from src.evaluation.targets import supported_target_specs
+from src.forecast.registry import forecast_model_governance_table, supported_forecast_models
+from src.reporting.manifests import (
+    build_batch_manifest,
+    collect_dependency_versions,
+    collect_git_metadata,
+    collect_runtime_metadata,
+    write_run_manifest,
+)
+from src.reporting.quant_core import render_quant_core_summary_markdown
+from src.reporting.summary import write_summary_markdown, write_summary_tables
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run the governed quant-core orchestration path.")
+    parser.add_argument("--preset", choices=sorted(PRESET_CONFIGS), default="medium")
+    parser.add_argument("--run-mode", choices=list(RUN_MODES), default="full_forecast")
+    parser.add_argument("--tickers", nargs="+", default=None, help="Explicit custom ticker list")
+    parser.add_argument("--ticker-groups", nargs="+", default=None, help="Named ticker groups to run")
+    parser.add_argument("--horizons", nargs="+", type=int, default=None)
+    parser.add_argument("--target-types", nargs="+", default=None, choices=supported_target_specs())
+    parser.add_argument("--models", nargs="+", default=None, help="Optional explicit model-name subset")
+    parser.add_argument("--model-roles", nargs="+", default=None, help="Optional role filter on top of run mode")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--risk-budget", type=float, default=0.02)
+    parser.add_argument("--max-position-size", type=float, default=1.0)
+    parser.add_argument("--transaction-fee-bps", type=float, default=15.0)
+    parser.add_argument("--slippage-bps", type=float, default=20.0)
+    parser.add_argument("--allow-short", action="store_true")
+    parser.add_argument("--regime-lookback", type=int, default=20)
+    parser.add_argument("--regime-bull-threshold", type=float, default=0.03)
+    parser.add_argument("--regime-bear-threshold", type=float, default=-0.03)
+    parser.add_argument("--output-dir", default="artifacts/quant_core")
+    parser.add_argument("--no-ensemble", action="store_true")
+    return parser.parse_args()
+
+
+def _build_custom_ticker_groups(args: argparse.Namespace) -> tuple[list[str] | None, dict[str, list[str]] | None]:
+    if args.tickers:
+        return ["cli_custom"], {"cli_custom": [str(ticker).upper() for ticker in args.tickers]}
+    if args.ticker_groups:
+        return [str(name) for name in args.ticker_groups], None
+    return None, None
+
+
+def _annotate(frame: pd.DataFrame, metadata: dict[str, object]) -> pd.DataFrame:
+    annotated = frame.copy()
+    for key, value in metadata.items():
+        annotated[key] = value
+    return annotated
+
+
+def main() -> int:
+    args = parse_args()
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    started_at = datetime.now(timezone.utc).isoformat()
+
+    group_names, custom_groups = _build_custom_ticker_groups(args)
+    matrix_config = build_quant_core_matrix_config(
+        args.preset,
+        group_names=group_names,
+        ticker_groups=custom_groups,
+        horizons=args.horizons,
+        target_names=args.target_types,
+    )
+    core_frame = build_quant_core_core_frame(matrix_config)
+    if core_frame.empty:
+        raise RuntimeError("The quant-core scenario matrix did not produce any runs")
+
+    governance_frame = forecast_model_governance_table(
+        run_mode=args.run_mode,
+        roles=args.model_roles,
+        model_names=args.models,
+        include_parked=False,
+    )
+    requested_models = [str(model).lower() for model in args.models] if args.models else list(
+        supported_forecast_models(
+            run_mode=args.run_mode,
+            roles=args.model_roles,
+            include_parked=False,
+        )
+    )
+
+    aggregate_forecasts: list[pd.DataFrame] = []
+    aggregate_forecast_summary: list[pd.DataFrame] = []
+    aggregate_forecast_summary_by_horizon: list[pd.DataFrame] = []
+    aggregate_window_summary: list[pd.DataFrame] = []
+    aggregate_risk_summary: list[pd.DataFrame] = []
+    aggregate_regime_summary: list[pd.DataFrame] = []
+    aggregate_signals: list[pd.DataFrame] = []
+    aggregate_positions: list[pd.DataFrame] = []
+    aggregate_trades: list[pd.DataFrame] = []
+    aggregate_strategy_metrics: list[pd.DataFrame] = []
+    aggregate_equity_curve: list[pd.DataFrame] = []
+    aggregate_policy_summary: list[pd.DataFrame] = []
+    aggregate_execution_log: list[pd.DataFrame] = []
+    skipped_models: list[dict[str, object]] = []
+    evaluated_models: set[str] = set()
+
+    for core_row in core_frame.to_dict(orient="records"):
+        scenario_result = run_quant_core_scenario(
+            core_row,
+            run_mode=args.run_mode,
+            requested_model_names=requested_models,
+            requested_roles=args.model_roles,
+            include_ensemble=not args.no_ensemble,
+            seed=args.seed,
+            allow_short=args.allow_short,
+            risk_budget=args.risk_budget,
+            max_position_size=args.max_position_size,
+            transaction_fee_bps=args.transaction_fee_bps,
+            slippage_bps=args.slippage_bps,
+            regime_lookback=args.regime_lookback,
+            regime_bull_threshold=args.regime_bull_threshold,
+            regime_bear_threshold=args.regime_bear_threshold,
+        )
+        evaluated_models.update(scenario_result["evaluated_models"])
+        skipped_models.extend(scenario_result["skipped_models"])
+        aggregate_forecasts.append(scenario_result["forecasts"])
+        aggregate_forecast_summary.append(scenario_result["forecast_summary"])
+        aggregate_forecast_summary_by_horizon.append(scenario_result["forecast_summary_by_horizon"])
+        aggregate_window_summary.append(scenario_result["window_summary"])
+        aggregate_risk_summary.append(scenario_result["risk_summary"])
+        aggregate_regime_summary.append(scenario_result["regime_summary"])
+        if not scenario_result["signals"].empty:
+            aggregate_signals.append(scenario_result["signals"])
+        if not scenario_result["positions"].empty:
+            aggregate_positions.append(scenario_result["positions"])
+        if not scenario_result["trades"].empty:
+            aggregate_trades.append(scenario_result["trades"])
+        if not scenario_result["strategy_metrics"].empty:
+            aggregate_strategy_metrics.append(scenario_result["strategy_metrics"])
+        if not scenario_result["equity_curve"].empty:
+            aggregate_equity_curve.append(scenario_result["equity_curve"])
+        if not scenario_result["policy_summary"].empty:
+            aggregate_policy_summary.append(scenario_result["policy_summary"])
+        aggregate_execution_log.append(scenario_result["model_execution_log"])
+
+    forecasts = pd.concat(aggregate_forecasts, ignore_index=True) if aggregate_forecasts else pd.DataFrame()
+    forecast_summary = pd.concat(aggregate_forecast_summary, ignore_index=True) if aggregate_forecast_summary else pd.DataFrame()
+    forecast_summary_by_horizon = (
+        pd.concat(aggregate_forecast_summary_by_horizon, ignore_index=True)
+        if aggregate_forecast_summary_by_horizon
+        else pd.DataFrame()
+    )
+    window_summary = pd.concat(aggregate_window_summary, ignore_index=True) if aggregate_window_summary else pd.DataFrame()
+    risk_summary = pd.concat(aggregate_risk_summary, ignore_index=True) if aggregate_risk_summary else pd.DataFrame()
+    regime_summary = pd.concat(aggregate_regime_summary, ignore_index=True) if aggregate_regime_summary else pd.DataFrame()
+    signals = pd.concat(aggregate_signals, ignore_index=True) if aggregate_signals else pd.DataFrame()
+    positions = pd.concat(aggregate_positions, ignore_index=True) if aggregate_positions else pd.DataFrame()
+    trades = pd.concat(aggregate_trades, ignore_index=True) if aggregate_trades else pd.DataFrame()
+    strategy_metrics = pd.concat(aggregate_strategy_metrics, ignore_index=True) if aggregate_strategy_metrics else pd.DataFrame()
+    equity_curve = pd.concat(aggregate_equity_curve, ignore_index=True) if aggregate_equity_curve else pd.DataFrame()
+    policy_summary = pd.concat(aggregate_policy_summary, ignore_index=True) if aggregate_policy_summary else pd.DataFrame()
+    model_execution_log = pd.concat(aggregate_execution_log, ignore_index=True) if aggregate_execution_log else pd.DataFrame()
+
+    table_paths = write_summary_tables(
+        output_dir,
+        {
+            "scenario_matrix": core_frame,
+            "model_governance": governance_frame,
+            "full_model_predictions": forecasts,
+            "forecast_summary": forecast_summary,
+            "forecast_summary_by_horizon": forecast_summary_by_horizon,
+            "window_summary": window_summary,
+            "risk_summary": risk_summary,
+            "regime_summary": regime_summary,
+            "policy_summary": policy_summary,
+            "signals": signals,
+            "positions": positions,
+            "trades": trades,
+            "strategy_metrics": strategy_metrics,
+            "equity_curve": equity_curve,
+            "model_execution_log": model_execution_log,
+        },
+    )
+
+    completed_at = datetime.now(timezone.utc).isoformat()
+    manifest = build_batch_manifest(
+        git_metadata=collect_git_metadata(Path.cwd()),
+        runtime=collect_runtime_metadata(),
+        dependency_versions=collect_dependency_versions(
+            ["pandas", "numpy", "statsmodels", "arch", "scikit-learn", "xgboost", "lightgbm"]
+        ),
+        command=" ".join(sys.argv),
+        requested_models=requested_models,
+        evaluated_models=sorted(evaluated_models),
+        skipped_models=skipped_models,
+        target_type="quant_core_multi_target",
+        seed=args.seed,
+        matrix_config=matrix_config,
+        run_counts={
+            "scenario_count": int(len(core_frame)),
+            "forecast_rows": int(len(forecasts)),
+            "risk_rows": int(len(risk_summary)),
+            "regime_rows": int(len(regime_summary)),
+            "strategy_rows": int(len(strategy_metrics)),
+        },
+        artifact_paths=table_paths,
+        started_at=started_at,
+        completed_at=completed_at,
+        manifest_type="quant_core_run_manifest_v1",
+    )
+    manifest["run_mode"] = args.run_mode
+    manifest["run_mode_spec"] = get_run_mode_spec(args.run_mode).to_dict()
+    manifest["requested_model_roles"] = list(args.model_roles or [])
+    manifest["governance_output"] = {
+        "model_count": int(len(governance_frame)),
+        "artifact_path": table_paths["model_governance"],
+    }
+    manifest["artifact_paths"] = dict(table_paths)
+
+    manifest_path = write_run_manifest(output_dir, manifest)
+    summary_path = write_summary_markdown(
+        output_dir,
+        render_quant_core_summary_markdown(
+            manifest,
+            core_frame,
+            governance_frame,
+            forecast_summary,
+            strategy_metrics,
+        ),
+    )
+
+    print(f"Run mode: {args.run_mode}")
+    print(f"Preset: {args.preset}")
+    print(f"Scenarios: {len(core_frame)}")
+    print(f"Requested models: {', '.join(requested_models)}")
+    print(f"Evaluated models: {', '.join(sorted(evaluated_models))}")
+    print(f"Forecast rows: {len(forecasts)}")
+    print(f"Strategy rows: {len(strategy_metrics)}")
+    print(f"Manifest: {manifest_path}")
+    print(f"Summary: {summary_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
