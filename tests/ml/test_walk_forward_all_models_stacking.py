@@ -18,6 +18,7 @@ from src.ml.backtest.feature_importance_diagnostics import (
     FEATURE_IMPORTANCE_STABILITY_COLUMNS,
     LINEAR_VS_IMPORTANCE_COMPARISON_COLUMNS,
 )
+from src.ml.backtest.feature_governance_review import FEATURE_GOVERNANCE_REVIEW_COLUMNS
 from src.ml.data_loader import generate_mock_data
 
 
@@ -86,6 +87,7 @@ def test_walk_forward_all_models_runner_writes_required_outputs(tmp_path, monkey
     importance_diagnostics = pd.read_csv(Path(config.output_dir) / "csv" / "feature_importance_diagnostics.csv")
     importance_summary = pd.read_csv(Path(config.output_dir) / "csv" / "feature_importance_stability_summary.csv")
     linear_vs_importance = pd.read_csv(Path(config.output_dir) / "csv" / "linear_vs_importance_feature_comparison.csv")
+    governance_review = pd.read_csv(Path(config.output_dir) / "csv" / "feature_governance_review.csv")
 
     assert {
         "ticker",
@@ -137,6 +139,14 @@ def test_walk_forward_all_models_runner_writes_required_outputs(tmp_path, monkey
     assert importance_summary["importance_stability_level"].isin(["high", "medium", "low"]).all()
     assert linear_vs_importance["alignment_label"].isin(
         ["aligned_stable", "linear_only", "importance_only", "unstable_or_missing"]
+    ).all()
+    assert set(FEATURE_GOVERNANCE_REVIEW_COLUMNS) <= set(governance_review.columns)
+    assert not governance_review.empty
+    assert governance_review["governance_category"].isin(
+        ["safe_trailing", "requires_review", "alias_or_redundant", "potential_leakage", "target_derived", "unknown"]
+    ).all()
+    assert governance_review["recommended_action"].isin(
+        ["keep", "keep_but_document", "review_timing", "review_redundancy", "exclude_until_verified"]
     ).all()
 
 

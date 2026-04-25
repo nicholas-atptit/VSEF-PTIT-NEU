@@ -36,6 +36,8 @@ The walk-forward all-model runner writes three additional CSV files under the ex
 - `csv/feature_importance_stability_summary.csv`
 - `csv/linear_vs_importance_feature_comparison.csv`
 
+The follow-up feature governance review adds `csv/feature_governance_review.csv`, documented in `docs/VSEF_FEATURE_GOVERNANCE_REVIEW.md`.
+
 The integration point is `WalkForwardAllModelsStackingRunner`. This workflow treats each rolling prediction date as the effective fold and writes global CSV summaries under the existing `csv/` folder.
 
 ## Fold-Level Diagnostic Schema

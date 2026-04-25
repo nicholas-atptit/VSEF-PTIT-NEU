@@ -39,6 +39,10 @@ from src.ml.backtest.feature_importance_diagnostics import (
     extract_feature_importance_rows,
     summarize_feature_importance_stability,
 )
+from src.ml.backtest.feature_governance_review import (
+    build_feature_governance_review,
+    empty_feature_governance_review_frame,
+)
 from src.ml.metrics import (
     compute_brier_score,
     compute_max_drawdown,
@@ -1378,6 +1382,7 @@ class WalkForwardAllModelsStackingRunner:
         feature_importance_diagnostics: pd.DataFrame,
         feature_importance_stability_summary: pd.DataFrame,
         linear_vs_importance_feature_comparison: pd.DataFrame,
+        feature_governance_review: pd.DataFrame,
         metadata: dict[str, Any],
     ) -> dict[str, str]:
         self.csv_dir.mkdir(parents=True, exist_ok=True)
@@ -1397,6 +1402,7 @@ class WalkForwardAllModelsStackingRunner:
             "feature_importance_diagnostics": self.csv_dir / "feature_importance_diagnostics.csv",
             "feature_importance_stability_summary": self.csv_dir / "feature_importance_stability_summary.csv",
             "linear_vs_importance_feature_comparison": self.csv_dir / "linear_vs_importance_feature_comparison.csv",
+            "feature_governance_review": self.csv_dir / "feature_governance_review.csv",
             "run_metadata": self.csv_dir / "run_metadata.json",
         }
         base_df.to_csv(outputs["predictions_detailed"], index=False)
@@ -1414,6 +1420,7 @@ class WalkForwardAllModelsStackingRunner:
         feature_importance_diagnostics.to_csv(outputs["feature_importance_diagnostics"], index=False)
         feature_importance_stability_summary.to_csv(outputs["feature_importance_stability_summary"], index=False)
         linear_vs_importance_feature_comparison.to_csv(outputs["linear_vs_importance_feature_comparison"], index=False)
+        feature_governance_review.to_csv(outputs["feature_governance_review"], index=False)
         outputs["run_metadata"].write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         return {name: str(path) for name, path in outputs.items()}
 
@@ -1775,6 +1782,13 @@ class WalkForwardAllModelsStackingRunner:
             linear_summary=linear_coefficient_stability_summary,
             importance_summary=feature_importance_stability_summary,
         )
+        feature_governance_review = build_feature_governance_review(
+            linear_summary=linear_coefficient_stability_summary,
+            importance_summary=feature_importance_stability_summary,
+            comparison=linear_vs_importance_feature_comparison,
+        )
+        if feature_governance_review.empty:
+            feature_governance_review = empty_feature_governance_review_frame()
 
         stack_df = self._build_stacking_predictions(base_df)
         actual_comparison_summary, coverage_summary = self._build_actual_comparison_summary(base_df, stack_df)
@@ -1806,6 +1820,7 @@ class WalkForwardAllModelsStackingRunner:
             feature_importance_diagnostics=feature_importance_diagnostics,
             feature_importance_stability_summary=feature_importance_stability_summary,
             linear_vs_importance_feature_comparison=linear_vs_importance_feature_comparison,
+            feature_governance_review=feature_governance_review,
             metadata=metadata,
         )
         chart_paths = self._render_charts(
@@ -1845,6 +1860,7 @@ class WalkForwardAllModelsStackingRunner:
             "feature_importance_diagnostics": feature_importance_diagnostics,
             "feature_importance_stability_summary": feature_importance_stability_summary,
             "linear_vs_importance_feature_comparison": linear_vs_importance_feature_comparison,
+            "feature_governance_review": feature_governance_review,
             "backtest_summary": backtest_summary,
             "buy_and_hold_comparison": buy_and_hold_comparison,
             "summary_by_model": summary_by_model,

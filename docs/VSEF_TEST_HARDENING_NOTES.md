@@ -100,3 +100,13 @@ New outputs:
 - `csv/linear_vs_importance_feature_comparison.csv`
 
 These outputs compare supported CART, XGBoost, and LightGBM feature-importance stability against the existing Linear/Ridge/Lasso coefficient stability diagnostics. The comparison is for model governance and interpretability only. It does not prove causality, does not establish trading performance, and does not change Linear/Ridge/Lasso governance status.
+
+## Follow-Up Completed: Feature Governance Review
+
+The follow-up branch `vsef-feature-leakage-governance` added a conservative rule-based review layer for features appearing in linear coefficient stability and tree/boosting importance diagnostics.
+
+New output:
+
+- `csv/feature_governance_review.csv`
+
+The review flags features for timing, redundancy, target-derived, potential-leakage, or unknown-metadata review. It does not remove features automatically, does not prove leakage unless the implementation clearly uses future information, and does not establish trading performance.
