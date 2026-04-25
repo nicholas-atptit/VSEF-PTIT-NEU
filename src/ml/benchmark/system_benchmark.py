@@ -160,29 +160,40 @@ class SystemBenchmarkRunner:
         for horizon, horizon_info in manifest.get("horizons", {}).items():
             for algorithm, algorithm_info in horizon_info.get("algorithms", {}).items():
                 feature_columns = algorithm_info.get("feature_columns", manifest.get("feature_columns", []))
+                feature_columns_by_task = algorithm_info.get("feature_columns_by_task", {})
+                trend_feature_columns = feature_columns_by_task.get("trend", feature_columns)
+                return_feature_columns = feature_columns_by_task.get("return", feature_columns)
                 algo_sequence_length = int(algorithm_info.get("sequence_length") or sequence_length)
-                problem = trainer._build_horizon_problem(
+                trend_problem = trainer._build_horizon_problem(
                     labeled,
-                    feature_columns,
+                    trend_feature_columns,
                     horizon,
                     algo_sequence_length,
                 )
-                if problem is None:
+                return_problem = trainer._build_horizon_problem(
+                    labeled,
+                    return_feature_columns,
+                    horizon,
+                    algo_sequence_length,
+                )
+                if trend_problem is None or return_problem is None:
                     continue
 
                 use_sequence = algorithm in SEQUENCE_ALGORITHMS
-                inputs = problem["sequence" if use_sequence else "tabular"]
-                x_test = inputs["X_test"]
-                if len(x_test) == 0:
+                trend_inputs = trend_problem["sequence" if use_sequence else "tabular"]
+                return_inputs = return_problem["sequence" if use_sequence else "tabular"]
+                x_test = trend_inputs["X_test"]
+                return_x_test = return_inputs["X_test"]
+                if len(x_test) == 0 or len(return_x_test) == 0:
                     continue
 
                 trend_model = trainer._get_loaded_model(ticker, algorithm, horizon, "trend")
                 return_model = trainer._get_loaded_model(ticker, algorithm, horizon, "return")
                 predicted_direction = np.asarray(trend_model.predict(x_test), dtype=int)
-                predicted_returns = np.asarray(return_model.predict(x_test), dtype=float).reshape(-1)
-                realized_returns = np.asarray(inputs["y_test_return"], dtype=float)
-                realized_direction = np.asarray(inputs["y_test_direction"], dtype=int)
-                test_feature_frame = inputs["test_feature_frame"].reset_index(drop=True)
+                predicted_returns = np.asarray(return_model.predict(return_x_test), dtype=float).reshape(-1)
+                realized_returns = np.asarray(return_inputs["y_test_return"], dtype=float)
+                realized_direction = np.asarray(trend_inputs["y_test_direction"], dtype=int)
+                test_feature_frame = trend_inputs["test_feature_frame"].reset_index(drop=True)
 
                 signal = self._build_signal(mode, ticker, predicted_direction, test_feature_frame)
                 strategy_eval = DualModelTrainer.evaluate_strategy_for_horizon(
@@ -206,9 +217,9 @@ class SystemBenchmarkRunner:
                         "horizon": horizon,
                         "algorithm": algorithm,
                         "mode_description": mode.description,
-                        "train_rows": int(len(inputs["X_train"])),
-                        "val_rows": int(len(inputs["X_val"])),
-                        "test_rows": int(len(inputs["X_test"])),
+                        "train_rows": int(len(trend_inputs["X_train"])),
+                        "val_rows": int(len(trend_inputs["X_val"])),
+                        "test_rows": int(len(trend_inputs["X_test"])),
                         "cumulative_return": strategy_eval["metrics"]["cumulative_return"],
                         "cagr": strategy_eval["metrics"]["cagr"],
                         "volatility": strategy_eval["metrics"]["volatility"],

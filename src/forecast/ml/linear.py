@@ -12,6 +12,7 @@ class LinearForecastModel(SklearnForecastModel):
 
     model_name = "linear"
     estimator_cls = LinearRegression
+    exposes_coefficient_diagnostics = True
 
     def __init__(
         self,

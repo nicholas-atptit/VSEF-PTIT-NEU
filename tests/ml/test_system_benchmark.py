@@ -117,14 +117,21 @@ def test_system_benchmark_matches_trainer_strategy_scaling(tmp_path) -> None:
         risk_config=default_benchmark_modes()[0].risk_config,
     )
     labeled = trainer._add_targets(prepared.feature_frame)
-    problem = trainer._build_horizon_problem(labeled, prepared.base_feature_columns, "short", 1)
-    assert problem is not None
-    inputs = problem["tabular"]
+    trainer._ensure_models_loaded("ALIGN")
+    manifest = trainer._manifests["ALIGN"]
+    algorithm_info = manifest["horizons"]["short"]["algorithms"]["cart"]
+    task_columns = algorithm_info["feature_columns_by_task"]
+    trend_problem = trainer._build_horizon_problem(labeled, task_columns["trend"], "short", 1)
+    return_problem = trainer._build_horizon_problem(labeled, task_columns["return"], "short", 1)
+    assert trend_problem is not None
+    assert return_problem is not None
+    trend_inputs = trend_problem["tabular"]
+    return_inputs = return_problem["tabular"]
     trend_model = trainer._get_loaded_model("ALIGN", "cart", "short", "trend")
-    signal = trend_model.predict(inputs["X_test"])
+    signal = trend_model.predict(trend_inputs["X_test"])
     evaluation = DualModelTrainer.evaluate_strategy_for_horizon(
         signal,
-        inputs["y_test_return"],
+        return_inputs["y_test_return"],
         HORIZON_DAYS["short"],
         evaluator=trainer._metrics_evaluator,
     )

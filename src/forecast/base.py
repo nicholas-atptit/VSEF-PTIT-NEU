@@ -148,6 +148,7 @@ class SklearnForecastModel(ForecastModel):
     """Convenience base for sklearn-compatible regression estimators."""
 
     estimator_cls: type[Any] | None = None
+    exposes_coefficient_diagnostics = False
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(model_name=kwargs.pop("model_name", None), target_type=kwargs.pop("target_type", "forward_return"))
@@ -188,4 +189,80 @@ class SklearnForecastModel(ForecastModel):
         metadata["estimator_params"] = dict(self.estimator_params)
         metadata["estimator_class"] = self.estimator.__class__.__name__
         metadata["feature_fill_values"] = self._feature_fill_values.to_dict()
+        if self.exposes_coefficient_diagnostics:
+            metadata["coefficient_diagnostics"] = self.get_coefficient_diagnostics()
         return metadata
+
+    def get_coefficient_diagnostics(self) -> dict[str, Any]:
+        coefficients = getattr(self.estimator, "coef_", None)
+        if coefficients is None:
+            return {
+                "available": False,
+                "reason": "estimator_not_fitted_or_no_coefficients",
+                "selected_feature_names": list(self.feature_columns),
+            }
+
+        coef_array = np.asarray(coefficients, dtype=float)
+        if coef_array.ndim > 1:
+            if coef_array.shape[0] == 1:
+                coef_array = coef_array.reshape(-1)
+            else:
+                return {
+                    "available": False,
+                    "reason": "multi_output_coefficients_not_summarized",
+                    "selected_feature_names": list(self.feature_columns),
+                }
+        else:
+            coef_array = coef_array.reshape(-1)
+
+        if len(coef_array) != len(self.feature_columns):
+            return {
+                "available": False,
+                "reason": "coefficient_feature_count_mismatch",
+                "selected_feature_names": list(self.feature_columns),
+                "coefficient_count": int(len(coef_array)),
+                "feature_count": int(len(self.feature_columns)),
+            }
+
+        rows = []
+        for feature_name, coefficient in zip(self.feature_columns, coef_array):
+            value = float(coefficient)
+            if abs(value) <= 1e-12:
+                sign = "zero"
+            elif value > 0.0:
+                sign = "positive"
+            else:
+                sign = "negative"
+            rows.append(
+                {
+                    "feature": str(feature_name),
+                    "coefficient": value,
+                    "sign": sign,
+                    "magnitude": float(abs(value)),
+                }
+            )
+
+        intercept = getattr(self.estimator, "intercept_", None)
+        if intercept is None:
+            intercept_value: float | list[float] | None = None
+        else:
+            intercept_array = np.asarray(intercept, dtype=float).reshape(-1)
+            if len(intercept_array) == 1:
+                intercept_value = float(intercept_array[0])
+            else:
+                intercept_value = [float(value) for value in intercept_array]
+
+        magnitudes = [row["magnitude"] for row in rows]
+        return {
+            "available": True,
+            "selected_feature_names": list(self.feature_columns),
+            "intercept": intercept_value,
+            "coefficients": rows,
+            "coefficient_count": int(len(rows)),
+            "nonzero_coefficient_count": int(sum(row["sign"] != "zero" for row in rows)),
+            "max_abs_coefficient": float(max(magnitudes)) if magnitudes else 0.0,
+            "fold_level_coefficient_stability": {
+                "available": False,
+                "reason": "single_fit_forecast_model_contract_does_not_track_fold_coefficients",
+            },
+        }
