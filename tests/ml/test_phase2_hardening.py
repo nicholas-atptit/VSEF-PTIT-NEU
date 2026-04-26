@@ -17,10 +17,15 @@ from src.ml.training.baseline_model import BaselineModel
 from src.reporting.reports.daily_report import DailyReportGenerator
 
 
-def _make_synthetic_ohlcv(n_rows: int = 260) -> pd.DataFrame:
+EXPECTED_FEATURE_DEPENDENCY_BEHAVIOR = "local_deterministic_numpy_pandas_computation"
+
+
+def _make_synthetic_ohlcv(n_rows: int = 900) -> pd.DataFrame:
     rng = np.random.default_rng(17)
     dates = pd.bdate_range(end="2026-03-20", periods=n_rows)
-    close = 100.0 + np.cumsum(rng.normal(0, 0.45, n_rows))
+    trend = np.linspace(0.0, 8.0, n_rows)
+    cyclical = 4.0 * np.sin(np.linspace(0.0, 18.0 * np.pi, n_rows))
+    close = 100.0 + trend + cyclical + np.cumsum(rng.normal(0, 0.25, n_rows))
     close = np.maximum(close, 10.0)
     return pd.DataFrame(
         {
@@ -87,7 +92,7 @@ def test_manifest_round_trip_includes_phase2_reproducibility_metadata(tmp_path: 
     loaded = load_manifest(tmp_path / "models", "TEST")
     algo_manifest = loaded["horizons"]["short"]["algorithms"]["cart"]
 
-    assert loaded["feature_generation"]["technical_indicator_dependency_behavior"] == "hard_fail_if_required_dependency_missing"
+    assert loaded["feature_generation"]["technical_indicator_dependency_behavior"] == EXPECTED_FEATURE_DEPENDENCY_BEHAVIOR
     assert loaded["training_backend"]["authoritative_dependency_manifest"] == "pyproject.toml"
     assert loaded["prediction_output_semantics"]["risk_output_field"] == "heuristic_scenario_risk"
     assert loaded["target_definition"]["task_bundle"] == "trend_classification_profit_classification_forward_return_regression"
@@ -119,7 +124,7 @@ def test_inference_engine_and_daily_report_surface_semantic_metadata(tmp_path: P
     assert prediction["validation_method"] == "single_validation_plus_held_out_test"
     assert prediction["risk_semantics"] == "heuristic_scenario_risk_not_calibrated_confidence"
     assert prediction["risk_calibration_status"] == "heuristic_not_calibrated"
-    assert prediction["feature_dependency_behavior"] == "hard_fail_if_required_dependency_missing"
+    assert prediction["feature_dependency_behavior"] == EXPECTED_FEATURE_DEPENDENCY_BEHAVIOR
 
     report = DailyReportGenerator().generate(pd.DataFrame([prediction]))
     assert "Heuristic Scenario Risk" in report

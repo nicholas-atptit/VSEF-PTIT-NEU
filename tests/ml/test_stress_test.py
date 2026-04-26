@@ -109,14 +109,21 @@ def test_stress_test_baseline_matches_corrected_strategy_scaling(tmp_path) -> No
     df = pd.read_csv(files[0])
     prepared = trainer.prepare_ticker_data(ticker="STRESSALIGN", df=df, max_sequence_length=1)
     labeled = trainer._add_targets(prepared.feature_frame)
-    problem = trainer._build_horizon_problem(labeled, prepared.base_feature_columns, "short", 1)
-    assert problem is not None
-    inputs = problem["tabular"]
+    trainer._ensure_models_loaded("STRESSALIGN")
+    manifest = trainer._manifests["STRESSALIGN"]
+    algorithm_info = manifest["horizons"]["short"]["algorithms"]["cart"]
+    task_columns = algorithm_info["feature_columns_by_task"]
+    trend_problem = trainer._build_horizon_problem(labeled, task_columns["trend"], "short", 1)
+    return_problem = trainer._build_horizon_problem(labeled, task_columns["return"], "short", 1)
+    assert trend_problem is not None
+    assert return_problem is not None
+    trend_inputs = trend_problem["tabular"]
+    return_inputs = return_problem["tabular"]
     trend_model = trainer._get_loaded_model("STRESSALIGN", "cart", "short", "trend")
-    signal = trend_model.predict(inputs["X_test"])
+    signal = trend_model.predict(trend_inputs["X_test"])
     evaluation = DualModelTrainer.evaluate_strategy_for_horizon(
         signal,
-        inputs["y_test_return"],
+        return_inputs["y_test_return"],
         HORIZON_DAYS["short"],
         evaluator=runner.evaluator,
         config=runner.base_eval_config,

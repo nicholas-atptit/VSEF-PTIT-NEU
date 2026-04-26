@@ -106,11 +106,18 @@ def test_risk_tuning_uses_corrected_strategy_scaling(tmp_path) -> None:
         risk_config=candidate,
     )
     labeled = trainer._add_targets(prepared.feature_frame)
-    problem = trainer._build_horizon_problem(labeled, prepared.base_feature_columns, "short", 20)
-    assert problem is not None
-    inputs = problem["tabular"]
+    trainer._ensure_models_loaded("VALALIGN")
+    manifest = trainer._manifests["VALALIGN"]
+    algorithm_info = manifest["horizons"]["short"]["algorithms"]["cart"]
+    task_columns = algorithm_info["feature_columns_by_task"]
+    trend_problem = trainer._build_horizon_problem(labeled, task_columns["trend"], "short", 20)
+    return_problem = trainer._build_horizon_problem(labeled, task_columns["return"], "short", 20)
+    assert trend_problem is not None
+    assert return_problem is not None
+    trend_inputs = trend_problem["tabular"]
+    return_inputs = return_problem["tabular"]
     trend_model = trainer._get_loaded_model("VALALIGN", "cart", "short", "trend")
-    predicted_direction = trend_model.predict(inputs["X_val"])
+    predicted_direction = trend_model.predict(trend_inputs["X_val"])
     signal = runner.signal_builder._build_signal(
         BenchmarkModeSpec(
             name="full_system",
@@ -119,11 +126,11 @@ def test_risk_tuning_uses_corrected_strategy_scaling(tmp_path) -> None:
         ),
         "VALALIGN",
         predicted_direction,
-        inputs["val_feature_frame"].reset_index(drop=True),
+        trend_inputs["val_feature_frame"].reset_index(drop=True),
     )
     evaluation = DualModelTrainer.evaluate_strategy_for_horizon(
         signal,
-        inputs["y_val_return"],
+        return_inputs["y_val_return"],
         HORIZON_DAYS["short"],
         evaluator=runner.evaluator,
         config=runner.eval_config,

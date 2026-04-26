@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 
 from src.core.contracts import FORECAST_REQUIRED_COLUMNS
+from src.forecast.ml.lasso import LassoForecastModel
 from src.forecast.ml.linear import LinearForecastModel
+from src.forecast.ml.ridge import RidgeForecastModel
 from src.forecast.statistical.naive import NaiveForecastModel
 
 
@@ -41,6 +43,37 @@ def test_linear_forecast_model_returns_shared_contract() -> None:
     assert set(FORECAST_REQUIRED_COLUMNS) <= set(predictions.columns)
     assert predictions["model_name"].eq("linear").all()
     assert predictions["horizon"].eq(5).all()
+
+
+def test_linear_family_metadata_exposes_coefficient_diagnostics() -> None:
+    frame = _forecast_frame()
+    train = frame.iloc[:24].copy()
+    features = ["feature_one", "feature_two"]
+
+    models = [
+        LinearForecastModel(),
+        RidgeForecastModel(alpha=1.0),
+        LassoForecastModel(alpha=0.0001, max_iter=10_000),
+    ]
+
+    for model in models:
+        model.fit(
+            train_df=train,
+            features=features,
+            target="target_forward_return",
+            horizon=5,
+            config={"seed": 42},
+        )
+        diagnostics = model.get_metadata()["coefficient_diagnostics"]
+
+        assert diagnostics["available"] is True
+        assert diagnostics["selected_feature_names"] == features
+        assert diagnostics["coefficient_count"] == len(features)
+        assert diagnostics["fold_level_coefficient_stability"]["available"] is False
+        assert isinstance(diagnostics["intercept"], float)
+        assert [row["feature"] for row in diagnostics["coefficients"]] == features
+        assert {row["sign"] for row in diagnostics["coefficients"]} <= {"negative", "zero", "positive"}
+        assert all(row["magnitude"] == abs(row["coefficient"]) for row in diagnostics["coefficients"])
 
 
 def test_naive_forecast_model_does_not_require_feature_columns() -> None:

@@ -654,6 +654,8 @@ class FeatureEngineer:
             market_return_20d = rolling_compound_return(market_ret, 20)
             market_return_60d = rolling_compound_return(market_ret, 60)
             feature_map["m_ret"] = market_ret
+            feature_map["m_ret_5d"] = market_ret.rolling(5).mean().fillna(0.0)
+            feature_map["m_ret_20d"] = market_ret.rolling(20).mean().fillna(0.0)
             feature_map["market_return_20d"] = market_return_20d
             feature_map["market_return_60d"] = market_return_60d
             if "close_return_20d" in df.columns:

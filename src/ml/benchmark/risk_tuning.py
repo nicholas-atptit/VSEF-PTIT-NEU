@@ -147,28 +147,38 @@ class RiskTuningRunner:
             for horizon, horizon_info in manifest.get("horizons", {}).items():
                 for algorithm, algorithm_info in horizon_info.get("algorithms", {}).items():
                     feature_columns = algorithm_info.get("feature_columns", manifest.get("feature_columns", []))
+                    feature_columns_by_task = algorithm_info.get("feature_columns_by_task", {})
+                    trend_feature_columns = feature_columns_by_task.get("trend", feature_columns)
+                    return_feature_columns = feature_columns_by_task.get("return", feature_columns)
                     algo_sequence_length = int(algorithm_info.get("sequence_length") or sequence_length)
-                    problem = trainer._build_horizon_problem(
+                    trend_problem = trainer._build_horizon_problem(
                         labeled,
-                        feature_columns,
+                        trend_feature_columns,
                         horizon,
                         algo_sequence_length,
                     )
-                    if problem is None:
+                    return_problem = trainer._build_horizon_problem(
+                        labeled,
+                        return_feature_columns,
+                        horizon,
+                        algo_sequence_length,
+                    )
+                    if trend_problem is None or return_problem is None:
                         continue
                     use_sequence = algorithm in SEQUENCE_ALGORITHMS
-                    inputs = problem["sequence" if use_sequence else "tabular"]
-                    x_val = inputs["X_val"]
-                    if len(x_val) == 0:
+                    trend_inputs = trend_problem["sequence" if use_sequence else "tabular"]
+                    return_inputs = return_problem["sequence" if use_sequence else "tabular"]
+                    x_val = trend_inputs["X_val"]
+                    if len(x_val) == 0 or len(return_inputs["X_val"]) == 0:
                         continue
 
                     trend_model = trainer._get_loaded_model(ticker, algorithm, horizon, "trend")
                     predicted_direction = np.asarray(trend_model.predict(x_val), dtype=int)
-                    val_frame = inputs["val_feature_frame"].reset_index(drop=True)
+                    val_frame = trend_inputs["val_feature_frame"].reset_index(drop=True)
                     signal = self.signal_builder._build_signal(mode, ticker, predicted_direction, val_frame)
                     evaluation = DualModelTrainer.evaluate_strategy_for_horizon(
                         signal,
-                        np.asarray(inputs["y_val_return"], dtype=float),
+                        np.asarray(return_inputs["y_val_return"], dtype=float),
                         HORIZON_DAYS[horizon],
                         evaluator=self.evaluator,
                         config=self.eval_config,

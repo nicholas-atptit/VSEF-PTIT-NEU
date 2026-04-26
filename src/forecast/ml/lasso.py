@@ -12,6 +12,7 @@ class LassoForecastModel(SklearnForecastModel):
 
     model_name = "lasso"
     estimator_cls = Lasso
+    exposes_coefficient_diagnostics = True
 
     def __init__(
         self,

@@ -26,6 +26,23 @@ from sklearn.metrics import f1_score, precision_score, recall_score
 
 from src.data.adapters.vnstock_adapter import VnstockAdapter
 from src.ml.data_loader import load_ohlcv_from_csv
+from src.ml.backtest.linear_fold_diagnostics import (
+    empty_coefficient_diagnostics_frame,
+    fit_linear_fold_diagnostics,
+    select_linear_diagnostic_features,
+    summarize_coefficient_stability,
+)
+from src.ml.backtest.feature_importance_diagnostics import (
+    SUPPORTED_IMPORTANCE_MODELS,
+    compare_linear_and_importance_diagnostics,
+    empty_feature_importance_diagnostics_frame,
+    extract_feature_importance_rows,
+    summarize_feature_importance_stability,
+)
+from src.ml.backtest.feature_governance_review import (
+    build_feature_governance_review,
+    empty_feature_governance_review_frame,
+)
 from src.ml.metrics import (
     compute_brier_score,
     compute_max_drawdown,
@@ -90,6 +107,9 @@ class WalkForwardAllModelsStackingConfig:
     meta_model_alpha: float = 1.0
     meta_min_samples: int = MIN_META_SAMPLES
     max_workers: int = 1
+    enable_linear_coefficient_diagnostics: bool = True
+    linear_diagnostic_models: list[str] = field(default_factory=lambda: ["linear", "ridge", "lasso"])
+    enable_feature_importance_diagnostics: bool = True
 
 
 def _normalize_dates(frame: pd.DataFrame) -> pd.DataFrame:
@@ -143,7 +163,7 @@ def _cagr(total_return: float, start_date: pd.Timestamp, end_date: pd.Timestamp)
     return float(equity ** (1.0 / years) - 1.0)
 
 
-def _generate_daily_predictions_worker(payload: dict[str, Any]) -> pd.DataFrame:
+def _generate_daily_predictions_worker(payload: dict[str, Any]) -> dict[str, pd.DataFrame]:
     with Path("NUL").open("w", encoding="utf-8", errors="ignore") as sink, contextlib.redirect_stdout(sink), contextlib.redirect_stderr(sink):
         config = WalkForwardAllModelsStackingConfig(**payload["config"])
         config.tickers = [str(payload["ticker"]).upper()]
@@ -155,7 +175,7 @@ def _generate_daily_predictions_worker(payload: dict[str, Any]) -> pd.DataFrame:
         forecast_end = pd.Timestamp(payload["forecast_end"]).normalize()
         history = runner._fetch_history(str(payload["ticker"]).upper(), start_ts, end_ts)
         context_sources = runner._build_context_sources(start_ts, end_ts)
-        return runner._generate_daily_predictions_for_ticker(
+        base_predictions, linear_diagnostics, importance_diagnostics = runner._generate_daily_predictions_for_ticker(
             ticker=str(payload["ticker"]).upper(),
             history=history,
             context_sources=context_sources,
@@ -165,6 +185,11 @@ def _generate_daily_predictions_worker(payload: dict[str, Any]) -> pd.DataFrame:
             forecast_start=forecast_start,
             forecast_end=forecast_end,
         )
+        return {
+            "base_predictions": base_predictions,
+            "linear_coefficient_diagnostics": linear_diagnostics,
+            "feature_importance_diagnostics": importance_diagnostics,
+        }
 
 
 class WalkForwardAllModelsStackingRunner:
@@ -347,6 +372,87 @@ class WalkForwardAllModelsStackingRunner:
         trend_probabilities = prediction.get("trend_probabilities") or {}
         return _safe_float(trend_probabilities.get("up"))
 
+    def _collect_feature_importance_diagnostics(
+        self,
+        *,
+        trainer: DualModelTrainer,
+        ticker: str,
+        horizon_name: str,
+        trained_algorithms: list[str],
+        fold_id: str,
+        step_size: int,
+        forecast_sequence_index: int,
+        prediction_date: pd.Timestamp,
+        eval_end: Any,
+        train_history: pd.DataFrame,
+    ) -> pd.DataFrame:
+        if not self.config.enable_feature_importance_diagnostics:
+            return empty_feature_importance_diagnostics_frame()
+
+        manifest = trainer._manifests.get(ticker.upper(), {})
+        horizon_info = manifest.get("horizons", {}).get(horizon_name, {})
+        algorithm_info_by_name = horizon_info.get("algorithms", {})
+        if not algorithm_info_by_name:
+            return empty_feature_importance_diagnostics_frame()
+
+        if pd.isna(eval_end):
+            horizon_days = int(horizon_info.get("days", 1))
+            eval_end = prediction_date + pd.Timedelta(days=horizon_days)
+        fallback_train_start = str(pd.Timestamp(train_history["date"].min()).date()) if not train_history.empty else ""
+        fallback_train_end = str(pd.Timestamp(train_history["date"].max()).date()) if not train_history.empty else ""
+
+        frames: list[pd.DataFrame] = []
+        for algorithm in trained_algorithms:
+            normalized_algorithm = str(algorithm).lower()
+            if normalized_algorithm not in SUPPORTED_IMPORTANCE_MODELS:
+                continue
+            algorithm_info = algorithm_info_by_name.get(normalized_algorithm, {})
+            feature_columns_by_task = algorithm_info.get("feature_columns_by_task", {})
+            fallback_feature_columns = algorithm_info.get("feature_columns", [])
+            train_window = algorithm_info.get("evaluation_metadata", {}).get("train_window", {})
+            fold_base_context = {
+                "fold_id": fold_id,
+                "step_size": int(step_size),
+                "forecast_sequence_index": int(forecast_sequence_index),
+                "ticker": ticker,
+                "prediction_date": str(pd.Timestamp(prediction_date).date()),
+                "horizon": horizon_name,
+                "train_start": str(train_window.get("start") or fallback_train_start),
+                "train_end": str(train_window.get("end") or fallback_train_end),
+                "eval_start": str(pd.Timestamp(prediction_date).date()),
+                "eval_end": str(pd.Timestamp(eval_end).date()),
+            }
+            for task in ("trend", "profit", "return"):
+                feature_columns = feature_columns_by_task.get(task) or fallback_feature_columns
+                if not feature_columns:
+                    continue
+                try:
+                    model = trainer._get_loaded_model(ticker, normalized_algorithm, horizon_name, task)
+                except Exception as exc:
+                    logger.debug(
+                        "feature_importance_model_unavailable",
+                        ticker=ticker,
+                        algorithm=normalized_algorithm,
+                        horizon=horizon_name,
+                        task=task,
+                        error=str(exc),
+                    )
+                    continue
+                frame = extract_feature_importance_rows(
+                    model_name=normalized_algorithm,
+                    model=model,
+                    feature_columns=feature_columns,
+                    fold_context={**fold_base_context, "task": task},
+                )
+                if not frame.empty:
+                    frames.append(frame)
+
+        if not frames:
+            return empty_feature_importance_diagnostics_frame()
+        return pd.concat(frames, ignore_index=True, sort=False).reindex(
+            columns=empty_feature_importance_diagnostics_frame().columns
+        )
+
     def _train_and_predict(
         self,
         *,
@@ -358,7 +464,11 @@ class WalkForwardAllModelsStackingRunner:
         algorithms: list[str],
         context_sources: dict[str, pd.DataFrame | None],
         model_dir: Path,
-    ) -> list[dict[str, Any]]:
+        fold_id: str,
+        step_size: int,
+        forecast_sequence_index: int,
+        eval_end_by_horizon: dict[str, Any],
+    ) -> tuple[list[dict[str, Any]], pd.DataFrame, pd.DataFrame]:
         trainer = DualModelTrainer(model_dir=model_dir)
         train_history = history[
             (history["date"] >= pd.Timestamp(self.config.initial_train_start).normalize())
@@ -395,14 +505,38 @@ class WalkForwardAllModelsStackingRunner:
             train_history,
             window_start=self.config.history_start,
             window_end=str(feature_date.date()),
+            context_sources=context_sources,
+        )
+        labeled_for_diagnostics = trainer._add_targets(feature_frame, horizons) if self.config.enable_linear_coefficient_diagnostics else pd.DataFrame()
+        diagnostic_feature_columns = (
+            select_linear_diagnostic_features(feature_frame)
+            if self.config.enable_linear_coefficient_diagnostics
+            else []
         )
         rows: list[dict[str, Any]] = []
+        diagnostic_frames: list[pd.DataFrame] = []
+        importance_frames: list[pd.DataFrame] = []
         for horizon_name, horizon_days in horizons.items():
             trained_algorithms = [
                 algorithm
                 for algorithm in algorithms
                 if (str(horizon_name).lower(), str(algorithm).lower()) in trained_pairs
             ]
+            eval_end = eval_end_by_horizon.get(horizon_name)
+            importance_frame = self._collect_feature_importance_diagnostics(
+                trainer=trainer,
+                ticker=ticker,
+                horizon_name=horizon_name,
+                trained_algorithms=trained_algorithms,
+                fold_id=fold_id,
+                step_size=int(step_size),
+                forecast_sequence_index=int(forecast_sequence_index),
+                prediction_date=prediction_date,
+                eval_end=eval_end,
+                train_history=train_history,
+            )
+            if not importance_frame.empty:
+                importance_frames.append(importance_frame)
             for algorithm in trained_algorithms:
                 prediction = trainer.predict(
                     ticker=ticker,
@@ -428,7 +562,66 @@ class WalkForwardAllModelsStackingRunner:
                         ),
                     }
                 )
-        return rows
+            if (
+                self.config.enable_linear_coefficient_diagnostics
+                and trained_algorithms
+                and diagnostic_feature_columns
+            ):
+                target_column = f"target_return_{horizon_name}"
+                diagnostic_problem = trainer._build_horizon_problem(
+                    labeled_for_diagnostics,
+                    diagnostic_feature_columns,
+                    horizon_name,
+                    sequence_length=1,
+                    horizon_days=int(horizon_days),
+                )
+                if diagnostic_problem is not None:
+                    split = diagnostic_problem["split"]
+                    labeled = labeled_for_diagnostics.dropna(
+                        subset=[
+                            f"target_direction_{horizon_name}",
+                            target_column,
+                            f"target_profit_label_{horizon_name}",
+                        ]
+                    ).reset_index(drop=True)
+                    train_frame = labeled.iloc[: split.train_stop].copy()
+                    if not train_frame.empty:
+                        if pd.isna(eval_end):
+                            eval_end = prediction_date + pd.Timedelta(days=int(horizon_days))
+                        fold_context = {
+                            "fold_id": fold_id,
+                            "step_size": int(step_size),
+                            "forecast_sequence_index": int(forecast_sequence_index),
+                            "ticker": ticker,
+                            "prediction_date": str(pd.Timestamp(prediction_date).date()),
+                            "horizon": horizon_name,
+                            "horizon_days": int(horizon_days),
+                            "task": "return",
+                            "train_start": str(pd.Timestamp(train_frame["date"].min()).date()),
+                            "train_end": str(pd.Timestamp(train_frame["date"].max()).date()),
+                            "eval_start": str(pd.Timestamp(prediction_date).date()),
+                            "eval_end": str(pd.Timestamp(eval_end).date()),
+                        }
+                        diagnostic_frames.append(
+                            fit_linear_fold_diagnostics(
+                                train_frame=train_frame,
+                                feature_columns=diagnostic_feature_columns,
+                                target_column=target_column,
+                                fold_context=fold_context,
+                                model_names=self.config.linear_diagnostic_models,
+                            )
+                        )
+        if diagnostic_frames:
+            diagnostics = pd.concat(diagnostic_frames, ignore_index=True, sort=False)
+            diagnostics = diagnostics[~diagnostics["feature"].isna()].reset_index(drop=True)
+        else:
+            diagnostics = empty_coefficient_diagnostics_frame()
+        if importance_frames:
+            importance_diagnostics = pd.concat(importance_frames, ignore_index=True, sort=False)
+            importance_diagnostics = importance_diagnostics[~importance_diagnostics["feature"].isna()].reset_index(drop=True)
+        else:
+            importance_diagnostics = empty_feature_importance_diagnostics_frame()
+        return rows, diagnostics, importance_diagnostics
 
     def _generate_daily_predictions_for_ticker(
         self,
@@ -441,7 +634,7 @@ class WalkForwardAllModelsStackingRunner:
         step_size: int,
         forecast_start: pd.Timestamp,
         forecast_end: pd.Timestamp,
-    ) -> pd.DataFrame:
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         schedule = self._prediction_schedule(
             history,
             step_size=step_size,
@@ -449,11 +642,26 @@ class WalkForwardAllModelsStackingRunner:
             forecast_end=forecast_end,
         )
         if not schedule:
-            return pd.DataFrame()
+            return pd.DataFrame(), empty_coefficient_diagnostics_frame(), empty_feature_importance_diagnostics_frame()
         model_dir = self.models_dir / "daily_full_walk_forward" / ticker
         rows: list[dict[str, Any]] = []
+        diagnostic_frames: list[pd.DataFrame] = []
+        importance_frames: list[pd.DataFrame] = []
         for item in schedule:
-            prediction_rows = self._train_and_predict(
+            actual_by_horizon = {
+                horizon_name: self._actual_outcome(history, int(item["prediction_pos"]), horizon_days)
+                for horizon_name, horizon_days in horizons.items()
+            }
+            eval_end_by_horizon = {
+                horizon_name: actual["target_date"]
+                for horizon_name, actual in actual_by_horizon.items()
+            }
+            fold_id = (
+                f"step{int(step_size)}_{ticker}_"
+                f"seq{int(item['forecast_sequence_index']):04d}_"
+                f"{pd.Timestamp(item['prediction_date']).strftime('%Y%m%d')}"
+            )
+            prediction_rows, coefficient_rows, importance_rows = self._train_and_predict(
                 ticker=ticker,
                 history=history,
                 feature_date=item["feature_date"],
@@ -462,11 +670,15 @@ class WalkForwardAllModelsStackingRunner:
                 algorithms=algorithms,
                 context_sources=context_sources,
                 model_dir=model_dir,
+                fold_id=fold_id,
+                step_size=int(step_size),
+                forecast_sequence_index=int(item["forecast_sequence_index"]),
+                eval_end_by_horizon=eval_end_by_horizon,
             )
-            actual_by_horizon = {
-                horizon_name: self._actual_outcome(history, int(item["prediction_pos"]), horizon_days)
-                for horizon_name, horizon_days in horizons.items()
-            }
+            if not coefficient_rows.empty:
+                diagnostic_frames.append(coefficient_rows)
+            if not importance_rows.empty:
+                importance_frames.append(importance_rows)
             for row in prediction_rows:
                 actual = actual_by_horizon[str(row["horizon"])]
                 predicted_return = _safe_float(row["predicted_return"])
@@ -500,11 +712,29 @@ class WalkForwardAllModelsStackingRunner:
                 )
                 rows.append(row)
         if not rows:
-            return pd.DataFrame()
+            return pd.DataFrame(), (
+                pd.concat(diagnostic_frames, ignore_index=True, sort=False)
+                if diagnostic_frames
+                else empty_coefficient_diagnostics_frame()
+            ), (
+                pd.concat(importance_frames, ignore_index=True, sort=False)
+                if importance_frames
+                else empty_feature_importance_diagnostics_frame()
+            )
         result = pd.DataFrame(rows)
+        diagnostics = (
+            pd.concat(diagnostic_frames, ignore_index=True, sort=False)
+            if diagnostic_frames
+            else empty_coefficient_diagnostics_frame()
+        )
+        importance_diagnostics = (
+            pd.concat(importance_frames, ignore_index=True, sort=False)
+            if importance_frames
+            else empty_feature_importance_diagnostics_frame()
+        )
         return _normalize_dates(result).sort_values(
             ["prediction_date", "ticker", "horizon", "model_name"]
-        ).reset_index(drop=True)
+        ).reset_index(drop=True), diagnostics.reset_index(drop=True), importance_diagnostics.reset_index(drop=True)
 
     def _generate_base_predictions(
         self,
@@ -516,12 +746,14 @@ class WalkForwardAllModelsStackingRunner:
         horizons: dict[str, int],
         forecast_start: pd.Timestamp,
         forecast_end: pd.Timestamp,
-    ) -> pd.DataFrame:
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         max_workers = max(1, int(self.config.max_workers))
         ticker_frames: list[pd.DataFrame] = []
+        coefficient_frames: list[pd.DataFrame] = []
+        importance_frames: list[pd.DataFrame] = []
         if max_workers == 1 or len(histories) <= 1:
             for ticker, history in histories.items():
-                ticker_frame = self._generate_daily_predictions_for_ticker(
+                ticker_frame, ticker_coefficients, ticker_importance = self._generate_daily_predictions_for_ticker(
                     ticker=ticker,
                     history=history,
                     context_sources=context_sources,
@@ -533,6 +765,10 @@ class WalkForwardAllModelsStackingRunner:
                 )
                 if not ticker_frame.empty:
                     ticker_frames.append(ticker_frame)
+                if not ticker_coefficients.empty:
+                    coefficient_frames.append(ticker_coefficients)
+                if not ticker_importance.empty:
+                    importance_frames.append(ticker_importance)
         else:
             with ProcessPoolExecutor(max_workers=min(max_workers, len(histories))) as executor:
                 futures = {
@@ -553,14 +789,41 @@ class WalkForwardAllModelsStackingRunner:
                     for ticker in histories
                 }
                 for future in as_completed(futures):
-                    ticker_frame = future.result()
+                    payload = future.result()
+                    ticker_frame = payload["base_predictions"]
+                    ticker_coefficients = payload.get(
+                        "linear_coefficient_diagnostics",
+                        empty_coefficient_diagnostics_frame(),
+                    )
+                    ticker_importance = payload.get(
+                        "feature_importance_diagnostics",
+                        empty_feature_importance_diagnostics_frame(),
+                    )
                     if not ticker_frame.empty:
                         ticker_frames.append(ticker_frame)
+                    if not ticker_coefficients.empty:
+                        coefficient_frames.append(ticker_coefficients)
+                    if not ticker_importance.empty:
+                        importance_frames.append(ticker_importance)
         if not ticker_frames:
             raise ValueError(f"Walk-forward run produced no base-model predictions for step_size={step_size}")
         result = pd.concat(ticker_frames, ignore_index=True, sort=False)
         result["step_size"] = int(step_size)
-        return result.sort_values(["prediction_date", "ticker", "horizon", "model_name"]).reset_index(drop=True)
+        coefficients = (
+            pd.concat(coefficient_frames, ignore_index=True, sort=False)
+            if coefficient_frames
+            else empty_coefficient_diagnostics_frame()
+        )
+        importance_diagnostics = (
+            pd.concat(importance_frames, ignore_index=True, sort=False)
+            if importance_frames
+            else empty_feature_importance_diagnostics_frame()
+        )
+        return (
+            result.sort_values(["prediction_date", "ticker", "horizon", "model_name"]).reset_index(drop=True),
+            coefficients.reset_index(drop=True),
+            importance_diagnostics.reset_index(drop=True),
+        )
 
     def _stacking_features(
         self,
@@ -1114,6 +1377,12 @@ class WalkForwardAllModelsStackingRunner:
         backtest_summary: pd.DataFrame,
         buy_and_hold_comparison: pd.DataFrame,
         forecast_coverage_summary: pd.DataFrame,
+        linear_coefficient_diagnostics: pd.DataFrame,
+        linear_coefficient_stability_summary: pd.DataFrame,
+        feature_importance_diagnostics: pd.DataFrame,
+        feature_importance_stability_summary: pd.DataFrame,
+        linear_vs_importance_feature_comparison: pd.DataFrame,
+        feature_governance_review: pd.DataFrame,
         metadata: dict[str, Any],
     ) -> dict[str, str]:
         self.csv_dir.mkdir(parents=True, exist_ok=True)
@@ -1128,6 +1397,12 @@ class WalkForwardAllModelsStackingRunner:
             "backtest_summary": self.csv_dir / "backtest_summary.csv",
             "buy_and_hold_comparison": self.csv_dir / "buy_and_hold_comparison.csv",
             "forecast_coverage_summary": self.csv_dir / "forecast_coverage_summary.csv",
+            "linear_coefficient_diagnostics": self.csv_dir / "linear_coefficient_diagnostics.csv",
+            "linear_coefficient_stability_summary": self.csv_dir / "linear_coefficient_stability_summary.csv",
+            "feature_importance_diagnostics": self.csv_dir / "feature_importance_diagnostics.csv",
+            "feature_importance_stability_summary": self.csv_dir / "feature_importance_stability_summary.csv",
+            "linear_vs_importance_feature_comparison": self.csv_dir / "linear_vs_importance_feature_comparison.csv",
+            "feature_governance_review": self.csv_dir / "feature_governance_review.csv",
             "run_metadata": self.csv_dir / "run_metadata.json",
         }
         base_df.to_csv(outputs["predictions_detailed"], index=False)
@@ -1140,6 +1415,12 @@ class WalkForwardAllModelsStackingRunner:
         backtest_summary.to_csv(outputs["backtest_summary"], index=False)
         buy_and_hold_comparison.to_csv(outputs["buy_and_hold_comparison"], index=False)
         forecast_coverage_summary.to_csv(outputs["forecast_coverage_summary"], index=False)
+        linear_coefficient_diagnostics.to_csv(outputs["linear_coefficient_diagnostics"], index=False)
+        linear_coefficient_stability_summary.to_csv(outputs["linear_coefficient_stability_summary"], index=False)
+        feature_importance_diagnostics.to_csv(outputs["feature_importance_diagnostics"], index=False)
+        feature_importance_stability_summary.to_csv(outputs["feature_importance_stability_summary"], index=False)
+        linear_vs_importance_feature_comparison.to_csv(outputs["linear_vs_importance_feature_comparison"], index=False)
+        feature_governance_review.to_csv(outputs["feature_governance_review"], index=False)
         outputs["run_metadata"].write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         return {name: str(path) for name, path in outputs.items()}
 
@@ -1463,11 +1744,13 @@ class WalkForwardAllModelsStackingRunner:
         context_sources = self._build_context_sources(dates["history_start"], dates["history_end"])
 
         base_frames: list[pd.DataFrame] = []
+        coefficient_frames: list[pd.DataFrame] = []
+        importance_frames: list[pd.DataFrame] = []
         logger.info("walk_forward_base_generation_start", step_sizes=step_sizes, max_workers=self.config.max_workers)
         
         for step_size in step_sizes:
             logger.info("running_step_size", step_size=step_size)
-            step_base_df = self._generate_base_predictions(
+            step_base_df, step_coefficient_df, step_importance_df = self._generate_base_predictions(
                 histories=histories,
                 context_sources=context_sources,
                 algorithms=algorithms,
@@ -1477,8 +1760,35 @@ class WalkForwardAllModelsStackingRunner:
                 forecast_end=dates["forecast_end"],
             )
             base_frames.append(step_base_df)
+            if not step_coefficient_df.empty:
+                coefficient_frames.append(step_coefficient_df)
+            if not step_importance_df.empty:
+                importance_frames.append(step_importance_df)
             
         base_df = pd.concat(base_frames, ignore_index=True).sort_values(["step_size", "prediction_date", "ticker", "horizon", "model_name"]).reset_index(drop=True)
+        linear_coefficient_diagnostics = (
+            pd.concat(coefficient_frames, ignore_index=True, sort=False)
+            if coefficient_frames
+            else empty_coefficient_diagnostics_frame()
+        )
+        linear_coefficient_stability_summary = summarize_coefficient_stability(linear_coefficient_diagnostics)
+        feature_importance_diagnostics = (
+            pd.concat(importance_frames, ignore_index=True, sort=False)
+            if importance_frames
+            else empty_feature_importance_diagnostics_frame()
+        )
+        feature_importance_stability_summary = summarize_feature_importance_stability(feature_importance_diagnostics)
+        linear_vs_importance_feature_comparison = compare_linear_and_importance_diagnostics(
+            linear_summary=linear_coefficient_stability_summary,
+            importance_summary=feature_importance_stability_summary,
+        )
+        feature_governance_review = build_feature_governance_review(
+            linear_summary=linear_coefficient_stability_summary,
+            importance_summary=feature_importance_stability_summary,
+            comparison=linear_vs_importance_feature_comparison,
+        )
+        if feature_governance_review.empty:
+            feature_governance_review = empty_feature_governance_review_frame()
 
         stack_df = self._build_stacking_predictions(base_df)
         actual_comparison_summary, coverage_summary = self._build_actual_comparison_summary(base_df, stack_df)
@@ -1505,6 +1815,12 @@ class WalkForwardAllModelsStackingRunner:
             backtest_summary=backtest_summary,
             buy_and_hold_comparison=buy_and_hold_comparison,
             forecast_coverage_summary=coverage_summary,
+            linear_coefficient_diagnostics=linear_coefficient_diagnostics,
+            linear_coefficient_stability_summary=linear_coefficient_stability_summary,
+            feature_importance_diagnostics=feature_importance_diagnostics,
+            feature_importance_stability_summary=feature_importance_stability_summary,
+            linear_vs_importance_feature_comparison=linear_vs_importance_feature_comparison,
+            feature_governance_review=feature_governance_review,
             metadata=metadata,
         )
         chart_paths = self._render_charts(
@@ -1539,6 +1855,12 @@ class WalkForwardAllModelsStackingRunner:
             "stack_df": stack_df,
             "actual_comparison_summary": actual_comparison_summary,
             "forecast_coverage_summary": coverage_summary,
+            "linear_coefficient_diagnostics": linear_coefficient_diagnostics,
+            "linear_coefficient_stability_summary": linear_coefficient_stability_summary,
+            "feature_importance_diagnostics": feature_importance_diagnostics,
+            "feature_importance_stability_summary": feature_importance_stability_summary,
+            "linear_vs_importance_feature_comparison": linear_vs_importance_feature_comparison,
+            "feature_governance_review": feature_governance_review,
             "backtest_summary": backtest_summary,
             "buy_and_hold_comparison": buy_and_hold_comparison,
             "summary_by_model": summary_by_model,

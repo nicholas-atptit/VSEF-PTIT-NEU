@@ -12,6 +12,7 @@ class RidgeForecastModel(SklearnForecastModel):
 
     model_name = "ridge"
     estimator_cls = Ridge
+    exposes_coefficient_diagnostics = True
 
     def __init__(
         self,

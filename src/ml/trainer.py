@@ -813,6 +813,7 @@ class DualModelTrainer:
         *,
         window_start: Any | None = None,
         window_end: Any | None = None,
+        context_sources: dict[str, pd.DataFrame | None] | None = None,
     ) -> pd.DataFrame:
         """Rebuild features on the latest 5-year window for inference."""
 
@@ -842,6 +843,7 @@ class DualModelTrainer:
             risk_config=advanced_config,
             window_start=window_start,
             window_end=window_end,
+            context_sources=context_sources,
         )
         return prepared.feature_frame
 
