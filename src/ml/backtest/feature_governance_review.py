@@ -98,6 +98,33 @@ LOCAL_FLOW_PREFIXES = (
     "amihud",
     "volume_spike",
 )
+BREADTH_CONTEXT_PREFIXES = (
+    "breadth_",
+    "advance_decline",
+    "new_high",
+    "new_low",
+    "up_down_volume",
+    "up_volume",
+    "down_volume",
+    "advancing_share",
+    "declining_share",
+    "pct_above_ma",
+)
+BREADTH_CONTEXT_EXACT_FEATURES = {
+    "advancers",
+    "decliners",
+    "unchanged",
+    "net_advancers",
+    "market_breadth",
+}
+FOREIGN_FLOW_CONTEXT_PREFIXES = (
+    "foreign_",
+    "abnormal_foreign",
+)
+CONTEXT_AVAILABILITY_HINTS = {
+    "breadth": "availability metadata: breadth_context_available, breadth_context_source_date, breadth_context_missing",
+    "foreign_flow": "availability metadata: foreign_flow_context_available, foreign_flow_context_source_date, foreign_flow_context_missing",
+}
 TRAILING_TOKENS = (
     "lag",
     "rolling",
@@ -173,7 +200,7 @@ def _category_from_registry(feature: str, registry_entry: dict[str, Any] | None)
 
 def _is_context_feature(feature: str, category: str) -> bool:
     if category == "flow_microstructure":
-        return feature.startswith(("foreign_", "abnormal_foreign"))
+        return feature.startswith(FOREIGN_FLOW_CONTEXT_PREFIXES)
     return category in {"market_context", "macro_cross_asset", "sentiment_news"} or feature.startswith(CONTEXT_PREFIXES)
 
 
@@ -192,7 +219,7 @@ def _is_lagged_or_trailing(feature: str, registry_entry: dict[str, Any] | None) 
 
 def _is_local_flow_feature(feature: str, registry_entry: dict[str, Any] | None, category: str) -> bool:
     lowered = feature.lower()
-    if lowered.startswith(("foreign_", "abnormal_foreign")):
+    if lowered.startswith(FOREIGN_FLOW_CONTEXT_PREFIXES):
         return False
     if lowered.startswith(LOCAL_FLOW_PREFIXES):
         return True
@@ -203,23 +230,34 @@ def _is_local_flow_feature(feature: str, registry_entry: dict[str, Any] | None, 
     return source == "ohlcv" and "foreign_flow" not in expected
 
 
+def _context_availability_hint(feature: str, category: str) -> str:
+    if feature in BREADTH_CONTEXT_EXACT_FEATURES or feature.startswith(BREADTH_CONTEXT_PREFIXES):
+        return CONTEXT_AVAILABILITY_HINTS["breadth"]
+    if feature.startswith(FOREIGN_FLOW_CONTEXT_PREFIXES):
+        return CONTEXT_AVAILABILITY_HINTS["foreign_flow"]
+    return ""
+
+
 def _source_hint(feature: str, registry_entry: dict[str, Any] | None, category: str) -> str:
+    lowered = feature.lower()
+    availability_hint = _context_availability_hint(lowered, category)
     if registry_entry:
         input_source = str(registry_entry.get("input_source", "")).strip()
         expected = str(registry_entry.get("expected_availability", "")).strip()
         if input_source and expected:
-            return f"{input_source}; {expected}"
+            base_hint = f"{input_source}; {expected}"
+            return f"{base_hint}; {availability_hint}" if availability_hint else base_hint
         if input_source:
-            return input_source
+            return f"{input_source}; {availability_hint}" if availability_hint else input_source
         if expected:
-            return expected
+            return f"{expected}; {availability_hint}" if availability_hint else expected
     if category == "market_context":
-        return "market/sector/breadth context"
+        return f"market/sector/breadth context; {availability_hint}" if availability_hint else "market/sector/breadth context"
     if category == "macro_cross_asset":
         return "macro/commodity context"
     if category == "sentiment_news":
         return "sentiment/news context"
-    return "feature name rule"
+    return f"feature name rule; {availability_hint}" if availability_hint else "feature name rule"
 
 
 def classify_feature_governance(
@@ -265,7 +303,13 @@ def classify_feature_governance(
     elif is_context or category in {"sentiment_news", "macro_cross_asset"}:
         governance_category = "requires_review"
         risk_level = "medium"
-        reason = "External or joined context feature is valid only if source timestamps are aligned without forward-looking fills."
+        if _context_availability_hint(lowered, category):
+            reason = (
+                "Joined context feature requires source-date alignment review; availability metadata should be used "
+                "to separate measured zero values from missing-context fallback values."
+            )
+        else:
+            reason = "External or joined context feature is valid only if source timestamps are aligned without forward-looking fills."
         recommended_action = "review_timing"
     elif is_local_flow or is_trailing or is_regime or is_risk:
         governance_category = "safe_trailing"

@@ -130,3 +130,7 @@ Review the timing assumptions for market breadth and flow-style features:
 ## Follow-Up: Context Timing Governance
 
 The follow-up branch `vsef-context-timing-governance` documents the timing policy for the flagged breadth and flow-style features. It confirms that `turnover_ma_60` is local trailing OHLCV-derived under the current feature builder, while joined breadth and foreign-flow features remain timing-review candidates until source-date availability is governed more explicitly.
+
+## Follow-Up: Context Availability Metadata
+
+The follow-up branch `vsef-context-availability-metadata` adds explicit support columns for breadth and foreign-flow source availability. These columns separate measured zero values from missing-context fallback values without automatically changing model features or feature-selection behavior.

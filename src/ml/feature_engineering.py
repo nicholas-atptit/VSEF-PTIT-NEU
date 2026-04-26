@@ -84,6 +84,12 @@ NON_FEATURE_SUPPORT_COLUMNS = {
     "price_adjustment_status",
     "price_adjustment_available",
     "price_reference_semantics",
+    "breadth_context_available",
+    "breadth_context_source_date",
+    "breadth_context_missing",
+    "foreign_flow_context_available",
+    "foreign_flow_context_source_date",
+    "foreign_flow_context_missing",
 }
 LEGACY_COMPATIBILITY_COLUMNS = {
     "hv_20",
@@ -371,7 +377,11 @@ class FeatureEngineer:
                 sentiment_df["date"] = pd.to_datetime(sentiment_df["date"]).dt.normalize()
             frame = frame.merge(sentiment_df, on="date", how="left").fillna(0)
 
+        support_cols = [col for col in NON_FEATURE_SUPPORT_COLUMNS if col in frame.columns]
+        support_snapshot = frame[support_cols].copy() if support_cols else None
         frame = frame.ffill()
+        if support_snapshot is not None:
+            frame[support_cols] = support_snapshot
 
         with _timing_context("returns", frame.attrs):
             frame = self._concat_feature_block(
@@ -472,7 +482,9 @@ class FeatureEngineer:
         if drop_na:
             df = df.dropna(subset=completeness_cols).reset_index(drop=True)
         else:
-            df[non_semantic_cols] = df[non_semantic_cols].ffill().fillna(0)
+            fill_cols = [col for col in non_semantic_cols if col not in support_cols]
+            if fill_cols:
+                df[fill_cols] = df[fill_cols].ffill().fillna(0)
             df = df.reset_index(drop=True)
 
         self.validate_features(df, drop_na)

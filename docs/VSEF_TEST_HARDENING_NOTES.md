@@ -110,3 +110,16 @@ New output:
 - `csv/feature_governance_review.csv`
 
 The review flags features for timing, redundancy, target-derived, potential-leakage, or unknown-metadata review. It does not remove features automatically, does not prove leakage unless the implementation clearly uses future information, and does not establish trading performance.
+
+## Follow-Up Completed: Context Availability Metadata
+
+The follow-up branch `vsef-context-availability-metadata` added support metadata for breadth and foreign-flow context joins:
+
+- `breadth_context_available`
+- `breadth_context_source_date`
+- `breadth_context_missing`
+- `foreign_flow_context_available`
+- `foreign_flow_context_source_date`
+- `foreign_flow_context_missing`
+
+These columns distinguish measured zero values from missing-context fallback values and are excluded from active model feature columns. They improve governance transparency only; they do not prove trading performance or remove leakage-review responsibility.
