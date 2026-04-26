@@ -99,9 +99,3 @@ This reclassification does not change training behavior and does not remove any 
 - Add explicit source-date metadata for breadth and foreign-flow artifacts where practical.
 - Track missing-context indicators separately from measured zero values before changing feature-selection rules.
 - Run a broader governance audit after timing metadata is available and compare whether timing-review flags decline for local trailing features only.
-
-## Follow-Up: Availability Metadata
-
-The follow-up branch `vsef-context-availability-metadata` adds support columns for breadth and foreign-flow context joins. These columns distinguish exact-date source availability from missing-context fallback values and are excluded from active model feature columns.
-
-`docs/VSEF_CONTEXT_COVERAGE_DIAGNOSTICS.md` documents the next follow-up diagnostics that summarize missing-context rates across walk-forward folds.

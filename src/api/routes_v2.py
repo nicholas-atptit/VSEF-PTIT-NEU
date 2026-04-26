@@ -1,4 +1,4 @@
-"""API v2 routes — The Agentic Domain.
+﻿"""API v2 routes â€” The Agentic Domain.
 
 Separates Technical, Sentiment, and Fusion logic into distinct domains.
 """
@@ -33,9 +33,11 @@ import os
 
 logger = get_logger(__name__)
 
-# Khởi tạo repository & orchestrator dùng chung
+router = APIRouter()
+
+# Khá»Ÿi táº¡o repository & orchestrator dÃ¹ng chung
 _decision_repo = DecisionRepository()
-# Tự động lấy provider từ env hoặc default 'ollama'
+# Tá»± Ä‘á»™ng láº¥y provider tá»« env hoáº·c default 'ollama'
 
 
 
@@ -44,7 +46,7 @@ import time as _time
 _price_cache: dict = {}
 _PRICE_CACHE_TTL = 5  # seconds
 
-# ── Lightweight Price Endpoint (for 100ms web dashboard polling) ──
+# â”€â”€ Lightweight Price Endpoint (for 100ms web dashboard polling) â”€â”€
 @router.get("/price", tags=["Real-time Price"])
 async def get_price(ticker: str = "FPT"):
     """Ultra-fast price lookup for the web dashboard (no ML pipeline).
@@ -264,27 +266,27 @@ async def predict_fused(ticker: str = Query(...)) -> TerminalPayload:
 @router.get("/debate", tags=["Multi-Agent Debate"])
 async def run_debate(ticker: str = Query(...)):
     """
-    Thực thi luồng Multi-Agent đầy đủ:
+    Thá»±c thi luá»“ng Multi-Agent Ä‘áº§y Ä‘á»§:
     Technical/News -> Bull/Bear Debate -> Risk Veto -> Portfolio Allocation.
-    Trả về cấu trúc Decision Card và lưu lại Audit Trail.
+    Tráº£ vá» cáº¥u trÃºc Decision Card vÃ  lÆ°u láº¡i Audit Trail.
     """
     ticker = ticker.upper().strip()
     
     try:
-        # Gọi Orchestrator thực thi graph
+        # Gá»i Orchestrator thá»±c thi graph
         decision_dict = await _orchestrator.execute_debate(ticker)
         
         # Portfolio Target to VN-Market Lot Execution Sizing (100 shares chunk)
-        MOCK_PORTFOLIO_VALUE = 1_000_000_000 # 1 Tỷ VND
+        MOCK_PORTFOLIO_VALUE = 1_000_000_000 # 1 Tá»· VND
         import math
         tech_sum = decision_dict.get("tech_summary", {})
-        # Dự phòng giá nếu tech_summary không có current_price
+        # Dá»± phÃ²ng giÃ¡ náº¿u tech_summary khÃ´ng cÃ³ current_price
         current_price = tech_sum.get("price", 50000) 
         if current_price <= 0: current_price = 50000
         target_wt = decision_dict["target_weight"]
         execution_shares = math.floor(((MOCK_PORTFOLIO_VALUE * target_wt) / current_price) / 100) * 100
 
-        # Format lại data chuẩn bị parse bằng pydantic schema
+        # Format láº¡i data chuáº©n bá»‹ parse báº±ng pydantic schema
         card_data = {
             "meta": {
                 "decision_id": decision_dict["decision_id"],
@@ -309,7 +311,7 @@ async def run_debate(ticker: str = Query(...)):
             "confidence": decision_dict.get("confidence", 0.0)
         }
         
-        # Validate bằng Pydantic
+        # Validate báº±ng Pydantic
         decision_card = DecisionCard(**card_data)
         
         # Save audit trail
@@ -319,13 +321,13 @@ async def run_debate(ticker: str = Query(...)):
         
     except Exception as e:
         logger.error("debate_error", error=str(e), ticker=ticker)
-        raise HTTPException(status_code=500, detail=f"Lỗi khi chạy logic debate: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Lá»—i khi cháº¡y logic debate: {str(e)}")
 
 @router.post("/chat", tags=["AI Interactive Chat"])
 async def chat_interactive(req: ChatRequest):
     """
-    Điểm giao tiếp trực tiếp với AI (LLM / Agent). 
-    Sử dụng context từ mã chứng khoán (nếu có).
+    Äiá»ƒm giao tiáº¿p trá»±c tiáº¿p vá»›i AI (LLM / Agent). 
+    Sá»­ dá»¥ng context tá»« mÃ£ chá»©ng khoÃ¡n (náº¿u cÃ³).
     """
     try:
         from src.ml.llm.client import get_llm_client
@@ -334,9 +336,9 @@ async def chat_interactive(req: ChatRequest):
         conf = get_settings()
         logger.info("chat_request_debug", provider=conf.llm_provider, model=conf.ollama_model_name)
         
-        system_prompt = "Bạn là trợ lý AI Trading chuyên sâu về chứng khoán Việt Nam (VN30/VN100). Đưa ra phân tích súc tích, chuyên nghiệp."
+        system_prompt = "Báº¡n lÃ  trá»£ lÃ½ AI Trading chuyÃªn sÃ¢u vá» chá»©ng khoÃ¡n Viá»‡t Nam (VN30/VN100). ÄÆ°a ra phÃ¢n tÃ­ch sÃºc tÃ­ch, chuyÃªn nghiá»‡p."
         
-        # Tự động trích xuất Ticker từ tin nhắn người dùng (Regex 3 chữ cái viết hoa)
+        # Tá»± Ä‘á»™ng trÃ­ch xuáº¥t Ticker tá»« tin nháº¯n ngÆ°á»i dÃ¹ng (Regex 3 chá»¯ cÃ¡i viáº¿t hoa)
         import re
         detected_tickers = re.findall(r'\b[A-Z]{3}\b', req.message.upper())
         ticker_to_use = req.ticker or (detected_tickers[0] if detected_tickers else None)
@@ -344,26 +346,26 @@ async def chat_interactive(req: ChatRequest):
         context_str = ""
         if ticker_to_use:
             ticker_to_use = ticker_to_use.upper().strip()
-            context_str = f"Cảnh báo: Người dùng đang hỏi về mã {ticker_to_use}.\n"
+            context_str = f"Cáº£nh bÃ¡o: NgÆ°á»i dÃ¹ng Ä‘ang há»i vá» mÃ£ {ticker_to_use}.\n"
             
-            # 1. Thử lấy từ Database (News Intelligence)
+            # 1. Thá»­ láº¥y tá»« Database (News Intelligence)
             try:
                 from sqlalchemy.ext.asyncio import create_async_engine
                 from sqlalchemy import text
                 engine = create_async_engine(conf.timescale_url)
                 async with engine.connect() as conn:
-                    # Lấy tin tức đã phân tích (Đã sửa column name: summary, timestamp)
+                    # Láº¥y tin tá»©c Ä‘Ã£ phÃ¢n tÃ­ch (ÄÃ£ sá»­a column name: summary, timestamp)
                     news_query = text("SELECT summary, sentiment_score, trend FROM news_intelligence WHERE ticker = :t ORDER BY timestamp DESC LIMIT 1")
                     news_res = await conn.execute(news_query, {"t": ticker_to_use})
                     news_row = news_res.fetchone()
                     
                     if news_row:
-                        context_str += f"[Phân tích Tin tức cho {ticker_to_use}]:\n"
-                        context_str += f"- Tóm tắt: {news_row[0]}\n"
-                        context_str += f"- Điểm Sentiment: {news_row[1]}\n"
-                        context_str += f"- Xu hướng tin tức: {news_row[2]}\n"
+                        context_str += f"[PhÃ¢n tÃ­ch Tin tá»©c cho {ticker_to_use}]:\n"
+                        context_str += f"- TÃ³m táº¯t: {news_row[0]}\n"
+                        context_str += f"- Äiá»ƒm Sentiment: {news_row[1]}\n"
+                        context_str += f"- Xu hÆ°á»›ng tin tá»©c: {news_row[2]}\n"
                     
-                    # Lấy dự báo kỹ thuật (nếu có)
+                    # Láº¥y dá»± bÃ¡o ká»¹ thuáº­t (náº¿u cÃ³)
                     quant_query = text("""
                         SELECT
                             ap.trend,
@@ -383,10 +385,10 @@ async def chat_interactive(req: ChatRequest):
                     quant_row = quant_res.fetchone()
                     
                     if quant_row:
-                        context_str += f"[Phân tích Kỹ thuật cho {ticker_to_use}]:\n"
-                        context_str += f"- Dự báo: {quant_row[0]}\n"
-                        context_str += f"- Độ tin cậy: {quant_row[1]}\n"
-                        context_str += f"- Giá mục tiêu: {quant_row[2]}\n"
+                        context_str += f"[PhÃ¢n tÃ­ch Ká»¹ thuáº­t cho {ticker_to_use}]:\n"
+                        context_str += f"- Dá»± bÃ¡o: {quant_row[0]}\n"
+                        context_str += f"- Äá»™ tin cáº­y: {quant_row[1]}\n"
+                        context_str += f"- GiÃ¡ má»¥c tiÃªu: {quant_row[2]}\n"
                 await engine.dispose()
             except Exception as db_err:
                 logger.warning("db_context_error", error=str(db_err))
@@ -394,12 +396,12 @@ async def chat_interactive(req: ChatRequest):
                 latest_cards = _decision_repo.get_decisions_by_ticker_from_artifacts(ticker_to_use)
                 if latest_cards:
                     latest_card = latest_cards[-1]
-                    context_str += f"[Dữ liệu Replay]: {latest_card.get('news_summary')}\n"
+                    context_str += f"[Dá»¯ liá»‡u Replay]: {latest_card.get('news_summary')}\n"
 
-            if context_str == f"Cảnh báo: Người dùng đang hỏi về mã {ticker_to_use}.\n":
-                context_str += f"Hệ thống hiện chưa có dữ liệu phân tích chi tiết cho mã {ticker_to_use}. Hãy trả lời dựa trên kiến thức chung của bạn.\n"
+            if context_str == f"Cáº£nh bÃ¡o: NgÆ°á»i dÃ¹ng Ä‘ang há»i vá» mÃ£ {ticker_to_use}.\n":
+                context_str += f"Há»‡ thá»‘ng hiá»‡n chÆ°a cÃ³ dá»¯ liá»‡u phÃ¢n tÃ­ch chi tiáº¿t cho mÃ£ {ticker_to_use}. HÃ£y tráº£ lá»i dá»±a trÃªn kiáº¿n thá»©c chung cá»§a báº¡n.\n"
             else:
-                context_str += "Hãy dựa vào đúng các dữ liệu thực tế (Phân tích Tin tức/Kỹ thuật) phía trên để trả lời, không được tự bịa ra thông tin.\n"
+                context_str += "HÃ£y dá»±a vÃ o Ä‘Ãºng cÃ¡c dá»¯ liá»‡u thá»±c táº¿ (PhÃ¢n tÃ­ch Tin tá»©c/Ká»¹ thuáº­t) phÃ­a trÃªn Ä‘á»ƒ tráº£ lá»i, khÃ´ng Ä‘Æ°á»£c tá»± bá»‹a ra thÃ´ng tin.\n"
 
             
         messages = [{"role": "system", "content": system_prompt + context_str}]
@@ -409,7 +411,7 @@ async def chat_interactive(req: ChatRequest):
             
         messages.append({"role": "user", "content": req.message})
 
-        # Bỏ qua Gemini trong POC này vì Gemini API deprecation, dùng OpenAI tương thích Ollama
+        # Bá» qua Gemini trong POC nÃ y vÃ¬ Gemini API deprecation, dÃ¹ng OpenAI tÆ°Æ¡ng thÃ­ch Ollama
         response = await client.chat.completions.create(
             model="qwen3:8b", # User-requested model
             messages=messages,
@@ -421,3 +423,4 @@ async def chat_interactive(req: ChatRequest):
     except Exception as e:
         logger.error("chat_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
