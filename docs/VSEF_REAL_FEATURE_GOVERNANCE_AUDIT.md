@@ -126,3 +126,7 @@ Review the timing assumptions for market breadth and flow-style features:
 - confirm source-date alignment for breadth-derived fields
 - document whether `turnover_ma_60` should remain a timing-review feature or be treated as a local trailing OHLCV-derived feature
 - add targeted tests around source-date and forward-fill behavior for context joins before changing feature-selection rules
+
+## Follow-Up: Context Timing Governance
+
+The follow-up branch `vsef-context-timing-governance` documents the timing policy for the flagged breadth and flow-style features. It confirms that `turnover_ma_60` is local trailing OHLCV-derived under the current feature builder, while joined breadth and foreign-flow features remain timing-review candidates until source-date availability is governed more explicitly.

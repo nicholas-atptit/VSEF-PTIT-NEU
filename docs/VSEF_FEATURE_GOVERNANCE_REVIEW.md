@@ -96,3 +96,7 @@ Columns:
 - Confirm external context timing for macro, foreign-flow, breadth, market, and sector features.
 - Review alias features and decide whether canonical names should be preferred in future governed feature sets.
 - Compare review flags against regime-specific model performance without overclaiming causality.
+
+## Follow-Up: Context Timing Governance
+
+`docs/VSEF_CONTEXT_TIMING_GOVERNANCE.md` documents the first targeted timing review for breadth and flow-style features. It clarifies that local `turnover*`, `amihud*`, and `volume_spike*` features are OHLCV-derived trailing features, while joined breadth, macro, and `foreign_*` features still require source-date timing review.

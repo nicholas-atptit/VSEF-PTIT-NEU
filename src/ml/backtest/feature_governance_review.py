@@ -93,6 +93,11 @@ CONTEXT_PREFIXES = (
     "oil_",
     "macro_",
 )
+LOCAL_FLOW_PREFIXES = (
+    "turnover",
+    "amihud",
+    "volume_spike",
+)
 TRAILING_TOKENS = (
     "lag",
     "rolling",
@@ -167,7 +172,9 @@ def _category_from_registry(feature: str, registry_entry: dict[str, Any] | None)
 
 
 def _is_context_feature(feature: str, category: str) -> bool:
-    return category in {"market_context", "macro_cross_asset", "flow_microstructure", "sentiment_news"} or feature.startswith(CONTEXT_PREFIXES)
+    if category == "flow_microstructure":
+        return feature.startswith(("foreign_", "abnormal_foreign"))
+    return category in {"market_context", "macro_cross_asset", "sentiment_news"} or feature.startswith(CONTEXT_PREFIXES)
 
 
 def _is_risk_feature(feature: str, category: str) -> bool:
@@ -181,6 +188,19 @@ def _is_lagged_or_trailing(feature: str, registry_entry: dict[str, Any] | None) 
     if any(token in lowered for token in TRAILING_TOKENS):
         return True
     return "rolling" in formula or "lagged" in formula or "current and past" in str((registry_entry or {}).get("leakage_note", "")).lower()
+
+
+def _is_local_flow_feature(feature: str, registry_entry: dict[str, Any] | None, category: str) -> bool:
+    lowered = feature.lower()
+    if lowered.startswith(("foreign_", "abnormal_foreign")):
+        return False
+    if lowered.startswith(LOCAL_FLOW_PREFIXES):
+        return True
+    if category != "flow_microstructure" or not registry_entry:
+        return False
+    source = str(registry_entry.get("input_source", "")).strip().lower()
+    expected = str(registry_entry.get("expected_availability", "")).strip().lower()
+    return source == "ohlcv" and "foreign_flow" not in expected
 
 
 def _source_hint(feature: str, registry_entry: dict[str, Any] | None, category: str) -> str:
@@ -217,6 +237,7 @@ def classify_feature_governance(
     is_regime = "regime" in lowered
     is_risk = _is_risk_feature(lowered, category)
     is_trailing = _is_lagged_or_trailing(lowered, registry_entry)
+    is_local_flow = _is_local_flow_feature(lowered, registry_entry, category)
     source_hint = _source_hint(name, registry_entry, category)
 
     target_like = lowered.startswith("target_") or any(token in lowered for token in TARGET_DERIVED_TOKENS)
@@ -241,12 +262,12 @@ def classify_feature_governance(
         risk_level = "medium"
         reason = "Feature is a compatibility alias, legacy column, or overlapping definition that can duplicate a canonical signal."
         recommended_action = "review_redundancy"
-    elif is_context or category in {"sentiment_news", "macro_cross_asset", "flow_microstructure"}:
+    elif is_context or category in {"sentiment_news", "macro_cross_asset"}:
         governance_category = "requires_review"
         risk_level = "medium"
         reason = "External or joined context feature is valid only if source timestamps are aligned without forward-looking fills."
         recommended_action = "review_timing"
-    elif is_trailing or is_regime or is_risk:
+    elif is_local_flow or is_trailing or is_regime or is_risk:
         governance_category = "safe_trailing"
         risk_level = "medium" if unstable else "low"
         reason = "Feature appears to be lagged, trailing, regime/risk, or current-day known data based on transparent rules."
