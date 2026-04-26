@@ -74,6 +74,15 @@ def parse_args() -> argparse.Namespace:
         default="outputs/walkforward_all_models",
         help="Root output directory. Step folders are created under <output-dir>/<ticker-slug>/",
     )
+    parser.add_argument(
+        "--foreign-flow-path",
+        type=str,
+        default=None,
+        help=(
+            "Optional foreign-flow CSV artifact path for context joins. "
+            "When omitted, the default data/foreign_flow.csv loader behavior is preserved."
+        ),
+    )
     parser.add_argument("--sequence-length", type=int, default=20)
     parser.add_argument("--hidden-size", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=2)
@@ -371,6 +380,7 @@ def main() -> None:
         meta_model_alpha=args.meta_model_alpha,
         meta_min_samples=args.meta_min_samples,
         max_workers=args.max_workers,
+        foreign_flow_path=args.foreign_flow_path,
     )
 
     result = WalkForwardAllModelsStackingRunner(config).run()

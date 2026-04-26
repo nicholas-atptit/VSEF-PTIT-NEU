@@ -134,17 +134,32 @@ class DualModelTrainer:
         *,
         include_sentiment: bool = False,
         require_validated_sentiment: bool = True,
-    ) -> dict[str, pd.DataFrame | None]:
-        if self._context_cache is None:
-            self._context_cache = {
+        foreign_flow_path: str | Path | None = None,
+    ) -> dict[str, Any]:
+        explicit_foreign_flow_path = Path(foreign_flow_path) if foreign_flow_path is not None else None
+        if explicit_foreign_flow_path is not None and not explicit_foreign_flow_path.exists():
+            raise FileNotFoundError(f"Configured foreign_flow_path does not exist: {explicit_foreign_flow_path}")
+
+        if self._context_cache is None or explicit_foreign_flow_path is not None:
+            context_cache = {
                 "market_df": load_market_proxy(),
                 "sector_df": load_sector_proxies(),
                 "ticker_sectors": load_ticker_sectors(),
                 "breadth_df": load_market_breadth(),
                 "macro_df": load_macro_context(),
-                "foreign_flow_df": load_foreign_flow(),
+                "foreign_flow_df": (
+                    load_foreign_flow(path=explicit_foreign_flow_path)
+                    if explicit_foreign_flow_path is not None
+                    else load_foreign_flow()
+                ),
             }
-        context_sources = dict(self._context_cache)
+            if explicit_foreign_flow_path is None:
+                self._context_cache = context_cache
+        else:
+            context_cache = self._context_cache
+        context_sources = dict(context_cache)
+        context_sources["_foreign_flow_path_explicit"] = explicit_foreign_flow_path is not None
+        context_sources["_foreign_flow_path"] = str(explicit_foreign_flow_path) if explicit_foreign_flow_path is not None else None
         context_sources["sentiment_df"] = load_sentiment(
             enabled=include_sentiment,
             require_validated_source=require_validated_sentiment,
@@ -238,15 +253,18 @@ class DualModelTrainer:
         self,
         df: pd.DataFrame,
         ticker: str,
-        context_sources: dict[str, pd.DataFrame | None],
+        context_sources: dict[str, Any],
     ) -> pd.DataFrame:
         foreign_flow_df = context_sources.get("foreign_flow_df")
-        if foreign_flow_df is None or foreign_flow_df.empty:
+        explicit_foreign_flow_path = bool(context_sources.get("_foreign_flow_path_explicit", False))
+        if (foreign_flow_df is None or foreign_flow_df.empty) and not explicit_foreign_flow_path:
             foreign_flow_df = load_foreign_flow(
                 tickers=[ticker],
                 start_date=pd.to_datetime(df["date"]).min().date() if "date" in df.columns and not df.empty else None,
                 end_date=pd.to_datetime(df["date"]).max().date() if "date" in df.columns and not df.empty else None,
             )
+        elif foreign_flow_df is None:
+            foreign_flow_df = pd.DataFrame()
         return apply_context_features(
             df,
             ticker,

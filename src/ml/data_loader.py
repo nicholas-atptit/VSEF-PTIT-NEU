@@ -1884,7 +1884,7 @@ def load_foreign_flow(
     result = _attach_source_attrs(
         df.reset_index(drop=True),
         provenance=DERIVED_VNSTOCK_PROVENANCE,
-        source_name="foreign_flow.csv",
+        source_name=path.name,
         artifact_path=path,
     )
     final_key = _artifact_cache_key(

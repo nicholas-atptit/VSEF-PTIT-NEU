@@ -106,6 +106,20 @@ The script writes provenance columns when `vnstock_data` provider access is avai
 
 `docs/audits/VSEF_FOREIGN_FLOW_REAL_COVERAGE_AUDIT.md` documents a real provider-artifact coverage audit. The artifact was provider-backed but still partial for the requested January 2025 business-date window, so coverage interpretation remains conservative.
 
+## Walk-Forward Audit Usage
+
+Walk-forward governance audits can pass a curated foreign-flow artifact explicitly:
+
+```bash
+python scripts/run_walkforward_all_models_stacking_eval.py --tickers SSI FPT ACB HPG --history-start 2020-12-21 --history-end 2025-02-28 --initial-train-start 2020-12-21 --initial-train-end 2024-12-31 --forecast-start 2025-01-02 --forecast-end 2025-01-24 --horizons short_5d --step-sizes 1 --algorithms cart,xgboost,lightgbm --foreign-flow-path data/foreign_flow_curated.csv --output-dir outputs/walkforward_governance_audit_foreign_flow_real --max-workers 1 --max-depth 3 --meta-min-samples 1 --epochs 1
+```
+
+The `--foreign-flow-path` option avoids temporarily replacing the ignored default `data/foreign_flow.csv`. If the option is omitted, the existing default loader behavior is preserved.
+
+Partial provider artifacts may improve row-level evidence for covered ticker/date pairs, but they remain partial coverage. Do not treat partial coverage as broad foreign-flow governance evidence or trading-performance evidence.
+
+Generated provider CSVs should remain untracked unless they are intentionally approved, small, documented, and suitable for repository inclusion.
+
 ## Private Repository Reminder
 
 VSEF is private and proprietary. Foreign-flow artifacts, validation logic, and documentation in this repository are not licensed for public reuse, redistribution, deployment, or publication without written permission from the repository owner.

@@ -48,6 +48,7 @@ from src.ml.backtest.context_coverage_diagnostics import (
     empty_context_coverage_diagnostics_frame,
     summarize_context_coverage,
 )
+from src.ml.backtest.foreign_flow_validation import validate_foreign_flow_artifact
 from src.ml.metrics import (
     compute_brier_score,
     compute_max_drawdown,
@@ -115,6 +116,7 @@ class WalkForwardAllModelsStackingConfig:
     enable_linear_coefficient_diagnostics: bool = True
     linear_diagnostic_models: list[str] = field(default_factory=lambda: ["linear", "ridge", "lasso"])
     enable_feature_importance_diagnostics: bool = True
+    foreign_flow_path: str | None = None
 
 
 def _normalize_dates(frame: pd.DataFrame) -> pd.DataFrame:
@@ -209,6 +211,11 @@ class WalkForwardAllModelsStackingRunner:
         self.models_dir = self.output_dir / "tmp_models"
         self.report_path = self.output_dir / "report.md"
         self.adapter = VnstockAdapter(symbol_list=[ticker.upper() for ticker in config.tickers])
+        self._foreign_flow_context_metadata: dict[str, Any] = {
+            "foreign_flow_path": config.foreign_flow_path,
+            "foreign_flow_path_explicit": bool(config.foreign_flow_path),
+            "artifact_validation": None,
+        }
 
     @staticmethod
     def _normalize_horizons(values: list[str] | tuple[str, ...] | None) -> dict[str, int]:
@@ -277,9 +284,35 @@ class WalkForwardAllModelsStackingRunner:
         self,
         start_ts: pd.Timestamp,
         end_ts: pd.Timestamp,
-    ) -> dict[str, pd.DataFrame | None]:
+    ) -> dict[str, Any]:
         trainer = DualModelTrainer(model_dir=self.models_dir / "_scratch")
-        context_sources = trainer._load_context_sources().copy()
+        context_sources = trainer._load_context_sources(foreign_flow_path=self.config.foreign_flow_path).copy()
+        foreign_flow_df = context_sources.get("foreign_flow_df")
+        self._foreign_flow_context_metadata = {
+            "foreign_flow_path": self.config.foreign_flow_path,
+            "foreign_flow_path_explicit": bool(self.config.foreign_flow_path),
+            "source_name": (
+                foreign_flow_df.attrs.get("source_name")
+                if isinstance(foreign_flow_df, pd.DataFrame)
+                else None
+            ),
+            "source_provenance": (
+                foreign_flow_df.attrs.get("source_provenance")
+                if isinstance(foreign_flow_df, pd.DataFrame)
+                else None
+            ),
+            "row_count": int(len(foreign_flow_df)) if isinstance(foreign_flow_df, pd.DataFrame) else 0,
+            "artifact_validation": None,
+        }
+        if self.config.foreign_flow_path:
+            validation_start = pd.Timestamp(self.config.forecast_start).normalize()
+            validation_end = pd.Timestamp(self.config.forecast_end).normalize()
+            self._foreign_flow_context_metadata["artifact_validation"] = validate_foreign_flow_artifact(
+                foreign_flow_df if isinstance(foreign_flow_df, pd.DataFrame) else pd.DataFrame(),
+                self.config.tickers,
+                validation_start,
+                validation_end,
+            )
         benchmark = self.adapter.get_index_ohlcv(
             "VNINDEX",
             start_date=start_ts.strftime("%Y-%m-%d"),
@@ -1883,6 +1916,7 @@ class WalkForwardAllModelsStackingRunner:
             "available_algorithms": algorithms,
             "skipped_algorithms": skipped_algorithms,
             "fetch_summary": fetch_summary.to_dict(orient="records"),
+            "foreign_flow_context": self._foreign_flow_context_metadata,
         }
         csv_paths = self._write_csv_outputs(
             base_df=base_df,

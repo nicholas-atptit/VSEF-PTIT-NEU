@@ -154,3 +154,7 @@ This is a data-governance safeguard. It does not mark missing context as availab
 ## Next Recommended Task
 
 Add a first-class walk-forward CLI option or configuration field for the foreign-flow artifact path. That would avoid temporary default-path substitution and make future provider-backed context audits reproducible without touching ignored local cache files.
+
+## Follow-Up: Foreign-Flow Path Option
+
+The follow-up branch `vsef-walkforward-foreign-flow-path-option` adds `--foreign-flow-path` to the walk-forward all-model evaluation script. Future provider-backed audits can pass `data/foreign_flow_curated.csv` or another governed artifact directly, and run metadata records the supplied path and validation summary.
