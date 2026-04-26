@@ -73,6 +73,8 @@ See `docs/README.md` for the documentation map.
 
 `artifacts/`, `outputs/`, `models/`, and `tmp/` are generated or local runtime locations and should not receive new tracked files by default. Existing tracked generated files should be removed only when they are clearly reproducible or temporary and no tests depend on them.
 
+Foreign-flow artifacts require separate governance before interpretation. See `docs/governance/VSEF_FOREIGN_FLOW_ARTIFACT_POLICY.md` for schema, provenance, and fixture-vs-curated artifact rules.
+
 ## Tracking Rules
 
 Track:

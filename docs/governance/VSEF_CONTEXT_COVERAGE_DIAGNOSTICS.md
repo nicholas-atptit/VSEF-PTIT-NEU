@@ -116,3 +116,5 @@ Feature governance review flags breadth and `foreign_*` features for timing revi
 `docs/audits/VSEF_BROADER_FEATURE_GOVERNANCE_AUDIT.md` applies these coverage diagnostics to a four-ticker cached-data audit. In that run, breadth coverage was complete for the selected window, while foreign-flow coverage was unavailable and remained a weak-coverage governance finding.
 
 `docs/audits/VSEF_FOREIGN_FLOW_COVERAGE_INVESTIGATION.md` adds a targeted follow-up for that weak-coverage finding. It documents that the local foreign-flow artifact did not contain the audited tickers or date window.
+
+`docs/governance/VSEF_FOREIGN_FLOW_ARTIFACT_POLICY.md` defines the schema and classification rules used to decide whether a foreign-flow artifact is suitable for interpreting `foreign_*` diagnostics for a requested window.

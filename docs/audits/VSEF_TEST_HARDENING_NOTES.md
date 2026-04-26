@@ -140,3 +140,7 @@ The follow-up branch `vsef-broader-governance-audit` reviewed the existing gover
 ## Follow-Up Completed: Foreign-Flow Coverage Investigation
 
 The follow-up branch `vsef-foreign-flow-coverage-investigation` added a read-only probe and tests for foreign-flow context coverage. It documents that the cached broader audit had 100% missing foreign-flow coverage because the local `data/foreign_flow.csv` artifact did not contain the audited tickers or date window. No data was fabricated or fetched.
+
+## Follow-Up Completed: Foreign-Flow Artifact Curation
+
+The follow-up branch `vsef-foreign-flow-artifact-curation` added a read-only validator and policy for foreign-flow artifacts. The validator classifies fixture-only artifacts, incomplete ticker/date coverage, invalid schemas, and usable requested-window artifacts without changing training or data loading behavior.

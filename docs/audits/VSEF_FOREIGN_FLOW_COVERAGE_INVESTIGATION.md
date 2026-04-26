@@ -116,3 +116,7 @@ Create a governed foreign-flow artifact refresh task:
 - record source provenance, date range, ticker coverage, and provider status
 - rerun context coverage diagnostics
 - require minimum foreign-flow coverage before interpreting `foreign_*` feature diagnostics
+
+## Follow-Up: Artifact Curation Policy
+
+`docs/governance/VSEF_FOREIGN_FLOW_ARTIFACT_POLICY.md` defines the governed schema and validation expectations for foreign-flow artifacts. The follow-up validator classifies the current local artifact as fixture-like when it only contains `TEST` rows and prevents that file from being mistaken for real ticker/date coverage.

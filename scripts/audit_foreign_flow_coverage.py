@@ -20,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from config.settings import PROJECT_ROOT
+from src.ml.backtest.foreign_flow_validation import validate_foreign_flow_artifact
 
 
 DEFAULT_FOREIGN_FLOW_PATH = PROJECT_ROOT / "data" / "foreign_flow.csv"
@@ -81,6 +82,12 @@ def inspect_foreign_flow_coverage(
     start_ts = pd.Timestamp(start_date).normalize()
     end_ts = pd.Timestamp(end_date).normalize()
     foreign_flow, source_status = load_foreign_flow_source(foreign_flow_path)
+    artifact_validation = validate_foreign_flow_artifact(
+        foreign_flow,
+        normalized_tickers,
+        start_ts,
+        end_ts,
+    )
 
     rows: list[dict[str, Any]] = []
     source_has_join_keys = {"ticker", "date"} <= set(foreign_flow.columns)
@@ -152,6 +159,7 @@ def inspect_foreign_flow_coverage(
         "requested_start_date": str(start_ts.date()),
         "requested_end_date": str(end_ts.date()),
         "foreign_flow_source": source_status,
+        "artifact_validation": artifact_validation,
         "ticker_results": rows,
     }
 
