@@ -134,3 +134,7 @@ The follow-up branch `vsef-context-timing-governance` documents the timing polic
 ## Follow-Up: Context Availability Metadata
 
 The follow-up branch `vsef-context-availability-metadata` adds explicit support columns for breadth and foreign-flow source availability. These columns separate measured zero values from missing-context fallback values without automatically changing model features or feature-selection behavior.
+
+## Follow-Up: Broader Governance Audit
+
+`docs/VSEF_BROADER_FEATURE_GOVERNANCE_AUDIT.md` extends this SSI-only audit to `SSI`, `FPT`, `ACB`, and `HPG` over a longer January 2025 window using the same governance and context-coverage diagnostics.
