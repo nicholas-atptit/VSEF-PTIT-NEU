@@ -100,3 +100,7 @@ Columns:
 ## Follow-Up: Context Timing Governance
 
 `docs/VSEF_CONTEXT_TIMING_GOVERNANCE.md` documents the first targeted timing review for breadth and flow-style features. It clarifies that local `turnover*`, `amihud*`, and `volume_spike*` features are OHLCV-derived trailing features, while joined breadth, macro, and `foreign_*` features still require source-date timing review.
+
+`docs/VSEF_CONTEXT_AVAILABILITY_METADATA.md` documents the follow-up availability metadata for breadth and foreign-flow joins. Governance source hints now reference those support columns where relevant.
+
+`docs/VSEF_CONTEXT_COVERAGE_DIAGNOSTICS.md` documents fold-level missing-context coverage summaries that should be reviewed alongside timing-review flags.

@@ -39,6 +39,16 @@ _DEFAULT_TICKER_SECTORS_PATH = PROJECT_ROOT / "data" / "ticker_sectors.csv"
 _DEFAULT_MARKET_BREADTH_PATH = PROJECT_ROOT / "data" / "market_breadth.csv"
 _DEFAULT_MACRO_CONTEXT_PATH = PROJECT_ROOT / "data" / "macro_context.csv"
 _DEFAULT_FOREIGN_FLOW_PATH = PROJECT_ROOT / "data" / "foreign_flow.csv"
+_BREADTH_CONTEXT_METADATA_COLUMNS = [
+    "breadth_context_available",
+    "breadth_context_source_date",
+    "breadth_context_missing",
+]
+_FOREIGN_FLOW_CONTEXT_METADATA_COLUMNS = [
+    "foreign_flow_context_available",
+    "foreign_flow_context_source_date",
+    "foreign_flow_context_missing",
+]
 
 DIRECT_VNSTOCK_PROVENANCE = "direct_vnstock_data"
 DERIVED_VNSTOCK_PROVENANCE = "derived_from_vnstock_data"
@@ -1902,6 +1912,19 @@ def apply_context_features(
         frame["date"] = pd.to_datetime(frame["date"]).dt.normalize()
     frame = frame.sort_values("date").reset_index(drop=True)
 
+    def _finalize_context_metadata(current: pd.DataFrame, prefix: str) -> pd.DataFrame:
+        available_col = f"{prefix}_context_available"
+        source_date_col = f"{prefix}_context_source_date"
+        missing_col = f"{prefix}_context_missing"
+        if available_col not in current.columns:
+            current[available_col] = False
+        current[available_col] = current[available_col].fillna(False).astype(bool)
+        if source_date_col not in current.columns:
+            current[source_date_col] = pd.NaT
+        current[source_date_col] = pd.to_datetime(current[source_date_col], errors="coerce").dt.normalize()
+        current[missing_col] = ~current[available_col]
+        return current
+
     def _relative_return_base(current: pd.DataFrame) -> pd.Series:
         if "pct_return" in current.columns:
             return pd.to_numeric(current["pct_return"], errors="coerce")
@@ -1974,8 +1997,15 @@ def apply_context_features(
             )
 
     # 3. Market breadth
-    if breadth_df is not None and not breadth_df.empty:
-        breadth = _normalize_date_frame(breadth_df)
+    if breadth_df is not None:
+        frame = frame.drop(columns=[column for column in _BREADTH_CONTEXT_METADATA_COLUMNS if column in frame.columns])
+        breadth = _normalize_date_frame(breadth_df) if not breadth_df.empty else pd.DataFrame()
+        if not breadth.empty and "date" in breadth.columns:
+            breadth = breadth.sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
+            breadth_meta = breadth[["date"]].copy()
+            breadth_meta["breadth_context_available"] = True
+            breadth_meta["breadth_context_source_date"] = breadth_meta["date"]
+            frame = frame.merge(breadth_meta, on="date", how="left")
         breadth_cols = [
             column
             for column in [
@@ -2027,18 +2057,30 @@ def apply_context_features(
                     breadth_block[column] = pd.to_numeric(frame[column], errors="coerce").fillna(0.0)
             if breadth_block:
                 frame = _concat_frame_block(frame, breadth_block)
+        frame = _finalize_context_metadata(frame, "breadth")
 
     # 4. Foreign flow
-    if foreign_flow_df is not None and not foreign_flow_df.empty:
-        foreign_flow = _normalize_date_frame(foreign_flow_df)
+    if foreign_flow_df is not None:
+        frame = frame.drop(columns=[column for column in _FOREIGN_FLOW_CONTEXT_METADATA_COLUMNS if column in frame.columns])
+        foreign_flow = _normalize_date_frame(foreign_flow_df) if not foreign_flow_df.empty else pd.DataFrame()
         if "ticker" in foreign_flow.columns:
             foreign_flow["ticker"] = foreign_flow["ticker"].astype(str).str.upper()
             foreign_flow = foreign_flow[foreign_flow["ticker"] == ticker.upper()]
-        if not foreign_flow.empty:
-            foreign_cols = [column for column in foreign_flow.columns if column not in {"ticker", "date"}]
+        if not foreign_flow.empty and "date" in foreign_flow.columns:
+            foreign_flow = foreign_flow.sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
+            foreign_meta = foreign_flow[["date"]].copy()
+            foreign_meta["foreign_flow_context_available"] = True
+            foreign_meta["foreign_flow_context_source_date"] = foreign_meta["date"]
+            frame = frame.merge(foreign_meta, on="date", how="left")
+            foreign_cols = [
+                column
+                for column in foreign_flow.columns
+                if column not in {"ticker", "date", *_FOREIGN_FLOW_CONTEXT_METADATA_COLUMNS}
+            ]
             new_cols = [column for column in foreign_cols if column not in frame.columns]
             if new_cols:
                 frame = frame.merge(foreign_flow[["date", *new_cols]], on="date", how="left")
+        frame = _finalize_context_metadata(frame, "foreign_flow")
 
     # 5. Macro / cross-asset context (backward-looking as-of join only)
     if macro_df is not None and not macro_df.empty:

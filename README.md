@@ -1,22 +1,120 @@
-# AI_ML_LLM-in-Stock
+# VSEF – Vietnam Stock Evaluation and Forecasting Framework
 
-Research-oriented stock forecasting and evaluation framework for Vietnamese equities.
+VSEF is a research-oriented framework for Vietnamese stock forecasting, evaluation, regime analysis, and strategy backtesting. It is designed for comparative empirical work rather than live order execution. The framework uses real market data through `vnstock_data`, supports multiple forecast model families, and emphasizes walk-forward validation, selector-based evaluation, risk-aware interpretation, and regime-conditioned analysis.
 
-The repository now goes well beyond a single forecasting script. It supports real daily OHLCV fetching through `vnstock`, fixed-window and walk-forward evaluation, multi-horizon forward-return targets, dual-task regression and profit/loss classification, combined-signal analysis, regime-aware slicing, and selector experiments built on saved artifacts.
+The current codebase supports:
 
-## Main Capabilities
+- real Vietnamese market data ingestion through `vnstock_data` and the repository adapter layer
+- multi-model forecasting across baseline, statistical, tree-based, boosting, linear, and sequence models
+- risk-aware evaluation using tail-risk, drawdown, systemic-risk, and volatility features
+- regime-aware analysis for bull, bear, sideway, high-volatility, and crisis contexts
+- strategy backtesting with transaction-cost-aware evaluation surfaces
+- walk-forward validation, combined-signal analysis, and selector-based model evaluation
 
-- Real-data ingestion for Vietnam equities through `src/data/adapters/vnstock_adapter.py`
-- Fixed-window backtest on daily OHLCV data with artifact persistence under `artifacts/backtest/`
-- Multi-model comparison across `cart`, `xgboost`, `lightgbm`, and optional statistical models
-- Forward-return forecasting for `3d`, `5d`, and `20d` trading-day horizons
-- Dual-task evaluation:
-  - regression for forward return
-  - classification for profit/loss after costs
-- Combined-signal analysis using `predicted_return` and `predicted_profit_probability`
-- Regime-aware analysis for `bull`, `bear`, and `sideway`
-- Walk-forward regime-aware robustness summaries across repeated folds
-- Regime-conditioned and context-conditioned meta-selector layers for analysis-only candidate selection
+**Important warning:** The repository is a research and evaluation framework, not a finished live-trading execution system. Backtest evidence and saved artifacts should not be presented as guaranteed trading performance.
+
+## Current Model Coverage
+
+| Area | Models / Methods | Current status |
+| --- | --- | --- |
+| Baseline forecasting | Naive, Moving Average | Implemented |
+| Classical time series | SARIMAX, ETS | Implemented |
+| Linear models | Linear Regression, Ridge, Lasso | Present, needs stronger evaluation and feature-selection review |
+| Tree-based models | CART, Random Forest | Implemented |
+| Boosting models | XGBoost, LightGBM | Primary research models |
+| Deep learning | LSTM, BiLSTM | Implemented, needs stronger training/evaluation hardening |
+| Ensemble | Stacking, combined-signal methods, selector layers | Implemented for research evaluation |
+| Risk models | Historical VaR/CVaR, Monte Carlo VaR/CVaR, CoVaR, Delta-CoVaR, drawdown, GARCH | Implemented |
+| Regime detection | rule-based high-vol/crisis detection, Markov-switching bull/bear/sideway detection | Implemented, needs further improvement |
+| Portfolio/risk overlay | Risk-aware allocation and exposure penalties | Implemented as research logic |
+| Reinforcement learning | DQN/PPO/A2C not yet implemented | Planned research extension |
+
+## Important Algorithm Gap Notice
+
+Compared with the original full algorithm checklist, the repository does not yet clearly implement or fully govern:
+
+- GRU
+- TCN
+- Transformer
+- TFT
+- N-BEATS / N-HiTS
+- CatBoost
+- EGARCH / GJR-GARCH
+- Reinforcement Learning methods such as DQN, PPO, and A2C
+
+These models are future research extensions, not blockers for the VSEF name. Adding too many algorithms too early would create a model zoo rather than a stronger forecasting framework. The current priority is better evaluation depth, regime robustness, calibration, and reproducibility.
+
+With the current codebase, the name **VSEF – Vietnam Stock Evaluation and Forecasting Framework** is defensible. A claim such as **state-of-the-art deep forecasting platform** is not yet defensible.
+
+## Development Roadmap
+
+### 1. Regime Layer Improvement
+
+Planned improvements:
+
+- strengthen bull, bear, and sideway detection
+- compare Markov-switching outputs against threshold-based benchmark labels
+- add regime stability metrics across walk-forward folds
+- track regime-specific model performance more explicitly
+- improve sparse bear-regime handling so bear conclusions are not overclaimed from too few observations
+
+### 2. Linear Model Improvement
+
+Planned improvements:
+
+- re-evaluate Linear Regression, Ridge, and Lasso under the same feature sets used by boosting models
+- add stronger feature-selection diagnostics
+- compare coefficient stability across folds
+- keep linear models as interpretable baselines and feature sanity checks
+
+### 3. Deep Learning Improvement
+
+Current deep learning coverage includes LSTM and BiLSTM, but it needs hardening.
+
+Planned improvements:
+
+- improve LSTM/BiLSTM sequence preparation, persistence, and evaluation consistency
+- add GRU as a lighter recurrent baseline
+- add TCN for convolutional time-series forecasting
+- add Transformer-style forecasting only after sequence evaluation stability is verified
+- evaluate TFT, N-BEATS, and N-HiTS as later-stage research candidates, not immediate production models
+
+### 4. Advanced Risk Model Improvement
+
+Planned improvements:
+
+- extend the current GARCH layer toward EGARCH and GJR-GARCH
+- compare volatility forecasting quality across GARCH-family variants
+- track whether volatility forecasts improve regime detection and risk-aware allocation
+- keep VaR/CVaR interpretation conservative
+
+### 5. Reinforcement Learning Research Extension
+
+Reinforcement learning should be added only after forecast, risk, and regime layers are stable.
+
+Planned methods:
+
+- DQN
+- PPO
+- A2C
+
+Initial scope:
+
+- treat RL as a policy-evaluation research layer
+- use forecast, regime, and risk outputs as state inputs
+- include transaction costs, slippage, position limits, and turnover penalties
+- compare RL policies against threshold strategies and buy-and-hold baselines
+- prevent lookahead leakage in environment design
+
+## Safe Implementation Sequence
+
+1. Improve Linear/Ridge/Lasso evaluation and diagnostics first.
+2. Harden LSTM/BiLSTM sequence training and tests.
+3. Add GRU as the first new deep learning model.
+4. Add TCN only after GRU tests pass.
+5. Add Transformer/N-BEATS/TFT only as later research candidates.
+6. Add EGARCH/GJR-GARCH after checking current GARCH dependency and tests.
+7. Add RL only as a separate experimental module, not part of core production inference.
 
 ## Quick Start
 
@@ -65,6 +163,8 @@ python scripts/run_regime_aware_analysis.py --dual-task-dir artifacts/dual_task 
 
 ## Documentation
 
+- [docs/VSEF_ROADMAP.md](docs/VSEF_ROADMAP.md): conservative roadmap for model, regime, risk, and RL extensions
+- [docs/VSEF_MODEL_GAP_AUDIT.md](docs/VSEF_MODEL_GAP_AUDIT.md): audit of implemented, mentioned, registered, and missing model coverage
 - [docs/CHANGELOG_SUMMARY.md](docs/CHANGELOG_SUMMARY.md): how the system evolved and why each layer was added
 - [docs/USAGE_GUIDE.md](docs/USAGE_GUIDE.md): runnable commands, dependencies, and artifact locations
 - [docs/ML_IMPLEMENTATION_GUIDE.md](docs/ML_IMPLEMENTATION_GUIDE.md): internal architecture, targets, trainer path, and no-leakage rules
@@ -75,9 +175,13 @@ python scripts/run_regime_aware_analysis.py --dual-task-dir artifacts/dual_task 
 
 ```text
 src/data/adapters/vnstock_adapter.py      Real-market data access and schema normalization
+src/forecast/                             Governed forecast model surface and model registry
+src/ml/models/                            Trainable ML model implementations used by ML workflows
 src/ml/feature_engineering.py             Daily feature generation
 src/ml/trainer.py                         Target creation, model training, inference, manifests
-src/ml/backtest/                          Evaluation and analysis workflows
+src/ml/backtest/                          Evaluation, strategy, selector, and analysis workflows
+src/regime/                               Markov-switching regime model and regime-label helpers
+src/risk/                                 Standalone risk models including GARCH, VaR/CVaR, drawdown
 scripts/run_*.py                          CLI entry points
 artifacts/                                Saved workflow outputs
 docs/                                     User-facing documentation
@@ -92,5 +196,6 @@ The repository is a research and evaluation stack, not a live execution system.
 - The combined-method family is more repeatable than any single exact model configuration.
 - Profit classification and selector layers remain sample-sensitive.
 - Bear-regime evidence is still relatively sparse in the saved walk-forward runs.
+- Deep-learning and reinforcement-learning claims should remain narrow until sequence evaluation, calibration, and governance tests are stronger.
 
-That makes the repo useful for disciplined comparative research, benchmark auditing, and strategy hypothesis testing. It does not justify strong live-trading claims without more history, more bearish samples, and better calibration.
+That makes the repo useful for disciplined comparative research, benchmark auditing, and strategy hypothesis testing. It does not justify strong live-trading claims without more history, more bearish samples, better calibration, and stronger reproducibility evidence.
