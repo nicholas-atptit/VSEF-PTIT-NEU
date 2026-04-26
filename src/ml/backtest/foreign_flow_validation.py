@@ -14,6 +14,7 @@ import pandas as pd
 REQUIRED_COLUMNS = {"ticker", "date"}
 PROVENANCE_COLUMNS = {"source", "source_date", "retrieved_at", "provider", "coverage_note"}
 FIXTURE_TICKERS = {"TEST", "DUMMY", "SAMPLE"}
+FIXTURE_SOURCE_MARKERS = {"fixture", "sample", "synthetic", "unit_test", "demo"}
 FLOW_MEASURE_PREFIXES = ("foreign_", "fr_")
 NON_MEASURE_COLUMNS = {"ticker", "date", *PROVENANCE_COLUMNS}
 
@@ -46,9 +47,25 @@ def _numeric_measure_columns(frame: pd.DataFrame) -> list[str]:
             continue
         if not name.startswith(FLOW_MEASURE_PREFIXES):
             continue
-        if pd.api.types.is_numeric_dtype(pd.to_numeric(frame[column], errors="coerce")):
+        numeric = pd.to_numeric(frame[column], errors="coerce")
+        if pd.api.types.is_numeric_dtype(numeric) and numeric.notna().any():
             columns.append(name)
     return columns
+
+
+def _source_text_values(frame: pd.DataFrame) -> list[str]:
+    values: list[str] = []
+    for column in sorted(PROVENANCE_COLUMNS & set(frame.columns)):
+        series = frame[column].dropna().astype(str).str.lower().str.strip()
+        values.extend(value for value in series.unique().tolist() if value)
+    return sorted(set(values))
+
+
+def _has_fixture_or_sample_source(frame: pd.DataFrame) -> bool:
+    for value in _source_text_values(frame):
+        if any(marker in value for marker in FIXTURE_SOURCE_MARKERS):
+            return True
+    return False
 
 
 def summarize_foreign_flow_coverage(
@@ -119,6 +136,7 @@ def validate_foreign_flow_artifact(
     missing_provenance = sorted(PROVENANCE_COLUMNS - columns)
     coverage = summarize_foreign_flow_coverage(frame, tickers, start_date, end_date)
     only_fixture_tickers = bool(coverage["ticker_coverage"]) and set(coverage["ticker_coverage"]) <= FIXTURE_TICKERS
+    fixture_or_sample_source = _has_fixture_or_sample_source(frame)
 
     schema_valid = not missing_required and bool(measure_columns)
     if frame.empty:
@@ -144,8 +162,17 @@ def validate_foreign_flow_artifact(
         "missing_provenance_columns": missing_provenance,
         "provenance_complete": not missing_provenance,
         "only_fixture_tickers": only_fixture_tickers,
+        "fixture_or_sample_source": fixture_or_sample_source,
+        "source_text_values": _source_text_values(frame),
+        "real_provider_evidence": bool(not fixture_or_sample_source and not missing_provenance),
         "artifact_classification": classification,
         "suitable_for_foreign_feature_interpretation": classification == "usable_for_requested_window",
+        "suitable_for_performance_interpretation": False,
+        "artifact_usage_warning": (
+            "Fixture/sample artifact: use only for workflow validation, not real market interpretation."
+            if fixture_or_sample_source
+            else "Coverage validation is governance metadata only and is not trading-performance evidence."
+        ),
     }
 
 

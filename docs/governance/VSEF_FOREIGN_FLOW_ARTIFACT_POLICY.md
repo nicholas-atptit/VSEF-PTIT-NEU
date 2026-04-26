@@ -76,6 +76,8 @@ Local raw provider pulls and scratch caches should not be broadly tracked. Curat
 
 The current `data/foreign_flow.csv` file is ignored by `.gitignore` and is not tracked. In the local workspace it contains only a `TEST` row dated 2026-04-24, so it is fixture-like and unsuitable for interpreting `SSI`, `FPT`, `ACB`, or `HPG` foreign-flow coverage.
 
+The curated sample fixture at `tests/fixtures/foreign_flow_sample.csv` is tracked for validator and coverage workflow tests only. It uses `source = fixture_sample` and `provider = non_real_fixture`, so it can validate exact ticker/date mechanics without being treated as real provider evidence.
+
 ## Validation Utility
 
 The read-only validator is implemented in:

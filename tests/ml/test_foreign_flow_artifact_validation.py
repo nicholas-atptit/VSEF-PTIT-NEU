@@ -136,3 +136,62 @@ def test_diagnostic_script_reports_fixture_only_status(tmp_path: Path) -> None:
 
     assert report["artifact_validation"]["artifact_classification"] == "fixture_only"
     assert report["artifact_validation"]["suitable_for_foreign_feature_interpretation"] is False
+
+
+def test_curated_sample_fixture_validates_for_controlled_window() -> None:
+    sample_path = Path("tests/fixtures/foreign_flow_sample.csv")
+    sample = pd.read_csv(sample_path)
+
+    result = validate_foreign_flow_artifact(sample, ["SSI", "FPT"], "2025-01-02", "2025-01-10")
+
+    assert result["artifact_classification"] == "usable_for_requested_window"
+    assert result["requested_ticker_date_coverage_rate"] == 1.0
+    assert result["fixture_or_sample_source"] is True
+    assert result["real_provider_evidence"] is False
+    assert result["suitable_for_performance_interpretation"] is False
+    assert "fixture" in result["artifact_usage_warning"].lower()
+
+
+def test_diagnostic_script_reads_explicit_curated_sample_path(tmp_path: Path) -> None:
+    ohlcv_dir = tmp_path / "ohlcv"
+    ohlcv_dir.mkdir()
+    dates = pd.bdate_range("2025-01-02", "2025-01-10")
+    for ticker in ("SSI", "FPT"):
+        pd.DataFrame(
+            {
+                "ticker": ticker,
+                "date": dates,
+                "open": 1.0,
+                "high": 1.0,
+                "low": 1.0,
+                "close": 1.0,
+                "volume": 100,
+            }
+        ).to_csv(ohlcv_dir / f"{ticker}.csv", index=False)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/audit_foreign_flow_coverage.py",
+            "--tickers",
+            "SSI,FPT",
+            "--start-date",
+            "2025-01-02",
+            "--end-date",
+            "2025-01-10",
+            "--foreign-flow-path",
+            "tests/fixtures/foreign_flow_sample.csv",
+            "--ohlcv-dir",
+            str(ohlcv_dir),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    report = json.loads(completed.stdout)
+
+    assert report["artifact_validation"]["artifact_classification"] == "usable_for_requested_window"
+    assert report["artifact_validation"]["fixture_or_sample_source"] is True
+    assert report["artifact_validation"]["real_provider_evidence"] is False
+    assert report["artifact_validation"]["suitable_for_performance_interpretation"] is False
+    assert all(row["exact_join_missing_ratio"] == 0.0 for row in report["ticker_results"])
