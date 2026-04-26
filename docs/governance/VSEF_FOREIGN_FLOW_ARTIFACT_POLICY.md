@@ -104,6 +104,8 @@ scripts/curate_foreign_flow_provider_artifact.py
 
 The script writes provenance columns when `vnstock_data` provider access is available, refuses to overwrite `data/foreign_flow.csv`, and treats fixture/sample-labeled rows as non-real evidence.
 
+`docs/audits/VSEF_FOREIGN_FLOW_REAL_COVERAGE_AUDIT.md` documents a real provider-artifact coverage audit. The artifact was provider-backed but still partial for the requested January 2025 business-date window, so coverage interpretation remains conservative.
+
 ## Private Repository Reminder
 
 VSEF is private and proprietary. Foreign-flow artifacts, validation logic, and documentation in this repository are not licensed for public reuse, redistribution, deployment, or publication without written permission from the repository owner.

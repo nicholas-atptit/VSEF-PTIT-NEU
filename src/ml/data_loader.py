@@ -49,6 +49,13 @@ _FOREIGN_FLOW_CONTEXT_METADATA_COLUMNS = [
     "foreign_flow_context_source_date",
     "foreign_flow_context_missing",
 ]
+_FOREIGN_FLOW_PROVENANCE_COLUMNS = {
+    "source",
+    "source_date",
+    "retrieved_at",
+    "provider",
+    "coverage_note",
+}
 
 DIRECT_VNSTOCK_PROVENANCE = "direct_vnstock_data"
 DERIVED_VNSTOCK_PROVENANCE = "derived_from_vnstock_data"
@@ -2075,11 +2082,20 @@ def apply_context_features(
             foreign_cols = [
                 column
                 for column in foreign_flow.columns
-                if column not in {"ticker", "date", *_FOREIGN_FLOW_CONTEXT_METADATA_COLUMNS}
+                if column
+                not in {
+                    "ticker",
+                    "date",
+                    *_FOREIGN_FLOW_CONTEXT_METADATA_COLUMNS,
+                    *_FOREIGN_FLOW_PROVENANCE_COLUMNS,
+                }
             ]
             new_cols = [column for column in foreign_cols if column not in frame.columns]
             if new_cols:
                 frame = frame.merge(foreign_flow[["date", *new_cols]], on="date", how="left")
+                for column in new_cols:
+                    if str(column).startswith(("foreign_", "fr_")):
+                        frame[column] = pd.to_numeric(frame[column], errors="coerce").fillna(0.0)
         frame = _finalize_context_metadata(frame, "foreign_flow")
 
     # 5. Macro / cross-asset context (backward-looking as-of join only)

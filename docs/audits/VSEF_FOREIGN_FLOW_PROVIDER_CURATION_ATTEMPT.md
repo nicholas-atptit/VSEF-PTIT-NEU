@@ -99,6 +99,10 @@ No real foreign-flow rows were fetched.
 
 No generated provider data was committed.
 
+## Follow-Up: Real Coverage Audit
+
+`docs/audits/VSEF_FOREIGN_FLOW_REAL_COVERAGE_AUDIT.md` documents a later local artifact audit where `data/foreign_flow_curated.csv` existed with provider/source values from `vnstock_data.Trading.foreign_trade`. The artifact was classified as `partial_coverage` for the full January 2025 requested window and as real provider evidence for the rows present.
+
 ## Limitations
 
 - This task validates the curation workflow and unavailable-provider path; it does not prove live provider availability.
