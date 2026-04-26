@@ -94,6 +94,16 @@ scripts/audit_foreign_flow_coverage.py
 
 The validator does not fetch provider data, fabricate rows, change loader behavior, or remove features.
 
+## Provider Curation Attempt
+
+`docs/audits/VSEF_FOREIGN_FLOW_PROVIDER_CURATION_ATTEMPT.md` documents the follow-up provider-backed curation script:
+
+```text
+scripts/curate_foreign_flow_provider_artifact.py
+```
+
+The script writes provenance columns when `vnstock_data` provider access is available, refuses to overwrite `data/foreign_flow.csv`, and treats fixture/sample-labeled rows as non-real evidence.
+
 ## Private Repository Reminder
 
 VSEF is private and proprietary. Foreign-flow artifacts, validation logic, and documentation in this repository are not licensed for public reuse, redistribution, deployment, or publication without written permission from the repository owner.

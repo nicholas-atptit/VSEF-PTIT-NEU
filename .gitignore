@@ -27,6 +27,7 @@ data/prediction_cache/
 data/processed/
 data/macro_context.csv
 data/foreign_flow.csv
+data/foreign_flow_curated.csv
 data/market_breadth.csv
 data/sector_proxies.csv
 data/fundamentals_latest.csv

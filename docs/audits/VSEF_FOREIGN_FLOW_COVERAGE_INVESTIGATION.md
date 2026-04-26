@@ -122,3 +122,5 @@ Create a governed foreign-flow artifact refresh task:
 `docs/governance/VSEF_FOREIGN_FLOW_ARTIFACT_POLICY.md` defines the governed schema and validation expectations for foreign-flow artifacts. The follow-up validator classifies the current local artifact as fixture-like when it only contains `TEST` rows and prevents that file from being mistaken for real ticker/date coverage.
 
 `docs/audits/VSEF_FOREIGN_FLOW_CURATED_SAMPLE.md` documents the non-real curated sample fixture used to validate foreign-flow coverage mechanics without claiming provider data was fetched.
+
+`docs/audits/VSEF_FOREIGN_FLOW_PROVIDER_CURATION_ATTEMPT.md` documents the provider-backed curation script and the current local limitation: `vnstock_data` was unavailable, so no real provider rows were fetched.

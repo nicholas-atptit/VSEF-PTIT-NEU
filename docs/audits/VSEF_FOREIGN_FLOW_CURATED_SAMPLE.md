@@ -86,3 +86,5 @@ Create a real foreign-flow curation run only if provider access is available and
 - record provider, source date, retrieval timestamp, and coverage notes
 - validate the artifact with `src/ml/backtest/foreign_flow_validation.py`
 - rerun context coverage diagnostics before interpreting any `foreign_*` feature behavior
+
+The follow-up provider-attempt workflow is documented in `docs/audits/VSEF_FOREIGN_FLOW_PROVIDER_CURATION_ATTEMPT.md`. It adds a provider-backed curation script but does not treat fixture/sample rows as real provider evidence.
