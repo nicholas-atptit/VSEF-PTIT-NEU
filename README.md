@@ -171,8 +171,9 @@ python scripts/run_regime_aware_analysis.py --dual-task-dir artifacts/dual_task 
 
 ## Documentation
 
-- [docs/VSEF_ROADMAP.md](docs/VSEF_ROADMAP.md): conservative roadmap for model, regime, risk, and RL extensions
-- [docs/VSEF_MODEL_GAP_AUDIT.md](docs/VSEF_MODEL_GAP_AUDIT.md): audit of implemented, mentioned, registered, and missing model coverage
+- [docs/README.md](docs/README.md): documentation map and placement rules
+- [docs/roadmap/VSEF_ROADMAP.md](docs/roadmap/VSEF_ROADMAP.md): conservative roadmap for model, regime, risk, and RL extensions
+- [docs/audits/VSEF_MODEL_GAP_AUDIT.md](docs/audits/VSEF_MODEL_GAP_AUDIT.md): audit of implemented, mentioned, registered, and missing model coverage
 - [docs/CHANGELOG_SUMMARY.md](docs/CHANGELOG_SUMMARY.md): how the system evolved and why each layer was added
 - [docs/USAGE_GUIDE.md](docs/USAGE_GUIDE.md): runnable commands, dependencies, and artifact locations
 - [docs/ML_IMPLEMENTATION_GUIDE.md](docs/ML_IMPLEMENTATION_GUIDE.md): internal architecture, targets, trainer path, and no-leakage rules
@@ -181,7 +182,11 @@ python scripts/run_regime_aware_analysis.py --dual-task-dir artifacts/dual_task 
 
 ## Repository Structure
 
+See [docs/REPOSITORY_STRUCTURE.md](docs/REPOSITORY_STRUCTURE.md) for the repository layout policy and placement rules.
+
 ```text
+README.md, LICENSE, SECURITY.md, pyproject.toml
+config/                                  Runtime and project configuration
 src/data/adapters/vnstock_adapter.py      Real-market data access and schema normalization
 src/forecast/                             Governed forecast model surface and model registry
 src/ml/models/                            Trainable ML model implementations used by ML workflows
@@ -191,8 +196,8 @@ src/ml/backtest/                          Evaluation, strategy, selector, and an
 src/regime/                               Markov-switching regime model and regime-label helpers
 src/risk/                                 Standalone risk models including GARCH, VaR/CVaR, drawdown
 scripts/run_*.py                          CLI entry points
-artifacts/                                Saved workflow outputs
-docs/                                     User-facing documentation
+artifacts/, outputs/, tmp/                Generated workflow outputs and scratch files, ignored by default
+docs/                                     Documentation grouped by governance, audits, roadmap, archive
 tests/ml/                                 Focused ML and workflow tests
 ```
 

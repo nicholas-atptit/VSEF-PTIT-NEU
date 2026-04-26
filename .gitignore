@@ -45,6 +45,9 @@ scripts/_patch_settings.py
 .gemini/
 .pytest_cache/
 pytest-cache-files-*/
+*.bak
+*.tmp
+*.broken
 tmp/
 tmp*/
 artifacts/
