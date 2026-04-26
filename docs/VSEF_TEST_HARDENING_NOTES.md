@@ -123,3 +123,12 @@ The follow-up branch `vsef-context-availability-metadata` added support metadata
 - `foreign_flow_context_missing`
 
 These columns distinguish measured zero values from missing-context fallback values and are excluded from active model feature columns. They improve governance transparency only; they do not prove trading performance or remove leakage-review responsibility.
+
+## Follow-Up Completed: Context Coverage Diagnostics
+
+The follow-up branch `vsef-context-coverage-diagnostics` added walk-forward CSV summaries for context availability:
+
+- `csv/context_coverage_diagnostics.csv`
+- `csv/context_coverage_summary.csv`
+
+These outputs quantify breadth and foreign-flow missing-context rates by ticker, fold, and horizon. They are diagnostic governance outputs only and do not change model governance status or trading-performance claims.

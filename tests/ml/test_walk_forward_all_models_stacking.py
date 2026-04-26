@@ -19,6 +19,10 @@ from src.ml.backtest.feature_importance_diagnostics import (
     LINEAR_VS_IMPORTANCE_COMPARISON_COLUMNS,
 )
 from src.ml.backtest.feature_governance_review import FEATURE_GOVERNANCE_REVIEW_COLUMNS
+from src.ml.backtest.context_coverage_diagnostics import (
+    CONTEXT_COVERAGE_DIAGNOSTIC_COLUMNS,
+    CONTEXT_COVERAGE_SUMMARY_COLUMNS,
+)
 from src.ml.data_loader import generate_mock_data
 
 
@@ -88,6 +92,8 @@ def test_walk_forward_all_models_runner_writes_required_outputs(tmp_path, monkey
     importance_summary = pd.read_csv(Path(config.output_dir) / "csv" / "feature_importance_stability_summary.csv")
     linear_vs_importance = pd.read_csv(Path(config.output_dir) / "csv" / "linear_vs_importance_feature_comparison.csv")
     governance_review = pd.read_csv(Path(config.output_dir) / "csv" / "feature_governance_review.csv")
+    context_coverage = pd.read_csv(Path(config.output_dir) / "csv" / "context_coverage_diagnostics.csv")
+    context_coverage_summary = pd.read_csv(Path(config.output_dir) / "csv" / "context_coverage_summary.csv")
 
     assert {
         "ticker",
@@ -147,6 +153,15 @@ def test_walk_forward_all_models_runner_writes_required_outputs(tmp_path, monkey
     ).all()
     assert governance_review["recommended_action"].isin(
         ["keep", "keep_but_document", "review_timing", "review_redundancy", "exclude_until_verified"]
+    ).all()
+    assert set(CONTEXT_COVERAGE_DIAGNOSTIC_COLUMNS) <= set(context_coverage.columns)
+    assert set(CONTEXT_COVERAGE_SUMMARY_COLUMNS) <= set(context_coverage_summary.columns)
+    assert not context_coverage.empty
+    assert context_coverage["coverage_warning_level"].isin(
+        ["ok", "review", "weak_coverage", "metadata_unavailable"]
+    ).all()
+    assert context_coverage_summary["overall_coverage_warning_level"].isin(
+        ["ok", "review", "weak_coverage", "metadata_unavailable"]
     ).all()
 
 

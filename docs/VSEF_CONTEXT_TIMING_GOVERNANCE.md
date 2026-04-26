@@ -103,3 +103,5 @@ This reclassification does not change training behavior and does not remove any 
 ## Follow-Up: Availability Metadata
 
 The follow-up branch `vsef-context-availability-metadata` adds support columns for breadth and foreign-flow context joins. These columns distinguish exact-date source availability from missing-context fallback values and are excluded from active model feature columns.
+
+`docs/VSEF_CONTEXT_COVERAGE_DIAGNOSTICS.md` documents the next follow-up diagnostics that summarize missing-context rates across walk-forward folds.

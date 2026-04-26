@@ -122,8 +122,14 @@ FOREIGN_FLOW_CONTEXT_PREFIXES = (
     "abnormal_foreign",
 )
 CONTEXT_AVAILABILITY_HINTS = {
-    "breadth": "availability metadata: breadth_context_available, breadth_context_source_date, breadth_context_missing",
-    "foreign_flow": "availability metadata: foreign_flow_context_available, foreign_flow_context_source_date, foreign_flow_context_missing",
+    "breadth": (
+        "availability metadata: breadth_context_available, breadth_context_source_date, "
+        "breadth_context_missing; check context_coverage_summary.csv"
+    ),
+    "foreign_flow": (
+        "availability metadata: foreign_flow_context_available, foreign_flow_context_source_date, "
+        "foreign_flow_context_missing; check context_coverage_summary.csv"
+    ),
 }
 TRAILING_TOKENS = (
     "lag",

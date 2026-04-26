@@ -73,3 +73,7 @@ Local OHLCV-derived flow features such as `turnover_ma_60` remain separate from 
 - Add source-date or release-date contracts to cached breadth and foreign-flow artifacts where practical.
 - Track missing-context rates in walk-forward diagnostics.
 - Consider separate missingness features only after governance review, tests, and leakage checks justify using them as model inputs.
+
+## Follow-Up: Coverage Diagnostics
+
+`docs/VSEF_CONTEXT_COVERAGE_DIAGNOSTICS.md` documents the follow-up walk-forward summaries for breadth and foreign-flow missing-context rates. These diagnostics measure coverage by ticker, fold, and horizon without adding the metadata columns to model features.
