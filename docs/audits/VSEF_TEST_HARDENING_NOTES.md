@@ -136,3 +136,7 @@ These outputs quantify breadth and foreign-flow missing-context rates by ticker,
 ## Follow-Up Completed: Broader Feature Governance Audit
 
 The follow-up branch `vsef-broader-governance-audit` reviewed the existing governance outputs across `SSI`, `FPT`, `ACB`, and `HPG` for a longer January 2025 walk-forward window. The report is documented in `docs/audits/VSEF_BROADER_FEATURE_GOVERNANCE_AUDIT.md` and remains a conservative audit artifact, not trading-performance evidence.
+
+## Follow-Up Completed: Foreign-Flow Coverage Investigation
+
+The follow-up branch `vsef-foreign-flow-coverage-investigation` added a read-only probe and tests for foreign-flow context coverage. It documents that the cached broader audit had 100% missing foreign-flow coverage because the local `data/foreign_flow.csv` artifact did not contain the audited tickers or date window. No data was fabricated or fetched.

@@ -77,3 +77,5 @@ Local OHLCV-derived flow features such as `turnover_ma_60` remain separate from 
 ## Follow-Up: Coverage Diagnostics
 
 `docs/governance/VSEF_CONTEXT_COVERAGE_DIAGNOSTICS.md` documents the follow-up walk-forward summaries for breadth and foreign-flow missing-context rates. These diagnostics measure coverage by ticker, fold, and horizon without adding the metadata columns to model features.
+
+`docs/audits/VSEF_FOREIGN_FLOW_COVERAGE_INVESTIGATION.md` documents a cached-data follow-up where foreign-flow metadata correctly remained missing because the local source artifact did not cover the requested tickers or dates.

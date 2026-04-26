@@ -177,3 +177,7 @@ Review why foreign-flow context coverage is absent in this cached run:
 - decide whether future audits should require minimum context coverage thresholds for interpretation
 - add report-level summaries for context coverage warnings
 - keep coverage metadata as diagnostics, not model inputs
+
+## Follow-Up: Foreign-Flow Coverage Investigation
+
+`docs/audits/VSEF_FOREIGN_FLOW_COVERAGE_INVESTIGATION.md` investigates the absent foreign-flow coverage. The local `data/foreign_flow.csv` artifact exists but contains only a `TEST` row dated 2026-04-24, so it does not support exact ticker/date joins for the January 2025 `SSI`, `FPT`, `ACB`, and `HPG` audit window.
