@@ -132,3 +132,7 @@ The follow-up branch `vsef-context-coverage-diagnostics` added walk-forward CSV 
 - `csv/context_coverage_summary.csv`
 
 These outputs quantify breadth and foreign-flow missing-context rates by ticker, fold, and horizon. They are diagnostic governance outputs only and do not change model governance status or trading-performance claims.
+
+## Follow-Up Completed: Broader Feature Governance Audit
+
+The follow-up branch `vsef-broader-governance-audit` reviewed the existing governance outputs across `SSI`, `FPT`, `ACB`, and `HPG` for a longer January 2025 walk-forward window. The report is documented in `docs/VSEF_BROADER_FEATURE_GOVERNANCE_AUDIT.md` and remains a conservative audit artifact, not trading-performance evidence.

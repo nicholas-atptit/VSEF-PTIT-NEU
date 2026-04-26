@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "algo-trading-infra"
 version = "0.1.0"
 description = "Phase 1 & 2 - Data Infrastructure + Quantitative ML Pipeline for Algorithmic Trading"
+license = { text = "Proprietary" }
 requires-python = ">=3.11"
 dependencies = [
     # DNSE SDK

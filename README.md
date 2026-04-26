@@ -13,6 +13,14 @@ The current codebase supports:
 
 **Important warning:** The repository is a research and evaluation framework, not a finished live-trading execution system. Backtest evidence and saved artifacts should not be presented as guaranteed trading performance.
 
+## Repository Access and License Status
+
+This repository is private and proprietary. It is not open-source.
+
+Access to this repository does not grant permission to copy, modify, redistribute, publish, deploy, sublicense, or reuse any part of the codebase, documentation, models, scripts, or research artifacts.
+
+See [LICENSE](LICENSE) and [SECURITY.md](SECURITY.md) for details.
+
 ## Current Model Coverage
 
 | Area | Models / Methods | Current status |

@@ -110,3 +110,7 @@ Feature governance review flags breadth and `foreign_*` features for timing revi
 - Track missing-context rates across a broader ticker set and longer walk-forward window.
 - Add report-level summaries for high missing-rate folds.
 - Review whether missing-context rates should be included in future governance dashboards, not model inputs.
+
+## Follow-Up: Broader Governance Audit
+
+`docs/VSEF_BROADER_FEATURE_GOVERNANCE_AUDIT.md` applies these coverage diagnostics to a four-ticker cached-data audit. In that run, breadth coverage was complete for the selected window, while foreign-flow coverage was unavailable and remained a weak-coverage governance finding.
