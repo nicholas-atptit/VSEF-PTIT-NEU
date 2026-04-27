@@ -321,3 +321,7 @@ Validation warnings were non-fatal and included pytest cache write permission wa
 ## Next Recommended Task
 
 Run a dedicated data-availability audit to extend or replace the local daily OHLCV cache before repeating the same walk-forward workflow for a true 10-year window. Foreign-flow should remain a separate governed context audit until long-window provider coverage is available.
+
+## Follow-Up: OHLCV Cache Availability
+
+`docs/audits/VSEF_OHLCV_CACHE_10Y_AVAILABILITY_AUDIT.md` adds the dedicated local cache audit. It confirms that `SSI`, `FPT`, `ACB`, and `HPG` cache files are present but start on 2020-12-21, covering 1256 of 2870 requested business dates in the 2015-01-01 through 2025-12-31 baseline window.
