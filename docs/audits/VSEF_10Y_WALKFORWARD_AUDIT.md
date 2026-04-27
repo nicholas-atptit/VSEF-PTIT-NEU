@@ -325,3 +325,7 @@ Run a dedicated data-availability audit to extend or replace the local daily OHL
 ## Follow-Up: OHLCV Cache Availability
 
 `docs/audits/VSEF_OHLCV_CACHE_10Y_AVAILABILITY_AUDIT.md` adds the dedicated local cache audit. It confirms that `SSI`, `FPT`, `ACB`, and `HPG` cache files are present but start on 2020-12-21, covering 1256 of 2870 requested business dates in the 2015-01-01 through 2025-12-31 baseline window.
+
+## Follow-Up: 15-Year Daily Walk-Forward
+
+`docs/audits/VSEF_15Y_DAILY_WALKFORWARD_AUDIT.md` documents the 2010-01-01 through 2025-12-31 staged OHLCV refresh and daily `--step-sizes 1` walk-forward audit for `SSI`, `FPT`, `BVH`, and `VNM`. It uses `--ohlcv-data-dir` to read ignored staged CSVs directly without replacing tracked OHLCV cache files.

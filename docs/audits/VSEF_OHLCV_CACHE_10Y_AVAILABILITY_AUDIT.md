@@ -192,3 +192,7 @@ Validation commands run:
 | `python -m compileall src` | passed |
 
 Validation warnings were non-fatal and included pytest cache write permission warnings for `.pytest_cache`, LightGBM/scikit-learn feature-name warnings, class-label warnings in ML tests, and logical-core detection fallback from joblib.
+
+## 15-Year Daily Follow-Up
+
+`docs/audits/VSEF_15Y_DAILY_WALKFORWARD_AUDIT.md` documents the follow-up staged provider refresh for `SSI`, `FPT`, `BVH`, and `VNM` over 2010-01-01 through 2025-12-31. That audit uses the new `--ohlcv-data-dir` runner option to consume ignored staged OHLCV files directly, leaving `data/daily_market_split_data/` untouched.

@@ -83,6 +83,16 @@ def parse_args() -> argparse.Namespace:
             "When omitted, the default data/foreign_flow.csv loader behavior is preserved."
         ),
     )
+    parser.add_argument(
+        "--ohlcv-data-dir",
+        type=str,
+        default=None,
+        help=(
+            "Optional explicit directory containing per-ticker OHLCV CSV files. "
+            "When supplied, ticker files are loaded from this directory instead of "
+            "the live provider/default tracked CSV fallback."
+        ),
+    )
     parser.add_argument("--sequence-length", type=int, default=20)
     parser.add_argument("--hidden-size", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=2)
@@ -174,14 +184,9 @@ def _write_step_report(
         .reset_index(drop=True)
     )
     coverage_note = (
-        "All six tickers have history from the first tradable 2018 session on 2018-01-02 through 2026-03-31. "
-        "The exact calendar date 2018-01-01 was not a market session."
+        f"Per-ticker rows below record the actual tradable date ranges after filtering the requested "
+        f"{config.history_start} through {config.history_end} history window."
     )
-    if not step_fetch.empty and (
-        (pd.to_datetime(step_fetch["fetched_min_date"], errors="coerce") > pd.Timestamp("2018-01-02")).any()
-        or (pd.to_datetime(step_fetch["fetched_max_date"], errors="coerce") < pd.Timestamp(config.history_end)).any()
-    ):
-        coverage_note = "One or more tickers did not fully span the requested history window; inspect the per-ticker source lines below."
 
     lines = [
         "# Walk-Forward Forecasting Report",
@@ -189,8 +194,9 @@ def _write_step_report(
         "## Experiment Setup",
         f"- Ticker universe: {', '.join(tickers)}",
         f"- Actual data source used: {', '.join(f'{row.ticker}={row.source}' for row in step_fetch.itertuples(index=False))}",
-        f"- 2018-01-01 coverage status: {coverage_note}",
+        f"- Requested history coverage status: {coverage_note}",
         f"- Historical input window: {config.history_start} through {config.history_end}",
+        f"- OHLCV data directory override: `{config.ohlcv_data_dir}`" if config.ohlcv_data_dir else "- OHLCV data directory override: not supplied",
         f"- Training window: {config.initial_train_start} through {config.initial_train_end}",
         f"- Forecast window: {config.forecast_start} through {config.forecast_end}",
         f"- Horizons: {', '.join(config.horizons)}",
@@ -381,6 +387,7 @@ def main() -> None:
         meta_min_samples=args.meta_min_samples,
         max_workers=args.max_workers,
         foreign_flow_path=args.foreign_flow_path,
+        ohlcv_data_dir=args.ohlcv_data_dir,
     )
 
     result = WalkForwardAllModelsStackingRunner(config).run()
