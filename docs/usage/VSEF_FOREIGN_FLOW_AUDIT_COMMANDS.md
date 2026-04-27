@@ -10,17 +10,35 @@ This note records the supported command pattern for running walk-forward governa
 
 The command is for data-governance review only. It does not add model families, change model governance status, or claim trading-performance improvement.
 
+## Foreign-Flow Modes
+
+The walk-forward runner supports `--foreign-flow-mode auto|path|disabled`:
+
+- `auto`: preserves existing default loader behavior.
+- `path`: requires `--foreign-flow-path`.
+- `disabled`: skips foreign-flow artifact loading and records intentional exclusion in metadata.
+
 ## Walk-Forward Audit With Curated Foreign Flow
 
-Use `--foreign-flow-path` to pass a governed artifact without replacing the ignored default `data/foreign_flow.csv`:
+Use `--foreign-flow-mode path` with `--foreign-flow-path` to pass a governed artifact without replacing the ignored default `data/foreign_flow.csv`:
 
 ```bash
-python scripts/run_walkforward_all_models_stacking_eval.py --tickers SSI FPT ACB HPG --history-start 2020-12-21 --history-end 2025-02-28 --initial-train-start 2020-12-21 --initial-train-end 2024-12-31 --forecast-start 2025-01-02 --forecast-end 2025-01-24 --horizons short_5d --step-sizes 1 --algorithms cart,xgboost,lightgbm --foreign-flow-path data/foreign_flow_curated.csv --output-dir outputs/walkforward_governance_audit_foreign_flow_real --max-workers 1 --max-depth 3 --meta-min-samples 1 --epochs 1
+python scripts/run_walkforward_all_models_stacking_eval.py --tickers SSI FPT ACB HPG --history-start 2020-12-21 --history-end 2025-02-28 --initial-train-start 2020-12-21 --initial-train-end 2024-12-31 --forecast-start 2025-01-02 --forecast-end 2025-01-24 --horizons short_5d --step-sizes 1 --algorithms cart,xgboost,lightgbm --foreign-flow-mode path --foreign-flow-path data/foreign_flow_curated.csv --output-dir outputs/walkforward_governance_audit_foreign_flow_real --max-workers 1 --max-depth 3 --meta-min-samples 1 --epochs 1
 ```
 
 If `--foreign-flow-path` is omitted, the runner keeps the existing default foreign-flow loader behavior.
 
 If a supplied path is missing, the run should fail clearly instead of silently falling back to the default fixture/cache path.
+
+## Walk-Forward Audit With Foreign Flow Disabled
+
+Use disabled mode for long-window audits where no governed artifact covers the requested tickers and dates:
+
+```powershell
+C:\Users\luong\.venv\Scripts\python.exe scripts/run_walkforward_all_models_stacking_eval.py --tickers SSI FPT BVH VNM --history-start 2010-01-01 --history-end 2025-12-31 --initial-train-start 2010-01-01 --initial-train-end 2022-12-31 --forecast-start 2023-01-01 --forecast-end 2025-12-31 --horizons short_5d --step-sizes 1 --algorithms cart,xgboost,lightgbm --ohlcv-data-dir tmp/ohlcv_15y_refresh_probe_data --foreign-flow-mode disabled --output-dir outputs/walkforward_15y_daily_ssi_fpt_bvh_vnm_no_foreign_flow --max-workers 1 --max-depth 3 --meta-min-samples 5 --epochs 1
+```
+
+Disabled mode is an intentional exclusion marker. It is not complete foreign-flow coverage and foreign-flow features should not be interpreted.
 
 ## Metadata
 
@@ -31,6 +49,7 @@ The run metadata records:
 - loaded row count
 - loader source name and provenance
 - artifact validation result for the forecast window
+- disabled mode and reason, when foreign-flow is intentionally excluded
 
 ## Interpretation
 

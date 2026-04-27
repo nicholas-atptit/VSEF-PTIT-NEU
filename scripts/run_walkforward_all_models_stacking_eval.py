@@ -84,6 +84,16 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--foreign-flow-mode",
+        choices=["auto", "path", "disabled"],
+        default="auto",
+        help=(
+            "Foreign-flow context loading mode. auto preserves existing behavior; "
+            "path requires --foreign-flow-path; disabled intentionally skips all "
+            "foreign-flow artifact loading."
+        ),
+    )
+    parser.add_argument(
         "--ohlcv-data-dir",
         type=str,
         default=None,
@@ -111,7 +121,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--meta-model-alpha", type=float, default=1.0)
     parser.add_argument("--meta-min-samples", type=int, default=20)
     parser.add_argument("--max-workers", type=int, default=1, help="Parallel worker count across tickers")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.foreign_flow_mode == "path" and not args.foreign_flow_path:
+        parser.error("--foreign-flow-mode path requires --foreign-flow-path")
+    if args.foreign_flow_mode == "disabled" and args.foreign_flow_path:
+        parser.error("--foreign-flow-mode disabled cannot be combined with --foreign-flow-path")
+    return args
 
 
 def _ticker_slug(tickers: list[str]) -> str:
@@ -387,6 +402,7 @@ def main() -> None:
         meta_min_samples=args.meta_min_samples,
         max_workers=args.max_workers,
         foreign_flow_path=args.foreign_flow_path,
+        foreign_flow_mode=args.foreign_flow_mode,
         ohlcv_data_dir=args.ohlcv_data_dir,
     )
 

@@ -118,6 +118,8 @@ The `--foreign-flow-path` option avoids temporarily replacing the ignored defaul
 
 Partial provider artifacts may improve row-level evidence for covered ticker/date pairs, but they remain partial coverage. Do not treat partial coverage as broad foreign-flow governance evidence or trading-performance evidence.
 
+For long-window audits with no governed artifact, use `--foreign-flow-mode disabled` to intentionally exclude foreign-flow context instead of loading fixture or scratch-cache rows from the default path. Disabled mode is documented in `docs/governance/VSEF_FOREIGN_FLOW_DISABLE_MODE.md` and must not be interpreted as complete foreign-flow coverage.
+
 Generated provider CSVs should remain untracked unless they are intentionally approved, small, documented, and suitable for repository inclusion.
 
 ## Private Repository Reminder

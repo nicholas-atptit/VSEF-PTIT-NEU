@@ -23,6 +23,8 @@ CONTEXT_COVERAGE_DIAGNOSTIC_COLUMNS = [
     "foreign_flow_missing_count",
     "foreign_flow_available_rate",
     "foreign_flow_missing_rate",
+    "foreign_flow_context_mode",
+    "foreign_flow_coverage_status",
     "coverage_warning_level",
     "coverage_metadata_status",
     "coverage_note",
@@ -77,6 +79,29 @@ def _context_counts(frame: pd.DataFrame, prefix: str) -> dict[str, Any]:
     row_count = int(len(frame))
     available_col = f"{prefix}_context_available"
     missing_col = f"{prefix}_context_missing"
+    mode_col = f"{prefix}_context_mode"
+    status_col = f"{prefix}_coverage_status"
+    if prefix == "foreign_flow":
+        mode_values = (
+            set(frame[mode_col].dropna().astype(str).str.lower())
+            if mode_col in frame.columns
+            else set()
+        )
+        status_values = (
+            set(frame[status_col].dropna().astype(str).str.lower())
+            if status_col in frame.columns
+            else set()
+        )
+        if "disabled" in mode_values or "disabled" in status_values:
+            return {
+                "available_count": 0,
+                "missing_count": 0,
+                "available_rate": np.nan,
+                "missing_rate": np.nan,
+                "metadata_available": True,
+                "context_mode": "disabled",
+                "coverage_status": "disabled",
+            }
     if available_col not in frame.columns and missing_col not in frame.columns:
         return {
             "available_count": np.nan,
@@ -84,6 +109,8 @@ def _context_counts(frame: pd.DataFrame, prefix: str) -> dict[str, Any]:
             "available_rate": np.nan,
             "missing_rate": np.nan,
             "metadata_available": False,
+            "context_mode": "auto",
+            "coverage_status": "metadata_missing",
         }
 
     if available_col in frame.columns:
@@ -105,6 +132,8 @@ def _context_counts(frame: pd.DataFrame, prefix: str) -> dict[str, Any]:
         "available_rate": float(available_count / row_count) if row_count else np.nan,
         "missing_rate": float(missing_count / row_count) if row_count else np.nan,
         "metadata_available": True,
+        "context_mode": "auto",
+        "coverage_status": "measured",
     }
 
 
@@ -130,7 +159,9 @@ def build_context_coverage_rows(
     if not foreign_flow["metadata_available"]:
         missing_metadata.append("foreign_flow")
     metadata_status = "available" if not missing_metadata else "missing_" + "_and_".join(missing_metadata)
-    if missing_metadata:
+    if foreign_flow["coverage_status"] == "disabled":
+        note = "Foreign-flow context intentionally disabled; missing-rate excluded from warning calculation."
+    elif missing_metadata:
         note = f"Missing context availability metadata for: {', '.join(missing_metadata)}."
     else:
         note = "Context availability metadata present."
@@ -146,6 +177,8 @@ def build_context_coverage_rows(
         "foreign_flow_missing_count": foreign_flow["missing_count"],
         "foreign_flow_available_rate": foreign_flow["available_rate"],
         "foreign_flow_missing_rate": foreign_flow["missing_rate"],
+        "foreign_flow_context_mode": foreign_flow["context_mode"],
+        "foreign_flow_coverage_status": foreign_flow["coverage_status"],
         "coverage_warning_level": warning_level,
         "coverage_metadata_status": metadata_status,
         "coverage_note": note,

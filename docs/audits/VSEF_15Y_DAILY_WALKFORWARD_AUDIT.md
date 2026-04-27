@@ -266,6 +266,8 @@ Local artifacts were checked:
 
 Run metadata recorded the default `foreign_flow.csv` context artifact with `row_count=1`, but context diagnostics show `mean_foreign_flow_missing_rate=1.0` for every audited ticker. Foreign-flow features should not be interpreted in this 15-year audit unless a long-window artifact is created later.
 
+Follow-up workflow support is documented in `docs/governance/VSEF_FOREIGN_FLOW_DISABLE_MODE.md`. For repeat long-window audits without a governed foreign-flow artifact, use `--foreign-flow-mode disabled` so the default fixture/cache artifact is not loaded and foreign-flow remains explicitly uninterpreted.
+
 ## Runtime Warnings
 
 Observed non-fatal warnings and notes:
@@ -313,4 +315,4 @@ Non-fatal validation warnings included pytest cache write permission warnings, a
 
 ## Next Recommended Task
 
-Create a governed long-window foreign-flow artifact, or add an explicit walk-forward configuration switch to disable foreign-flow context loading entirely for audits where no long-window artifact exists.
+Create a governed long-window foreign-flow artifact, or rerun the audit with `--foreign-flow-mode disabled` when foreign-flow remains intentionally excluded.

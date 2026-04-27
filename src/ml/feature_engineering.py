@@ -90,6 +90,8 @@ NON_FEATURE_SUPPORT_COLUMNS = {
     "foreign_flow_context_available",
     "foreign_flow_context_source_date",
     "foreign_flow_context_missing",
+    "foreign_flow_context_mode",
+    "foreign_flow_coverage_status",
 }
 LEGACY_COMPATIBILITY_COLUMNS = {
     "hv_20",

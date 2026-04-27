@@ -117,6 +117,7 @@ class WalkForwardAllModelsStackingConfig:
     linear_diagnostic_models: list[str] = field(default_factory=lambda: ["linear", "ridge", "lasso"])
     enable_feature_importance_diagnostics: bool = True
     foreign_flow_path: str | None = None
+    foreign_flow_mode: str = "auto"
     ohlcv_data_dir: str | None = None
 
 
@@ -206,6 +207,11 @@ class WalkForwardAllModelsStackingRunner:
 
     def __init__(self, config: WalkForwardAllModelsStackingConfig) -> None:
         self.config = config
+        self.config.foreign_flow_mode = self._normalize_foreign_flow_mode(config.foreign_flow_mode)
+        if self.config.foreign_flow_mode == "path" and not self.config.foreign_flow_path:
+            raise ValueError("foreign_flow_mode='path' requires foreign_flow_path")
+        if self.config.foreign_flow_mode == "disabled" and self.config.foreign_flow_path:
+            raise ValueError("foreign_flow_mode='disabled' cannot be combined with foreign_flow_path")
         self.output_dir = Path(config.output_dir)
         self.csv_dir = self.output_dir / "csv"
         self.charts_dir = self.output_dir / "charts"
@@ -213,10 +219,52 @@ class WalkForwardAllModelsStackingRunner:
         self.report_path = self.output_dir / "report.md"
         self.adapter = VnstockAdapter(symbol_list=[ticker.upper() for ticker in config.tickers])
         self.ohlcv_data_dir = self._resolve_ohlcv_data_dir(config.ohlcv_data_dir)
-        self._foreign_flow_context_metadata: dict[str, Any] = {
-            "foreign_flow_path": config.foreign_flow_path,
-            "foreign_flow_path_explicit": bool(config.foreign_flow_path),
+        self._foreign_flow_context_metadata: dict[str, Any] = self._build_foreign_flow_context_metadata()
+
+    @staticmethod
+    def _normalize_foreign_flow_mode(mode: str | None) -> str:
+        normalized = str(mode or "auto").strip().lower()
+        if normalized not in {"auto", "path", "disabled"}:
+            raise ValueError(f"Unsupported foreign_flow_mode: {mode}")
+        return normalized
+
+    def _build_foreign_flow_context_metadata(
+        self,
+        foreign_flow_df: pd.DataFrame | None = None,
+    ) -> dict[str, Any]:
+        mode = self.config.foreign_flow_mode
+        if mode == "disabled":
+            return {
+                "enabled": False,
+                "mode": "disabled",
+                "path": None,
+                "foreign_flow_path": None,
+                "foreign_flow_path_explicit": False,
+                "source_name": "disabled",
+                "source_provenance": "disabled",
+                "row_count": 0,
+                "artifact_validation": None,
+                "reason": "foreign-flow context intentionally disabled",
+            }
+        return {
+            "enabled": True,
+            "mode": mode,
+            "path": self.config.foreign_flow_path,
+            "foreign_flow_path": self.config.foreign_flow_path,
+            "foreign_flow_path_explicit": bool(self.config.foreign_flow_path),
+            "source_name": (
+                foreign_flow_df.attrs.get("source_name")
+                if isinstance(foreign_flow_df, pd.DataFrame)
+                else None
+            ),
+            "source_provenance": (
+                foreign_flow_df.attrs.get("source_provenance")
+                if isinstance(foreign_flow_df, pd.DataFrame)
+                else None
+            ),
+            "row_count": int(len(foreign_flow_df)) if isinstance(foreign_flow_df, pd.DataFrame) else 0,
             "artifact_validation": None,
+            "reason": None,
         }
 
     @staticmethod
@@ -316,24 +364,14 @@ class WalkForwardAllModelsStackingRunner:
         end_ts: pd.Timestamp,
     ) -> dict[str, Any]:
         trainer = DualModelTrainer(model_dir=self.models_dir / "_scratch")
-        context_sources = trainer._load_context_sources(foreign_flow_path=self.config.foreign_flow_path).copy()
+        context_sources = trainer._load_context_sources(
+            foreign_flow_path=self.config.foreign_flow_path,
+            foreign_flow_mode=self.config.foreign_flow_mode,
+        ).copy()
         foreign_flow_df = context_sources.get("foreign_flow_df")
-        self._foreign_flow_context_metadata = {
-            "foreign_flow_path": self.config.foreign_flow_path,
-            "foreign_flow_path_explicit": bool(self.config.foreign_flow_path),
-            "source_name": (
-                foreign_flow_df.attrs.get("source_name")
-                if isinstance(foreign_flow_df, pd.DataFrame)
-                else None
-            ),
-            "source_provenance": (
-                foreign_flow_df.attrs.get("source_provenance")
-                if isinstance(foreign_flow_df, pd.DataFrame)
-                else None
-            ),
-            "row_count": int(len(foreign_flow_df)) if isinstance(foreign_flow_df, pd.DataFrame) else 0,
-            "artifact_validation": None,
-        }
+        self._foreign_flow_context_metadata = self._build_foreign_flow_context_metadata(
+            foreign_flow_df if isinstance(foreign_flow_df, pd.DataFrame) else None
+        )
         if self.config.foreign_flow_path:
             validation_start = pd.Timestamp(self.config.forecast_start).normalize()
             validation_end = pd.Timestamp(self.config.forecast_end).normalize()
