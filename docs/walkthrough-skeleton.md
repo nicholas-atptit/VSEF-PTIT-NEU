@@ -16,7 +16,7 @@ This document describes an older scaffold. The supported ML path now runs throug
 - `src/reporting/reports/`: Daily summary report generation.
 
 ### 2. Documentation
-- See [architecture_map.md](/h:/AI-ML-LLM in Stock_march26_PTIT_NEU/docs/architecture_map.md) for the current system flow and canonical ML path.
+- See [architecture_map.md](architecture_map.md) for the current system flow and canonical ML path.
 
 ### 3. Verification & Testing
 - Added smoke tests in `tests/test_vn100_adapters.py` and `tests/test_vn100_features.py`.
