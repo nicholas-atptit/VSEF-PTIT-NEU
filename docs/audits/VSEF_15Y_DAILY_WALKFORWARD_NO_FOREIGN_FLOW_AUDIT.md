@@ -255,3 +255,5 @@ Non-fatal validation warnings included pytest cache write permission warnings, a
 ## Next Recommended Task
 
 Create and validate a governed long-window foreign-flow artifact if future audits need to interpret foreign-flow. Until then, long-window audits should use `--foreign-flow-mode disabled` and state that foreign-flow is excluded.
+
+Follow-up: `docs/audits/VSEF_15Y_MULTIHORIZON_WALKFORWARD_AUDIT.md` extends this audit across `short_5d`, `short_10d`, `short_20d`, and the supported `long_3m` proxy for the requested 60-day horizon.

@@ -78,6 +78,8 @@ C:\Users\luong\.venv\Scripts\python.exe scripts/run_walkforward_all_models_stack
 
 The audit report for this command is `docs/audits/VSEF_15Y_DAILY_WALKFORWARD_NO_FOREIGN_FLOW_AUDIT.md`.
 
+The multi-horizon follow-up using the same disabled-mode policy is `docs/audits/VSEF_15Y_MULTIHORIZON_WALKFORWARD_AUDIT.md`.
+
 Run with a required curated artifact:
 
 ```powershell

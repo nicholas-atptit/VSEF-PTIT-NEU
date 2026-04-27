@@ -96,6 +96,8 @@ Disabled foreign-flow rows use zero available and missing counts, unavailable fo
 
 `docs/audits/VSEF_15Y_DAILY_WALKFORWARD_NO_FOREIGN_FLOW_AUDIT.md` shows this behavior in a long-window rerun: breadth missing rates remain `0.0`, foreign-flow rates are unavailable by design, and all context coverage folds remain `ok`.
 
+`docs/audits/VSEF_15Y_MULTIHORIZON_WALKFORWARD_AUDIT.md` confirms the same disabled-mode behavior across multiple forecast horizons.
+
 ## Interpreting Breadth Missing Rate
 
 `breadth_missing_rate` is the share of feature-frame rows in a fold where no exact-date breadth source row was joined. A high rate means breadth-derived features may contain fallback values and should not be interpreted as fully measured context evidence for that run.
