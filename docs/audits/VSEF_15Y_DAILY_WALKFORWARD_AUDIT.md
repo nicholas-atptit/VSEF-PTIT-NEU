@@ -268,6 +268,8 @@ Run metadata recorded the default `foreign_flow.csv` context artifact with `row_
 
 Follow-up workflow support is documented in `docs/governance/VSEF_FOREIGN_FLOW_DISABLE_MODE.md`. For repeat long-window audits without a governed foreign-flow artifact, use `--foreign-flow-mode disabled` so the default fixture/cache artifact is not loaded and foreign-flow remains explicitly uninterpreted.
 
+`docs/audits/VSEF_15Y_DAILY_WALKFORWARD_NO_FOREIGN_FLOW_AUDIT.md` documents the follow-up rerun using `--foreign-flow-mode disabled`. In that rerun, breadth coverage remains visible and foreign-flow is intentionally excluded rather than reported as 100 percent missing.
+
 ## Runtime Warnings
 
 Observed non-fatal warnings and notes:

@@ -76,6 +76,8 @@ Long-window audit with foreign-flow intentionally disabled:
 C:\Users\luong\.venv\Scripts\python.exe scripts/run_walkforward_all_models_stacking_eval.py --tickers SSI FPT BVH VNM --history-start 2010-01-01 --history-end 2025-12-31 --initial-train-start 2010-01-01 --initial-train-end 2022-12-31 --forecast-start 2023-01-01 --forecast-end 2025-12-31 --horizons short_5d --step-sizes 1 --algorithms cart,xgboost,lightgbm --ohlcv-data-dir tmp/ohlcv_15y_refresh_probe_data --foreign-flow-mode disabled --output-dir outputs/walkforward_15y_daily_ssi_fpt_bvh_vnm_no_foreign_flow --max-workers 1 --max-depth 3 --meta-min-samples 5 --epochs 1
 ```
 
+The audit report for this command is `docs/audits/VSEF_15Y_DAILY_WALKFORWARD_NO_FOREIGN_FLOW_AUDIT.md`.
+
 Run with a required curated artifact:
 
 ```powershell

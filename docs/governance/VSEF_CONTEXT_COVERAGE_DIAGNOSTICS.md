@@ -94,6 +94,8 @@ When the runner is invoked with `--foreign-flow-mode disabled`, foreign-flow con
 
 Disabled foreign-flow rows use zero available and missing counts, unavailable foreign-flow rates, and do not create a `weak_coverage` warning solely because foreign-flow is absent. Breadth missing rates still participate in the warning calculation. In `auto` and `path` modes, actual foreign-flow missingness is reported normally.
 
+`docs/audits/VSEF_15Y_DAILY_WALKFORWARD_NO_FOREIGN_FLOW_AUDIT.md` shows this behavior in a long-window rerun: breadth missing rates remain `0.0`, foreign-flow rates are unavailable by design, and all context coverage folds remain `ok`.
+
 ## Interpreting Breadth Missing Rate
 
 `breadth_missing_rate` is the share of feature-frame rows in a fold where no exact-date breadth source row was joined. A high rate means breadth-derived features may contain fallback values and should not be interpreted as fully measured context evidence for that run.
