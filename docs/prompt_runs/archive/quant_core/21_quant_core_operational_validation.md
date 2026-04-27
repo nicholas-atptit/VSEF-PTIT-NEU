@@ -14,10 +14,10 @@ Fully resolve the remaining quant-core operational issues and leave the quant co
 - `tmp/env_audit.py` (Temporary environment audit script)
 
 ## Files Modified
-- `AUDIT_REPORT.md` (Updated to reflect quant-core validation)
-- `IMPROVEMENT_ROADMAP.md` (Updated with quant-core priorities)
-- `REFACTOR_LOG.md` (Added validation trace)
-- `STRUCTURE_FINAL.md` (Updated structure overview)
+- `docs/archive/root/AUDIT_REPORT.md` (Updated to reflect quant-core validation)
+- `docs/archive/root/IMPROVEMENT_ROADMAP.md` (Updated with quant-core priorities)
+- `docs/archive/root/REFACTOR_LOG.md` (Added validation trace)
+- `docs/archive/root/STRUCTURE_FINAL.md` (Updated structure overview)
 
 ## Key Code Changes
 - No structural code changes were required as the existing architecture was sound; the intervention was focused on operational environment alignment and successful execution verification.

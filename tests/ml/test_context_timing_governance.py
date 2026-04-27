@@ -73,9 +73,12 @@ def test_foreign_flow_join_is_exact_date_and_ticker_scoped() -> None:
     result = apply_context_features(df, "AAA", foreign_flow_df=foreign_flow)
     by_date = result.set_index("date")
 
-    assert pd.isna(by_date.loc[pd.Timestamp("2024-01-02"), "foreign_net_value"])
+    assert by_date.loc[pd.Timestamp("2024-01-02"), "foreign_net_value"] == 0.0
+    assert bool(by_date.loc[pd.Timestamp("2024-01-02"), "foreign_flow_context_missing"]) is True
     assert by_date.loc[pd.Timestamp("2024-01-03"), "foreign_net_value"] == pytest.approx(12_500.0)
-    assert pd.isna(by_date.loc[pd.Timestamp("2024-01-04"), "foreign_net_value"])
+    assert bool(by_date.loc[pd.Timestamp("2024-01-03"), "foreign_flow_context_available"]) is True
+    assert by_date.loc[pd.Timestamp("2024-01-04"), "foreign_net_value"] == 0.0
+    assert bool(by_date.loc[pd.Timestamp("2024-01-04"), "foreign_flow_context_missing"]) is True
 
 
 def test_feature_engineer_forward_fill_does_not_backfill_context_from_future() -> None:

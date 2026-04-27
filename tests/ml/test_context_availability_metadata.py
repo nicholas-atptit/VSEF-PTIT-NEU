@@ -94,8 +94,31 @@ def test_foreign_flow_exact_ticker_date_join_sets_availability_metadata() -> Non
     assert bool(by_date.loc[pd.Timestamp("2024-01-02"), "foreign_flow_context_available"]) is True
     assert bool(by_date.loc[pd.Timestamp("2024-01-03"), "foreign_flow_context_available"]) is False
     assert bool(by_date.loc[pd.Timestamp("2024-01-03"), "foreign_flow_context_missing"]) is True
-    assert pd.isna(by_date.loc[pd.Timestamp("2024-01-03"), "foreign_net_value"])
+    assert by_date.loc[pd.Timestamp("2024-01-03"), "foreign_net_value"] == 0.0
     assert by_date.loc[pd.Timestamp("2024-01-04"), "foreign_flow_context_source_date"] == pd.Timestamp("2024-01-04")
+
+
+def test_foreign_flow_provenance_columns_are_not_joined_as_features() -> None:
+    df = _base_ohlcv(pd.to_datetime(["2024-01-02", "2024-01-03"]))
+    foreign_flow = pd.DataFrame(
+        {
+            "ticker": ["AAA"],
+            "date": pd.to_datetime(["2024-01-02"]),
+            "foreign_net_value": [12_000.0],
+            "source": ["vnstock_data.Trading.foreign_trade"],
+            "source_date": pd.to_datetime(["2024-01-02"]),
+            "retrieved_at": ["2026-04-26T16:03:56Z"],
+            "provider": ["vnstock_data"],
+            "coverage_note": ["provider-backed test row"],
+        }
+    )
+
+    result = apply_context_features(df, "AAA", foreign_flow_df=foreign_flow)
+
+    assert {"source", "source_date", "retrieved_at", "provider", "coverage_note"}.isdisjoint(result.columns)
+    assert result.loc[0, "foreign_net_value"] == 12_000.0
+    assert result.loc[1, "foreign_net_value"] == 0.0
+    assert bool(result.loc[1, "foreign_flow_context_missing"]) is True
 
 
 def test_future_dated_context_rows_are_not_pulled_backward() -> None:
@@ -116,7 +139,7 @@ def test_future_dated_context_rows_are_not_pulled_backward() -> None:
     assert row["market_breadth"] == 0.0
     assert bool(row["breadth_context_available"]) is False
     assert bool(row["foreign_flow_context_available"]) is False
-    assert pd.isna(row["foreign_net_value"])
+    assert row["foreign_net_value"] == 0.0
 
 
 def test_context_metadata_columns_are_excluded_from_model_features() -> None:
