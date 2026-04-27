@@ -158,3 +158,7 @@ Add a first-class walk-forward CLI option or configuration field for the foreign
 ## Follow-Up: Foreign-Flow Path Option
 
 The follow-up branch `vsef-walkforward-foreign-flow-path-option` adds `--foreign-flow-path` to the walk-forward all-model evaluation script. Future provider-backed audits can pass `data/foreign_flow_curated.csv` or another governed artifact directly, and run metadata records the supplied path and validation summary.
+
+## Follow-Up: 10-Year Walk-Forward Audit
+
+`docs/audits/VSEF_10Y_WALKFORWARD_AUDIT.md` rechecked the same local `data/foreign_flow_curated.csv` artifact against the requested 2015-01-01 through 2025-12-31 walk-forward window. The artifact remained `partial_coverage` with 68 matched ticker/date rows out of 11480 requested ticker/date pairs, so the optional long-window foreign-flow walk-forward was skipped and `foreign_*` interpretation remains conservative.
