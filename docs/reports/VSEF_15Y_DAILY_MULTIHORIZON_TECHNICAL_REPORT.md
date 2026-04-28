@@ -271,6 +271,8 @@ Fifth, multi-horizon evaluation is necessary. A single `short_5d` audit captures
 
 Sixth, foreign-flow should remain excluded from long-window interpretation until a governed artifact exists. Disabled mode improves audit clarity by preventing fixture or scratch-cache artifacts from producing misleading weak-coverage warnings.
 
+Signal-effectiveness backtesting is the next bridge from forecast evaluation to investment-style decision support. It should test whether strict BUY rules have useful precision after explicit cost and slippage assumptions, while preserving the interpretation that these are diagnostic outputs rather than trading-performance proof.
+
 ## 12. Limitations
 
 This report has the following limitations:
@@ -291,7 +293,7 @@ This report has the following limitations:
 Recommended follow-up work, in priority order:
 
 1. Regime-aware performance slicing: bull, bear, and sideways regimes.
-2. Strategy-level backtesting with fees, slippage, turnover, and liquidity constraints.
+2. Signal-effectiveness backtesting of saved forecast outputs with strict BUY precision, cost/slippage-aware success definitions, and threshold coverage frontiers.
 3. Broader VN100-style audit if runtime resources and long-window coverage allow.
 4. Long-window foreign-flow artifact curation if foreign-flow interpretation is required.
 5. Optional technical report export to Word or PDF for advisor review.

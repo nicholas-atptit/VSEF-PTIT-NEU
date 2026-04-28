@@ -170,6 +170,49 @@ Important note:
 
 - This remains an analysis-only backtest layer, not an execution engine.
 
+## 4A. Signal-Effectiveness Backtest
+
+Purpose:
+
+- Convert saved prediction outputs into diagnostic `BUY`, `HOLD`, and `AVOID` labels.
+- Evaluate whether strict BUY rules have useful precision after explicit cost and slippage assumptions.
+
+Input data:
+
+- saved fixed forward-return or walk-forward prediction CSVs
+- no live provider access
+- threshold, cost, slippage, and success-definition grids
+
+Main outputs:
+
+- `signal_rows.csv`
+- `buy_precision_by_model_horizon.csv`
+- `precision_coverage_frontier.csv`
+- `signal_effectiveness_summary.csv`
+- `strategy_proxy_metrics.csv`
+- `benchmark_comparison.csv`
+- `run_metadata.json`
+
+Key metrics:
+
+- BUY precision
+- BUY recall, when computable
+- average and median realized return after BUY
+- win rate after BUY
+- net average return after estimated cost/slippage
+- cumulative simple signal return
+- profit factor
+- max drawdown on the signal-only proxy curve
+- turnover proxy
+
+Artifact location:
+
+- caller-specified `--output-dir`
+
+Important note:
+
+- This layer is a forecast-to-signal diagnostic bridge, not trading-performance proof.
+
 ## 5. Dual-Task Evaluation
 
 Purpose:
@@ -459,6 +502,7 @@ The evaluation stack now answers different questions at different layers:
 - `backtest` and `backtest_model_comparison`: can a model fit the fixed holdout at all?
 - `backtest_forward_return`: which horizon and model family look strongest on returns?
 - `strategy_backtest`: do those forecasts survive a simple cost-aware paper strategy?
+- `signal_effectiveness`: can saved forecasts support high-precision BUY diagnostics under strict transparent rules?
 - `dual_task`: can the system forecast both return and tradability?
 - `combined_signal`: does combining both outputs help signal quality?
 - `regime_aware_analysis`: does market state change what works?
