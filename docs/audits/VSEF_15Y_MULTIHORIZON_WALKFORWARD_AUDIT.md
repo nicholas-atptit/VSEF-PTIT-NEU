@@ -319,3 +319,5 @@ Warnings observed during validation were pre-existing pytest cache permission wa
 ## Next Recommended Task
 
 Run the same multi-horizon audit across a broader ticker basket or add a governed long-window foreign-flow artifact before interpreting any foreign-flow feature behavior.
+
+Synthesis report: `docs/reports/VSEF_15Y_DAILY_MULTIHORIZON_TECHNICAL_REPORT.md` consolidates this audit with the 15-year daily and no-foreign-flow audits for supervisor or presentation review.
