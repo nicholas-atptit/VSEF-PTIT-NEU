@@ -3,14 +3,14 @@
 
 | Field | Value |
 | --- | --- |
-| Document type | Architecture note |
-| Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Document type | Historical archive |
+| Created / authored | Monday, 2026-04-20 00:28:39 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:51:14 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
-| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
-| Timestamp source | current metadata standardization run |
-| Status | Active |
+| Commit | `ef20ce73b466d75a61ca4768d4f4129405df7fb0` |
+| Timestamp source | Git history |
+| Status | Archived |
 
 The **Analysis Feed Layer** is a structured data normalization bridge between the **Quant Core** and downstream **RAG**, **LLM**, and **Human Analyst** workflows.
 
@@ -40,9 +40,9 @@ graph TD
 
 ## Implementation Details
 
-- **Schema**: [ANALYSIS_FEED_SCHEMA.md](ANALYSIS_FEED_SCHEMA.md)
-- **Normalization Logic**: [src/reporting/analysis_feed.py](../../src/reporting/analysis_feed.py)
-- **Runner**: [scripts/run_analysis_feed.py](../../scripts/run_analysis_feed.py)
+- **Schema**: [ANALYSIS_FEED_SCHEMA.md](2026-04-20_Monday__ANALYSIS_FEED_SCHEMA.md)
+- **Normalization Logic**: [src/reporting/analysis_feed.py](../../../src/reporting/analysis_feed.py)
+- **Runner**: [scripts/run_analysis_feed.py](../../../scripts/run_analysis_feed.py)
 
 ## Workflow
 

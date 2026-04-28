@@ -3,14 +3,14 @@
 
 | Field | Value |
 | --- | --- |
-| Document type | Architecture note |
-| Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Document type | Historical archive |
+| Created / authored | Monday, 2026-04-20 00:28:39 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:51:14 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
-| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
-| Timestamp source | current metadata standardization run |
-| Status | Active |
+| Commit | `ef20ce73b466d75a61ca4768d4f4129405df7fb0` |
+| Timestamp source | Git history |
+| Status | Archived |
 
 This document defines the canonical entities and ID rules for the Analysis Feed Layer.
 

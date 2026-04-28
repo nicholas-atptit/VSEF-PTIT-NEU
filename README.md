@@ -176,9 +176,9 @@ python scripts/run_regime_aware_analysis.py --dual-task-dir artifacts/dual_task 
 - [docs/audits/VSEF_MODEL_GAP_AUDIT.md](docs/audits/VSEF_MODEL_GAP_AUDIT.md): audit of implemented, mentioned, registered, and missing model coverage
 - [docs/archive/cleanup/2026-04-15_Wednesday__CHANGELOG_SUMMARY.md](docs/archive/cleanup/2026-04-15_Wednesday__CHANGELOG_SUMMARY.md): how the system evolved and why each layer was added
 - [docs/usage/USAGE_GUIDE.md](docs/usage/USAGE_GUIDE.md): runnable commands, dependencies, and artifact locations
-- [docs/architecture/ML_IMPLEMENTATION_GUIDE.md](docs/architecture/ML_IMPLEMENTATION_GUIDE.md): internal architecture, targets, trainer path, and no-leakage rules
+- [docs/usage/ML_IMPLEMENTATION_GUIDE.md](docs/usage/ML_IMPLEMENTATION_GUIDE.md): internal architecture, targets, trainer path, and no-leakage rules
 - [docs/EVALUATION_WORKFLOWS.md](docs/EVALUATION_WORKFLOWS.md): purpose, metrics, and outputs for each evaluation workflow
-- [docs/reports/2026-04-15_Wednesday__RESEARCH_FINDINGS_AND_LIMITATIONS.md](docs/reports/2026-04-15_Wednesday__RESEARCH_FINDINGS_AND_LIMITATIONS.md): current empirical findings, limits, and next steps
+- [docs/archive/root/2026-04-15_Wednesday__RESEARCH_FINDINGS_AND_LIMITATIONS.md](docs/archive/root/2026-04-15_Wednesday__RESEARCH_FINDINGS_AND_LIMITATIONS.md): current empirical findings, limits, and next steps
 
 ## Repository Structure
 

@@ -5,10 +5,10 @@
 | --- | --- |
 | Document type | Architecture note |
 | Created / authored | Sunday, 2026-04-26 15:48:16 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:51:14 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
-| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
+| Commit | `ef20ce73b466d75a61ca4768d4f4129405df7fb0` |
 | Timestamp source | Git history |
 | Status | Active |
 
@@ -28,7 +28,7 @@ Active canonical docs may keep stable names to avoid broken references.
 
 | Path | Purpose |
 | --- | --- |
-| `architecture/` | Active architecture, implementation wiring, analysis-feed, retrieval, and codebase-structure notes. |
+| `architecture/` | Active architecture maps and codebase-structure notes. |
 | `governance/` | Feature governance, context timing, coverage, and interpretability diagnostics. |
 | `audits/` | Model gap audits, real-data or cached-data governance audits, and test hardening notes. |
 | `reports/` | Polished technical reports that synthesize multiple audits for review or presentation. |
@@ -42,6 +42,8 @@ Active canonical docs may keep stable names to avoid broken references.
 | root `docs/*.md` | Stable canonical docs only: this map, repository structure, and evaluation workflows. |
 
 ## Placement Rules
+
+The root docs folder should contain only active canonical navigation/workflow documents. Historical phase notes, cleanup notes, and loose root notes belong under `docs/archive/`.
 
 - Put new governance policy or diagnostic documentation in `docs/governance/`.
 - Put one-off audit reports in `docs/audits/`.

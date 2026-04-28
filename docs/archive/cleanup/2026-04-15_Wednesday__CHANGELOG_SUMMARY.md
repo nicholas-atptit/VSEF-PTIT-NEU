@@ -245,6 +245,6 @@ That evolution makes the repository much more useful for research, even though i
 ## Related Documentation
 
 - [USAGE_GUIDE.md](../../usage/USAGE_GUIDE.md)
-- [ML_IMPLEMENTATION_GUIDE.md](../../architecture/ML_IMPLEMENTATION_GUIDE.md)
+- [ML_IMPLEMENTATION_GUIDE.md](../../usage/ML_IMPLEMENTATION_GUIDE.md)
 - [EVALUATION_WORKFLOWS.md](../../EVALUATION_WORKFLOWS.md)
-- [RESEARCH_FINDINGS_AND_LIMITATIONS.md](../../reports/2026-04-15_Wednesday__RESEARCH_FINDINGS_AND_LIMITATIONS.md)
+- [RESEARCH_FINDINGS_AND_LIMITATIONS.md](../root/2026-04-15_Wednesday__RESEARCH_FINDINGS_AND_LIMITATIONS.md)

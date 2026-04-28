@@ -43,7 +43,7 @@ This document records the step-by-step implementation of the Automated Daily Bri
     - Added data quality alerts (e.g., warnings for skipped tickers).
 
 ### 4. Documentation Development
-- **File**: `docs/daily_brief.md`
+- **File**: `docs/archive/root/2026-04-02_Thursday__daily_brief.md`
 - **Actions**:
     - Created a user manual explaining the CLI arguments (`--latest`, `--file`).
     - Described the interpretation of metrics like `prob_up` and `volatility_score`.

@@ -3,13 +3,13 @@
 
 | Field | Value |
 | --- | --- |
-| Document type | Audit |
-| Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Document type | Governance note |
+| Created / authored | Sunday, 2026-04-19 13:48:26 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:51:14 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
-| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
-| Timestamp source | current metadata standardization run |
+| Commit | `ef20ce73b466d75a61ca4768d4f4129405df7fb0` |
+| Timestamp source | Git history |
 | Status | Active |
 
 ## Scope

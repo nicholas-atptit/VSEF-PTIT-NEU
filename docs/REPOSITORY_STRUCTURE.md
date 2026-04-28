@@ -5,10 +5,10 @@
 | --- | --- |
 | Document type | Architecture note |
 | Created / authored | Sunday, 2026-04-26 15:48:16 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:51:14 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
-| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
+| Commit | `ef20ce73b466d75a61ca4768d4f4129405df7fb0` |
 | Timestamp source | Git history |
 | Status | Active |
 
@@ -67,7 +67,7 @@ Broken or excluded test files should not remain mixed with active tests. If a te
 
 `docs/` is grouped as follows:
 
-- `docs/architecture/`: active architecture maps, implementation wiring, analysis-feed, retrieval, and codebase-structure notes
+- `docs/architecture/`: active architecture maps and codebase-structure notes
 - `docs/governance/`: governance and diagnostic policy notes
 - `docs/audits/`: audit reports and validation notes
 - `docs/reports/`: polished technical reports and empirical summaries
@@ -83,6 +83,8 @@ Broken or excluded test files should not remain mixed with active tests. If a te
 See `docs/README.md` for the documentation map.
 
 Historical and archived documents should use `YYYY-MM-DD_Day__Original_Slug.md`. Active canonical docs may keep stable names to avoid broken references.
+
+The root docs folder should contain only active canonical navigation/workflow documents. Historical phase notes, cleanup notes, and loose root notes belong under `docs/archive/`.
 
 ## Data, Artifacts, Outputs, And Tmp
 
