@@ -1,0 +1,59 @@
+# Daily Brief Reporting Guide
+## Document Metadata
+
+| Field | Value |
+| --- | --- |
+| Document type | Workflow guide |
+| Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
+| Timestamp source | current metadata standardization run |
+| Status | Active |
+
+The Daily Brief module provides a high-level summary of the latest VN100 batch inference results, optimized for quick decision-making and risk monitoring.
+
+## Purpose
+- Consolidate predictions across the VN100 universe.
+- Identify the most bullish and highest return prospects.
+- Highlight high-risk/high-volatility names.
+- Report on system data quality and processing statistics.
+
+## Module Structure
+- **Module**: `src/reporting/daily_brief.py`
+- **Output Directory**: `reports/`
+- **Formats**: Markdown (.md), CSV (.csv), HTML (.html)
+
+## How to Run
+
+### Automatic (Latest Batch)
+To generate a report for the most recent batch inference run:
+```bash
+python -m src.reporting.daily_brief --latest
+```
+
+### Specific File
+To generate a report for a specific JSON result:
+```bash
+python -m src.reporting.daily_brief --file data/processed/batch_inference_20260402_030000.json
+```
+
+## Report Sections
+
+### 1. Executive Summary
+- **Universe Size**: Total tickers targeted.
+- **Success Rate**: Percentage of tickers successfully predicted.
+- **Model Mode**: Shows the trainer and thresholds used.
+
+### 2. Top Picks
+- **Bullish**: Ranked by `prob_up` (Probability of upward trend).
+- **Expected Return**: Calculated as `(median_target / current_price) - 1`.
+- **Action**: The recommended fusion action (BUY, HOLD, SELL, WAIT).
+
+### 3. High Risk / Volatility
+- **Volatility Score**: Predicted annualized volatility.
+- **Heuristic Scenario Risk**: Residual-based scenario VaR/CVaR summary around the point forecast. This is not calibrated confidence.
+
+### 4. Data Quality Warnings
+- Alerts for missing tickers or predictions with unusually weak scenario-risk or data-quality context.

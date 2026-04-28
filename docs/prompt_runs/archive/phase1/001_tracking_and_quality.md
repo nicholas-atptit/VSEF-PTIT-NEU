@@ -51,7 +51,7 @@ Extend the VN100-centric prediction system with:
 | **Validator** | `src/validators/data_quality.py` | `src/historical/backdate.py`, `scripts/train_ml_tickers.py` |
 | **Tests** | `tests/test_data_quality.py` | N/A |
 | **Smoke Test** | `tests/smoke_test_validation.py` | N/A |
-| **Docs** | `docs/data_quality.md`, `docs/experiment_tracking.md` | N/A |
+| **Docs** | `docs/governance/data_quality.md`, `docs/governance/experiment_tracking.md` | N/A |
 
 ## 4. Commands to Run/Test
 

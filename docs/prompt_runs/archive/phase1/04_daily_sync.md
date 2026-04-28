@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `scripts/sync_all_data.py`
-  - `docs/daily_sync_vn100.md`
+  - `docs/usage/daily_sync_vn100.md`
   - `src/historical/backdate.py`
 
 ## Objective
@@ -14,7 +14,7 @@
 - Implement configurable parameters: `universe_mode`, `start_date`, `end_date`, and `force_refresh`.
 
 ## Files Created
-- `docs/daily_sync_vn100.md`
+- `docs/usage/daily_sync_vn100.md`
 
 ## Files Modified
 - `scripts/sync_all_data.py` (Extended CLI logic)
@@ -49,7 +49,7 @@
 
 ## Verification
 - `python scripts/sync_all_data.py --universe_mode current_vn100 --start_date 2024-03-01`
-- Reviewing `docs/daily_sync_vn100.md`.
+- Reviewing `docs/usage/daily_sync_vn100.md`.
 
 ## Open TODOs
 - Concurrent sync (currently sequential for safety).

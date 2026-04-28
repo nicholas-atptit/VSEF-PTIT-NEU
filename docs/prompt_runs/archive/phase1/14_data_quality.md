@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `src/validators/data_quality.py`
-  - `docs/data_quality.md`
+  - `docs/governance/data_quality.md`
   - `scripts/sync_all_data.py`
   - `tests/test_data_quality.py`
 
@@ -16,7 +16,7 @@
 
 ## Files Created
 - `src/validators/data_quality.py`
-- `docs/data_quality.md`
+- `docs/governance/data_quality.md`
 - `tests/test_data_quality.py`
 
 ## Files Modified
@@ -56,7 +56,7 @@
 
 ## Verification
 - `pytest tests/test_data_quality.py -v`
-- Reviewing `docs/data_quality.md`.
+- Reviewing `docs/governance/data_quality.md`.
 
 ## Open TODOs
 - Dynamic thresholding per indicator type.

@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `src/ml/labels/` package
-  - `docs/label_engineering.md`
+  - `docs/usage/label_engineering.md`
   - `tests/test_label_engineering.py`
 
 ## Objective
@@ -19,7 +19,7 @@
 - `src/ml/labels/classification.py` (Binary/Ternary)
 - `src/ml/labels/regression.py` (Returns)
 - `src/ml/labels/volatility.py` (Realized Vol)
-- `docs/label_engineering.md`
+- `docs/usage/label_engineering.md`
 - `tests/test_label_engineering.py`
 
 ## Files Modified
@@ -56,7 +56,7 @@
 
 ## Verification
 - `python -m pytest tests/test_label_engineering.py -v`
-- Reviewing `docs/label_engineering.md`.
+- Reviewing `docs/usage/label_engineering.md`.
 
 ## Open TODOs
 - Triple-barrier labeling implementation.

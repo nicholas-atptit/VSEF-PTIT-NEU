@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `src/reporting/ranked_predictions.py`
-  - `docs/ranked_predictions.md`
+  - `docs/usage/ranked_predictions.md`
   - `src/api/schemas_v2.py` (v5.1 update)
   - `src/ml/signal_generator.py`
 
@@ -16,7 +16,7 @@
 
 ## Files Created
 - `src/reporting/ranked_predictions.py`
-- `docs/ranked_predictions.md`
+- `docs/usage/ranked_predictions.md`
 
 ## Files Modified
 - `src/api/schemas_v2.py` (Added `current_price` and `volatility_score` to payloads)
@@ -56,7 +56,7 @@
 
 ## Verification
 - `python -m src.reporting.ranked_predictions --latest`
-- Reviewing `docs/ranked_predictions.md`.
+- Reviewing `docs/usage/ranked_predictions.md`.
 
 ## Open TODOs
 - Sector-wise ranking (Top 3 by Industry).

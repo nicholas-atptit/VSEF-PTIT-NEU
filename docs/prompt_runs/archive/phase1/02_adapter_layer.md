@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `src/adapters/vnstock_adapter.py`
-  - `docs/vnstock_adapter.md`
+  - `docs/usage/vnstock_adapter.md`
   - `config/settings.py`
 
 ## Objective
@@ -15,7 +15,7 @@
 
 ## Files Created
 - `src/adapters/vnstock_adapter.py`
-- `docs/vnstock_adapter.md`
+- `docs/usage/vnstock_adapter.md`
 
 ## Files Modified
 - None (First-time implementation)
@@ -50,7 +50,7 @@
 
 ## Verification
 - `python scripts/test_adapter.py` (assumed based on logic)
-- Reviewing `docs/vnstock_adapter.md`.
+- Reviewing `docs/usage/vnstock_adapter.md`.
 
 ## Open TODOs
 - Integrate with existing `DataLoader`.

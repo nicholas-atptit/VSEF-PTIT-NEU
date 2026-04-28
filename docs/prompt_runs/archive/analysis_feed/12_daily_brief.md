@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `src/reporting/daily_brief.py`
-  - `docs/daily_brief.md`
+  - `docs/usage/daily_brief.md`
 
 ## Objective
 - Implement an automated daily reporting module for the VN100 stock prediction system.
@@ -14,7 +14,7 @@
 
 ## Files Created
 - `src/reporting/daily_brief.py`
-- `docs/daily_brief.md`
+- `docs/usage/daily_brief.md`
 
 ## Files Modified
 - None (New module)
@@ -48,7 +48,7 @@
 
 ## Verification
 - `python -m src.reporting.daily_brief --latest`
-- Reviewing `docs/daily_brief.md`.
+- Reviewing `docs/usage/daily_brief.md`.
 
 ## Open TODOs
 - PDF export support.

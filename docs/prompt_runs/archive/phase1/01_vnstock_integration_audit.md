@@ -5,7 +5,7 @@
 
 ## Traceability
 - Source of evidence used:
-  - `docs/codebase_audit.md`
+  - `docs/archive/root/2026-04-02_Thursday__codebase_audit.md`
   - `config/settings.py`
   - `src/historical/`
   - `src/ml/`
@@ -15,7 +15,7 @@
 - Map the current architecture, identify reusable components, and identify gaps.
 
 ## Files Created
-- `docs/codebase_audit.md`
+- `docs/archive/root/2026-04-02_Thursday__codebase_audit.md`
 
 ## Files Modified
 - None (Audit phase)

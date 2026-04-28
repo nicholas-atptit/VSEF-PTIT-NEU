@@ -1,34 +1,45 @@
 # VSEF Documentation Map
-
 ## Document Metadata
 
 | Field | Value |
 | --- | --- |
-| Document type | Documentation map |
+| Document type | Architecture note |
 | Created / authored | Sunday, 2026-04-26 15:48:16 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 21:37:10 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
-| Branch | not specified |
-| Commit | `1bbb75a793c5ea30a26ffef7860aadd06306a640` |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
 | Timestamp source | Git history |
+| Status | Active |
 
-This folder contains project documentation for the private VSEF research repository. The documentation is grouped to make governance notes, audit reports, usage guides, and historical records easier to find.
+This folder contains project documentation for the private VSEF research repository. The documentation is grouped to make architecture notes, governance notes, audit reports, usage guides, and historical records easier to find.
 
 ## Documentation Timestamp Standard
 
-Active VSEF documentation should include a `Document Metadata` table near the top of the file. The table records document type, created/authored timestamp, last updated timestamp, timezone, branch, commit, and timestamp source. The preferred timezone is `Asia/Ho_Chi_Minh / ICT (UTC+07:00)`.
+Active VSEF documentation should include a `Document Metadata` table near the top of the file. The table records document type, created/authored timestamp, last updated timestamp, timezone, branch, commit, timestamp source, and status. The preferred timezone is `Asia/Ho_Chi_Minh / ICT (UTC+07:00)`.
+
+Historical and archived documents should use:
+
+`YYYY-MM-DD_Day__Original_Slug.md`
+
+Active canonical docs may keep stable names to avoid broken references.
 
 ## Layout
 
 | Path | Purpose |
 | --- | --- |
+| `architecture/` | Active architecture, implementation wiring, analysis-feed, retrieval, and codebase-structure notes. |
 | `governance/` | Feature governance, context timing, coverage, and interpretability diagnostics. |
 | `audits/` | Model gap audits, real-data or cached-data governance audits, and test hardening notes. |
 | `reports/` | Polished technical reports that synthesize multiple audits for review or presentation. |
 | `usage/` | Focused command references for reproducible local workflows. |
 | `roadmap/` | Conservative development roadmap and future research sequencing. |
-| `archive/` | Historical notes, root-level legacy documents, and prompt-run records retained for traceability. |
-| root `docs/*.md` | Active architecture, usage, workflow, and research-limitations guides that still have broad references. |
+| `archive/cleanup/` | Historical cleanup, refactor, changelog, and supervisor-summary notes. |
+| `archive/phases/` | Historical phase maps, decisions, audits, and phase review notes. |
+| `archive/retrieval/` | Superseded retrieval/RAG notes when a retrieval document is no longer active. |
+| `archive/vn100/` | Superseded VN100 pipeline notes when usage docs no longer match the active code path. |
+| `archive/root/` | Root-level historical or loose documents retained for traceability. |
+| root `docs/*.md` | Stable canonical docs only: this map, repository structure, and evaluation workflows. |
 
 ## Placement Rules
 
@@ -37,7 +48,9 @@ Active VSEF documentation should include a `Document Metadata` table near the to
 - Put synthesized technical reports in `docs/reports/`.
 - Put focused command references in `docs/usage/`.
 - Put roadmap and future sequencing documents in `docs/roadmap/`.
-- Put superseded, historical, or root-cleanup documents in `docs/archive/`.
+- Put active architecture and implementation wiring notes in `docs/architecture/`.
+- Put superseded, historical, phase, retrieval, VN100, or root-cleanup documents in the matching `docs/archive/` subfolder.
+- Prefix archived, historical, audit, report, and summary filenames with `YYYY-MM-DD_Day__` when they are moved into archive or categorized folders.
 - Keep generated CSVs, reports, charts, and model artifacts out of `docs/`; use `artifacts/`, `outputs/`, or `tmp/` depending on retention needs.
 
 Recent audit examples include `docs/audits/VSEF_BROADER_FEATURE_GOVERNANCE_AUDIT.md`, `docs/audits/VSEF_FOREIGN_FLOW_COVERAGE_INVESTIGATION.md`, `docs/audits/VSEF_FOREIGN_FLOW_CURATED_SAMPLE.md`, `docs/audits/VSEF_FOREIGN_FLOW_PROVIDER_CURATION_ATTEMPT.md`, `docs/audits/VSEF_FOREIGN_FLOW_REAL_COVERAGE_AUDIT.md`, `docs/audits/VSEF_10Y_WALKFORWARD_AUDIT.md`, `docs/audits/VSEF_OHLCV_CACHE_10Y_AVAILABILITY_AUDIT.md`, `docs/audits/VSEF_15Y_DAILY_WALKFORWARD_AUDIT.md`, `docs/audits/VSEF_15Y_DAILY_WALKFORWARD_NO_FOREIGN_FLOW_AUDIT.md`, `docs/audits/VSEF_15Y_MULTIHORIZON_WALKFORWARD_AUDIT.md`, `docs/audits/VSEF_15Y_BROADER_TICKER_MULTIHORIZON_AUDIT.md`, `docs/audits/VSEF_SIGNAL_EFFECTIVENESS_BACKTEST.md`, `docs/audits/VSEF_HELDOUT_THRESHOLD_SELECTION.md`, `docs/audits/VSEF_ROLLING_REGIME_THRESHOLD_SELECTION.md`, and `docs/audits/VSEF_SIGNAL_REGIME_JOIN.md`. The synthesized 15-year technical report is `docs/reports/VSEF_15Y_DAILY_MULTIHORIZON_TECHNICAL_REPORT.md`. Foreign-flow artifact curation policy lives at `docs/governance/VSEF_FOREIGN_FLOW_ARTIFACT_POLICY.md`, intentional exclusion is documented in `docs/governance/VSEF_FOREIGN_FLOW_DISABLE_MODE.md`, and foreign-flow audit command examples live at `docs/usage/VSEF_FOREIGN_FLOW_AUDIT_COMMANDS.md`.

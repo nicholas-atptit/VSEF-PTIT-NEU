@@ -1,16 +1,16 @@
 # VSEF 15-Year Broader-Ticker Multi-Horizon Walk-Forward Audit
-
 ## Document Metadata
 
 | Field | Value |
 | --- | --- |
 | Document type | Audit |
 | Created / authored | Tuesday, 2026-04-28 12:33:07 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 12:33:07 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
-| Branch | `vsef-15y-broader-ticker-audit` |
-| Commit | `1c790843f7b1dddb7c4b13a32797892d9dfffe18` |
-| Timestamp source | Git history; existing document date mirrored |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
+| Timestamp source | Git history |
+| Status | Active |
 
 ## Purpose
 
