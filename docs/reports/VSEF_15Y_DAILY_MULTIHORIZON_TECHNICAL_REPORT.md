@@ -277,6 +277,8 @@ Held-out threshold selection is required before treating BUY precision targets a
 
 Rolling held-out threshold selection is required before treating a BUY precision target as stable. Regime-conditioned evaluation is also needed before deciding whether BUY rules should be active in all market states or only in favorable regimes. Current rolling diagnostics remain analysis-only and do not establish trading-performance proof.
 
+Regime-conditioned BUY precision requires safe precomputed regime labels joined to prediction rows. The signal-regime join layer enriches copied prediction outputs and records coverage and source-review flags; it does not infer regimes and does not prove leakage absence by itself.
+
 ## 12. Limitations
 
 This report has the following limitations:
@@ -291,13 +293,14 @@ This report has the following limitations:
 - transaction costs, slippage, liquidity, borrow constraints, turnover, and portfolio construction constraints are not proven here
 - correlations are weak or negative in several settings
 - directional accuracy and one-period BUY precision are not strong enough by themselves to support trading claims
+- regime-conditioned signal diagnostics require reviewed trailing-only regime labels
 
 ## 13. Recommended Next Steps
 
 Recommended follow-up work, in priority order:
 
-1. Rolling held-out threshold selection for saved forecast outputs before promoting any BUY precision target as stable.
-2. Regime-aware performance slicing: bull, bear, sideways, and high-volatility regimes where safe labels exist.
+1. Produce reviewed trailing-only regime labels, join them to saved prediction outputs, and rerun rolling held-out threshold diagnostics by regime.
+2. Rolling held-out threshold selection for additional saved forecast outputs before promoting any BUY precision target as stable.
 3. Broader VN100-style audit if runtime resources and long-window coverage allow.
 4. Long-window foreign-flow artifact curation if foreign-flow interpretation is required.
 5. Optional technical report export to Word or PDF for advisor review.

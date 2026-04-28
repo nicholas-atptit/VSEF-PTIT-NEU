@@ -298,6 +298,42 @@ Important note:
 
 - Rolling held-out testing is required before treating a BUY precision target as stable. Regime-conditioned evaluation is needed before deciding whether BUY rules should be active in all market states or only in favorable regimes.
 
+## 4D. Signal Regime Join
+
+Purpose:
+
+- Attach precomputed safe regime labels to saved prediction rows before signal-effectiveness diagnostics.
+- Record join coverage and source-review flags.
+- Avoid fabricating regimes inside the signal layer.
+
+Input data:
+
+- saved prediction CSVs with `prediction_date`
+- precomputed regime label CSVs with a configurable date column
+- optional ticker column when using ticker/date joins
+
+Main outputs:
+
+- enriched prediction CSV with `regime`
+- join coverage summary JSON or CSV
+
+Supported join modes:
+
+- `date`
+- `ticker_date`
+
+Governance checks:
+
+- matched and unmatched prediction rows
+- duplicate regime keys
+- suspicious future-looking source column names
+- regime label distribution
+- classification as `safe_if_regime_source_is_trailing`, `requires_source_review`, or `schema_invalid`
+
+Important note:
+
+- Regime-conditioned BUY precision requires safe precomputed regime labels joined to prediction rows. The join layer does not infer regimes and does not prove leakage absence by itself; it records coverage and source-review flags.
+
 ## 5. Dual-Task Evaluation
 
 Purpose:
@@ -590,6 +626,7 @@ The evaluation stack now answers different questions at different layers:
 - `signal_effectiveness`: can saved forecasts support high-precision BUY diagnostics under strict transparent rules?
 - `heldout_threshold_selection`: do selected BUY thresholds survive on a later held-out period?
 - `rolling_heldout_threshold_selection`: do selected BUY thresholds and precision targets remain stable across chronological folds?
+- `signal_regime_join`: can safe precomputed regime labels be attached to prediction rows for regime-conditioned signal diagnostics?
 - `dual_task`: can the system forecast both return and tradability?
 - `combined_signal`: does combining both outputs help signal quality?
 - `regime_aware_analysis`: does market state change what works?

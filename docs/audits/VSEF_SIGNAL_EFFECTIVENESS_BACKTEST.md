@@ -116,6 +116,8 @@ Use `--evaluation-mode heldout_threshold_selection` to select thresholds on an e
 
 Use `--evaluation-mode rolling_heldout_threshold_selection` with `--rolling-splits` or `--rolling-splits-file` to repeat that protocol across multiple chronological folds. Rolling held-out testing is required before treating a BUY precision target as stable. If prediction rows already contain safe regime labels, rolling mode can also emit regime-conditioned BUY precision summaries; otherwise metadata records that regime diagnostics were skipped.
 
+Regime-conditioned BUY precision requires safe precomputed regime labels joined to prediction rows. `scripts/join_regime_to_predictions.py` can attach those labels to a copy of saved predictions and write coverage/source-review metadata. The join layer does not infer regimes and does not prove leakage absence by itself.
+
 ## CLI
 
 Example:
@@ -143,5 +145,5 @@ The script never modifies the input prediction CSV.
 
 - Run the CLI on ignored walk-forward outputs when available.
 - Compare BUY precision by ticker, horizon, and regime when safe labels are available.
-- Add governed regime/context joins before making regime-conditioned policy decisions on outputs without embedded regime labels.
+- Use the signal-regime join utility before making regime-conditioned policy decisions on outputs without embedded regime labels.
 - Consider probability calibration only for models and horizons with governed probability semantics.
