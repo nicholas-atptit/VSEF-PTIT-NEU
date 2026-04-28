@@ -9,12 +9,14 @@ Source audit branches:
 - `vsef-15y-daily-walkforward-audit`
 - `vsef-15y-daily-audit-no-foreign-flow`
 - `vsef-15y-multihorizon-audit`
+- `vsef-15y-broader-ticker-audit`
 
 Source documents:
 
 - `docs/audits/VSEF_15Y_DAILY_WALKFORWARD_AUDIT.md`
 - `docs/audits/VSEF_15Y_DAILY_WALKFORWARD_NO_FOREIGN_FLOW_AUDIT.md`
 - `docs/audits/VSEF_15Y_MULTIHORIZON_WALKFORWARD_AUDIT.md`
+- `docs/audits/VSEF_15Y_BROADER_TICKER_MULTIHORIZON_AUDIT.md`
 - `docs/governance/VSEF_FOREIGN_FLOW_DISABLE_MODE.md`
 - `docs/governance/VSEF_CONTEXT_COVERAGE_DIAGNOSTICS.md`
 - `docs/governance/VSEF_FOREIGN_FLOW_ARTIFACT_POLICY.md`
@@ -30,6 +32,8 @@ The evaluation design uses daily walk-forward steps with `--step-sizes 1`, meani
 Foreign-flow context is intentionally disabled because no governed long-window foreign-flow artifact exists for the requested ticker/date window. Disabled foreign-flow is an explicit exclusion control, not evidence of complete foreign-flow coverage. Breadth context remains measured and interpretable.
 
 Across the evaluated horizons, `stacking_final` consistently achieves the lowest MAE and RMSE. Directional accuracy is more horizon-sensitive and is not consistently dominated by one model. These findings are research and evaluation evidence only. They do not prove live-trading readiness or trading performance.
+
+A follow-up broader-ticker audit is documented in `docs/audits/VSEF_15Y_BROADER_TICKER_MULTIHORIZON_AUDIT.md`. It requested `SSI`, `FPT`, `BVH`, `VNM`, `ACB`, `HPG`, `MWG`, `DGC`, `VCB`, and `VIC`; coverage supported the full 2010-2025 window for 8 tickers, while `MWG` and `DGC` were excluded because their staged histories begin in 2014. The broader fallback run preserves the `stacking_final` MAE/RMSE pattern and keeps directional performance horizon-sensitive.
 
 ## 1. Project Context
 
@@ -286,12 +290,11 @@ This report has the following limitations:
 
 Recommended follow-up work, in priority order:
 
-1. Broader ticker basket audit.
-2. Regime-aware performance slicing: bull, bear, and sideways regimes.
-3. Strategy-level backtesting with fees, slippage, turnover, and liquidity constraints.
+1. Regime-aware performance slicing: bull, bear, and sideways regimes.
+2. Strategy-level backtesting with fees, slippage, turnover, and liquidity constraints.
+3. Broader VN100-style audit if runtime resources and long-window coverage allow.
 4. Long-window foreign-flow artifact curation if foreign-flow interpretation is required.
-5. Minimal GRU integration only after the current empirical baseline is documented and governance checks remain intact.
-6. Optional technical report export to Word or PDF for advisor review.
+5. Optional technical report export to Word or PDF for advisor review.
 
 ## 14. Conclusion
 
@@ -299,4 +302,4 @@ VSEF now has a governed 15-year daily and multi-horizon evaluation baseline for 
 
 The strongest conclusion is that `stacking_final` is most reliable on error metrics across the evaluated horizons. Directional performance is mixed, horizon-dependent, and not strong enough to justify trading-performance claims. The framework is suitable for further research and audit-driven development, not live deployment.
 
-Controls such as explicit OHLCV directories and foreign-flow disabled mode improve reproducibility and interpretation discipline. Future work should broaden the ticker universe, add regime-aware analysis, and curate long-window foreign-flow only if that context is required for governed interpretation.
+Controls such as explicit OHLCV directories and foreign-flow disabled mode improve reproducibility and interpretation discipline. Future work should prioritize regime-aware analysis, strategy-level validation with realistic frictions, broader coverage only where long-window data supports it, and long-window foreign-flow curation only if that context is required for governed interpretation.
