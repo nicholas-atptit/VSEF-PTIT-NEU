@@ -1,6 +1,22 @@
 # VSEF Documentation Map
 
+## Document Metadata
+
+| Field | Value |
+| --- | --- |
+| Document type | Documentation map |
+| Created / authored | Sunday, 2026-04-26 15:48:16 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 21:37:10 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | not specified |
+| Commit | `1bbb75a793c5ea30a26ffef7860aadd06306a640` |
+| Timestamp source | Git history |
+
 This folder contains project documentation for the private VSEF research repository. The documentation is grouped to make governance notes, audit reports, usage guides, and historical records easier to find.
+
+## Documentation Timestamp Standard
+
+Active VSEF documentation should include a `Document Metadata` table near the top of the file. The table records document type, created/authored timestamp, last updated timestamp, timezone, branch, commit, and timestamp source. The preferred timezone is `Asia/Ho_Chi_Minh / ICT (UTC+07:00)`.
 
 ## Layout
 

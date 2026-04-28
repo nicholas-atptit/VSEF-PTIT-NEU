@@ -1,8 +1,16 @@
 # VSEF Foreign-Flow Artifact Policy
 
-Date: 2026-04-26
+## Document Metadata
 
-Branch: `vsef-foreign-flow-artifact-curation`
+| Field | Value |
+| --- | --- |
+| Document type | Governance note |
+| Created / authored | Sunday, 2026-04-26 16:38:27 ICT (UTC+07:00) |
+| Last updated | Monday, 2026-04-27 23:29:57 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-foreign-flow-artifact-curation` |
+| Commit | `9b7a72fd817fd86812c0f8da24d77b2154bdc4b4` |
+| Timestamp source | Git history; existing document date mirrored |
 
 ## Purpose
 

@@ -1,5 +1,17 @@
 # VSEF Held-Out Threshold Selection
 
+## Document Metadata
+
+| Field | Value |
+| --- | --- |
+| Document type | Audit |
+| Created / authored | Tuesday, 2026-04-28 15:25:36 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 19:39:18 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-heldout-threshold-selection` |
+| Commit | `f4eb2971c60d303828ebd77d794b2172c2227d87` |
+| Timestamp source | Git history |
+
 ## Purpose
 
 This audit adds a held-out threshold-selection protocol on top of the signal-effectiveness layer. The goal is to test whether BUY precision targets survive when thresholds are selected on a separate validation period and then applied unchanged to a later held-out period.

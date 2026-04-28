@@ -1,5 +1,17 @@
 # VSEF Signal-Effectiveness Backtest
 
+## Document Metadata
+
+| Field | Value |
+| --- | --- |
+| Document type | Audit |
+| Created / authored | Tuesday, 2026-04-28 15:04:50 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 21:37:10 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | not specified |
+| Commit | `1bbb75a793c5ea30a26ffef7860aadd06306a640` |
+| Timestamp source | Git history |
+
 ## Purpose
 
 This audit adds a non-invasive signal-effectiveness layer on top of existing forecast outputs. It converts saved prediction rows into investment-style diagnostic labels:

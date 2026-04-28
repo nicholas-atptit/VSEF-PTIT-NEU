@@ -1,5 +1,17 @@
 # VSEF Signal Regime Join
 
+## Document Metadata
+
+| Field | Value |
+| --- | --- |
+| Document type | Audit |
+| Created / authored | Tuesday, 2026-04-28 21:37:10 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 21:37:10 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-regime-context-join-for-signals` |
+| Commit | `1bbb75a793c5ea30a26ffef7860aadd06306a640` |
+| Timestamp source | Git history |
+
 ## Purpose
 
 This audit adds a CSV-only join layer for attaching safe precomputed regime labels to saved prediction outputs before running signal-effectiveness, held-out threshold, or rolling held-out diagnostics.
