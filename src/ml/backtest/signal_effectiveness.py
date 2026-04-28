@@ -17,6 +17,15 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+EVALUATION_MODE_FRONTIER = "frontier"
+EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION = "heldout_threshold_selection"
+SUPPORTED_EVALUATION_MODES = {
+    EVALUATION_MODE_FRONTIER,
+    EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION,
+}
+SELECTION_CRITERION_MAX_PRECISION = "max_precision"
+SUPPORTED_SELECTION_CRITERIA = {SELECTION_CRITERION_MAX_PRECISION}
+
 SIGNAL_BUY = "BUY"
 SIGNAL_HOLD = "HOLD"
 SIGNAL_AVOID = "AVOID"
@@ -44,6 +53,7 @@ DEFAULT_COST_PER_TRADE_VALUES = [0.001, 0.002, 0.003]
 DEFAULT_SLIPPAGE_VALUES = [0.0005, 0.001]
 DEFAULT_MINIMUM_SIGNAL_COUNTS = [30, 50, 100]
 DEFAULT_PROBABILITY_UP_THRESHOLDS = [0.55, 0.60, 0.65, 0.70]
+DEFAULT_PRECISION_TARGETS = [0.60, 0.65, 0.70]
 
 DATE_CANDIDATES = ["prediction_date", "date", "forecast_date"]
 TICKER_CANDIDATES = ["ticker", "symbol"]
@@ -195,6 +205,112 @@ BENCHMARK_COLUMNS = [
     "buy_precision_lift_over_benchmark",
 ]
 
+SELECTED_THRESHOLD_COLUMNS = [
+    "model_name",
+    "horizon",
+    "ticker_scope",
+    "policy",
+    "success_definition",
+    "selected_predicted_return_threshold",
+    "selected_probability_up_threshold",
+    "selected_cost_per_trade",
+    "selected_slippage",
+    "selection_buy_precision",
+    "selection_buy_count",
+    "selection_net_avg_return",
+    "selection_minimum_signal_count",
+    "selection_buy_recall",
+    "selection_signal_count",
+    "selection_hold_count",
+    "selection_avoid_count",
+]
+
+THRESHOLD_SELECTION_TRACE_COLUMNS = [
+    "model_name",
+    "horizon",
+    "ticker_scope",
+    "policy",
+    "success_definition",
+    "predicted_return_threshold",
+    "probability_up_threshold",
+    "cost_per_trade",
+    "slippage",
+    "minimum_signal_count",
+    "passes_minimum_signal_count",
+    "selection_candidate",
+    "selection_rank",
+    "selected",
+    "buy_precision",
+    "buy_signal_count",
+    "net_average_return_after_buy",
+    "buy_recall",
+    "signal_count",
+    "hold_signal_count",
+    "avoid_signal_count",
+]
+
+HELDOUT_BUY_PRECISION_COLUMNS = [
+    "model_name",
+    "horizon",
+    "ticker_scope",
+    "policy",
+    "success_definition",
+    "selected_predicted_return_threshold",
+    "selected_probability_up_threshold",
+    "selected_cost_per_trade",
+    "selected_slippage",
+    "minimum_signal_count",
+    "heldout_signal_count",
+    "heldout_buy_precision",
+    "heldout_buy_count",
+    "heldout_successful_buy_count",
+    "heldout_buy_recall",
+    "heldout_avg_realized_return_after_buy",
+    "heldout_net_avg_return_after_buy",
+    "heldout_hit_rate",
+    "heldout_profit_factor",
+    "heldout_max_drawdown_proxy",
+    "heldout_turnover_proxy",
+    "heldout_cumulative_simple_signal_return",
+]
+
+PRECISION_TARGET_PASS_FAIL_COLUMNS = [
+    "model_name",
+    "horizon",
+    "ticker_scope",
+    "policy",
+    "success_definition",
+    "selected_predicted_return_threshold",
+    "selected_probability_up_threshold",
+    "selected_cost_per_trade",
+    "selected_slippage",
+    "minimum_signal_count",
+    "precision_target",
+    "heldout_buy_precision",
+    "heldout_buy_count",
+    "pass_fail",
+]
+
+HELDOUT_STRATEGY_PROXY_COLUMNS = [
+    "model_name",
+    "horizon",
+    "ticker_scope",
+    "policy",
+    "success_definition",
+    "selected_predicted_return_threshold",
+    "selected_probability_up_threshold",
+    "selected_cost_per_trade",
+    "selected_slippage",
+    "minimum_signal_count",
+    "heldout_buy_count",
+    "heldout_net_avg_return_after_buy",
+    "heldout_hit_rate",
+    "heldout_profit_factor",
+    "heldout_max_drawdown_proxy",
+    "heldout_turnover_proxy",
+    "heldout_cumulative_simple_signal_return",
+]
+
 
 @dataclass(frozen=True, slots=True)
 class PredictionColumnMapping:
@@ -215,6 +331,7 @@ class PredictionColumnMapping:
 class SignalEffectivenessConfig:
     predictions_path: str | None = None
     output_dir: str = "artifacts/signal_effectiveness"
+    evaluation_mode: str = EVALUATION_MODE_FRONTIER
     models: list[str] | None = None
     horizons: list[str] | None = None
     tickers: list[str] | None = None
@@ -230,6 +347,12 @@ class SignalEffectivenessConfig:
     success_definition: str = SUCCESS_COST_ADJUSTED_POSITIVE
     target_return_threshold: float = 0.01
     minimum_signal_counts: list[int] = field(default_factory=lambda: list(DEFAULT_MINIMUM_SIGNAL_COUNTS))
+    selection_start: str | None = None
+    selection_end: str | None = None
+    test_start: str | None = None
+    test_end: str | None = None
+    precision_targets: list[float] = field(default_factory=lambda: list(DEFAULT_PRECISION_TARGETS))
+    selection_criterion: str = SELECTION_CRITERION_MAX_PRECISION
 
 
 def _json_default(value: Any) -> Any:
@@ -738,6 +861,222 @@ def _filter_values(frame: pd.DataFrame, column: str, values: list[str] | None, *
     return frame[series.isin(requested)].copy()
 
 
+def _parse_required_date(value: str | None, *, name: str) -> pd.Timestamp:
+    if value is None or not str(value).strip():
+        raise ValueError(f"{name} is required for heldout_threshold_selection")
+    parsed = pd.Timestamp(value).normalize()
+    if pd.isna(parsed):
+        raise ValueError(f"{name} must be a valid date")
+    return parsed
+
+
+def _filter_prediction_date_window(
+    frame: pd.DataFrame,
+    *,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+) -> pd.DataFrame:
+    if end < start:
+        raise ValueError(f"Date window end {end.date()} is earlier than start {start.date()}")
+    dates = pd.to_datetime(frame["prediction_date"], errors="coerce").dt.normalize()
+    return frame[(dates >= start) & (dates <= end)].copy().reset_index(drop=True)
+
+
+def _float_or_nan(value: Any) -> float:
+    return float(value) if pd.notna(value) else np.nan
+
+
+def _selected_thresholds_from_trace(trace: pd.DataFrame) -> pd.DataFrame:
+    if trace.empty:
+        return pd.DataFrame(columns=SELECTED_THRESHOLD_COLUMNS)
+    selected = trace[trace["selected"] == True].copy()
+    if selected.empty:
+        return pd.DataFrame(columns=SELECTED_THRESHOLD_COLUMNS)
+    selected["ticker_scope"] = "pooled"
+    selected = selected.rename(
+        columns={
+            "predicted_return_threshold": "selected_predicted_return_threshold",
+            "probability_up_threshold": "selected_probability_up_threshold",
+            "cost_per_trade": "selected_cost_per_trade",
+            "slippage": "selected_slippage",
+            "buy_precision": "selection_buy_precision",
+            "buy_signal_count": "selection_buy_count",
+            "net_average_return_after_buy": "selection_net_avg_return",
+            "minimum_signal_count": "selection_minimum_signal_count",
+            "buy_recall": "selection_buy_recall",
+            "signal_count": "selection_signal_count",
+            "hold_signal_count": "selection_hold_count",
+            "avoid_signal_count": "selection_avoid_count",
+        }
+    )
+    return selected.reindex(columns=SELECTED_THRESHOLD_COLUMNS).sort_values(
+        ["model_name", "horizon", "selection_minimum_signal_count"]
+    ).reset_index(drop=True)
+
+
+def select_thresholds_from_summary(
+    summary: pd.DataFrame,
+    *,
+    selection_criterion: str = SELECTION_CRITERION_MAX_PRECISION,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Select one threshold per model/horizon/minimum-count using selection-period metrics."""
+    if selection_criterion != SELECTION_CRITERION_MAX_PRECISION:
+        raise ValueError(
+            f"Unsupported selection_criterion={selection_criterion!r}. "
+            f"Supported: {sorted(SUPPORTED_SELECTION_CRITERIA)}"
+        )
+    if summary.empty:
+        empty_trace = pd.DataFrame(columns=THRESHOLD_SELECTION_TRACE_COLUMNS)
+        return pd.DataFrame(columns=SELECTED_THRESHOLD_COLUMNS), empty_trace
+
+    trace = summary.copy()
+    trace["ticker_scope"] = "pooled"
+    trace["selection_candidate"] = (
+        (trace["passes_minimum_signal_count"] == True)
+        & pd.to_numeric(trace["buy_signal_count"], errors="coerce").fillna(0).gt(0)
+        & pd.to_numeric(trace["buy_precision"], errors="coerce").notna()
+    )
+    trace["selection_rank"] = np.nan
+    trace["selected"] = False
+
+    rank_group_columns = ["model_name", "horizon", "minimum_signal_count"]
+    for _, group in trace.groupby(rank_group_columns, dropna=False, sort=True):
+        candidate_index = group[group["selection_candidate"] == True].index
+        if len(candidate_index) == 0:
+            continue
+        candidates = trace.loc[candidate_index].copy()
+        candidates["_sort_precision"] = pd.to_numeric(candidates["buy_precision"], errors="coerce").fillna(-np.inf)
+        candidates["_sort_net"] = pd.to_numeric(candidates["net_average_return_after_buy"], errors="coerce").fillna(-np.inf)
+        candidates["_sort_buy_count"] = pd.to_numeric(candidates["buy_signal_count"], errors="coerce").fillna(-1)
+        candidates["_sort_threshold"] = pd.to_numeric(candidates["predicted_return_threshold"], errors="coerce").fillna(np.inf)
+        candidates["_sort_cost"] = pd.to_numeric(candidates["cost_per_trade"], errors="coerce").fillna(np.inf)
+        candidates["_sort_slippage"] = pd.to_numeric(candidates["slippage"], errors="coerce").fillna(np.inf)
+        ordered = candidates.sort_values(
+            [
+                "_sort_precision",
+                "_sort_net",
+                "_sort_buy_count",
+                "_sort_threshold",
+                "_sort_cost",
+                "_sort_slippage",
+            ],
+            ascending=[False, False, False, True, True, True],
+        )
+        trace.loc[ordered.index, "selection_rank"] = list(range(1, len(ordered) + 1))
+        trace.loc[ordered.index[0], "selected"] = True
+
+    trace = trace.reindex(columns=THRESHOLD_SELECTION_TRACE_COLUMNS).sort_values(
+        [
+            "model_name",
+            "horizon",
+            "minimum_signal_count",
+            "selection_candidate",
+            "selection_rank",
+            "predicted_return_threshold",
+            "cost_per_trade",
+            "slippage",
+        ],
+        ascending=[True, True, True, False, True, True, True, True],
+        na_position="last",
+    ).reset_index(drop=True)
+    return _selected_thresholds_from_trace(trace), trace
+
+
+def _empty_heldout_metric_row(selected_row: pd.Series) -> dict[str, Any]:
+    return {
+        "model_name": str(selected_row["model_name"]),
+        "horizon": str(selected_row["horizon"]),
+        "ticker_scope": str(selected_row["ticker_scope"]),
+        "policy": str(selected_row["policy"]),
+        "success_definition": str(selected_row["success_definition"]),
+        "selected_predicted_return_threshold": _float_or_nan(selected_row["selected_predicted_return_threshold"]),
+        "selected_probability_up_threshold": _float_or_nan(selected_row["selected_probability_up_threshold"]),
+        "selected_cost_per_trade": _float_or_nan(selected_row["selected_cost_per_trade"]),
+        "selected_slippage": _float_or_nan(selected_row["selected_slippage"]),
+        "minimum_signal_count": int(selected_row["selection_minimum_signal_count"]),
+        "heldout_signal_count": 0,
+        "heldout_buy_precision": np.nan,
+        "heldout_buy_count": 0,
+        "heldout_successful_buy_count": 0,
+        "heldout_buy_recall": np.nan,
+        "heldout_avg_realized_return_after_buy": np.nan,
+        "heldout_net_avg_return_after_buy": np.nan,
+        "heldout_hit_rate": np.nan,
+        "heldout_profit_factor": 0.0,
+        "heldout_max_drawdown_proxy": 0.0,
+        "heldout_turnover_proxy": np.nan,
+        "heldout_cumulative_simple_signal_return": 0.0,
+    }
+
+
+def _heldout_metric_row(selected_row: pd.Series, signal_rows: pd.DataFrame) -> dict[str, Any]:
+    if signal_rows.empty:
+        return _empty_heldout_metric_row(selected_row)
+    metrics = _metrics_for_group(
+        signal_rows.sort_values(["prediction_date", "ticker"]).reset_index(drop=True),
+        int(selected_row["selection_minimum_signal_count"]),
+    )
+    buy = signal_rows[signal_rows["signal"] == SIGNAL_BUY]
+    return {
+        "model_name": str(selected_row["model_name"]),
+        "horizon": str(selected_row["horizon"]),
+        "ticker_scope": str(selected_row["ticker_scope"]),
+        "policy": str(selected_row["policy"]),
+        "success_definition": str(selected_row["success_definition"]),
+        "selected_predicted_return_threshold": _float_or_nan(selected_row["selected_predicted_return_threshold"]),
+        "selected_probability_up_threshold": _float_or_nan(selected_row["selected_probability_up_threshold"]),
+        "selected_cost_per_trade": _float_or_nan(selected_row["selected_cost_per_trade"]),
+        "selected_slippage": _float_or_nan(selected_row["selected_slippage"]),
+        "minimum_signal_count": int(selected_row["selection_minimum_signal_count"]),
+        "heldout_signal_count": int(metrics["signal_count"]),
+        "heldout_buy_precision": metrics["buy_precision"],
+        "heldout_buy_count": int(metrics["buy_signal_count"]),
+        "heldout_successful_buy_count": int(buy["success_condition_met"].sum()) if not buy.empty else 0,
+        "heldout_buy_recall": metrics["buy_recall"],
+        "heldout_avg_realized_return_after_buy": metrics["average_realized_return_after_buy"],
+        "heldout_net_avg_return_after_buy": metrics["net_average_return_after_buy"],
+        "heldout_hit_rate": metrics["hit_rate"],
+        "heldout_profit_factor": metrics["profit_factor"],
+        "heldout_max_drawdown_proxy": metrics["max_drawdown"],
+        "heldout_turnover_proxy": metrics["turnover_proxy"],
+        "heldout_cumulative_simple_signal_return": metrics["cumulative_simple_signal_return"],
+    }
+
+
+def build_precision_target_pass_fail(
+    heldout_precision: pd.DataFrame,
+    *,
+    precision_targets: list[float] | tuple[float, ...],
+) -> pd.DataFrame:
+    if heldout_precision.empty:
+        return pd.DataFrame(columns=PRECISION_TARGET_PASS_FAIL_COLUMNS)
+    rows: list[dict[str, Any]] = []
+    for heldout_row in heldout_precision.itertuples(index=False):
+        precision = getattr(heldout_row, "heldout_buy_precision")
+        buy_count = int(getattr(heldout_row, "heldout_buy_count"))
+        for target in precision_targets:
+            numeric_target = float(target)
+            rows.append(
+                {
+                    "model_name": heldout_row.model_name,
+                    "horizon": heldout_row.horizon,
+                    "ticker_scope": heldout_row.ticker_scope,
+                    "policy": heldout_row.policy,
+                    "success_definition": heldout_row.success_definition,
+                    "selected_predicted_return_threshold": heldout_row.selected_predicted_return_threshold,
+                    "selected_probability_up_threshold": heldout_row.selected_probability_up_threshold,
+                    "selected_cost_per_trade": heldout_row.selected_cost_per_trade,
+                    "selected_slippage": heldout_row.selected_slippage,
+                    "minimum_signal_count": int(heldout_row.minimum_signal_count),
+                    "precision_target": numeric_target,
+                    "heldout_buy_precision": precision,
+                    "heldout_buy_count": buy_count,
+                    "pass_fail": bool(buy_count > 0 and pd.notna(precision) and float(precision) >= numeric_target),
+                }
+            )
+    return pd.DataFrame(rows).reindex(columns=PRECISION_TARGET_PASS_FAIL_COLUMNS).reset_index(drop=True)
+
+
 class SignalEffectivenessRunner:
     """Run signal-effectiveness diagnostics on a saved prediction table."""
 
@@ -747,6 +1086,11 @@ class SignalEffectivenessRunner:
         self._validate_config()
 
     def _validate_config(self) -> None:
+        if self.config.evaluation_mode not in SUPPORTED_EVALUATION_MODES:
+            raise ValueError(
+                f"Unsupported evaluation_mode={self.config.evaluation_mode!r}. "
+                f"Supported: {sorted(SUPPORTED_EVALUATION_MODES)}"
+            )
         if self.config.policy not in SUPPORTED_POLICIES:
             raise ValueError(f"Unsupported policy={self.config.policy!r}. Supported: {sorted(SUPPORTED_POLICIES)}")
         if self.config.success_definition not in SUPPORTED_SUCCESS_DEFINITIONS:
@@ -771,8 +1115,31 @@ class SignalEffectivenessRunner:
             self.config.minimum_signal_counts,
             name="minimum_signal_count",
         )
+        self.config.precision_targets = _stable_numeric_values(
+            self.config.precision_targets,
+            name="precision_target",
+        )
+        for target in self.config.precision_targets:
+            if target > 1.0:
+                raise ValueError("precision_target values must be between 0 and 1")
+        if self.config.selection_criterion not in SUPPORTED_SELECTION_CRITERIA:
+            raise ValueError(
+                f"Unsupported selection_criterion={self.config.selection_criterion!r}. "
+                f"Supported: {sorted(SUPPORTED_SELECTION_CRITERIA)}"
+            )
         if float(self.config.target_return_threshold) < 0.0:
             raise ValueError("target_return_threshold must be non-negative")
+        if self.config.evaluation_mode == EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION:
+            selection_start = _parse_required_date(self.config.selection_start, name="selection_start")
+            selection_end = _parse_required_date(self.config.selection_end, name="selection_end")
+            test_start = _parse_required_date(self.config.test_start, name="test_start")
+            test_end = _parse_required_date(self.config.test_end, name="test_end")
+            if selection_end < selection_start:
+                raise ValueError("selection_end must be on or after selection_start")
+            if test_end < test_start:
+                raise ValueError("test_end must be on or after test_start")
+            if test_start <= selection_end:
+                raise ValueError("test_start must be later than selection_end for held-out evaluation")
 
     def _load_predictions(self) -> tuple[pd.DataFrame, dict[str, Any]]:
         if self.config.predictions_path is None:
@@ -825,12 +1192,111 @@ class SignalEffectivenessRunner:
             return pd.DataFrame(columns=SIGNAL_ROW_COLUMNS), probability_metadata
         return pd.concat(frames, ignore_index=True).reindex(columns=SIGNAL_ROW_COLUMNS), probability_metadata
 
-    def run(self, predictions: pd.DataFrame | None = None) -> dict[str, Any]:
+    def _load_filtered_predictions(self, predictions: pd.DataFrame | None) -> tuple[pd.DataFrame, dict[str, Any]]:
         if predictions is None:
             normalized, load_metadata = self._load_predictions()
         else:
             normalized, load_metadata = normalize_prediction_frame(predictions)
-        filtered = self._apply_filters(normalized)
+        return self._apply_filters(normalized), load_metadata
+
+    def _heldout_windows(self, filtered: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, str]]:
+        selection_start = _parse_required_date(self.config.selection_start, name="selection_start")
+        selection_end = _parse_required_date(self.config.selection_end, name="selection_end")
+        test_start = _parse_required_date(self.config.test_start, name="test_start")
+        test_end = _parse_required_date(self.config.test_end, name="test_end")
+        selection = _filter_prediction_date_window(filtered, start=selection_start, end=selection_end)
+        test = _filter_prediction_date_window(filtered, start=test_start, end=test_end)
+        return selection, test, {
+            "selection_start": str(selection_start.date()),
+            "selection_end": str(selection_end.date()),
+            "test_start": str(test_start.date()),
+            "test_end": str(test_end.date()),
+        }
+
+    def _build_heldout_outputs(
+        self,
+        *,
+        selection_predictions: pd.DataFrame,
+        test_predictions: pd.DataFrame,
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+        selection_signal_rows, probability_metadata = self._build_signal_grid(selection_predictions)
+        selection_summary = summarize_signal_effectiveness(
+            selection_signal_rows,
+            minimum_signal_counts=self.config.minimum_signal_counts,
+        )
+        selected_thresholds, trace = select_thresholds_from_summary(
+            selection_summary,
+            selection_criterion=self.config.selection_criterion,
+        )
+        heldout_frames: list[pd.DataFrame] = []
+        heldout_metric_rows: list[dict[str, Any]] = []
+
+        for selected_row in selected_thresholds.itertuples(index=False):
+            group = test_predictions[
+                (test_predictions["model_name"] == selected_row.model_name)
+                & (test_predictions["horizon"] == selected_row.horizon)
+            ].copy()
+            probability_threshold = (
+                None
+                if pd.isna(selected_row.selected_probability_up_threshold)
+                else float(selected_row.selected_probability_up_threshold)
+            )
+            heldout_signals = generate_signal_rows(
+                group,
+                policy=str(selected_row.policy),
+                predicted_return_threshold=float(selected_row.selected_predicted_return_threshold),
+                cost_per_trade=float(selected_row.selected_cost_per_trade),
+                slippage=float(selected_row.selected_slippage),
+                success_definition=str(selected_row.success_definition),
+                target_return_threshold=float(self.config.target_return_threshold),
+                probability_up_threshold=probability_threshold,
+            )
+            if not heldout_signals.empty:
+                heldout_signals["ticker_scope"] = str(selected_row.ticker_scope)
+                heldout_signals["selection_minimum_signal_count"] = int(selected_row.selection_minimum_signal_count)
+                heldout_frames.append(heldout_signals)
+            heldout_metric_rows.append(_heldout_metric_row(pd.Series(selected_row._asdict()), heldout_signals))
+
+        heldout_signal_rows = (
+            pd.concat(heldout_frames, ignore_index=True, sort=False)
+            if heldout_frames
+            else pd.DataFrame(columns=[*SIGNAL_ROW_COLUMNS, "ticker_scope", "selection_minimum_signal_count"])
+        )
+        heldout_precision = pd.DataFrame(heldout_metric_rows).reindex(columns=HELDOUT_BUY_PRECISION_COLUMNS)
+        target_pass_fail = build_precision_target_pass_fail(
+            heldout_precision,
+            precision_targets=self.config.precision_targets,
+        )
+        strategy_proxy = heldout_precision.reindex(columns=HELDOUT_STRATEGY_PROXY_COLUMNS).copy()
+        metadata = {
+            "probability_rules": probability_metadata,
+            "selection_rows": int(len(selection_predictions)),
+            "selection_signal_rows": int(len(selection_signal_rows)),
+            "test_rows": int(len(test_predictions)),
+            "heldout_signal_rows": int(len(heldout_signal_rows)),
+            "selected_threshold_count": int(len(selected_thresholds)),
+            "selection_criterion": self.config.selection_criterion,
+            "threshold_selection_rule": (
+                "maximize BUY precision subject to minimum BUY signal count; "
+                "tie-break by higher net average return, then larger BUY signal count"
+            ),
+            "heldout_realized_returns_used_for_threshold_selection": False,
+        }
+        return (
+            selected_thresholds,
+            heldout_precision,
+            trace,
+            heldout_signal_rows,
+            target_pass_fail,
+            strategy_proxy,
+            metadata,
+        )
+
+    def run(self, predictions: pd.DataFrame | None = None) -> dict[str, Any]:
+        if self.config.evaluation_mode == EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION:
+            return self.run_heldout_threshold_selection(predictions)
+
+        filtered, load_metadata = self._load_filtered_predictions(predictions)
         signal_rows, probability_metadata = self._build_signal_grid(filtered)
         summary = summarize_signal_effectiveness(
             signal_rows,
@@ -862,6 +1328,7 @@ class SignalEffectivenessRunner:
             "analysis_only": True,
             "live_execution_enabled": False,
             "trading_performance_proof": False,
+            "evaluation_mode": EVALUATION_MODE_FRONTIER,
             "input_path": self.config.predictions_path,
             "config": asdict(self.config),
             "load_metadata": load_metadata,
@@ -903,18 +1370,90 @@ class SignalEffectivenessRunner:
             "paths": {name: str(path) for name, path in paths.items()},
         }
 
+    def run_heldout_threshold_selection(self, predictions: pd.DataFrame | None = None) -> dict[str, Any]:
+        filtered, load_metadata = self._load_filtered_predictions(predictions)
+        selection_predictions, test_predictions, window_metadata = self._heldout_windows(filtered)
+        (
+            selected_thresholds,
+            heldout_precision,
+            trace,
+            heldout_signal_rows,
+            target_pass_fail,
+            strategy_proxy,
+            heldout_metadata,
+        ) = self._build_heldout_outputs(
+            selection_predictions=selection_predictions,
+            test_predictions=test_predictions,
+        )
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        paths = {
+            "selected_thresholds": self.output_dir / "selected_thresholds.csv",
+            "heldout_buy_precision": self.output_dir / "heldout_buy_precision.csv",
+            "threshold_selection_trace": self.output_dir / "threshold_selection_trace.csv",
+            "heldout_signal_rows": self.output_dir / "heldout_signal_rows.csv",
+            "precision_target_pass_fail": self.output_dir / "precision_target_pass_fail.csv",
+            "heldout_strategy_proxy_metrics": self.output_dir / "heldout_strategy_proxy_metrics.csv",
+            "run_metadata": self.output_dir / "run_metadata.json",
+        }
+        selected_thresholds.to_csv(paths["selected_thresholds"], index=False)
+        heldout_precision.to_csv(paths["heldout_buy_precision"], index=False)
+        trace.to_csv(paths["threshold_selection_trace"], index=False)
+        heldout_signal_rows.to_csv(paths["heldout_signal_rows"], index=False)
+        target_pass_fail.to_csv(paths["precision_target_pass_fail"], index=False)
+        strategy_proxy.to_csv(paths["heldout_strategy_proxy_metrics"], index=False)
+
+        metadata = {
+            "analysis_only": True,
+            "live_execution_enabled": False,
+            "trading_performance_proof": False,
+            "evaluation_mode": EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION,
+            "input_path": self.config.predictions_path,
+            "config": asdict(self.config),
+            "load_metadata": load_metadata,
+            "filtered_rows": int(len(filtered)),
+            "window_metadata": window_metadata,
+            "precision_targets": list(self.config.precision_targets),
+            "leakage_guard": {
+                "threshold_selection_uses_period": "selection",
+                "heldout_period_used_for_threshold_selection": False,
+                "heldout_realized_return_used_for_signal_creation": False,
+            },
+            **heldout_metadata,
+            "output_files": {name: str(path) for name, path in paths.items()},
+        }
+        paths["run_metadata"].write_text(json.dumps(metadata, indent=2, default=_json_default), encoding="utf-8")
+        return {
+            "selected_thresholds": selected_thresholds,
+            "heldout_buy_precision": heldout_precision,
+            "threshold_selection_trace": trace,
+            "heldout_signal_rows": heldout_signal_rows,
+            "precision_target_pass_fail": target_pass_fail,
+            "heldout_strategy_proxy_metrics": strategy_proxy,
+            "run_metadata": metadata,
+            "paths": {name: str(path) for name, path in paths.items()},
+        }
+
 
 __all__ = [
     "BENCHMARK_COLUMNS",
     "DEFAULT_COST_PER_TRADE_VALUES",
     "DEFAULT_MINIMUM_SIGNAL_COUNTS",
     "DEFAULT_PREDICTED_RETURN_THRESHOLDS",
+    "DEFAULT_PRECISION_TARGETS",
     "DEFAULT_PROBABILITY_UP_THRESHOLDS",
     "DEFAULT_SLIPPAGE_VALUES",
+    "EVALUATION_MODE_FRONTIER",
+    "EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION",
     "FRONTIER_COLUMNS",
+    "HELDOUT_BUY_PRECISION_COLUMNS",
+    "HELDOUT_STRATEGY_PROXY_COLUMNS",
     "POLICY_DIRECTION_AND_RETURN_THRESHOLD",
     "POLICY_RETURN_THRESHOLD",
     "POLICY_STRICT_BUY_PRECISION_PROBE",
+    "PRECISION_TARGET_PASS_FAIL_COLUMNS",
+    "SELECTED_THRESHOLD_COLUMNS",
+    "SELECTION_CRITERION_MAX_PRECISION",
     "SIGNAL_AVOID",
     "SIGNAL_BUY",
     "SIGNAL_HOLD",
@@ -924,15 +1463,18 @@ __all__ = [
     "SUCCESS_RAW_POSITIVE",
     "SUCCESS_TARGET_RETURN",
     "SUMMARY_COLUMNS",
+    "THRESHOLD_SELECTION_TRACE_COLUMNS",
     "SignalEffectivenessConfig",
     "SignalEffectivenessRunner",
     "build_benchmark_comparison",
     "build_buy_precision_table",
+    "build_precision_target_pass_fail",
     "build_precision_coverage_frontier",
     "build_strategy_proxy_metrics",
     "detect_prediction_columns",
     "generate_signal_rows",
     "load_prediction_csv",
     "normalize_prediction_frame",
+    "select_thresholds_from_summary",
     "summarize_signal_effectiveness",
 ]

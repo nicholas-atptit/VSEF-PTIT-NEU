@@ -107,6 +107,12 @@ The CLI writes:
 
 `buy_precision_by_model_horizon.csv` includes only model-horizon-threshold rows that pass the configured minimum BUY signal count. The full frontier remains available in `precision_coverage_frontier.csv`.
 
+## Held-Out Threshold Selection
+
+The descriptive frontier should not be treated as a production policy candidate by itself. Thresholds that look attractive on the same rows used for reporting must be tested with a separate selection/test split.
+
+Use `--evaluation-mode heldout_threshold_selection` to select thresholds on an earlier `prediction_date` window and evaluate the selected thresholds on a later held-out window. The held-out protocol is documented in `docs/audits/VSEF_HELDOUT_THRESHOLD_SELECTION.md`.
+
 ## CLI
 
 Example:

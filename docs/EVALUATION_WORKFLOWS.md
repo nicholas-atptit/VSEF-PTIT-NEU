@@ -213,6 +213,48 @@ Important note:
 
 - This layer is a forecast-to-signal diagnostic bridge, not trading-performance proof.
 
+## 4B. Held-Out Threshold Selection
+
+Purpose:
+
+- Select signal thresholds on an earlier prediction-date window.
+- Apply selected thresholds unchanged to a later held-out window.
+- Test whether BUY precision targets such as 60%, 65%, and 70% survive out of selection.
+
+Input data:
+
+- saved prediction CSVs accepted by the signal-effectiveness layer
+- explicit selection and held-out test date windows
+- threshold, cost, slippage, success-definition, and minimum-count grids
+
+Main outputs:
+
+- `selected_thresholds.csv`
+- `heldout_buy_precision.csv`
+- `threshold_selection_trace.csv`
+- `heldout_signal_rows.csv`
+- `precision_target_pass_fail.csv`
+- `heldout_strategy_proxy_metrics.csv`
+- `run_metadata.json`
+
+Key metrics:
+
+- selection-period BUY precision and BUY count
+- held-out BUY precision and BUY count
+- held-out BUY recall, when computable
+- held-out net average return after BUY
+- held-out profit factor
+- held-out max drawdown proxy
+- precision target pass/fail flags
+
+Artifact location:
+
+- caller-specified `--output-dir`
+
+Important note:
+
+- This is required before treating descriptive BUY precision frontiers as policy candidates.
+
 ## 5. Dual-Task Evaluation
 
 Purpose:
@@ -503,6 +545,7 @@ The evaluation stack now answers different questions at different layers:
 - `backtest_forward_return`: which horizon and model family look strongest on returns?
 - `strategy_backtest`: do those forecasts survive a simple cost-aware paper strategy?
 - `signal_effectiveness`: can saved forecasts support high-precision BUY diagnostics under strict transparent rules?
+- `heldout_threshold_selection`: do selected BUY thresholds survive on a later held-out period?
 - `dual_task`: can the system forecast both return and tradability?
 - `combined_signal`: does combining both outputs help signal quality?
 - `regime_aware_analysis`: does market state change what works?

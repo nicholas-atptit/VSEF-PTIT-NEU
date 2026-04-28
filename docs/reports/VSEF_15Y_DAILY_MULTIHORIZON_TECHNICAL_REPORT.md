@@ -273,6 +273,8 @@ Sixth, foreign-flow should remain excluded from long-window interpretation until
 
 Signal-effectiveness backtesting is the next bridge from forecast evaluation to investment-style decision support. It should test whether strict BUY rules have useful precision after explicit cost and slippage assumptions, while preserving the interpretation that these are diagnostic outputs rather than trading-performance proof.
 
+Held-out threshold selection is required before treating BUY precision targets as policy candidates. Descriptive threshold frontiers can identify promising slices, but thresholds must be selected on an earlier period and evaluated unchanged on a later held-out period before stronger interpretation.
+
 ## 12. Limitations
 
 This report has the following limitations:
@@ -293,7 +295,7 @@ This report has the following limitations:
 Recommended follow-up work, in priority order:
 
 1. Regime-aware performance slicing: bull, bear, and sideways regimes.
-2. Signal-effectiveness backtesting of saved forecast outputs with strict BUY precision, cost/slippage-aware success definitions, and threshold coverage frontiers.
+2. Held-out threshold selection for saved forecast outputs before promoting any BUY precision target as a policy candidate.
 3. Broader VN100-style audit if runtime resources and long-window coverage allow.
 4. Long-window foreign-flow artifact curation if foreign-flow interpretation is required.
 5. Optional technical report export to Word or PDF for advisor review.

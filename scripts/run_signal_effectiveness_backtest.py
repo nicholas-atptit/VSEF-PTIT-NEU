@@ -12,10 +12,14 @@ from src.ml.backtest.signal_effectiveness import (
     DEFAULT_COST_PER_TRADE_VALUES,
     DEFAULT_MINIMUM_SIGNAL_COUNTS,
     DEFAULT_PREDICTED_RETURN_THRESHOLDS,
+    DEFAULT_PRECISION_TARGETS,
     DEFAULT_SLIPPAGE_VALUES,
+    EVALUATION_MODE_FRONTIER,
+    EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION,
     POLICY_DIRECTION_AND_RETURN_THRESHOLD,
     POLICY_RETURN_THRESHOLD,
     POLICY_STRICT_BUY_PRECISION_PROBE,
+    SELECTION_CRITERION_MAX_PRECISION,
     SUCCESS_COST_ADJUSTED_POSITIVE,
     SUCCESS_RAW_POSITIVE,
     SUCCESS_TARGET_RETURN,
@@ -55,6 +59,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--models", default=None, help="Optional comma- or space-separated model filter")
     parser.add_argument("--horizons", default=None, help="Optional comma- or space-separated horizon filter")
     parser.add_argument("--tickers", default=None, help="Optional comma- or space-separated ticker filter")
+    parser.add_argument(
+        "--evaluation-mode",
+        default=EVALUATION_MODE_FRONTIER,
+        choices=[EVALUATION_MODE_FRONTIER, EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION],
+        help="frontier preserves the descriptive threshold-grid workflow; heldout_threshold_selection selects thresholds on a validation window and evaluates them on a held-out window",
+    )
     parser.add_argument(
         "--policy",
         default=POLICY_STRICT_BUY_PRECISION_PROBE,
@@ -102,7 +112,42 @@ def parse_args() -> argparse.Namespace:
         default="0.55,0.60,0.65,0.70",
         help="Optional probability-up thresholds used only when a usable probability column exists",
     )
-    return parser.parse_args()
+    parser.add_argument("--selection-start", default=None, help="Selection-period start date for heldout_threshold_selection")
+    parser.add_argument("--selection-end", default=None, help="Selection-period end date for heldout_threshold_selection")
+    parser.add_argument("--test-start", default=None, help="Held-out test-period start date for heldout_threshold_selection")
+    parser.add_argument("--test-end", default=None, help="Held-out test-period end date for heldout_threshold_selection")
+    parser.add_argument(
+        "--precision-targets",
+        default=",".join(str(value) for value in DEFAULT_PRECISION_TARGETS),
+        help="Comma-separated held-out BUY precision targets",
+    )
+    parser.add_argument(
+        "--selection-criterion",
+        default=SELECTION_CRITERION_MAX_PRECISION,
+        choices=[SELECTION_CRITERION_MAX_PRECISION],
+        help="Threshold selection rule used on the selection period",
+    )
+    args = parser.parse_args()
+    if args.evaluation_mode == EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION:
+        missing = [
+            name
+            for name in ["selection_start", "selection_end", "test_start", "test_end"]
+            if not getattr(args, name)
+        ]
+        if missing:
+            parser.error(
+                "--evaluation-mode heldout_threshold_selection requires "
+                + ", ".join(f"--{name.replace('_', '-')}" for name in missing)
+            )
+        if pd_timestamp(args.test_start) <= pd_timestamp(args.selection_end):
+            parser.error("--test-start must be later than --selection-end")
+    return args
+
+
+def pd_timestamp(value: str):
+    import pandas as pd
+
+    return pd.Timestamp(value).normalize()
 
 
 def main() -> None:
@@ -110,6 +155,7 @@ def main() -> None:
     config = SignalEffectivenessConfig(
         predictions_path=args.predictions_path,
         output_dir=args.output_dir,
+        evaluation_mode=args.evaluation_mode,
         models=_split_items(args.models),
         horizons=_split_items(args.horizons),
         tickers=_split_items(args.tickers),
@@ -121,16 +167,23 @@ def main() -> None:
         success_definition=args.success_definition,
         target_return_threshold=args.target_return_threshold,
         minimum_signal_counts=_split_ints(args.minimum_signal_count, DEFAULT_MINIMUM_SIGNAL_COUNTS),
+        selection_start=args.selection_start,
+        selection_end=args.selection_end,
+        test_start=args.test_start,
+        test_end=args.test_end,
+        precision_targets=_split_floats(args.precision_targets, DEFAULT_PRECISION_TARGETS),
+        selection_criterion=args.selection_criterion,
     )
     result = SignalEffectivenessRunner(config).run()
 
     print("Signal-effectiveness backtest completed.")
+    print(f"Evaluation mode: {args.evaluation_mode}")
     print(f"Input predictions: {args.predictions_path}")
     print("\nOutput files:")
     for name, path in result["paths"].items():
         print(f"{name}: {path}")
-    summary = result["signal_effectiveness_summary"]
-    if not summary.empty:
+    summary = result.get("signal_effectiveness_summary")
+    if summary is not None and not summary.empty:
         preview = summary[
             [
                 "model_name",
@@ -143,6 +196,21 @@ def main() -> None:
             ]
         ].head(12)
         print("\nSummary preview:")
+        print(preview.round(6).to_string(index=False))
+    heldout = result.get("heldout_buy_precision")
+    if heldout is not None and not heldout.empty:
+        preview = heldout[
+            [
+                "model_name",
+                "horizon",
+                "selected_predicted_return_threshold",
+                "minimum_signal_count",
+                "heldout_buy_count",
+                "heldout_buy_precision",
+                "heldout_net_avg_return_after_buy",
+            ]
+        ].head(12)
+        print("\nHeld-out preview:")
         print(preview.round(6).to_string(index=False))
 
 
