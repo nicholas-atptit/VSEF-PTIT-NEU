@@ -107,6 +107,12 @@ Interpretation: the 70% BUY precision target survived held-out testing for some 
 
 Generated outputs remain under ignored `outputs/` and are not committed.
 
+## Rolling Extension
+
+One held-out split is not enough to treat a BUY precision target as stable. Use `--evaluation-mode rolling_heldout_threshold_selection` with multiple chronological split definitions to repeat the same selection/test protocol across folds and summarize threshold stability.
+
+The rolling extension is documented in `docs/audits/VSEF_ROLLING_REGIME_THRESHOLD_SELECTION.md`. Its optional regime diagnostics run only when prediction rows already contain a recognized regime column; this branch does not infer or fabricate regime labels.
+
 ## Limitations
 
 - This is still diagnostic signal evaluation, not trading-performance proof.
@@ -118,7 +124,6 @@ Generated outputs remain under ignored `outputs/` and are not committed.
 
 ## Next Steps
 
-- Add regime-conditioned held-out threshold selection.
 - Add ticker-specific selection once signal counts are sufficient.
-- Add rolling selection/test windows to test stability across time.
+- Add a governed join layer for regime labels if regime-conditioned rolling evaluation is needed on saved outputs without embedded regime columns.
 - Compare selected thresholds against buy-and-hold and flat baselines with consistent assumptions.

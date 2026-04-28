@@ -16,6 +16,7 @@ from src.ml.backtest.signal_effectiveness import (
     DEFAULT_SLIPPAGE_VALUES,
     EVALUATION_MODE_FRONTIER,
     EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION,
+    EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION,
     POLICY_DIRECTION_AND_RETURN_THRESHOLD,
     POLICY_RETURN_THRESHOLD,
     POLICY_STRICT_BUY_PRECISION_PROBE,
@@ -25,6 +26,8 @@ from src.ml.backtest.signal_effectiveness import (
     SUCCESS_TARGET_RETURN,
     SignalEffectivenessConfig,
     SignalEffectivenessRunner,
+    load_rolling_splits_file,
+    parse_rolling_splits,
 )
 
 
@@ -62,8 +65,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--evaluation-mode",
         default=EVALUATION_MODE_FRONTIER,
-        choices=[EVALUATION_MODE_FRONTIER, EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION],
-        help="frontier preserves the descriptive threshold-grid workflow; heldout_threshold_selection selects thresholds on a validation window and evaluates them on a held-out window",
+        choices=[
+            EVALUATION_MODE_FRONTIER,
+            EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION,
+            EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION,
+        ],
+        help=(
+            "frontier preserves the descriptive threshold-grid workflow; "
+            "heldout_threshold_selection selects thresholds on one validation window and evaluates them on one held-out window; "
+            "rolling_heldout_threshold_selection repeats that protocol across chronological folds"
+        ),
     )
     parser.add_argument(
         "--policy",
@@ -117,6 +128,29 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test-start", default=None, help="Held-out test-period start date for heldout_threshold_selection")
     parser.add_argument("--test-end", default=None, help="Held-out test-period end date for heldout_threshold_selection")
     parser.add_argument(
+        "--rolling-splits",
+        default=None,
+        help=(
+            "Inline rolling folds as "
+            "selection_start:selection_end:test_start:test_end[,selection_start:selection_end:test_start:test_end]"
+        ),
+    )
+    parser.add_argument(
+        "--rolling-splits-file",
+        default=None,
+        help="Optional JSON or CSV file with selection_start, selection_end, test_start, and test_end columns/fields",
+    )
+    parser.add_argument(
+        "--regime-column",
+        default=None,
+        help="Optional explicit regime column name. Otherwise recognized columns are auto-detected.",
+    )
+    parser.add_argument(
+        "--enable-regime-diagnostics",
+        action="store_true",
+        help="Request regime-conditioned BUY precision summaries when a safe regime column is present.",
+    )
+    parser.add_argument(
         "--precision-targets",
         default=",".join(str(value) for value in DEFAULT_PRECISION_TARGETS),
         help="Comma-separated held-out BUY precision targets",
@@ -141,6 +175,18 @@ def parse_args() -> argparse.Namespace:
             )
         if pd_timestamp(args.test_start) <= pd_timestamp(args.selection_end):
             parser.error("--test-start must be later than --selection-end")
+    if args.evaluation_mode == EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION:
+        if args.rolling_splits and args.rolling_splits_file:
+            parser.error("Use either --rolling-splits or --rolling-splits-file, not both")
+        if not args.rolling_splits and not args.rolling_splits_file:
+            parser.error("--evaluation-mode rolling_heldout_threshold_selection requires --rolling-splits or --rolling-splits-file")
+        try:
+            if args.rolling_splits:
+                parse_rolling_splits(args.rolling_splits)
+            else:
+                load_rolling_splits_file(args.rolling_splits_file)
+        except Exception as exc:
+            parser.error(str(exc))
     return args
 
 
@@ -152,6 +198,13 @@ def pd_timestamp(value: str):
 
 def main() -> None:
     args = parse_args()
+    rolling_splits = None
+    if args.evaluation_mode == EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION:
+        rolling_splits = (
+            parse_rolling_splits(args.rolling_splits)
+            if args.rolling_splits
+            else load_rolling_splits_file(args.rolling_splits_file)
+        )
     config = SignalEffectivenessConfig(
         predictions_path=args.predictions_path,
         output_dir=args.output_dir,
@@ -173,6 +226,9 @@ def main() -> None:
         test_end=args.test_end,
         precision_targets=_split_floats(args.precision_targets, DEFAULT_PRECISION_TARGETS),
         selection_criterion=args.selection_criterion,
+        rolling_splits=rolling_splits,
+        regime_column=args.regime_column,
+        enable_regime_diagnostics=args.enable_regime_diagnostics,
     )
     result = SignalEffectivenessRunner(config).run()
 
@@ -212,6 +268,25 @@ def main() -> None:
         ].head(12)
         print("\nHeld-out preview:")
         print(preview.round(6).to_string(index=False))
+    rolling = result.get("rolling_heldout_buy_precision")
+    if rolling is not None and not rolling.empty:
+        preview = rolling[
+            [
+                "fold_id",
+                "model_name",
+                "horizon",
+                "selected_predicted_return_threshold",
+                "minimum_signal_count",
+                "heldout_buy_count",
+                "heldout_buy_precision",
+                "heldout_net_avg_return_after_buy",
+            ]
+        ].head(12)
+        print("\nRolling held-out preview:")
+        print(preview.round(6).to_string(index=False))
+    regime_metadata = result.get("run_metadata", {}).get("regime_diagnostics", {})
+    if regime_metadata.get("requested") and not regime_metadata.get("enabled"):
+        print(f"Warning: regime diagnostics skipped: {regime_metadata.get('skipped_reason')}", file=sys.stderr)
 
 
 if __name__ == "__main__":

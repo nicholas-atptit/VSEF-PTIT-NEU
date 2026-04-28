@@ -35,6 +35,7 @@ Supported columns are normalized to:
 - `realized_forward_return`
 - optional `predicted_direction`
 - optional upward probability columns such as `predicted_positive_probability`
+- optional regime labels such as `regime`, `market_regime`, `regime_label`, or `market_state`
 
 If an upward probability column is not present or is all missing, probability-threshold rules are skipped and metadata records that probability calibration is a future task.
 
@@ -113,6 +114,8 @@ The descriptive frontier should not be treated as a production policy candidate 
 
 Use `--evaluation-mode heldout_threshold_selection` to select thresholds on an earlier `prediction_date` window and evaluate the selected thresholds on a later held-out window. The held-out protocol is documented in `docs/audits/VSEF_HELDOUT_THRESHOLD_SELECTION.md`.
 
+Use `--evaluation-mode rolling_heldout_threshold_selection` with `--rolling-splits` or `--rolling-splits-file` to repeat that protocol across multiple chronological folds. Rolling held-out testing is required before treating a BUY precision target as stable. If prediction rows already contain safe regime labels, rolling mode can also emit regime-conditioned BUY precision summaries; otherwise metadata records that regime diagnostics were skipped.
+
 ## CLI
 
 Example:
@@ -134,11 +137,11 @@ The script never modifies the input prediction CSV.
 - The simple net-return adjustment does not model order book depth, liquidity, intraday execution, taxes, borrow constraints, or portfolio sizing.
 - Overlapping forecast horizons can inflate apparent opportunity counts.
 - Probability thresholds are used only when a usable probability column exists; final stacking currently emits return and direction but no calibrated probability.
-- Threshold frontiers are descriptive. They should not be treated as production thresholds without a separate validation design.
+- Threshold frontiers are descriptive. They should not be treated as production thresholds without held-out and rolling validation designs.
 
 ## Next Steps
 
 - Run the CLI on ignored walk-forward outputs when available.
-- Compare BUY precision by ticker, horizon, and regime.
-- Add out-of-period threshold selection if production-style policy selection is needed.
+- Compare BUY precision by ticker, horizon, and regime when safe labels are available.
+- Add governed regime/context joins before making regime-conditioned policy decisions on outputs without embedded regime labels.
 - Consider probability calibration only for models and horizons with governed probability semantics.

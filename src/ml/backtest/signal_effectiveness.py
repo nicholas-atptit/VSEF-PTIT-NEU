@@ -19,9 +19,11 @@ import pandas as pd
 
 EVALUATION_MODE_FRONTIER = "frontier"
 EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION = "heldout_threshold_selection"
+EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION = "rolling_heldout_threshold_selection"
 SUPPORTED_EVALUATION_MODES = {
     EVALUATION_MODE_FRONTIER,
     EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION,
+    EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION,
 }
 SELECTION_CRITERION_MAX_PRECISION = "max_precision"
 SUPPORTED_SELECTION_CRITERIA = {SELECTION_CRITERION_MAX_PRECISION}
@@ -82,6 +84,16 @@ PROBABILITY_UP_CANDIDATES = [
     "final_positive_probability",
     "direction_probability",
     "up_probability",
+]
+REGIME_CANDIDATES = ["regime", "market_regime", "regime_label", "market_state"]
+
+ROLLING_FOLD_COLUMNS = [
+    "fold_id",
+    "fold_index",
+    "selection_start",
+    "selection_end",
+    "test_start",
+    "test_end",
 ]
 
 SIGNAL_ROW_COLUMNS = [
@@ -311,6 +323,57 @@ HELDOUT_STRATEGY_PROXY_COLUMNS = [
     "heldout_cumulative_simple_signal_return",
 ]
 
+THRESHOLD_STABILITY_SUMMARY_COLUMNS = [
+    "model_name",
+    "horizon",
+    "minimum_signal_count",
+    "fold_count",
+    "selected_threshold_values",
+    "most_common_threshold",
+    "threshold_min",
+    "threshold_max",
+    "threshold_mean",
+    "threshold_std",
+    "threshold_stability_level",
+    "mean_heldout_buy_precision",
+    "std_heldout_buy_precision",
+    "min_heldout_buy_precision",
+    "max_heldout_buy_precision",
+    "total_heldout_buy_count",
+    "pass_rate_60",
+    "pass_rate_65",
+    "pass_rate_70",
+]
+
+REGIME_BUY_PRECISION_COLUMNS = [
+    "fold_id",
+    "model_name",
+    "horizon",
+    "regime",
+    "minimum_signal_count",
+    "selected_threshold",
+    "heldout_buy_count",
+    "heldout_successful_buy_count",
+    "heldout_buy_precision",
+    "heldout_net_avg_return_after_buy",
+    "precision_target_60_pass",
+    "precision_target_65_pass",
+    "precision_target_70_pass",
+]
+
+REGIME_PRECISION_STABILITY_COLUMNS = [
+    "model_name",
+    "horizon",
+    "regime",
+    "minimum_signal_count",
+    "fold_count",
+    "total_buy_count",
+    "mean_buy_precision",
+    "std_buy_precision",
+    "pass_rate_70",
+    "regime_signal_quality_label",
+]
+
 
 @dataclass(frozen=True, slots=True)
 class PredictionColumnMapping:
@@ -324,7 +387,26 @@ class PredictionColumnMapping:
     horizon_column: str | None = None
     target_date_column: str | None = None
     evaluation_eligible_column: str | None = None
+    regime_column: str | None = None
     inferred_horizon: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RollingSplitDefinition:
+    fold_id: str
+    selection_start: str
+    selection_end: str
+    test_start: str
+    test_end: str
+
+    def as_metadata(self) -> dict[str, str]:
+        return {
+            "fold_id": self.fold_id,
+            "selection_start": self.selection_start,
+            "selection_end": self.selection_end,
+            "test_start": self.test_start,
+            "test_end": self.test_end,
+        }
 
 
 @dataclass(slots=True)
@@ -353,6 +435,9 @@ class SignalEffectivenessConfig:
     test_end: str | None = None
     precision_targets: list[float] = field(default_factory=lambda: list(DEFAULT_PRECISION_TARGETS))
     selection_criterion: str = SELECTION_CRITERION_MAX_PRECISION
+    rolling_splits: list[RollingSplitDefinition | dict[str, Any]] | None = None
+    regime_column: str | None = None
+    enable_regime_diagnostics: bool = False
 
 
 def _json_default(value: Any) -> Any:
@@ -409,6 +494,136 @@ def _detect_column(columns: pd.Index, candidates: list[str], *, required: bool =
     return None
 
 
+def _detect_regime_column(columns: pd.Index, requested: str | None = None) -> str | None:
+    if requested is not None and str(requested).strip():
+        resolved = _detect_column(columns, [str(requested).strip()], required=False)
+        return resolved
+    return _detect_column(columns, REGIME_CANDIDATES, required=False)
+
+
+def _date_string(value: Any, *, name: str) -> str:
+    parsed = pd.Timestamp(value).normalize()
+    if pd.isna(parsed):
+        raise ValueError(f"{name} must be a valid date")
+    return str(parsed.date())
+
+
+def _coerce_rolling_split(record: dict[str, Any], *, index: int) -> RollingSplitDefinition:
+    missing = [
+        name
+        for name in ["selection_start", "selection_end", "test_start", "test_end"]
+        if record.get(name) is None or not str(record.get(name)).strip()
+    ]
+    if missing:
+        raise ValueError(
+            "Rolling split definitions require selection_start, selection_end, test_start, and test_end; "
+            f"missing: {', '.join(missing)}"
+        )
+    fold_id = str(record.get("fold_id") or f"fold_{index}").strip()
+    split = RollingSplitDefinition(
+        fold_id=fold_id,
+        selection_start=_date_string(record["selection_start"], name=f"{fold_id}.selection_start"),
+        selection_end=_date_string(record["selection_end"], name=f"{fold_id}.selection_end"),
+        test_start=_date_string(record["test_start"], name=f"{fold_id}.test_start"),
+        test_end=_date_string(record["test_end"], name=f"{fold_id}.test_end"),
+    )
+    selection_start = pd.Timestamp(split.selection_start)
+    selection_end = pd.Timestamp(split.selection_end)
+    test_start = pd.Timestamp(split.test_start)
+    test_end = pd.Timestamp(split.test_end)
+    if selection_end < selection_start:
+        raise ValueError(f"{fold_id}: selection_end must be on or after selection_start")
+    if test_end < test_start:
+        raise ValueError(f"{fold_id}: test_end must be on or after test_start")
+    if test_start <= selection_end:
+        raise ValueError(f"{fold_id}: test_start must be later than selection_end")
+    return split
+
+
+def parse_rolling_splits(raw_value: str | None) -> list[RollingSplitDefinition]:
+    """Parse inline rolling split definitions.
+
+    Inline syntax is:
+    selection_start:selection_end:test_start:test_end[,selection_start:...]
+    """
+    if raw_value is None or not str(raw_value).strip():
+        return []
+    normalized = str(raw_value).replace("\n", ",").replace(";", ",")
+    splits: list[RollingSplitDefinition] = []
+    for index, raw_split in enumerate([part.strip() for part in normalized.split(",") if part.strip()], start=1):
+        parts = [part.strip() for part in raw_split.split(":")]
+        if len(parts) != 4 or any(not part for part in parts):
+            raise ValueError(
+                "Invalid --rolling-splits item. Expected "
+                "selection_start:selection_end:test_start:test_end"
+            )
+        splits.append(
+            _coerce_rolling_split(
+                {
+                    "selection_start": parts[0],
+                    "selection_end": parts[1],
+                    "test_start": parts[2],
+                    "test_end": parts[3],
+                },
+                index=index,
+            )
+        )
+    return splits
+
+
+def load_rolling_splits_file(path: str | Path) -> list[RollingSplitDefinition]:
+    split_path = Path(path)
+    if not split_path.exists():
+        raise FileNotFoundError(f"Rolling splits file does not exist: {split_path}")
+    if split_path.suffix.lower() == ".json":
+        payload = json.loads(split_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, list):
+            raise ValueError("Rolling splits JSON must be a list of objects or four-item lists")
+        records: list[dict[str, Any]] = []
+        for item in payload:
+            if isinstance(item, dict):
+                records.append(item)
+            elif isinstance(item, list) and len(item) == 4:
+                records.append(
+                    {
+                        "selection_start": item[0],
+                        "selection_end": item[1],
+                        "test_start": item[2],
+                        "test_end": item[3],
+                    }
+                )
+            else:
+                raise ValueError("Each rolling split JSON item must be an object or a four-item list")
+        return [_coerce_rolling_split(record, index=index) for index, record in enumerate(records, start=1)]
+
+    frame = pd.read_csv(split_path)
+    required = ["selection_start", "selection_end", "test_start", "test_end"]
+    missing = [column for column in required if column not in frame.columns]
+    if missing:
+        raise ValueError(f"Rolling splits CSV missing required columns: {', '.join(missing)}")
+    records = frame.to_dict(orient="records")
+    return [_coerce_rolling_split(record, index=index) for index, record in enumerate(records, start=1)]
+
+
+def _normalize_rolling_splits(
+    splits: list[RollingSplitDefinition | dict[str, Any]] | None,
+) -> list[RollingSplitDefinition]:
+    if not splits:
+        return []
+    normalized: list[RollingSplitDefinition] = []
+    for index, item in enumerate(splits, start=1):
+        if isinstance(item, RollingSplitDefinition):
+            normalized.append(_coerce_rolling_split(item.as_metadata(), index=index))
+        elif isinstance(item, dict):
+            normalized.append(_coerce_rolling_split(item, index=index))
+        else:
+            raise ValueError("rolling_splits must contain RollingSplitDefinition or dict items")
+    fold_ids = [split.fold_id for split in normalized]
+    if len(fold_ids) != len(set(fold_ids)):
+        raise ValueError("rolling_splits fold_id values must be unique")
+    return normalized
+
+
 def _infer_horizon_from_path(path: str | Path | None) -> str | None:
     if path is None:
         return None
@@ -427,7 +642,12 @@ def _bool_series(values: pd.Series) -> pd.Series:
     return normalized.isin({"true", "1", "yes", "y"})
 
 
-def detect_prediction_columns(frame: pd.DataFrame, *, source_path: str | Path | None = None) -> PredictionColumnMapping:
+def detect_prediction_columns(
+    frame: pd.DataFrame,
+    *,
+    source_path: str | Path | None = None,
+    regime_column: str | None = None,
+) -> PredictionColumnMapping:
     horizon_column = "horizon" if "horizon" in frame.columns else None
     target_date_column = "target_date" if "target_date" in frame.columns else None
     evaluation_eligible_column = "evaluation_eligible" if "evaluation_eligible" in frame.columns else None
@@ -446,6 +666,7 @@ def detect_prediction_columns(frame: pd.DataFrame, *, source_path: str | Path | 
         horizon_column=horizon_column,
         target_date_column=target_date_column,
         evaluation_eligible_column=evaluation_eligible_column,
+        regime_column=_detect_regime_column(frame.columns, requested=regime_column),
         inferred_horizon=_infer_horizon_from_path(source_path),
     )
 
@@ -454,6 +675,7 @@ def normalize_prediction_frame(
     frame: pd.DataFrame,
     *,
     source_path: str | Path | None = None,
+    regime_column: str | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     if frame.empty:
         return pd.DataFrame(columns=[
@@ -467,9 +689,9 @@ def normalize_prediction_frame(
             "predicted_direction",
             "probability_up",
             "evaluation_eligible",
-        ]), {"input_rows": 0, "dropped_rows": 0, "column_mapping": None}
+        ]), {"input_rows": 0, "dropped_rows": 0, "column_mapping": None, "regime_column_used": None}
 
-    mapping = detect_prediction_columns(frame, source_path=source_path)
+    mapping = detect_prediction_columns(frame, source_path=source_path, regime_column=regime_column)
     working = pd.DataFrame(
         {
             "ticker": frame[mapping.ticker_column].astype(str).str.upper().str.strip(),
@@ -506,6 +728,10 @@ def normalize_prediction_frame(
     else:
         working["evaluation_eligible"] = True
 
+    if mapping.regime_column is not None:
+        regime_values = frame[mapping.regime_column].astype(str).str.strip()
+        working["regime"] = regime_values.where(regime_values.ne(""), np.nan)
+
     working["source_predicted_return_column"] = mapping.predicted_return_column
     working["source_realized_return_column"] = mapping.realized_return_column
     before = int(len(working))
@@ -524,6 +750,7 @@ def normalize_prediction_frame(
         "normalized_rows": int(len(working)),
         "dropped_rows": int(before - len(working)),
         "column_mapping": asdict(mapping),
+        "regime_column_used": mapping.regime_column,
         "predicted_direction_source": predicted_direction_source,
         "probability_up_available": bool(working["probability_up"].notna().any()),
         "realized_return_used_only_for_evaluation": True,
@@ -531,12 +758,12 @@ def normalize_prediction_frame(
     return working, metadata
 
 
-def load_prediction_csv(path: str | Path) -> tuple[pd.DataFrame, dict[str, Any]]:
+def load_prediction_csv(path: str | Path, *, regime_column: str | None = None) -> tuple[pd.DataFrame, dict[str, Any]]:
     csv_path = Path(path)
     if not csv_path.exists():
         raise FileNotFoundError(f"Prediction CSV does not exist: {csv_path}")
     frame = pd.read_csv(csv_path)
-    return normalize_prediction_frame(frame, source_path=csv_path)
+    return normalize_prediction_frame(frame, source_path=csv_path, regime_column=regime_column)
 
 
 def _success_condition(
@@ -621,7 +848,8 @@ def generate_signal_rows(
         pd.to_numeric(working["realized_forward_return"], errors="coerce") - estimated_round_trip_cost
     )
 
-    return working.reindex(columns=SIGNAL_ROW_COLUMNS).sort_values(
+    output_columns = [*SIGNAL_ROW_COLUMNS, *[column for column in ["regime"] if column in working.columns]]
+    return working.reindex(columns=output_columns).sort_values(
         [
             "policy",
             "predicted_return_threshold",
@@ -1077,6 +1305,178 @@ def build_precision_target_pass_fail(
     return pd.DataFrame(rows).reindex(columns=PRECISION_TARGET_PASS_FAIL_COLUMNS).reset_index(drop=True)
 
 
+def _target_rate_column(target: float) -> str:
+    return f"pass_rate_{int(round(float(target) * 100))}"
+
+
+def _target_pass_column(target: float) -> str:
+    return f"precision_target_{int(round(float(target) * 100))}_pass"
+
+
+def _format_threshold_values(values: pd.Series) -> str:
+    numeric = pd.to_numeric(values, errors="coerce").dropna()
+    return ",".join(f"{float(value):.6g}" for value in numeric)
+
+
+def _threshold_stability_level(*, fold_count: int, top_share: float) -> str:
+    if fold_count >= 3 and top_share >= 0.80:
+        return "high"
+    if fold_count >= 3 and top_share >= 0.60:
+        return "medium"
+    return "low"
+
+
+def build_threshold_stability_summary(
+    rolling_heldout_precision: pd.DataFrame,
+    rolling_precision_target_pass_fail: pd.DataFrame,
+) -> pd.DataFrame:
+    if rolling_heldout_precision.empty:
+        return pd.DataFrame(columns=THRESHOLD_STABILITY_SUMMARY_COLUMNS)
+
+    rows: list[dict[str, Any]] = []
+    group_columns = ["model_name", "horizon", "minimum_signal_count"]
+    ordered_precision = rolling_heldout_precision.sort_values(["model_name", "horizon", "minimum_signal_count", "fold_index"])
+    for key, group in ordered_precision.groupby(group_columns, dropna=False, sort=True):
+        model_name, horizon, minimum_signal_count = key
+        thresholds = pd.to_numeric(group["selected_predicted_return_threshold"], errors="coerce").dropna()
+        fold_count = int(group["fold_id"].nunique())
+        if thresholds.empty:
+            most_common_threshold = np.nan
+            top_share = 0.0
+        else:
+            threshold_counts = thresholds.value_counts().sort_index()
+            top_count = int(threshold_counts.max())
+            most_common_threshold = float(threshold_counts[threshold_counts == top_count].index.min())
+            top_share = float(top_count / len(thresholds))
+
+        pass_rates: dict[str, float] = {}
+        pass_group = rolling_precision_target_pass_fail[
+            (rolling_precision_target_pass_fail["model_name"] == model_name)
+            & (rolling_precision_target_pass_fail["horizon"] == horizon)
+            & (rolling_precision_target_pass_fail["minimum_signal_count"] == minimum_signal_count)
+        ]
+        for target in DEFAULT_PRECISION_TARGETS:
+            target_rows = pass_group[np.isclose(pd.to_numeric(pass_group["precision_target"], errors="coerce"), target)]
+            pass_rates[_target_rate_column(target)] = (
+                float(target_rows["pass_fail"].astype(bool).mean()) if not target_rows.empty else np.nan
+            )
+
+        precision = pd.to_numeric(group["heldout_buy_precision"], errors="coerce").dropna()
+        rows.append(
+            {
+                "model_name": str(model_name),
+                "horizon": str(horizon),
+                "minimum_signal_count": int(minimum_signal_count),
+                "fold_count": fold_count,
+                "selected_threshold_values": _format_threshold_values(group["selected_predicted_return_threshold"]),
+                "most_common_threshold": most_common_threshold,
+                "threshold_min": float(thresholds.min()) if not thresholds.empty else np.nan,
+                "threshold_max": float(thresholds.max()) if not thresholds.empty else np.nan,
+                "threshold_mean": float(thresholds.mean()) if not thresholds.empty else np.nan,
+                "threshold_std": float(thresholds.std(ddof=0)) if len(thresholds) > 1 else 0.0 if len(thresholds) == 1 else np.nan,
+                "threshold_stability_level": _threshold_stability_level(
+                    fold_count=fold_count,
+                    top_share=top_share,
+                ),
+                "mean_heldout_buy_precision": float(precision.mean()) if not precision.empty else np.nan,
+                "std_heldout_buy_precision": (
+                    float(precision.std(ddof=0)) if len(precision) > 1 else 0.0 if len(precision) == 1 else np.nan
+                ),
+                "min_heldout_buy_precision": float(precision.min()) if not precision.empty else np.nan,
+                "max_heldout_buy_precision": float(precision.max()) if not precision.empty else np.nan,
+                "total_heldout_buy_count": int(pd.to_numeric(group["heldout_buy_count"], errors="coerce").fillna(0).sum()),
+                **pass_rates,
+            }
+        )
+    return pd.DataFrame(rows).reindex(columns=THRESHOLD_STABILITY_SUMMARY_COLUMNS).reset_index(drop=True)
+
+
+def build_regime_buy_precision_summary(rolling_heldout_signal_rows: pd.DataFrame) -> pd.DataFrame:
+    if rolling_heldout_signal_rows.empty or "regime" not in rolling_heldout_signal_rows.columns:
+        return pd.DataFrame(columns=REGIME_BUY_PRECISION_COLUMNS)
+
+    rows: list[dict[str, Any]] = []
+    group_columns = [
+        "fold_id",
+        "model_name",
+        "horizon",
+        "regime",
+        "selection_minimum_signal_count",
+        "predicted_return_threshold",
+    ]
+    regime_rows = rolling_heldout_signal_rows[rolling_heldout_signal_rows["regime"].notna()].copy()
+    for key, group in regime_rows.groupby(group_columns, dropna=False, sort=True):
+        fold_id, model_name, horizon, regime, minimum_signal_count, selected_threshold = key
+        buy = group[group["signal"] == SIGNAL_BUY].copy()
+        buy_count = int(len(buy))
+        successful_buy_count = int(buy["success_condition_met"].sum()) if buy_count else 0
+        precision = float(successful_buy_count / buy_count) if buy_count else np.nan
+        row: dict[str, Any] = {
+            "fold_id": str(fold_id),
+            "model_name": str(model_name),
+            "horizon": str(horizon),
+            "regime": str(regime),
+            "minimum_signal_count": int(minimum_signal_count),
+            "selected_threshold": float(selected_threshold),
+            "heldout_buy_count": buy_count,
+            "heldout_successful_buy_count": successful_buy_count,
+            "heldout_buy_precision": precision,
+            "heldout_net_avg_return_after_buy": (
+                float(pd.to_numeric(buy["net_realized_return_after_costs"], errors="coerce").mean())
+                if buy_count
+                else np.nan
+            ),
+        }
+        for target in DEFAULT_PRECISION_TARGETS:
+            row[_target_pass_column(target)] = bool(buy_count > 0 and pd.notna(precision) and precision >= target)
+        rows.append(row)
+    return pd.DataFrame(rows).reindex(columns=REGIME_BUY_PRECISION_COLUMNS).reset_index(drop=True)
+
+
+def _regime_signal_quality_label(row: pd.Series) -> str:
+    total = int(row["total_buy_count"])
+    minimum = int(row["minimum_signal_count"])
+    mean_precision = row["mean_buy_precision"]
+    if total < minimum or pd.isna(mean_precision):
+        return "insufficient"
+    if float(mean_precision) >= 0.70:
+        return "promising"
+    if float(mean_precision) >= 0.60:
+        return "mixed"
+    return "weak"
+
+
+def build_regime_precision_stability_summary(regime_buy_precision_summary: pd.DataFrame) -> pd.DataFrame:
+    if regime_buy_precision_summary.empty:
+        return pd.DataFrame(columns=REGIME_PRECISION_STABILITY_COLUMNS)
+
+    rows: list[dict[str, Any]] = []
+    group_columns = ["model_name", "horizon", "regime", "minimum_signal_count"]
+    for key, group in regime_buy_precision_summary.groupby(group_columns, dropna=False, sort=True):
+        model_name, horizon, regime, minimum_signal_count = key
+        precision = pd.to_numeric(group["heldout_buy_precision"], errors="coerce").dropna()
+        pass_70 = group["precision_target_70_pass"].astype(bool) if "precision_target_70_pass" in group else pd.Series(dtype=bool)
+        rows.append(
+            {
+                "model_name": str(model_name),
+                "horizon": str(horizon),
+                "regime": str(regime),
+                "minimum_signal_count": int(minimum_signal_count),
+                "fold_count": int(group["fold_id"].nunique()),
+                "total_buy_count": int(pd.to_numeric(group["heldout_buy_count"], errors="coerce").fillna(0).sum()),
+                "mean_buy_precision": float(precision.mean()) if not precision.empty else np.nan,
+                "std_buy_precision": (
+                    float(precision.std(ddof=0)) if len(precision) > 1 else 0.0 if len(precision) == 1 else np.nan
+                ),
+                "pass_rate_70": float(pass_70.mean()) if not pass_70.empty else np.nan,
+            }
+        )
+    result = pd.DataFrame(rows).reindex(columns=REGIME_PRECISION_STABILITY_COLUMNS)
+    if not result.empty:
+        result["regime_signal_quality_label"] = result.apply(_regime_signal_quality_label, axis=1)
+    return result.reset_index(drop=True)
+
+
 class SignalEffectivenessRunner:
     """Run signal-effectiveness diagnostics on a saved prediction table."""
 
@@ -1140,11 +1540,15 @@ class SignalEffectivenessRunner:
                 raise ValueError("test_end must be on or after test_start")
             if test_start <= selection_end:
                 raise ValueError("test_start must be later than selection_end for held-out evaluation")
+        if self.config.evaluation_mode == EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION:
+            self.config.rolling_splits = _normalize_rolling_splits(self.config.rolling_splits)
+            if not self.config.rolling_splits:
+                raise ValueError("rolling_splits are required for rolling_heldout_threshold_selection")
 
     def _load_predictions(self) -> tuple[pd.DataFrame, dict[str, Any]]:
         if self.config.predictions_path is None:
             raise ValueError("predictions_path is required when no DataFrame is supplied")
-        return load_prediction_csv(self.config.predictions_path)
+        return load_prediction_csv(self.config.predictions_path, regime_column=self.config.regime_column)
 
     def _apply_filters(self, predictions: pd.DataFrame) -> pd.DataFrame:
         filtered = predictions.copy()
@@ -1190,13 +1594,17 @@ class SignalEffectivenessRunner:
                         )
         if not frames:
             return pd.DataFrame(columns=SIGNAL_ROW_COLUMNS), probability_metadata
-        return pd.concat(frames, ignore_index=True).reindex(columns=SIGNAL_ROW_COLUMNS), probability_metadata
+        output_columns = [*SIGNAL_ROW_COLUMNS, *[column for column in ["regime"] if column in predictions.columns]]
+        return pd.concat(frames, ignore_index=True).reindex(columns=output_columns), probability_metadata
 
     def _load_filtered_predictions(self, predictions: pd.DataFrame | None) -> tuple[pd.DataFrame, dict[str, Any]]:
         if predictions is None:
             normalized, load_metadata = self._load_predictions()
         else:
-            normalized, load_metadata = normalize_prediction_frame(predictions)
+            normalized, load_metadata = normalize_prediction_frame(
+                predictions,
+                regime_column=self.config.regime_column,
+            )
         return self._apply_filters(normalized), load_metadata
 
     def _heldout_windows(self, filtered: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, str]]:
@@ -1292,7 +1700,60 @@ class SignalEffectivenessRunner:
             metadata,
         )
 
+    @staticmethod
+    def _add_fold_metadata(frame: pd.DataFrame, *, split: RollingSplitDefinition, fold_index: int) -> pd.DataFrame:
+        result = frame.copy()
+        metadata = {
+            "fold_id": split.fold_id,
+            "fold_index": int(fold_index),
+            "selection_start": split.selection_start,
+            "selection_end": split.selection_end,
+            "test_start": split.test_start,
+            "test_end": split.test_end,
+        }
+        for column in reversed(ROLLING_FOLD_COLUMNS):
+            result.insert(0, column, metadata[column])
+        return result
+
+    @staticmethod
+    def _concat_frames(frames: list[pd.DataFrame], columns: list[str]) -> pd.DataFrame:
+        if frames:
+            return pd.concat(frames, ignore_index=True, sort=False)
+        return pd.DataFrame(columns=columns)
+
+    def _regime_diagnostics_metadata(
+        self,
+        *,
+        filtered: pd.DataFrame,
+        load_metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        regime_available = bool("regime" in filtered.columns and filtered["regime"].notna().any())
+        requested_column = self.config.regime_column
+        regime_column_used = load_metadata.get("regime_column_used")
+        if regime_available:
+            return {
+                "requested": bool(self.config.enable_regime_diagnostics),
+                "enabled": True,
+                "regime_column_used": regime_column_used,
+                "skipped_reason": None,
+                "safe_source": "existing prediction row column",
+                "context_join_attempted": False,
+            }
+        skipped_reason = "No recognized regime column was found in prediction rows."
+        if requested_column:
+            skipped_reason = f"Requested regime column {requested_column!r} was not found in prediction rows."
+        return {
+            "requested": bool(self.config.enable_regime_diagnostics),
+            "enabled": False,
+            "regime_column_used": None,
+            "skipped_reason": skipped_reason,
+            "safe_source": None,
+            "context_join_attempted": False,
+        }
+
     def run(self, predictions: pd.DataFrame | None = None) -> dict[str, Any]:
+        if self.config.evaluation_mode == EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION:
+            return self.run_rolling_heldout_threshold_selection(predictions)
         if self.config.evaluation_mode == EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION:
             return self.run_heldout_threshold_selection(predictions)
 
@@ -1434,6 +1895,164 @@ class SignalEffectivenessRunner:
             "paths": {name: str(path) for name, path in paths.items()},
         }
 
+    def run_rolling_heldout_threshold_selection(self, predictions: pd.DataFrame | None = None) -> dict[str, Any]:
+        filtered, load_metadata = self._load_filtered_predictions(predictions)
+        splits = list(self.config.rolling_splits or [])
+
+        selected_frames: list[pd.DataFrame] = []
+        heldout_precision_frames: list[pd.DataFrame] = []
+        trace_frames: list[pd.DataFrame] = []
+        heldout_signal_frames: list[pd.DataFrame] = []
+        pass_fail_frames: list[pd.DataFrame] = []
+        strategy_frames: list[pd.DataFrame] = []
+        fold_metadata_rows: list[dict[str, Any]] = []
+
+        for fold_index, split in enumerate(splits, start=1):
+            selection_start = pd.Timestamp(split.selection_start)
+            selection_end = pd.Timestamp(split.selection_end)
+            test_start = pd.Timestamp(split.test_start)
+            test_end = pd.Timestamp(split.test_end)
+            selection_predictions = _filter_prediction_date_window(filtered, start=selection_start, end=selection_end)
+            test_predictions = _filter_prediction_date_window(filtered, start=test_start, end=test_end)
+            (
+                selected_thresholds,
+                heldout_precision,
+                trace,
+                heldout_signal_rows,
+                target_pass_fail,
+                strategy_proxy,
+                heldout_metadata,
+            ) = self._build_heldout_outputs(
+                selection_predictions=selection_predictions,
+                test_predictions=test_predictions,
+            )
+
+            selected_frames.append(self._add_fold_metadata(selected_thresholds, split=split, fold_index=fold_index))
+            heldout_precision_frames.append(self._add_fold_metadata(heldout_precision, split=split, fold_index=fold_index))
+            trace_frames.append(self._add_fold_metadata(trace, split=split, fold_index=fold_index))
+            heldout_signal_frames.append(self._add_fold_metadata(heldout_signal_rows, split=split, fold_index=fold_index))
+            pass_fail_frames.append(self._add_fold_metadata(target_pass_fail, split=split, fold_index=fold_index))
+            strategy_frames.append(self._add_fold_metadata(strategy_proxy, split=split, fold_index=fold_index))
+            fold_metadata_rows.append(
+                {
+                    **split.as_metadata(),
+                    "fold_index": fold_index,
+                    **heldout_metadata,
+                }
+            )
+
+        rolling_selected_thresholds = self._concat_frames(
+            selected_frames,
+            [*ROLLING_FOLD_COLUMNS, *SELECTED_THRESHOLD_COLUMNS],
+        )
+        rolling_heldout_precision = self._concat_frames(
+            heldout_precision_frames,
+            [*ROLLING_FOLD_COLUMNS, *HELDOUT_BUY_PRECISION_COLUMNS],
+        )
+        rolling_trace = self._concat_frames(
+            trace_frames,
+            [*ROLLING_FOLD_COLUMNS, *THRESHOLD_SELECTION_TRACE_COLUMNS],
+        )
+        rolling_heldout_signal_rows = self._concat_frames(
+            heldout_signal_frames,
+            [*ROLLING_FOLD_COLUMNS, *SIGNAL_ROW_COLUMNS, "ticker_scope", "selection_minimum_signal_count"],
+        )
+        rolling_pass_fail = self._concat_frames(
+            pass_fail_frames,
+            [*ROLLING_FOLD_COLUMNS, *PRECISION_TARGET_PASS_FAIL_COLUMNS],
+        )
+        rolling_strategy_proxy = self._concat_frames(
+            strategy_frames,
+            [*ROLLING_FOLD_COLUMNS, *HELDOUT_STRATEGY_PROXY_COLUMNS],
+        )
+        threshold_stability = build_threshold_stability_summary(rolling_heldout_precision, rolling_pass_fail)
+
+        regime_metadata = self._regime_diagnostics_metadata(filtered=filtered, load_metadata=load_metadata)
+        regime_buy_precision = pd.DataFrame(columns=REGIME_BUY_PRECISION_COLUMNS)
+        regime_precision_stability = pd.DataFrame(columns=REGIME_PRECISION_STABILITY_COLUMNS)
+        if regime_metadata["enabled"]:
+            regime_buy_precision = build_regime_buy_precision_summary(rolling_heldout_signal_rows)
+            regime_precision_stability = build_regime_precision_stability_summary(regime_buy_precision)
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        paths = {
+            "rolling_selected_thresholds": self.output_dir / "rolling_selected_thresholds.csv",
+            "rolling_heldout_buy_precision": self.output_dir / "rolling_heldout_buy_precision.csv",
+            "rolling_threshold_selection_trace": self.output_dir / "rolling_threshold_selection_trace.csv",
+            "rolling_heldout_signal_rows": self.output_dir / "rolling_heldout_signal_rows.csv",
+            "rolling_precision_target_pass_fail": self.output_dir / "rolling_precision_target_pass_fail.csv",
+            "rolling_strategy_proxy_metrics": self.output_dir / "rolling_strategy_proxy_metrics.csv",
+            "threshold_stability_summary": self.output_dir / "threshold_stability_summary.csv",
+            "run_metadata": self.output_dir / "run_metadata.json",
+        }
+        if regime_metadata["enabled"]:
+            paths["regime_buy_precision_summary"] = self.output_dir / "regime_buy_precision_summary.csv"
+            paths["regime_precision_stability_summary"] = self.output_dir / "regime_precision_stability_summary.csv"
+
+        rolling_selected_thresholds.to_csv(paths["rolling_selected_thresholds"], index=False)
+        rolling_heldout_precision.to_csv(paths["rolling_heldout_buy_precision"], index=False)
+        rolling_trace.to_csv(paths["rolling_threshold_selection_trace"], index=False)
+        rolling_heldout_signal_rows.to_csv(paths["rolling_heldout_signal_rows"], index=False)
+        rolling_pass_fail.to_csv(paths["rolling_precision_target_pass_fail"], index=False)
+        rolling_strategy_proxy.to_csv(paths["rolling_strategy_proxy_metrics"], index=False)
+        threshold_stability.to_csv(paths["threshold_stability_summary"], index=False)
+        if regime_metadata["enabled"]:
+            regime_buy_precision.to_csv(paths["regime_buy_precision_summary"], index=False)
+            regime_precision_stability.to_csv(paths["regime_precision_stability_summary"], index=False)
+
+        metadata = {
+            "analysis_only": True,
+            "live_execution_enabled": False,
+            "trading_performance_proof": False,
+            "evaluation_mode": EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION,
+            "input_path": self.config.predictions_path,
+            "input_predictions_path": self.config.predictions_path,
+            "config": asdict(self.config),
+            "load_metadata": load_metadata,
+            "filtered_rows": int(len(filtered)),
+            "rolling_splits": [split.as_metadata() for split in splits],
+            "fold_metadata": fold_metadata_rows,
+            "precision_targets": list(self.config.precision_targets),
+            "threshold_grid": list(self.config.predicted_return_thresholds),
+            "cost_per_trade_grid": list(self.config.cost_per_trade_values),
+            "slippage_grid": list(self.config.slippage_values),
+            "success_definition": self.config.success_definition,
+            "regime_diagnostics": regime_metadata,
+            "regime_diagnostics_enabled": bool(regime_metadata["enabled"]),
+            "regime_column_used": regime_metadata["regime_column_used"],
+            "leakage_guard": {
+                "threshold_selection_uses_period": "selection",
+                "test_period_used_for_threshold_selection": False,
+                "heldout_realized_return_used_for_signal_creation": False,
+                "regime_labels_inferred": False,
+                "regime_context_join_attempted": False,
+            },
+            "threshold_selection_rule": (
+                "maximize BUY precision subject to minimum BUY signal count; "
+                "tie-break by higher net average return, then larger BUY signal count"
+            ),
+            "threshold_stability_labels": {
+                "high": "same threshold selected in at least 80% of folds and at least 3 folds exist",
+                "medium": "same threshold selected in at least 60% of folds and at least 3 folds exist",
+                "low": "otherwise",
+            },
+            "output_files": {name: str(path) for name, path in paths.items()},
+        }
+        paths["run_metadata"].write_text(json.dumps(metadata, indent=2, default=_json_default), encoding="utf-8")
+        return {
+            "rolling_selected_thresholds": rolling_selected_thresholds,
+            "rolling_heldout_buy_precision": rolling_heldout_precision,
+            "rolling_threshold_selection_trace": rolling_trace,
+            "rolling_heldout_signal_rows": rolling_heldout_signal_rows,
+            "rolling_precision_target_pass_fail": rolling_pass_fail,
+            "rolling_strategy_proxy_metrics": rolling_strategy_proxy,
+            "threshold_stability_summary": threshold_stability,
+            "regime_buy_precision_summary": regime_buy_precision,
+            "regime_precision_stability_summary": regime_precision_stability,
+            "run_metadata": metadata,
+            "paths": {name: str(path) for name, path in paths.items()},
+        }
+
 
 __all__ = [
     "BENCHMARK_COLUMNS",
@@ -1445,6 +2064,7 @@ __all__ = [
     "DEFAULT_SLIPPAGE_VALUES",
     "EVALUATION_MODE_FRONTIER",
     "EVALUATION_MODE_HELDOUT_THRESHOLD_SELECTION",
+    "EVALUATION_MODE_ROLLING_HELDOUT_THRESHOLD_SELECTION",
     "FRONTIER_COLUMNS",
     "HELDOUT_BUY_PRECISION_COLUMNS",
     "HELDOUT_STRATEGY_PROXY_COLUMNS",
@@ -1463,6 +2083,11 @@ __all__ = [
     "SUCCESS_RAW_POSITIVE",
     "SUCCESS_TARGET_RETURN",
     "SUMMARY_COLUMNS",
+    "REGIME_BUY_PRECISION_COLUMNS",
+    "REGIME_PRECISION_STABILITY_COLUMNS",
+    "ROLLING_FOLD_COLUMNS",
+    "RollingSplitDefinition",
+    "THRESHOLD_STABILITY_SUMMARY_COLUMNS",
     "THRESHOLD_SELECTION_TRACE_COLUMNS",
     "SignalEffectivenessConfig",
     "SignalEffectivenessRunner",
@@ -1470,11 +2095,16 @@ __all__ = [
     "build_buy_precision_table",
     "build_precision_target_pass_fail",
     "build_precision_coverage_frontier",
+    "build_regime_buy_precision_summary",
+    "build_regime_precision_stability_summary",
     "build_strategy_proxy_metrics",
+    "build_threshold_stability_summary",
     "detect_prediction_columns",
     "generate_signal_rows",
+    "load_rolling_splits_file",
     "load_prediction_csv",
     "normalize_prediction_frame",
+    "parse_rolling_splits",
     "select_thresholds_from_summary",
     "summarize_signal_effectiveness",
 ]

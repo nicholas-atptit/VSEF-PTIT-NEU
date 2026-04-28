@@ -275,6 +275,8 @@ Signal-effectiveness backtesting is the next bridge from forecast evaluation to 
 
 Held-out threshold selection is required before treating BUY precision targets as policy candidates. Descriptive threshold frontiers can identify promising slices, but thresholds must be selected on an earlier period and evaluated unchanged on a later held-out period before stronger interpretation.
 
+Rolling held-out threshold selection is required before treating a BUY precision target as stable. Regime-conditioned evaluation is also needed before deciding whether BUY rules should be active in all market states or only in favorable regimes. Current rolling diagnostics remain analysis-only and do not establish trading-performance proof.
+
 ## 12. Limitations
 
 This report has the following limitations:
@@ -288,14 +290,14 @@ This report has the following limitations:
 - generated outputs are diagnostic artifacts, not trading strategy proof
 - transaction costs, slippage, liquidity, borrow constraints, turnover, and portfolio construction constraints are not proven here
 - correlations are weak or negative in several settings
-- directional accuracy is not strong enough by itself to support trading claims
+- directional accuracy and one-period BUY precision are not strong enough by themselves to support trading claims
 
 ## 13. Recommended Next Steps
 
 Recommended follow-up work, in priority order:
 
-1. Regime-aware performance slicing: bull, bear, and sideways regimes.
-2. Held-out threshold selection for saved forecast outputs before promoting any BUY precision target as a policy candidate.
+1. Rolling held-out threshold selection for saved forecast outputs before promoting any BUY precision target as stable.
+2. Regime-aware performance slicing: bull, bear, sideways, and high-volatility regimes where safe labels exist.
 3. Broader VN100-style audit if runtime resources and long-window coverage allow.
 4. Long-window foreign-flow artifact curation if foreign-flow interpretation is required.
 5. Optional technical report export to Word or PDF for advisor review.

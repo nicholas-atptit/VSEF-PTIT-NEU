@@ -255,6 +255,49 @@ Important note:
 
 - This is required before treating descriptive BUY precision frontiers as policy candidates.
 
+## 4C. Rolling Held-Out Threshold Selection
+
+Purpose:
+
+- Repeat held-out threshold selection across multiple chronological folds.
+- Test whether BUY precision targets such as 60%, 65%, and 70% survive beyond one split.
+- Optionally report regime-conditioned BUY precision when prediction rows already contain safe regime labels.
+
+Input data:
+
+- saved prediction CSVs accepted by the signal-effectiveness layer
+- inline `--rolling-splits` definitions or a JSON/CSV `--rolling-splits-file`
+- existing regime columns only: `regime`, `market_regime`, `regime_label`, or `market_state`
+
+Main outputs:
+
+- `rolling_selected_thresholds.csv`
+- `rolling_heldout_buy_precision.csv`
+- `rolling_threshold_selection_trace.csv`
+- `rolling_heldout_signal_rows.csv`
+- `rolling_precision_target_pass_fail.csv`
+- `rolling_strategy_proxy_metrics.csv`
+- `threshold_stability_summary.csv`
+- `regime_buy_precision_summary.csv`, when regime labels exist
+- `regime_precision_stability_summary.csv`, when regime labels exist
+- `run_metadata.json`
+
+Key metrics:
+
+- selected threshold values by fold
+- threshold stability level
+- held-out BUY precision mean, min, max, and standard deviation across folds
+- precision target pass rates across folds
+- regime-specific BUY precision and 70% pass rate, when labels exist
+
+Artifact location:
+
+- caller-specified `--output-dir`
+
+Important note:
+
+- Rolling held-out testing is required before treating a BUY precision target as stable. Regime-conditioned evaluation is needed before deciding whether BUY rules should be active in all market states or only in favorable regimes.
+
 ## 5. Dual-Task Evaluation
 
 Purpose:
@@ -546,6 +589,7 @@ The evaluation stack now answers different questions at different layers:
 - `strategy_backtest`: do those forecasts survive a simple cost-aware paper strategy?
 - `signal_effectiveness`: can saved forecasts support high-precision BUY diagnostics under strict transparent rules?
 - `heldout_threshold_selection`: do selected BUY thresholds survive on a later held-out period?
+- `rolling_heldout_threshold_selection`: do selected BUY thresholds and precision targets remain stable across chronological folds?
 - `dual_task`: can the system forecast both return and tradability?
 - `combined_signal`: does combining both outputs help signal quality?
 - `regime_aware_analysis`: does market state change what works?
