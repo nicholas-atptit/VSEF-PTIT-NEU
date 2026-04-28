@@ -170,6 +170,170 @@ Important note:
 
 - This remains an analysis-only backtest layer, not an execution engine.
 
+## 4A. Signal-Effectiveness Backtest
+
+Purpose:
+
+- Convert saved prediction outputs into diagnostic `BUY`, `HOLD`, and `AVOID` labels.
+- Evaluate whether strict BUY rules have useful precision after explicit cost and slippage assumptions.
+
+Input data:
+
+- saved fixed forward-return or walk-forward prediction CSVs
+- no live provider access
+- threshold, cost, slippage, and success-definition grids
+
+Main outputs:
+
+- `signal_rows.csv`
+- `buy_precision_by_model_horizon.csv`
+- `precision_coverage_frontier.csv`
+- `signal_effectiveness_summary.csv`
+- `strategy_proxy_metrics.csv`
+- `benchmark_comparison.csv`
+- `run_metadata.json`
+
+Key metrics:
+
+- BUY precision
+- BUY recall, when computable
+- average and median realized return after BUY
+- win rate after BUY
+- net average return after estimated cost/slippage
+- cumulative simple signal return
+- profit factor
+- max drawdown on the signal-only proxy curve
+- turnover proxy
+
+Artifact location:
+
+- caller-specified `--output-dir`
+
+Important note:
+
+- This layer is a forecast-to-signal diagnostic bridge, not trading-performance proof.
+
+## 4B. Held-Out Threshold Selection
+
+Purpose:
+
+- Select signal thresholds on an earlier prediction-date window.
+- Apply selected thresholds unchanged to a later held-out window.
+- Test whether BUY precision targets such as 60%, 65%, and 70% survive out of selection.
+
+Input data:
+
+- saved prediction CSVs accepted by the signal-effectiveness layer
+- explicit selection and held-out test date windows
+- threshold, cost, slippage, success-definition, and minimum-count grids
+
+Main outputs:
+
+- `selected_thresholds.csv`
+- `heldout_buy_precision.csv`
+- `threshold_selection_trace.csv`
+- `heldout_signal_rows.csv`
+- `precision_target_pass_fail.csv`
+- `heldout_strategy_proxy_metrics.csv`
+- `run_metadata.json`
+
+Key metrics:
+
+- selection-period BUY precision and BUY count
+- held-out BUY precision and BUY count
+- held-out BUY recall, when computable
+- held-out net average return after BUY
+- held-out profit factor
+- held-out max drawdown proxy
+- precision target pass/fail flags
+
+Artifact location:
+
+- caller-specified `--output-dir`
+
+Important note:
+
+- This is required before treating descriptive BUY precision frontiers as policy candidates.
+
+## 4C. Rolling Held-Out Threshold Selection
+
+Purpose:
+
+- Repeat held-out threshold selection across multiple chronological folds.
+- Test whether BUY precision targets such as 60%, 65%, and 70% survive beyond one split.
+- Optionally report regime-conditioned BUY precision when prediction rows already contain safe regime labels.
+
+Input data:
+
+- saved prediction CSVs accepted by the signal-effectiveness layer
+- inline `--rolling-splits` definitions or a JSON/CSV `--rolling-splits-file`
+- existing regime columns only: `regime`, `market_regime`, `regime_label`, or `market_state`
+
+Main outputs:
+
+- `rolling_selected_thresholds.csv`
+- `rolling_heldout_buy_precision.csv`
+- `rolling_threshold_selection_trace.csv`
+- `rolling_heldout_signal_rows.csv`
+- `rolling_precision_target_pass_fail.csv`
+- `rolling_strategy_proxy_metrics.csv`
+- `threshold_stability_summary.csv`
+- `regime_buy_precision_summary.csv`, when regime labels exist
+- `regime_precision_stability_summary.csv`, when regime labels exist
+- `run_metadata.json`
+
+Key metrics:
+
+- selected threshold values by fold
+- threshold stability level
+- held-out BUY precision mean, min, max, and standard deviation across folds
+- precision target pass rates across folds
+- regime-specific BUY precision and 70% pass rate, when labels exist
+
+Artifact location:
+
+- caller-specified `--output-dir`
+
+Important note:
+
+- Rolling held-out testing is required before treating a BUY precision target as stable. Regime-conditioned evaluation is needed before deciding whether BUY rules should be active in all market states or only in favorable regimes.
+
+## 4D. Signal Regime Join
+
+Purpose:
+
+- Attach precomputed safe regime labels to saved prediction rows before signal-effectiveness diagnostics.
+- Record join coverage and source-review flags.
+- Avoid fabricating regimes inside the signal layer.
+
+Input data:
+
+- saved prediction CSVs with `prediction_date`
+- precomputed regime label CSVs with a configurable date column
+- optional ticker column when using ticker/date joins
+
+Main outputs:
+
+- enriched prediction CSV with `regime`
+- join coverage summary JSON or CSV
+
+Supported join modes:
+
+- `date`
+- `ticker_date`
+
+Governance checks:
+
+- matched and unmatched prediction rows
+- duplicate regime keys
+- suspicious future-looking source column names
+- regime label distribution
+- classification as `safe_if_regime_source_is_trailing`, `requires_source_review`, or `schema_invalid`
+
+Important note:
+
+- Regime-conditioned BUY precision requires safe precomputed regime labels joined to prediction rows. The join layer does not infer regimes and does not prove leakage absence by itself; it records coverage and source-review flags.
+
 ## 5. Dual-Task Evaluation
 
 Purpose:
@@ -459,6 +623,10 @@ The evaluation stack now answers different questions at different layers:
 - `backtest` and `backtest_model_comparison`: can a model fit the fixed holdout at all?
 - `backtest_forward_return`: which horizon and model family look strongest on returns?
 - `strategy_backtest`: do those forecasts survive a simple cost-aware paper strategy?
+- `signal_effectiveness`: can saved forecasts support high-precision BUY diagnostics under strict transparent rules?
+- `heldout_threshold_selection`: do selected BUY thresholds survive on a later held-out period?
+- `rolling_heldout_threshold_selection`: do selected BUY thresholds and precision targets remain stable across chronological folds?
+- `signal_regime_join`: can safe precomputed regime labels be attached to prediction rows for regime-conditioned signal diagnostics?
 - `dual_task`: can the system forecast both return and tradability?
 - `combined_signal`: does combining both outputs help signal quality?
 - `regime_aware_analysis`: does market state change what works?

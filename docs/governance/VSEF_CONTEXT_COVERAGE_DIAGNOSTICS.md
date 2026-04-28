@@ -50,6 +50,8 @@ Columns:
 - `foreign_flow_missing_count`
 - `foreign_flow_available_rate`
 - `foreign_flow_missing_rate`
+- `foreign_flow_context_mode`
+- `foreign_flow_coverage_status`
 - `coverage_warning_level`
 - `coverage_metadata_status`
 - `coverage_note`
@@ -85,6 +87,16 @@ The warning rule is intentionally simple:
 - `metadata_unavailable`: required availability metadata columns are absent
 
 The maximum missing rate is calculated across breadth and foreign-flow metadata when both are available.
+
+## Disabled Foreign-Flow Mode
+
+When the runner is invoked with `--foreign-flow-mode disabled`, foreign-flow context is intentionally excluded instead of loaded from the default local cache. Fold diagnostics record `foreign_flow_context_mode = disabled` and `foreign_flow_coverage_status = disabled`.
+
+Disabled foreign-flow rows use zero available and missing counts, unavailable foreign-flow rates, and do not create a `weak_coverage` warning solely because foreign-flow is absent. Breadth missing rates still participate in the warning calculation. In `auto` and `path` modes, actual foreign-flow missingness is reported normally.
+
+`docs/audits/VSEF_15Y_DAILY_WALKFORWARD_NO_FOREIGN_FLOW_AUDIT.md` shows this behavior in a long-window rerun: breadth missing rates remain `0.0`, foreign-flow rates are unavailable by design, and all context coverage folds remain `ok`.
+
+`docs/audits/VSEF_15Y_MULTIHORIZON_WALKFORWARD_AUDIT.md` confirms the same disabled-mode behavior across multiple forecast horizons.
 
 ## Interpreting Breadth Missing Rate
 

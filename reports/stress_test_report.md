@@ -9,24 +9,24 @@
 ## Summary
 | stress_scenario | benchmark_mode | stressed_sharpe | stressed_max_drawdown | stressed_tail_loss | stressed_exposure | stressed_turnover | delta_sharpe | delta_tail_loss | delta_drawdown | delta_exposure | regime_reaction_speed |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| drawdown_shock | forecast_plus_risk_and_regime | -6.6 | -0.3059 | -0.021 | 0.4127 | 15.0 | -0.68 | -0.0028 | -0.0482 | 0.0 | 0.0 |
-| drawdown_shock | forecast_plus_risk_features | -6.6 | -0.3059 | -0.021 | 0.4127 | 15.0 | -0.68 | -0.0028 | -0.0482 | 0.0 | 0.0 |
-| drawdown_shock | full_system | -5.82 | -0.1588 | -0.0137 | 0.1746 | 8.25 | -0.33 | 0.0024 | 0.0254 | -0.0417 | 0.0 |
-| drawdown_shock | legacy_forecast_only | -6.6 | -0.3059 | -0.021 | 0.4127 | 15.0 | -0.68 | -0.0028 | -0.0482 | 0.0 | nan |
-| liquidity_cost_shock | forecast_plus_risk_and_regime | -8.11 | -0.3485 | -0.0195 | 0.4127 | 15.0 | -2.19 | -0.0013 | -0.0908 | 0.0 | 0.0 |
-| liquidity_cost_shock | forecast_plus_risk_features | -8.11 | -0.3485 | -0.0195 | 0.4127 | 15.0 | -2.19 | -0.0013 | -0.0908 | 0.0 | 0.0 |
-| liquidity_cost_shock | full_system | -7.48 | -0.2693 | -0.0177 | 0.2163 | 12.75 | -1.99 | -0.0016 | -0.0851 | 0.0 | 0.0 |
-| liquidity_cost_shock | legacy_forecast_only | -8.11 | -0.3485 | -0.0195 | 0.4127 | 15.0 | -2.19 | -0.0013 | -0.0908 | 0.0 | nan |
-| regime_persistence_shock | forecast_plus_risk_and_regime | -6.97 | -0.3064 | -0.0197 | 0.4127 | 15.0 | -1.05 | -0.0015 | -0.0487 | 0.0 | 0.0 |
-| regime_persistence_shock | forecast_plus_risk_features | -6.97 | -0.3064 | -0.0197 | 0.4127 | 15.0 | -1.05 | -0.0015 | -0.0487 | 0.0 | 0.0 |
-| regime_persistence_shock | full_system | -5.75 | -0.1433 | -0.0119 | 0.1567 | 8.25 | -0.26 | 0.0042 | 0.0409 | -0.0596 | 0.0 |
-| regime_persistence_shock | legacy_forecast_only | -6.97 | -0.3064 | -0.0197 | 0.4127 | 15.0 | -1.05 | -0.0015 | -0.0487 | 0.0 | 0.0 |
-| volatility_shock | forecast_plus_risk_and_regime | -4.94 | -0.3656 | -0.0345 | 0.4127 | 15.0 | 0.98 | -0.0163 | -0.1079 | 0.0 | 0.0 |
-| volatility_shock | forecast_plus_risk_features | -4.94 | -0.3656 | -0.0345 | 0.4127 | 15.0 | 0.98 | -0.0163 | -0.1079 | 0.0 | 0.0 |
-| volatility_shock | full_system | -5.45 | -0.1672 | -0.0147 | 0.15 | 5.95 | 0.04 | 0.0014 | 0.017 | -0.0663 | 0.0 |
-| volatility_shock | legacy_forecast_only | -4.94 | -0.3656 | -0.0345 | 0.4127 | 15.0 | 0.98 | -0.0163 | -0.1079 | 0.0 | 0.0 |
+| drawdown_shock | forecast_plus_risk_and_regime | -1.55 | -0.2024 | -0.0232 | 0.5098 | 11.0 | -1.59 | -0.0083 | -0.0718 | 0.0 | 0.0 |
+| drawdown_shock | forecast_plus_risk_features | -3.3 | -0.2201 | -0.0227 | 0.5882 | 13.0 | -1.18 | -0.0067 | -0.0701 | 0.0 | 0.0 |
+| drawdown_shock | full_system | 0.27 | -0.0588 | -0.01 | 0.3039 | 6.5 | 1.03 | 0.0034 | 0.0298 | -0.0515 | 0.0 |
+| drawdown_shock | legacy_forecast_only | -1.91 | -0.2154 | -0.0227 | 0.4706 | 9.0 | -1.56 | -0.0076 | -0.0706 | 0.0 | nan |
+| liquidity_cost_shock | forecast_plus_risk_and_regime | -1.93 | -0.2055 | -0.0198 | 0.5098 | 11.0 | -1.97 | -0.0049 | -0.0749 | 0.0 | 0.0 |
+| liquidity_cost_shock | forecast_plus_risk_features | -3.99 | -0.2305 | -0.0205 | 0.5882 | 13.0 | -1.87 | -0.0045 | -0.0805 | 0.0 | 0.0 |
+| liquidity_cost_shock | full_system | -3.05 | -0.1727 | -0.0171 | 0.3554 | 11.0 | -2.29 | -0.0037 | -0.0841 | 0.0 | 0.0 |
+| liquidity_cost_shock | legacy_forecast_only | -2.03 | -0.2041 | -0.0173 | 0.4706 | 9.0 | -1.68 | -0.0022 | -0.0593 | 0.0 | nan |
+| regime_persistence_shock | forecast_plus_risk_and_regime | -0.51 | -0.1395 | -0.0156 | 0.5098 | 11.0 | -0.55 | -0.0007 | -0.0089 | 0.0 | 0.0 |
+| regime_persistence_shock | forecast_plus_risk_features | -3.09 | -0.1739 | -0.0169 | 0.5882 | 13.0 | -0.97 | -0.0009 | -0.0239 | 0.0 | 0.0 |
+| regime_persistence_shock | full_system | 0.29 | -0.0411 | -0.0064 | 0.2225 | 6.8 | 1.05 | 0.007 | 0.0475 | -0.1329 | 0.0 |
+| regime_persistence_shock | legacy_forecast_only | -0.98 | -0.1553 | -0.0155 | 0.4706 | 9.0 | -0.63 | -0.0004 | -0.0105 | 0.0 | 0.0 |
+| volatility_shock | forecast_plus_risk_and_regime | 1.01 | -0.1588 | -0.0189 | 0.5098 | 11.0 | 0.97 | -0.004 | -0.0282 | 0.0 | 0.0 |
+| volatility_shock | forecast_plus_risk_features | -1.58 | -0.1804 | -0.0238 | 0.5882 | 13.0 | 0.54 | -0.0078 | -0.0304 | 0.0 | 0.0 |
+| volatility_shock | full_system | 1.12 | -0.0498 | -0.0066 | 0.2029 | 5.2 | 1.88 | 0.0068 | 0.0388 | -0.1525 | 0.0 |
+| volatility_shock | legacy_forecast_only | 0.7 | -0.1754 | -0.0182 | 0.4706 | 9.0 | 1.05 | -0.0031 | -0.0306 | 0.0 | 0.0 |
 
 ## Output Files
-- Detail CSV: `reports/stress_alignment.csv`
-- Summary CSV: `reports/stress_alignment_summary.csv`
-- JSON: `reports/stress_alignment.json`
+- Detail CSV: `K:\Repos\VSEF-PTIT-NEU\tmp\pytest_tmpdirs\case_0d3253944af842f787d39d0989cf4574\reports\stress_alignment.csv`
+- Summary CSV: `K:\Repos\VSEF-PTIT-NEU\tmp\pytest_tmpdirs\case_0d3253944af842f787d39d0989cf4574\reports\stress_alignment_summary.csv`
+- JSON: `K:\Repos\VSEF-PTIT-NEU\tmp\pytest_tmpdirs\case_0d3253944af842f787d39d0989cf4574\reports\stress_alignment.json`

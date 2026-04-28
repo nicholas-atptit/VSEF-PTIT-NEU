@@ -117,6 +117,8 @@ class WalkForwardAllModelsStackingConfig:
     linear_diagnostic_models: list[str] = field(default_factory=lambda: ["linear", "ridge", "lasso"])
     enable_feature_importance_diagnostics: bool = True
     foreign_flow_path: str | None = None
+    foreign_flow_mode: str = "auto"
+    ohlcv_data_dir: str | None = None
 
 
 def _normalize_dates(frame: pd.DataFrame) -> pd.DataFrame:
@@ -205,17 +207,76 @@ class WalkForwardAllModelsStackingRunner:
 
     def __init__(self, config: WalkForwardAllModelsStackingConfig) -> None:
         self.config = config
+        self.config.foreign_flow_mode = self._normalize_foreign_flow_mode(config.foreign_flow_mode)
+        if self.config.foreign_flow_mode == "path" and not self.config.foreign_flow_path:
+            raise ValueError("foreign_flow_mode='path' requires foreign_flow_path")
+        if self.config.foreign_flow_mode == "disabled" and self.config.foreign_flow_path:
+            raise ValueError("foreign_flow_mode='disabled' cannot be combined with foreign_flow_path")
         self.output_dir = Path(config.output_dir)
         self.csv_dir = self.output_dir / "csv"
         self.charts_dir = self.output_dir / "charts"
         self.models_dir = self.output_dir / "tmp_models"
         self.report_path = self.output_dir / "report.md"
         self.adapter = VnstockAdapter(symbol_list=[ticker.upper() for ticker in config.tickers])
-        self._foreign_flow_context_metadata: dict[str, Any] = {
-            "foreign_flow_path": config.foreign_flow_path,
-            "foreign_flow_path_explicit": bool(config.foreign_flow_path),
+        self.ohlcv_data_dir = self._resolve_ohlcv_data_dir(config.ohlcv_data_dir)
+        self._foreign_flow_context_metadata: dict[str, Any] = self._build_foreign_flow_context_metadata()
+
+    @staticmethod
+    def _normalize_foreign_flow_mode(mode: str | None) -> str:
+        normalized = str(mode or "auto").strip().lower()
+        if normalized not in {"auto", "path", "disabled"}:
+            raise ValueError(f"Unsupported foreign_flow_mode: {mode}")
+        return normalized
+
+    def _build_foreign_flow_context_metadata(
+        self,
+        foreign_flow_df: pd.DataFrame | None = None,
+    ) -> dict[str, Any]:
+        mode = self.config.foreign_flow_mode
+        if mode == "disabled":
+            return {
+                "enabled": False,
+                "mode": "disabled",
+                "path": None,
+                "foreign_flow_path": None,
+                "foreign_flow_path_explicit": False,
+                "source_name": "disabled",
+                "source_provenance": "disabled",
+                "row_count": 0,
+                "artifact_validation": None,
+                "reason": "foreign-flow context intentionally disabled",
+            }
+        return {
+            "enabled": True,
+            "mode": mode,
+            "path": self.config.foreign_flow_path,
+            "foreign_flow_path": self.config.foreign_flow_path,
+            "foreign_flow_path_explicit": bool(self.config.foreign_flow_path),
+            "source_name": (
+                foreign_flow_df.attrs.get("source_name")
+                if isinstance(foreign_flow_df, pd.DataFrame)
+                else None
+            ),
+            "source_provenance": (
+                foreign_flow_df.attrs.get("source_provenance")
+                if isinstance(foreign_flow_df, pd.DataFrame)
+                else None
+            ),
+            "row_count": int(len(foreign_flow_df)) if isinstance(foreign_flow_df, pd.DataFrame) else 0,
             "artifact_validation": None,
+            "reason": None,
         }
+
+    @staticmethod
+    def _resolve_ohlcv_data_dir(raw_path: str | None) -> Path | None:
+        if not raw_path:
+            return None
+        path = Path(raw_path)
+        if not path.exists():
+            raise FileNotFoundError(f"ohlcv_data_dir does not exist: {path}")
+        if not path.is_dir():
+            raise NotADirectoryError(f"ohlcv_data_dir is not a directory: {path}")
+        return path
 
     @staticmethod
     def _normalize_horizons(values: list[str] | tuple[str, ...] | None) -> dict[str, int]:
@@ -258,20 +319,37 @@ class WalkForwardAllModelsStackingRunner:
         return available, skipped
 
     def _fetch_history(self, ticker: str, start_ts: pd.Timestamp, end_ts: pd.Timestamp) -> pd.DataFrame:
-        history = self.adapter.get_ohlcv(
-            ticker,
-            start_date=start_ts.strftime("%Y-%m-%d"),
-            end_date=end_ts.strftime("%Y-%m-%d"),
-            interval=self.config.interval,
-        )
-        source = f"vnstock_{str(history.attrs.get('vnstock_source', 'unknown')).lower()}" if not history.empty else "vnstock"
-        if history.empty:
+        if self.ohlcv_data_dir is not None:
+            csv_path = self.ohlcv_data_dir / f"{ticker.upper()}.csv"
+            if not csv_path.exists():
+                raise FileNotFoundError(f"ohlcv_data_dir is missing OHLCV file for {ticker}: {csv_path}")
             history = load_ohlcv_from_csv(
                 ticker,
+                csv_dir=self.ohlcv_data_dir,
                 start_date=start_ts.to_pydatetime().date(),
                 end_date=end_ts.to_pydatetime().date(),
             )
-            source = "csv_fallback"
+            if history.empty:
+                raise ValueError(
+                    f"No OHLCV rows for {ticker} in explicit ohlcv_data_dir={self.ohlcv_data_dir} "
+                    f"between {start_ts.date()} and {end_ts.date()}"
+                )
+            source = "csv_explicit_ohlcv_data_dir"
+        else:
+            history = self.adapter.get_ohlcv(
+                ticker,
+                start_date=start_ts.strftime("%Y-%m-%d"),
+                end_date=end_ts.strftime("%Y-%m-%d"),
+                interval=self.config.interval,
+            )
+            source = f"vnstock_{str(history.attrs.get('vnstock_source', 'unknown')).lower()}" if not history.empty else "vnstock"
+            if history.empty:
+                history = load_ohlcv_from_csv(
+                    ticker,
+                    start_date=start_ts.to_pydatetime().date(),
+                    end_date=end_ts.to_pydatetime().date(),
+                )
+                source = "csv_fallback"
         if history.empty:
             raise ValueError(f"No OHLCV data returned for {ticker} from vnstock or local CSV fallback")
         trainer = DualModelTrainer(model_dir=self.models_dir / "_scratch")
@@ -286,24 +364,14 @@ class WalkForwardAllModelsStackingRunner:
         end_ts: pd.Timestamp,
     ) -> dict[str, Any]:
         trainer = DualModelTrainer(model_dir=self.models_dir / "_scratch")
-        context_sources = trainer._load_context_sources(foreign_flow_path=self.config.foreign_flow_path).copy()
+        context_sources = trainer._load_context_sources(
+            foreign_flow_path=self.config.foreign_flow_path,
+            foreign_flow_mode=self.config.foreign_flow_mode,
+        ).copy()
         foreign_flow_df = context_sources.get("foreign_flow_df")
-        self._foreign_flow_context_metadata = {
-            "foreign_flow_path": self.config.foreign_flow_path,
-            "foreign_flow_path_explicit": bool(self.config.foreign_flow_path),
-            "source_name": (
-                foreign_flow_df.attrs.get("source_name")
-                if isinstance(foreign_flow_df, pd.DataFrame)
-                else None
-            ),
-            "source_provenance": (
-                foreign_flow_df.attrs.get("source_provenance")
-                if isinstance(foreign_flow_df, pd.DataFrame)
-                else None
-            ),
-            "row_count": int(len(foreign_flow_df)) if isinstance(foreign_flow_df, pd.DataFrame) else 0,
-            "artifact_validation": None,
-        }
+        self._foreign_flow_context_metadata = self._build_foreign_flow_context_metadata(
+            foreign_flow_df if isinstance(foreign_flow_df, pd.DataFrame) else None
+        )
         if self.config.foreign_flow_path:
             validation_start = pd.Timestamp(self.config.forecast_start).normalize()
             validation_end = pd.Timestamp(self.config.forecast_end).normalize()
@@ -1751,6 +1819,11 @@ class WalkForwardAllModelsStackingRunner:
         stacking_wins = stacking_vs_all_models.groupby(["scope", "step_size", "horizon"], as_index=False)[
             ["stacking_better_rmse", "stacking_better_directional_accuracy"]
         ].mean()
+        source_description = (
+            f"explicit OHLCV CSV directory `{self.config.ohlcv_data_dir}`"
+            if self.config.ohlcv_data_dir
+            else "vnstock daily OHLCV ahead of local CSV fallback"
+        )
 
         lines = [
             "# Walk-Forward Forecasting Report",
@@ -1758,13 +1831,14 @@ class WalkForwardAllModelsStackingRunner:
             "## Experiment Setup",
             f"- Ticker universe: {', '.join(str(ticker).upper() for ticker in self.config.tickers)}",
             f"- Historical input window: {self.config.history_start} through {self.config.history_end}",
+            f"- OHLCV data directory override: `{self.config.ohlcv_data_dir}`" if self.config.ohlcv_data_dir else "- OHLCV data directory override: not supplied",
             f"- Historical training window baseline: {self.config.initial_train_start} through {self.config.initial_train_end}",
             f"- Rolling forecast window: {self.config.forecast_start} through {self.config.forecast_end}",
             f"- Horizons: {', '.join(self._normalize_horizons(self.config.horizons).keys())}",
             f"- Step sizes completed: {', '.join(str(value) for value in self._resolve_step_sizes())}",
             f"- Models actually run: {', '.join(algorithms)}",
             "- Stacking method used: prequential Ridge regression on prior out-of-sample base-model predictions, pooled by horizon and step size, with mean fallback before enough realized rows exist.",
-            "- Actual data source used: vnstock daily OHLCV with KBS fallback ahead of local CSV fallback when the repo-local CSV history was too short.",
+            f"- Actual data source used: {source_description}.",
             "- Exact target semantics used for actual comparison: `close[target_date] / close[prediction_date] - 1`, matching `DualModelTrainer._add_targets(...)`.",
             "- Prediction-date semantics: the forecast anchor is the latest feature row date, so `prediction_date` equals the date whose close is used in the forward-return denominator.",
             "- Evaluation-eligible rows: only predictions whose realized `target_date` close existed inside the fetched history were scored; later rows were kept in output tables but excluded from aggregate metrics.",
@@ -1911,6 +1985,15 @@ class WalkForwardAllModelsStackingRunner:
 
         metadata = {
             "config": asdict(self.config),
+            "ohlcv_data": {
+                "ohlcv_data_dir": self.config.ohlcv_data_dir,
+                "ohlcv_data_dir_explicit": bool(self.config.ohlcv_data_dir),
+                "source_mode": (
+                    "explicit_csv_dir"
+                    if self.config.ohlcv_data_dir
+                    else "provider_then_default_csv_fallback"
+                ),
+            },
             "resolved_horizons": horizons,
             "step_sizes": step_sizes,
             "available_algorithms": algorithms,

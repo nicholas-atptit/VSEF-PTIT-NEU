@@ -62,6 +62,18 @@ from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+FOREIGN_FLOW_DISABLED_REASON = "foreign-flow context intentionally disabled"
+
+
+def _disabled_foreign_flow_frame() -> pd.DataFrame:
+    frame = pd.DataFrame()
+    frame.attrs["foreign_flow_context_mode"] = "disabled"
+    frame.attrs["foreign_flow_coverage_status"] = "disabled"
+    frame.attrs["source_name"] = "disabled"
+    frame.attrs["source_provenance"] = "disabled"
+    frame.attrs["disabled_reason"] = FOREIGN_FLOW_DISABLED_REASON
+    return frame
+
 HORIZON_DAYS = {
     "short": 5,
     "mid": 20,
@@ -135,12 +147,20 @@ class DualModelTrainer:
         include_sentiment: bool = False,
         require_validated_sentiment: bool = True,
         foreign_flow_path: str | Path | None = None,
+        foreign_flow_mode: str = "auto",
     ) -> dict[str, Any]:
+        mode = str(foreign_flow_mode or "auto").strip().lower()
+        if mode not in {"auto", "path", "disabled"}:
+            raise ValueError(f"Unsupported foreign_flow_mode: {foreign_flow_mode}")
         explicit_foreign_flow_path = Path(foreign_flow_path) if foreign_flow_path is not None else None
+        if mode == "path" and explicit_foreign_flow_path is None:
+            raise ValueError("foreign_flow_mode='path' requires foreign_flow_path")
+        if mode == "disabled" and explicit_foreign_flow_path is not None:
+            raise ValueError("foreign_flow_mode='disabled' cannot be combined with foreign_flow_path")
         if explicit_foreign_flow_path is not None and not explicit_foreign_flow_path.exists():
             raise FileNotFoundError(f"Configured foreign_flow_path does not exist: {explicit_foreign_flow_path}")
 
-        if self._context_cache is None or explicit_foreign_flow_path is not None:
+        if self._context_cache is None or explicit_foreign_flow_path is not None or mode == "disabled":
             context_cache = {
                 "market_df": load_market_proxy(),
                 "sector_df": load_sector_proxies(),
@@ -148,18 +168,23 @@ class DualModelTrainer:
                 "breadth_df": load_market_breadth(),
                 "macro_df": load_macro_context(),
                 "foreign_flow_df": (
-                    load_foreign_flow(path=explicit_foreign_flow_path)
-                    if explicit_foreign_flow_path is not None
-                    else load_foreign_flow()
+                    _disabled_foreign_flow_frame()
+                    if mode == "disabled"
+                    else (
+                        load_foreign_flow(path=explicit_foreign_flow_path)
+                        if explicit_foreign_flow_path is not None
+                        else load_foreign_flow()
+                    )
                 ),
             }
-            if explicit_foreign_flow_path is None:
+            if explicit_foreign_flow_path is None and mode != "disabled":
                 self._context_cache = context_cache
         else:
             context_cache = self._context_cache
         context_sources = dict(context_cache)
         context_sources["_foreign_flow_path_explicit"] = explicit_foreign_flow_path is not None
         context_sources["_foreign_flow_path"] = str(explicit_foreign_flow_path) if explicit_foreign_flow_path is not None else None
+        context_sources["_foreign_flow_mode"] = mode
         context_sources["sentiment_df"] = load_sentiment(
             enabled=include_sentiment,
             require_validated_source=require_validated_sentiment,
@@ -256,8 +281,11 @@ class DualModelTrainer:
         context_sources: dict[str, Any],
     ) -> pd.DataFrame:
         foreign_flow_df = context_sources.get("foreign_flow_df")
+        foreign_flow_mode = str(context_sources.get("_foreign_flow_mode", "auto")).strip().lower()
         explicit_foreign_flow_path = bool(context_sources.get("_foreign_flow_path_explicit", False))
-        if (foreign_flow_df is None or foreign_flow_df.empty) and not explicit_foreign_flow_path:
+        if foreign_flow_mode == "disabled":
+            foreign_flow_df = foreign_flow_df if isinstance(foreign_flow_df, pd.DataFrame) else _disabled_foreign_flow_frame()
+        elif (foreign_flow_df is None or foreign_flow_df.empty) and not explicit_foreign_flow_path:
             foreign_flow_df = load_foreign_flow(
                 tickers=[ticker],
                 start_date=pd.to_datetime(df["date"]).min().date() if "date" in df.columns and not df.empty else None,
