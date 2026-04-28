@@ -1,8 +1,16 @@
 # VSEF 15-Year Multi-Horizon Walk-Forward Audit
 
-Date: 2026-04-28
+## Document Metadata
 
-Branch: `vsef-15y-multihorizon-audit`
+| Field | Value |
+| --- | --- |
+| Document type | Audit |
+| Created / authored | Tuesday, 2026-04-28 06:13:34 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 07:03:55 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-15y-multihorizon-audit` |
+| Commit | `c044cffd8e34ad1bb7af95b11741d9a3996e0ea3` |
+| Timestamp source | Git history; existing document date mirrored |
 
 Base commit: `b506d9f89bb7c1c069e26e7d817de0825be50755`
 

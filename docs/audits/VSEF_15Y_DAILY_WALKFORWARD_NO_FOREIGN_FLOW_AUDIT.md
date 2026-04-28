@@ -1,8 +1,16 @@
 # VSEF 15-Year Daily Walk-Forward Audit With Foreign-Flow Disabled
 
-Date: 2026-04-28
+## Document Metadata
 
-Branch: `vsef-15y-daily-audit-no-foreign-flow`
+| Field | Value |
+| --- | --- |
+| Document type | Audit |
+| Created / authored | Tuesday, 2026-04-28 02:07:58 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 07:03:55 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-15y-daily-audit-no-foreign-flow` |
+| Commit | `c044cffd8e34ad1bb7af95b11741d9a3996e0ea3` |
+| Timestamp source | Git history; existing document date mirrored |
 
 Base commit: `9b7a72fd817fd86812c0f8da24d77b2154bdc4b4`
 

@@ -1,5 +1,17 @@
 # VSEF Rolling Regime Threshold Selection
 
+## Document Metadata
+
+| Field | Value |
+| --- | --- |
+| Document type | Audit |
+| Created / authored | Tuesday, 2026-04-28 19:39:18 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 21:37:10 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-rolling-regime-threshold-selection` |
+| Commit | `1bbb75a793c5ea30a26ffef7860aadd06306a640` |
+| Timestamp source | Git history |
+
 ## Purpose
 
 This audit extends the signal-effectiveness and held-out threshold-selection layer with `rolling_heldout_threshold_selection`.

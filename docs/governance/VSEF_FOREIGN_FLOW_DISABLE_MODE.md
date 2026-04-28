@@ -1,8 +1,16 @@
 # VSEF Foreign-Flow Disable Mode
 
-Date: 2026-04-27
+## Document Metadata
 
-Branch: `vsef-disable-foreign-flow-context-option`
+| Field | Value |
+| --- | --- |
+| Document type | Governance note |
+| Created / authored | Monday, 2026-04-27 23:29:57 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 06:13:34 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-disable-foreign-flow-context-option` |
+| Commit | `df43dc4b77de930f70114ee01391e535119aef39` |
+| Timestamp source | Git history; existing document date mirrored |
 
 ## Purpose
 
