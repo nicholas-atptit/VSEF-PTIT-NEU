@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `src/ml/experiment_tracker.py`
-  - `docs/experiment_tracking.md`
+  - `docs/governance/experiment_tracking.md`
   - `reports/experiments.jsonl`
   - `scripts/train_ml_tickers.py`
 
@@ -16,7 +16,7 @@
 
 ## Files Created
 - `src/ml/experiment_tracker.py`
-- `docs/experiment_tracking.md`
+- `docs/governance/experiment_tracking.md`
 
 ## Files Modified
 - `scripts/train_ml_tickers.py` (Integrated `ExperimentTracker`)
@@ -49,7 +49,7 @@
 
 ## Verification
 - `tail -n 10 reports/experiments.jsonl | jq`
-- Reviewing `docs/experiment_tracking.md`.
+- Reviewing `docs/governance/experiment_tracking.md`.
 
 ## Open TODOs
 - Integration with Weights & Biases or MLflow.

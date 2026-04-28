@@ -1,16 +1,16 @@
 # VSEF Held-Out Threshold Selection
-
 ## Document Metadata
 
 | Field | Value |
 | --- | --- |
 | Document type | Audit |
 | Created / authored | Tuesday, 2026-04-28 15:25:36 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 19:39:18 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
-| Branch | `vsef-heldout-threshold-selection` |
-| Commit | `f4eb2971c60d303828ebd77d794b2172c2227d87` |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
 | Timestamp source | Git history |
+| Status | Active |
 
 ## Purpose
 

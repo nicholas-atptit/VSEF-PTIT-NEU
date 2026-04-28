@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `scripts/train_ml_tickers.py`
-  - `docs/train_ml_vn100.md`
+  - `docs/usage/train_ml_vn100.md`
   - `src/data/universe.py`
 
 ## Objective
@@ -14,7 +14,7 @@
 - Implement dynamic universe loading and performance optimizations (skipping existing models).
 
 ## Files Created
-- `docs/train_ml_vn100.md`
+- `docs/usage/train_ml_vn100.md`
 
 ## Files Modified
 - `scripts/train_ml_tickers.py` (Added batch logic and CLI flags)
@@ -49,7 +49,7 @@
 
 ## Verification
 - `python scripts/train_ml_tickers.py --vn100 --max-tickers 5 --dry-run`
-- Reviewing `docs/train_ml_vn100.md`.
+- Reviewing `docs/usage/train_ml_vn100.md`.
 
 ## Open TODOs
 - Concurrent training (multi-processing) for faster batch runs.

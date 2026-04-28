@@ -2,7 +2,7 @@
 
 | Task Name | Status | Main Files Changed | Algorithm/Method Introduced | Verification Command |
 | :--- | :--- | :--- | :--- | :--- |
-| **Audit** | Completed | `docs/codebase_audit.md` | Reusable component mapping | N/A |
+| **Audit** | Completed | `docs/archive/root/2026-04-02_Thursday__codebase_audit.md` | Reusable component mapping | N/A |
 | **Adapter Layer** | Completed | `src/adapters/vnstock_adapter.py` | API key injection, standard OHLCV | `python scripts/test_adapter.py` |
 | **Universe Loader**| Completed | `src/data/universe.py` | `get_vn100_universe` | `python src/data/universe.py` |
 | **Daily Sync** | Completed | `scripts/sync_all_data.py` | universe_mode filter | `python scripts/sync_all_data.py --vn100` |

@@ -1,8 +1,16 @@
 # VSEF Repository Structure
+## Document Metadata
 
-Date: 2026-04-26
-
-Branch: `vsef-repository-structure-cleanup`
+| Field | Value |
+| --- | --- |
+| Document type | Architecture note |
+| Created / authored | Sunday, 2026-04-26 15:48:16 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:51:14 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Commit | `ef20ce73b466d75a61ca4768d4f4129405df7fb0` |
+| Timestamp source | Git history |
+| Status | Active |
 
 ## Purpose
 
@@ -59,13 +67,24 @@ Broken or excluded test files should not remain mixed with active tests. If a te
 
 `docs/` is grouped as follows:
 
+- `docs/architecture/`: active architecture maps and codebase-structure notes
 - `docs/governance/`: governance and diagnostic policy notes
 - `docs/audits/`: audit reports and validation notes
+- `docs/reports/`: polished technical reports and empirical summaries
+- `docs/usage/`: command and workflow reference guides
 - `docs/roadmap/`: conservative development sequencing
-- `docs/archive/`: historical documents and superseded notes
-- root `docs/*.md`: active architecture, workflow, usage, and research-limitations guides
+- `docs/archive/cleanup/`: historical cleanup, refactor, changelog, and summary notes
+- `docs/archive/phases/`: historical phase maps, decisions, audits, and phase review notes
+- `docs/archive/retrieval/`: superseded retrieval/RAG notes
+- `docs/archive/vn100/`: superseded VN100 pipeline notes
+- `docs/archive/root/`: root-level historical or loose documents retained for traceability
+- root `docs/*.md`: stable canonical docs only
 
 See `docs/README.md` for the documentation map.
+
+Historical and archived documents should use `YYYY-MM-DD_Day__Original_Slug.md`. Active canonical docs may keep stable names to avoid broken references.
+
+The root docs folder should contain only active canonical navigation/workflow documents. Historical phase notes, cleanup notes, and loose root notes belong under `docs/archive/`.
 
 ## Data, Artifacts, Outputs, And Tmp
 

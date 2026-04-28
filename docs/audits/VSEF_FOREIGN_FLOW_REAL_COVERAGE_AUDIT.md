@@ -1,8 +1,16 @@
 # VSEF Foreign-Flow Real Coverage Audit
+## Document Metadata
 
-Date: 2026-04-26
-
-Branch: `vsef-foreign-flow-real-coverage-audit`
+| Field | Value |
+| --- | --- |
+| Document type | Audit |
+| Created / authored | Sunday, 2026-04-26 00:00:00 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
+| Timestamp source | existing document date |
+| Status | Active |
 
 ## Purpose
 

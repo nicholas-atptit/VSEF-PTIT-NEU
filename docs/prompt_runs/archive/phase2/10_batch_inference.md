@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `scripts/per_session_predict.py`
-  - `docs/batch_vn100_inference.md`
+  - `docs/usage/batch_vn100_inference.md`
   - `data/latest_predictions.json`
 
 ## Objective
@@ -14,7 +14,7 @@
 - Generate structured JSON reports with multi-model prediction output.
 
 ## Files Created
-- `docs/batch_vn100_inference.md`
+- `docs/usage/batch_vn100_inference.md`
 
 ## Files Modified
 - `scripts/per_session_predict.py` (Extended CLI logic and batch loop)
@@ -49,7 +49,7 @@
 
 ## Verification
 - `python scripts/per_session_predict.py --batch --vn100 --limit 5`
-- Reviewing `docs/batch_vn100_inference.md`.
+- Reviewing `docs/usage/batch_vn100_inference.md`.
 
 ## Open TODOs
 - Integration with LLM and news sentiment at the batch level.

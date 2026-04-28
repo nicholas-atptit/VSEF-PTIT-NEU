@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `src/data/universe.py`
-  - `docs/universe_loader.md`
+  - `docs/usage/universe_loader.md`
   - `src/adapters/vnstock_adapter.py`
 
 ## Objective
@@ -15,7 +15,7 @@
 
 ## Files Created
 - `src/data/universe.py`
-- `docs/universe_loader.md`
+- `docs/usage/universe_loader.md`
 
 ## Files Modified
 - None (Initial implementation)
@@ -47,7 +47,7 @@
 
 ## Verification
 - `python src/data/unvierse.py` (assumed based on logic)
-- Reviewing `docs/universe_loader.md`.
+- Reviewing `docs/usage/universe_loader.md`.
 
 ## Open TODOs
 - Historical constituent list support using snapshots or time-travel logic.

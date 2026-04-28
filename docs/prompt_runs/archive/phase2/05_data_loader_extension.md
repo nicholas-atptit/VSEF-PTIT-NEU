@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `src/ml/data_loader.py`
-  - `docs/data_loader_vn100.md`
+  - `docs/usage/data_loader_vn100.md`
   - `tests/test_data_loader_vn100.py`
 
 ## Objective
@@ -14,7 +14,7 @@
 - Implement file-backed (CSV) and database-backed (TimescaleDB) loading with automatic fallback.
 
 ## Files Created
-- `docs/data_loader_vn100.md`
+- `docs/usage/data_loader_vn100.md`
 - `tests/test_data_loader_vn100.py`
 
 ## Files Modified
@@ -50,7 +50,7 @@
 
 ## Verification
 - `python -m pytest tests/test_data_loader_vn100.py -v`
-- Reviewing `docs/data_loader_vn100.md`.
+- Reviewing `docs/usage/data_loader_vn100.md`.
 
 ## Open TODOs
 - Concurrent CSV loading for large universes.

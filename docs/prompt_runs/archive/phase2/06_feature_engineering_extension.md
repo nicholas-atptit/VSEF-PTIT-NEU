@@ -6,7 +6,7 @@
 ## Traceability
 - Source of evidence used:
   - `src/ml/feature_engineering.py`
-  - `docs/feature_engineering_vn100.md`
+  - `docs/usage/feature_engineering_vn100.md`
   - `tests/test_feature_engineering_vn100.py`
 
 ## Objective
@@ -14,7 +14,7 @@
 - Ensure time-safety and compatibility with existing ML pipelines.
 
 ## Files Created
-- `docs/feature_engineering_vn100.md`
+- `docs/usage/feature_engineering_vn100.md`
 - `tests/test_feature_engineering_vn100.py`
 
 ## Files Modified
@@ -53,7 +53,7 @@
 
 ## Verification
 - `python -m pytest tests/test_feature_engineering_vn100.py -v`
-- Reviewing `docs/feature_engineering_vn100.md`.
+- Reviewing `docs/usage/feature_engineering_vn100.md`.
 
 ## Open TODOs
 - Add support for sector-relative features.

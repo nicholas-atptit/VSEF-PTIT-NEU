@@ -10,7 +10,7 @@ This directory contains retrospective documentation for all major implementation
 
 | Task Name | Status | Key Files | Reconstruction Source |
 | :--- | :--- | :--- | :--- |
-| [vnstock-integration-audit](archive/phase1/01_vnstock_integration_audit.md) | COMPLETED | `docs/codebase_audit.md` | audit |
+| [vnstock-integration-audit](archive/phase1/01_vnstock_integration_audit.md) | COMPLETED | `docs/archive/root/2026-04-02_Thursday__codebase_audit.md` | audit |
 | [adapter-layer](archive/phase1/02_adapter_layer.md) | COMPLETED | `src/adapters/vnstock_adapter.py` | documentation |
 | [universe-loader](archive/phase1/03_universe_loader.md) | COMPLETED | `src/data/universe.py` | codebase |
 | [daily-sync](archive/phase1/04_daily_sync.md) | COMPLETED | `scripts/sync_all_data.py` | logic |

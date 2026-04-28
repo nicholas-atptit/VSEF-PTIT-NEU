@@ -7,7 +7,7 @@
 - Source of evidence used:
   - `scripts/train_ml_tickers.py`
   - `src/ml/labels/training_adapter.py`
-  - `docs/train_pipeline_labels.md`
+  - `docs/usage/train_pipeline_labels.md`
 
 ## Objective
 - Integrate the `src/ml/labels` package into the existing `scripts/train_ml_tickers.py` training flow.
@@ -15,7 +15,7 @@
 
 ## Files Created
 - `src/ml/labels/training_adapter.py`
-- `docs/train_pipeline_labels.md`
+- `docs/usage/train_pipeline_labels.md`
 
 ## Files Modified
 - `scripts/train_ml_tickers.py` (Extended CLI logic)
@@ -49,7 +49,7 @@
 
 ## Verification
 - `python scripts/train_ml_tickers.py --tickers HPG --label-mode ternary_5d`
-- Reviewing `docs/train_pipeline_labels.md`.
+- Reviewing `docs/usage/train_pipeline_labels.md`.
 
 ## Open TODOs
 - Support ensemble of multiple label modes during training.

@@ -1,6 +1,16 @@
 # VSEF Linear Fold Diagnostics
+## Document Metadata
 
-Date: 2026-04-26
+| Field | Value |
+| --- | --- |
+| Document type | Governance note |
+| Created / authored | Sunday, 2026-04-26 00:00:00 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
+| Timestamp source | existing document date |
+| Status | Active |
 
 This note documents the fold-level coefficient diagnostics added for Linear Regression, Ridge, and Lasso in the walk-forward all-model evaluation path.
 
