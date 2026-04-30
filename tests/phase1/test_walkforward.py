@@ -3,7 +3,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from src.evaluation.walkforward import WalkForwardConfig, WalkForwardEvaluator, WalkForwardSplitter
+from src.evaluation.walkforward import (
+    WalkForwardConfig,
+    WalkForwardEvaluator,
+    WalkForwardSplitter,
+    _raw_ohlcv_date_bounds,
+)
 from src.forecast.base import ForecastModel
 
 
@@ -43,6 +48,20 @@ def test_walkforward_splitter_produces_disjoint_train_and_test_windows() -> None
         test_mask = (frame["timestamp"] >= window.test_start) & (frame["timestamp"] <= window.test_end)
         assert not set(frame.loc[train_mask, "timestamp"]).intersection(set(frame.loc[test_mask, "timestamp"]))
         assert window.train_end < window.test_start
+
+
+def test_raw_ohlcv_date_bounds_accepts_time_column() -> None:
+    frame = pd.DataFrame(
+        {
+            "time": ["2024-01-03", "2024-01-01", "bad-date"],
+            "close": [10.0, 10.5, 11.0],
+        }
+    )
+
+    window_start, window_end = _raw_ohlcv_date_bounds(frame)
+
+    assert window_start == pd.Timestamp("2024-01-01")
+    assert window_end == pd.Timestamp("2024-01-03")
 
 
 def test_walkforward_evaluator_keeps_train_and_test_boundaries_separate(tmp_path) -> None:

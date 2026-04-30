@@ -5,11 +5,11 @@
 | --- | --- |
 | Document type | Governance note |
 | Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Last updated | Thursday, 2026-04-30 11:57:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
-| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
-| Timestamp source | current metadata standardization run |
+| Commit | `5ceed8162b4658cd1ee3402fb147aa5246c1f540` |
+| Timestamp source | Local smoke audit documentation update |
 | Status | Active |
 
 ## Purpose
@@ -89,6 +89,9 @@ Examples:
 - `python scripts/run_quant_core.py --preset full_forecast_daily --run-mode full_forecast`
 - `python scripts/run_quant_core.py --tickers ACB BID CTG MBB --horizons 5 10 --target-types forward_return direction_binary --run-mode decision_core`
 - `python scripts/run_quant_core.py --preset medium --run-mode baseline_only --no-ensemble`
+
+Smoke-run validation for `research_core`, `baseline_only`, and `decision_core`
+is documented in `docs/audits/VSEF_QUANT_CORE_SMOKE_AUDIT.md`.
 
 ## Reused Components
 
