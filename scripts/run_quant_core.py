@@ -50,6 +50,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--models", nargs="+", default=None, help="Optional explicit model-name subset")
     parser.add_argument("--model-roles", nargs="+", default=None, help="Optional role filter on top of run mode")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=1,
+        help="Accepted for repeated-seed orchestration compatibility; single-run Quant Core is currently serial.",
+    )
     parser.add_argument("--risk-budget", type=float, default=0.02)
     parser.add_argument("--max-position-size", type=float, default=1.0)
     parser.add_argument("--transaction-fee-bps", type=float, default=15.0)
