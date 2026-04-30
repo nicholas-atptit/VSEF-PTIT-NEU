@@ -1,6 +1,6 @@
 # Risk Tuning Report
 
-Best validation score: `0.119250`
+Best validation score: `-0.135750`
 
 ## Best Parameters
 - `risk_enabled`: `True`
@@ -23,5 +23,5 @@ Best validation score: `0.119250`
 - `confidence_levels`: `[0.95, 0.99]`
 
 ## Trial Leaderboard
- trial_number   score  risk_enabled  enable_covar  enable_risk_engine  enable_regime_detection  enable_regime_switching  enable_risk_allocation  covar_quantile  covar_window  risk_penalty_strength  high_vol_threshold  crisis_drawdown_threshold  crisis_delta_covar_threshold  high_vol_exposure_cut  crisis_exposure_cut regime_method  random_seed  simulations confidence_levels
-            0 0.11925          True          True                True                     True                     True                    True            0.05            60                    1.0                0.03                      -0.12                         0.015                    0.6                 0.25     threshold           42        10000      [0.95, 0.99]
+ trial_number    score  risk_enabled  enable_covar  enable_risk_engine  enable_regime_detection  enable_regime_switching  enable_risk_allocation  covar_quantile  covar_window  risk_penalty_strength  high_vol_threshold  crisis_drawdown_threshold  crisis_delta_covar_threshold  high_vol_exposure_cut  crisis_exposure_cut regime_method  random_seed  simulations confidence_levels
+            0 -0.13575          True          True                True                     True                     True                    True            0.05            60                    1.0                0.03                      -0.12                         0.015                    0.6                 0.25     threshold           42        10000      [0.95, 0.99]
