@@ -37,6 +37,7 @@ from src.reporting.manifests import (
 from src.reporting.model_health import build_model_health_summary
 from src.reporting.quant_core import build_quant_core_manifest, render_quant_core_summary_markdown
 from src.reporting.summary import write_summary_markdown, write_summary_tables
+from src.risk_governance import run_risk_governance, write_risk_governance_outputs
 from src.scenario import ScenarioEngineConfig, run_scenario_evaluation, write_scenario_outputs
 
 
@@ -68,6 +69,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default="artifacts/quant_core")
     parser.add_argument("--no-ensemble", action="store_true")
     parser.add_argument("--enable-scenario-engine", action="store_true")
+    parser.add_argument("--enable-risk-governance", action="store_true")
     parser.add_argument("--scenario-calibration-lookback", type=int, default=252)
     parser.add_argument("--scenario-probability-method", choices=["deterministic_v1"], default="deterministic_v1")
     return parser.parse_args()
@@ -227,6 +229,20 @@ def main() -> int:
         )
         analysis_packets = scenario_result.analysis_packets
     decision_lane_candidates = build_decision_lane_candidates(analysis_packets)
+    risk_governance_result = None
+    if args.enable_risk_governance:
+        risk_governance_result = run_risk_governance(
+            candidates_df=decision_lane_candidates,
+            packets_df=analysis_packets,
+            risk_df=risk_summary,
+            consensus_df=model_consensus_summary,
+            model_health_df=model_health_summary,
+            scenario_dominance_df=scenario_result.scenario_dominance_summary if scenario_result is not None else None,
+            scenario_uncertainty_df=(
+                scenario_result.scenario_uncertainty_summary if scenario_result is not None else None
+            ),
+            scenario_probability_df=scenario_result.scenario_probability if scenario_result is not None else None,
+        )
 
     table_paths = write_summary_tables(
         output_dir,
@@ -252,6 +268,11 @@ def main() -> int:
         },
     )
     scenario_artifact_paths = write_scenario_outputs(output_dir, scenario_result) if scenario_result is not None else {}
+    risk_governance_artifact_paths = (
+        write_risk_governance_outputs(output_dir, risk_governance_result)
+        if risk_governance_result is not None
+        else {}
+    )
     analysis_packets_path = write_analysis_packets_jsonl(output_dir, analysis_packets)
 
     completed_at = datetime.now(timezone.utc).isoformat()
@@ -271,6 +292,14 @@ def main() -> int:
                 "scenario_dominance_rows": int(len(scenario_result.scenario_dominance_summary)),
             }
         )
+    if risk_governance_result is not None:
+        run_counts.update(
+            {
+                "risk_governance_rows": int(len(risk_governance_result.risk_governance_summary)),
+                "risk_adjusted_candidate_rows": int(len(risk_governance_result.risk_adjusted_candidates)),
+                "risk_override_rows": int(len(risk_governance_result.risk_override_log)),
+            }
+        )
     manifest = build_quant_core_manifest(
         git_metadata=collect_git_metadata(Path.cwd()),
         runtime=collect_runtime_metadata(),
@@ -287,6 +316,7 @@ def main() -> int:
         artifact_paths={
             **dict(table_paths),
             **scenario_artifact_paths,
+            **risk_governance_artifact_paths,
             "analysis_packets": str(analysis_packets_path),
         },
         started_at=started_at,
@@ -317,6 +347,8 @@ def main() -> int:
     print(f"Strategy rows: {len(strategy_metrics)}")
     if scenario_result is not None:
         print(f"Scenario engine rows: {len(scenario_result.scenario_probability)}")
+    if risk_governance_result is not None:
+        print(f"Risk governance rows: {len(risk_governance_result.risk_governance_summary)}")
     print(f"Manifest: {manifest_path}")
     print(f"Summary: {summary_path}")
     return 0
