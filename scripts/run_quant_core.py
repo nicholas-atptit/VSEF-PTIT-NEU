@@ -37,6 +37,7 @@ from src.reporting.manifests import (
 from src.reporting.model_health import build_model_health_summary
 from src.reporting.quant_core import build_quant_core_manifest, render_quant_core_summary_markdown
 from src.reporting.summary import write_summary_markdown, write_summary_tables
+from src.scenario import ScenarioEngineConfig, run_scenario_evaluation, write_scenario_outputs
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,6 +67,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--regime-bear-threshold", type=float, default=-0.03)
     parser.add_argument("--output-dir", default="artifacts/quant_core")
     parser.add_argument("--no-ensemble", action="store_true")
+    parser.add_argument("--enable-scenario-engine", action="store_true")
+    parser.add_argument("--scenario-calibration-lookback", type=int, default=252)
+    parser.add_argument("--scenario-probability-method", choices=["deterministic_v1"], default="deterministic_v1")
     return parser.parse_args()
 
 
@@ -201,12 +205,28 @@ def main() -> int:
         positions_df=positions,
         strategy_metrics_df=strategy_metrics,
     )
-    decision_lane_candidates = build_decision_lane_candidates(analysis_packets)
     model_health_summary = build_model_health_summary(
         model_execution_log,
         forecasts,
         strategy_metrics,
     )
+    scenario_result = None
+    if args.enable_scenario_engine:
+        scenario_result = run_scenario_evaluation(
+            forecasts_df=forecasts,
+            consensus_df=model_consensus_summary,
+            risk_df=risk_summary,
+            regime_df=regime_summary,
+            strategy_metrics_df=strategy_metrics,
+            analysis_packets_df=analysis_packets,
+            model_health_df=model_health_summary,
+            config=ScenarioEngineConfig(
+                probability_method=args.scenario_probability_method,
+                calibration_lookback=args.scenario_calibration_lookback,
+            ),
+        )
+        analysis_packets = scenario_result.analysis_packets
+    decision_lane_candidates = build_decision_lane_candidates(analysis_packets)
 
     table_paths = write_summary_tables(
         output_dir,
@@ -231,9 +251,26 @@ def main() -> int:
             "decision_lane_candidates": decision_lane_candidates,
         },
     )
+    scenario_artifact_paths = write_scenario_outputs(output_dir, scenario_result) if scenario_result is not None else {}
     analysis_packets_path = write_analysis_packets_jsonl(output_dir, analysis_packets)
 
     completed_at = datetime.now(timezone.utc).isoformat()
+    run_counts = {
+        "scenario_count": int(len(core_frame)),
+        "forecast_rows": int(len(forecasts)),
+        "risk_rows": int(len(risk_summary)),
+        "regime_rows": int(len(regime_summary)),
+        "strategy_rows": int(len(strategy_metrics)),
+        "analysis_packet_rows": int(len(analysis_packets)),
+    }
+    if scenario_result is not None:
+        run_counts.update(
+            {
+                "scenario_probability_rows": int(len(scenario_result.scenario_probability)),
+                "scenario_ranking_rows": int(len(scenario_result.scenario_rankings)),
+                "scenario_dominance_rows": int(len(scenario_result.scenario_dominance_summary)),
+            }
+        )
     manifest = build_quant_core_manifest(
         git_metadata=collect_git_metadata(Path.cwd()),
         runtime=collect_runtime_metadata(),
@@ -246,16 +283,10 @@ def main() -> int:
         skipped_models=skipped_models,
         seed=args.seed,
         matrix_config=matrix_config,
-        run_counts={
-            "scenario_count": int(len(core_frame)),
-            "forecast_rows": int(len(forecasts)),
-            "risk_rows": int(len(risk_summary)),
-            "regime_rows": int(len(regime_summary)),
-            "strategy_rows": int(len(strategy_metrics)),
-            "analysis_packet_rows": int(len(analysis_packets)),
-        },
+        run_counts=run_counts,
         artifact_paths={
             **dict(table_paths),
+            **scenario_artifact_paths,
             "analysis_packets": str(analysis_packets_path),
         },
         started_at=started_at,
@@ -284,6 +315,8 @@ def main() -> int:
     print(f"Evaluated models: {', '.join(sorted(evaluated_models))}")
     print(f"Forecast rows: {len(forecasts)}")
     print(f"Strategy rows: {len(strategy_metrics)}")
+    if scenario_result is not None:
+        print(f"Scenario engine rows: {len(scenario_result.scenario_probability)}")
     print(f"Manifest: {manifest_path}")
     print(f"Summary: {summary_path}")
     return 0
