@@ -74,6 +74,18 @@ def add_forward_return_target(
     return prepared
 
 
+def _raw_ohlcv_date_bounds(raw_df: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Return usable raw OHLCV date bounds across known provider date columns."""
+
+    for candidate in ("date", "time", "timestamp", "trading_date"):
+        if candidate not in raw_df.columns:
+            continue
+        dates = pd.to_datetime(raw_df[candidate], errors="coerce").dropna()
+        if not dates.empty:
+            return pd.Timestamp(dates.min()).normalize(), pd.Timestamp(dates.max()).normalize()
+    raise ValueError("Raw OHLCV dataset must contain a usable date/time/timestamp column")
+
+
 def compute_smape(actual: Iterable[float], predicted: Iterable[float]) -> float:
     actual_series = pd.to_numeric(pd.Series(actual), errors="coerce")
     predicted_series = pd.to_numeric(pd.Series(predicted), errors="coerce")
@@ -227,12 +239,13 @@ class WalkForwardEvaluator:
         from src.ml.trainer import DualModelTrainer
 
         trainer = DualModelTrainer()
+        window_start, window_end = _raw_ohlcv_date_bounds(raw_df)
         prepared = trainer.prepare_ticker_data(
             ticker=ticker,
             df=raw_df,
             max_sequence_length=1,
-            window_start=pd.to_datetime(raw_df["date"], errors="coerce").min(),
-            window_end=pd.to_datetime(raw_df["date"], errors="coerce").max(),
+            window_start=window_start,
+            window_end=window_end,
         )
         return prepared.feature_frame, "raw_csv_feature_build"
 

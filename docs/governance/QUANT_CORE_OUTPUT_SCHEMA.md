@@ -5,11 +5,11 @@
 | --- | --- |
 | Document type | Governance note |
 | Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
+| Last updated | Thursday, 2026-04-30 11:57:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
-| Commit | `8800ce6e3780c7978856737e70cb5e3b999eacee` |
-| Timestamp source | current metadata standardization run |
+| Commit | `5ceed8162b4658cd1ee3402fb147aa5246c1f540` |
+| Timestamp source | Local smoke audit documentation update |
 | Status | Active |
 
 ## Artifact Set
@@ -39,6 +39,18 @@
 - `analysis_packets.jsonl`
 - `decision_lane_candidates.csv`
 
+When `--enable-scenario-engine` is set, the runner also writes:
+
+- `scenario_probability.csv`
+- `scenario_rankings.csv`
+- `scenario_dominance_summary.csv`
+- `scenario_uncertainty_summary.csv`
+- `scenario_calibration_summary.csv`
+- `scenario_manifest.json`
+
+The current smoke-run artifact check is documented in
+`docs/audits/VSEF_QUANT_CORE_SMOKE_AUDIT.md`.
+
 ## Manifest
 
 `run_manifest.json` records:
@@ -59,6 +71,10 @@ Important additions for governance:
 - `run_mode_spec`
 - `requested_model_roles`
 - `governance_output`
+
+When Scenario Evaluation Engine v1 is enabled, `artifact_paths` also records
+the scenario artifacts and `run_counts` records scenario probability, ranking,
+and dominance row counts.
 
 ## Full Model Predictions
 
@@ -170,6 +186,17 @@ Each packet includes:
 - retrieval metadata:
   `signal_strength_bucket`, `model_role_context`, `retrieval_metadata`
 
+When Scenario Evaluation Engine v1 is enabled, packets also include:
+
+- `scenario_summary`
+- `dominant_scenario`
+- `dominant_scenario_probability`
+- `scenario_uncertainty_score`
+- `scenario_dominance_score`
+- `scenario_calibration_error`
+- `scenario_confidence_bucket`
+- `alternative_scenarios`
+
 JSON-encoded nested fields:
 
 - `primary_prediction_summary`
@@ -180,6 +207,63 @@ JSON-encoded nested fields:
 - `risk_summary`
 - `policy_summary`
 - `retrieval_metadata`
+- `scenario_summary`
+- `alternative_scenarios`
+
+## Scenario Evaluation Engine Artifacts
+
+The scenario engine is opt-in via `--enable-scenario-engine`. It is a
+deterministic diagnostic layer and does not emit final BUY or SELL authority.
+
+Scenario labels:
+
+- `bull`
+- `bear`
+- `sideway`
+- `high_volatility`
+- `drawdown`
+- `recovery`
+- `uncertain`
+
+`scenario_probability.csv` contains one row per scenario label per
+`ticker x timestamp x horizon x target_type x run_mode x core_run_id` context.
+`scenario_probability` sums to 1 within each context.
+
+Required Scenario v1 fields:
+
+- `scenario_id`
+- `timestamp`
+- `ticker`
+- `horizon`
+- `target_type`
+- `run_mode`
+- `core_run_id`
+- `scenario_label`
+- `scenario_probability`
+- `confidence_adjusted_probability`
+- `expected_outcome`
+- `downside_risk`
+- `confidence_interval_low`
+- `confidence_interval_high`
+- `uncertainty_score`
+- `dispersion_score`
+- `dominance_score`
+- `dominant_scenario_flag`
+- `calibration_error`
+- `historical_hit_rate`
+- `source_model`
+
+Additional scenario artifacts:
+
+- `scenario_rankings.csv`: scenario rows with rank and dominance label
+- `scenario_dominance_summary.csv`: one dominant-scenario diagnostic row per
+  context
+- `scenario_uncertainty_summary.csv`: entropy, dispersion, calibration, and
+  confidence-bucket diagnostics
+- `scenario_calibration_summary.csv`: probability-bin observed frequency,
+  calibration error, Brier score, and expected calibration error
+- `scenario_manifest.json`: method, labels, source counts, row counts, and
+  artifact paths
 
 ## Model Health Summary
 
