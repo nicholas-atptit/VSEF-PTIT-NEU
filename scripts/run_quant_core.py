@@ -45,6 +45,7 @@ from src.reporting.summary import write_summary_markdown, write_summary_tables
 from src.risk_governance import run_risk_governance, write_risk_governance_outputs
 from src.scenario import ScenarioEngineConfig, run_scenario_evaluation, write_scenario_outputs
 from src.portfolio_allocator import run_portfolio_allocator, write_portfolio_allocator_outputs
+from src.phase3_router import run_phase3_router, write_phase3_router_outputs
 
 
 def parse_args() -> argparse.Namespace:
@@ -77,6 +78,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-scenario-engine", action="store_true")
     parser.add_argument("--enable-risk-governance", action="store_true")
     parser.add_argument("--enable-portfolio-allocator", action="store_true")
+    parser.add_argument("--enable-phase3-router", action="store_true")
     parser.add_argument("--scenario-calibration-lookback", type=int, default=252)
     parser.add_argument("--scenario-probability-method", choices=["deterministic_v1"], default="deterministic_v1")
     return parser.parse_args()
@@ -280,6 +282,19 @@ def main() -> int:
             scenario_dominance_df=scenario_result.scenario_dominance_summary if scenario_result is not None else None,
             missing_enriched_candidates=decision_lane_manifest is None,
         )
+    phase3_router_result = None
+    if args.enable_phase3_router:
+        phase3_router_result = run_phase3_router(
+            portfolio_allocator_result.allocation if portfolio_allocator_result is not None else None,
+            portfolio_summary_df=(
+                portfolio_allocator_result.portfolio_summary if portfolio_allocator_result is not None else None
+            ),
+            portfolio_risk_summary_df=(
+                portfolio_allocator_result.portfolio_risk_summary if portfolio_allocator_result is not None else None
+            ),
+            allocator_manifest=portfolio_allocator_result.manifest if portfolio_allocator_result is not None else None,
+            missing_allocator_outputs=portfolio_allocator_result is None,
+        )
 
     table_paths = write_summary_tables(
         output_dir,
@@ -324,6 +339,11 @@ def main() -> int:
         if portfolio_allocator_result is not None
         else {}
     )
+    phase3_router_artifact_paths = (
+        write_phase3_router_outputs(output_dir, phase3_router_result)
+        if phase3_router_result is not None
+        else {}
+    )
     analysis_packets_path = write_analysis_packets_jsonl(output_dir, analysis_packets)
 
     completed_at = datetime.now(timezone.utc).isoformat()
@@ -359,6 +379,13 @@ def main() -> int:
                 "portfolio_decision_card_rows": int(len(portfolio_allocator_result.decision_cards)),
             }
         )
+    if phase3_router_result is not None:
+        run_counts.update(
+            {
+                "router_decision_rows": int(len(phase3_router_result.router_decisions)),
+                "router_summary_rows": int(len(phase3_router_result.router_summary)),
+            }
+        )
     manifest = build_quant_core_manifest(
         git_metadata=collect_git_metadata(Path.cwd()),
         runtime=collect_runtime_metadata(),
@@ -378,6 +405,7 @@ def main() -> int:
             **risk_governance_artifact_paths,
             **decision_lane_artifact_paths,
             **portfolio_allocator_artifact_paths,
+            **phase3_router_artifact_paths,
             "analysis_packets": str(analysis_packets_path),
         },
         started_at=started_at,
@@ -413,6 +441,8 @@ def main() -> int:
         print(f"Decision Lane enriched rows: {len(decision_lane_enriched_candidates)}")
     if portfolio_allocator_result is not None:
         print(f"Portfolio allocation rows: {len(portfolio_allocator_result.allocation)}")
+    if phase3_router_result is not None:
+        print(f"Router decision rows: {len(phase3_router_result.router_decisions)}")
     print(f"Manifest: {manifest_path}")
     print(f"Summary: {summary_path}")
     return 0

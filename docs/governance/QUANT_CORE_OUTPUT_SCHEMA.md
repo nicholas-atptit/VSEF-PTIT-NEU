@@ -65,6 +65,12 @@ When `--enable-portfolio-allocator` is set, the runner also writes:
 - `portfolio_decision_cards.jsonl`
 - `allocator_manifest.json`
 
+When `--enable-phase3-router` is set, the runner also writes:
+
+- `router_decisions.csv`
+- `router_summary.csv`
+- `router_manifest.json`
+
 The current smoke-run artifact check is documented in
 `docs/audits/VSEF_QUANT_CORE_SMOKE_AUDIT.md`.
 
@@ -101,6 +107,9 @@ and enriched Decision Lane candidate rows.
 When Portfolio Allocator v1 is enabled, `artifact_paths` records the portfolio
 allocation artifacts and `run_counts` records portfolio allocation rows and
 portfolio decision card rows.
+
+When Phase 3 Router v1 is enabled, `artifact_paths` records the router artifacts
+and `run_counts` records router decision and summary rows.
 
 ## Full Model Predictions
 
@@ -462,6 +471,62 @@ Valid allocation statuses:
 
 See `docs/governance/PORTFOLIO_ALLOCATOR_OUTPUT_SCHEMA.md` for full gating,
 ranking, sizing, exposure, and manifest details.
+
+## Phase 3 Router Artifacts
+
+Phase 3 Router v1 is opt-in via `--enable-phase3-router`. It is a deterministic
+diagnostic layer that converts Portfolio Allocator v1 rows into route decisions:
+
+```text
+Portfolio Allocator allocation_candidate/no_allocation
+-> Phase 3 Router route_allocation_candidate/hold/reject/no_candidate
+```
+
+Router outputs:
+
+- `router_decisions.csv`: one diagnostic route row per allocator row, or one
+  `no_candidate` row when allocator outputs are unavailable.
+- `router_summary.csv`: route counts, routed final weight, exposure context, and
+  authority flags.
+- `router_manifest.json`: config, thresholds, route counts, required fields,
+  artifact paths, and no BUY/SELL recommendation authority.
+
+Required `router_decisions.csv` fields:
+
+- `router_decision_id`
+- `allocation_id`
+- `candidate_id`
+- `source_packet_id`
+- `timestamp`
+- `ticker`
+- `horizon`
+- `route_decision`
+- `route_reason`
+- `allocation_status`
+- `final_weight`
+- `risk_level`
+- `risk_score`
+- `risk_adjusted_confidence`
+- `disagreement_score`
+- `dominance_score`
+- `scenario_alignment`
+- `dominant_scenario`
+- `portfolio_status`
+- `total_exposure`
+- `cash_weight`
+- `route_reason_codes`
+- `diagnostic_only_authority`
+- `no_buy_sell_recommendation_authority`
+
+Valid route decisions:
+
+- `route_allocation_candidate`
+- `hold`
+- `reject`
+- `no_candidate`
+
+See `docs/governance/PHASE3_ROUTER_OUTPUT_SCHEMA.md` for full routing rules and
+manifest details.
 
 ## Fallback Provenance
 
