@@ -57,6 +57,14 @@ When `--enable-risk-governance` is set, the runner also writes:
 - `decision_lane_enriched_candidates.csv`
 - `decision_lane_manifest.json`
 
+When `--enable-portfolio-allocator` is set, the runner also writes:
+
+- `portfolio_allocation.csv`
+- `portfolio_summary.csv`
+- `portfolio_risk_summary.csv`
+- `portfolio_decision_cards.jsonl`
+- `allocator_manifest.json`
+
 The current smoke-run artifact check is documented in
 `docs/audits/VSEF_QUANT_CORE_SMOKE_AUDIT.md`.
 
@@ -89,6 +97,10 @@ When Risk Governance Layer v1 is enabled, `artifact_paths` also records the risk
 governance artifacts plus Decision Lane v2 enriched artifacts. `run_counts`
 records risk governance rows, risk-adjusted candidate rows, risk override rows,
 and enriched Decision Lane candidate rows.
+
+When Portfolio Allocator v1 is enabled, `artifact_paths` records the portfolio
+allocation artifacts and `run_counts` records portfolio allocation rows and
+portfolio decision card rows.
 
 ## Full Model Predictions
 
@@ -385,6 +397,71 @@ Required fields:
 `decision_lane_manifest.json` records the Decision Lane version, required
 fields, artifact paths, input and output row counts, scenario alignment rules,
 diagnostic-only authority, and no BUY/SELL recommendation authority.
+
+## Portfolio Allocator Artifacts
+
+Portfolio Allocator v1 is opt-in via `--enable-portfolio-allocator`. The flow is:
+
+```text
+Quant Core
+-> Scenario Evaluation if enabled
+-> Risk Governance if enabled
+-> Decision Lane v2 enriched candidates
+-> Portfolio Allocator if enabled
+```
+
+The allocator requires Decision Lane v2 enriched candidates. If the flag is used
+without enriched candidates, it emits a valid all-cash diagnostic output with
+`missing_enriched_candidates`.
+
+Portfolio outputs:
+
+- `portfolio_allocation.csv`: one diagnostic row per enriched candidate or a
+  missing-enriched no-allocation row.
+- `portfolio_summary.csv`: portfolio status, total exposure, cash weight, and
+  authority flags.
+- `portfolio_risk_summary.csv`: exposure and risk-level diagnostics.
+- `portfolio_decision_cards.jsonl`: compact candidate cards with diagnostic-only
+  authority flags.
+- `allocator_manifest.json`: config, thresholds, row counts, artifact paths,
+  no forced trade rule, and no BUY/SELL recommendation authority.
+
+Required `portfolio_allocation.csv` fields:
+
+- `allocation_id`
+- `candidate_id`
+- `source_packet_id`
+- `timestamp`
+- `ticker`
+- `horizon`
+- `target_type`
+- `run_mode`
+- `allocation_status`
+- `no_allocation_reason`
+- `risk_adjusted_confidence`
+- `risk_adjusted_candidate_score`
+- `risk_score`
+- `risk_level`
+- `risk_action`
+- `disagreement_score`
+- `dominance_score`
+- `dominant_scenario`
+- `dominant_scenario_probability`
+- `scenario_alignment`
+- `raw_weight`
+- `final_weight`
+- `exposure_before_allocation`
+- `exposure_after_allocation`
+- `cash_buffer_after_allocation`
+- `allocation_reason_codes`
+
+Valid allocation statuses:
+
+- `allocation_candidate`
+- `no_allocation`
+
+See `docs/governance/PORTFOLIO_ALLOCATOR_OUTPUT_SCHEMA.md` for full gating,
+ranking, sizing, exposure, and manifest details.
 
 ## Fallback Provenance
 
