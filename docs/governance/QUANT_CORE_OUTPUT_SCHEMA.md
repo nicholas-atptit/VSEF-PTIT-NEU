@@ -5,7 +5,7 @@
 | --- | --- |
 | Document type | Governance note |
 | Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Thursday, 2026-04-30 11:57:00 ICT (UTC+07:00) |
+| Last updated | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
 | Commit | `5ceed8162b4658cd1ee3402fb147aa5246c1f540` |
@@ -48,6 +48,29 @@ When `--enable-scenario-engine` is set, the runner also writes:
 - `scenario_calibration_summary.csv`
 - `scenario_manifest.json`
 
+When `--enable-risk-governance` is set, the runner also writes:
+
+- `risk_governance_summary.csv`
+- `risk_adjusted_candidates.csv`
+- `risk_override_log.csv`
+- `risk_manifest.json`
+- `decision_lane_enriched_candidates.csv`
+- `decision_lane_manifest.json`
+
+When `--enable-portfolio-allocator` is set, the runner also writes:
+
+- `portfolio_allocation.csv`
+- `portfolio_summary.csv`
+- `portfolio_risk_summary.csv`
+- `portfolio_decision_cards.jsonl`
+- `allocator_manifest.json`
+
+When `--enable-phase3-router` is set, the runner also writes:
+
+- `router_decisions.csv`
+- `router_summary.csv`
+- `router_manifest.json`
+
 The current smoke-run artifact check is documented in
 `docs/audits/VSEF_QUANT_CORE_SMOKE_AUDIT.md`.
 
@@ -75,6 +98,18 @@ Important additions for governance:
 When Scenario Evaluation Engine v1 is enabled, `artifact_paths` also records
 the scenario artifacts and `run_counts` records scenario probability, ranking,
 and dominance row counts.
+
+When Risk Governance Layer v1 is enabled, `artifact_paths` also records the risk
+governance artifacts plus Decision Lane v2 enriched artifacts. `run_counts`
+records risk governance rows, risk-adjusted candidate rows, risk override rows,
+and enriched Decision Lane candidate rows.
+
+When Portfolio Allocator v1 is enabled, `artifact_paths` records the portfolio
+allocation artifacts and `run_counts` records portfolio allocation rows and
+portfolio decision card rows.
+
+When Phase 3 Router v1 is enabled, `artifact_paths` records the router artifacts
+and `run_counts` records router decision and summary rows.
 
 ## Full Model Predictions
 
@@ -326,6 +361,172 @@ Key fields:
 - `top_policy_model`
 - `top_policy_sharpe`
 - `candidate_score`
+
+## Decision Lane Enriched Candidates
+
+`decision_lane_enriched_candidates.csv` is emitted when
+`--enable-risk-governance` is set. It preserves the legacy candidate artifact and
+adds a diagnostic-only enriched surface that joins:
+
+- legacy Decision Lane candidates
+- analysis packet model disagreement and scenario fields
+- Scenario Evaluation Engine dominance and probability context when available
+- Risk Governance Layer v1 risk scores and candidate actions
+
+Required fields:
+
+- `candidate_id`
+- `source_packet_id`
+- `timestamp`
+- `ticker`
+- `horizon`
+- `target_type`
+- `run_mode`
+- `core_run_id`
+- `primary_model_name`
+- `primary_prediction`
+- `candidate_score`
+- `model_agreement_score`
+- `disagreement_score`
+- `agreement_bucket`
+- `sign_conflict`
+- `dominant_scenario`
+- `dominant_scenario_probability`
+- `scenario_confidence_bucket`
+- `scenario_alignment`
+- `risk_score`
+- `risk_level`
+- `risk_action`
+- `risk_adjusted_confidence`
+- `risk_adjusted_candidate_score`
+- `candidate_status`
+- `reason_codes`
+- `reason_summary`
+
+`decision_lane_manifest.json` records the Decision Lane version, required
+fields, artifact paths, input and output row counts, scenario alignment rules,
+diagnostic-only authority, and no BUY/SELL recommendation authority.
+
+## Portfolio Allocator Artifacts
+
+Portfolio Allocator v1 is opt-in via `--enable-portfolio-allocator`. The flow is:
+
+```text
+Quant Core
+-> Scenario Evaluation if enabled
+-> Risk Governance if enabled
+-> Decision Lane v2 enriched candidates
+-> Portfolio Allocator if enabled
+```
+
+The allocator requires Decision Lane v2 enriched candidates. If the flag is used
+without enriched candidates, it emits a valid all-cash diagnostic output with
+`missing_enriched_candidates`.
+
+Portfolio outputs:
+
+- `portfolio_allocation.csv`: one diagnostic row per enriched candidate or a
+  missing-enriched no-allocation row.
+- `portfolio_summary.csv`: portfolio status, total exposure, cash weight, and
+  authority flags.
+- `portfolio_risk_summary.csv`: exposure and risk-level diagnostics.
+- `portfolio_decision_cards.jsonl`: compact candidate cards with diagnostic-only
+  authority flags.
+- `allocator_manifest.json`: config, thresholds, row counts, artifact paths,
+  no forced trade rule, and no BUY/SELL recommendation authority.
+
+Required `portfolio_allocation.csv` fields:
+
+- `allocation_id`
+- `candidate_id`
+- `source_packet_id`
+- `timestamp`
+- `ticker`
+- `horizon`
+- `target_type`
+- `run_mode`
+- `allocation_status`
+- `no_allocation_reason`
+- `risk_adjusted_confidence`
+- `risk_adjusted_candidate_score`
+- `risk_score`
+- `risk_level`
+- `risk_action`
+- `disagreement_score`
+- `dominance_score`
+- `dominant_scenario`
+- `dominant_scenario_probability`
+- `scenario_alignment`
+- `raw_weight`
+- `final_weight`
+- `exposure_before_allocation`
+- `exposure_after_allocation`
+- `cash_buffer_after_allocation`
+- `allocation_reason_codes`
+
+Valid allocation statuses:
+
+- `allocation_candidate`
+- `no_allocation`
+
+See `docs/governance/PORTFOLIO_ALLOCATOR_OUTPUT_SCHEMA.md` for full gating,
+ranking, sizing, exposure, and manifest details.
+
+## Phase 3 Router Artifacts
+
+Phase 3 Router v1 is opt-in via `--enable-phase3-router`. It is a deterministic
+diagnostic layer that converts Portfolio Allocator v1 rows into route decisions:
+
+```text
+Portfolio Allocator allocation_candidate/no_allocation
+-> Phase 3 Router route_allocation_candidate/hold/reject/no_candidate
+```
+
+Router outputs:
+
+- `router_decisions.csv`: one diagnostic route row per allocator row, or one
+  `no_candidate` row when allocator outputs are unavailable.
+- `router_summary.csv`: route counts, routed final weight, exposure context, and
+  authority flags.
+- `router_manifest.json`: config, thresholds, route counts, required fields,
+  artifact paths, and no BUY/SELL recommendation authority.
+
+Required `router_decisions.csv` fields:
+
+- `router_decision_id`
+- `allocation_id`
+- `candidate_id`
+- `source_packet_id`
+- `timestamp`
+- `ticker`
+- `horizon`
+- `route_decision`
+- `route_reason`
+- `allocation_status`
+- `final_weight`
+- `risk_level`
+- `risk_score`
+- `risk_adjusted_confidence`
+- `disagreement_score`
+- `dominance_score`
+- `scenario_alignment`
+- `dominant_scenario`
+- `portfolio_status`
+- `total_exposure`
+- `cash_weight`
+- `route_reason_codes`
+- `diagnostic_only_authority`
+- `no_buy_sell_recommendation_authority`
+
+Valid route decisions:
+
+- `route_allocation_candidate`
+- `hold`
+- `reject`
+- `no_candidate`
+
+See `docs/governance/PHASE3_ROUTER_OUTPUT_SCHEMA.md` for full routing rules and
+manifest details.
 
 ## Fallback Provenance
 

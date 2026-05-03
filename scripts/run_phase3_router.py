@@ -10,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.routing.phase3_router import Phase3RouterConfig, run_phase3_router
+from src.phase3_router import Phase3RouterConfig, run_phase3_router_from_files
 
 
 def parse_args() -> argparse.Namespace:
@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--input-dir", required=True, help="Directory containing allocator and Quant Core diagnostic outputs")
     parser.add_argument("--output-dir", default=None, help="Directory for router outputs; defaults to input-dir")
-    parser.add_argument("--max-risk-score", type=float, default=1.0)
+    parser.add_argument("--max-risk-score", type=float, default=0.70)
     parser.add_argument("--min-candidate-score", type=float, default=0.0)
     parser.add_argument("--min-model-agreement", type=float, default=0.5)
     parser.add_argument("--min-allocation-weight", type=float, default=0.01)
@@ -35,22 +35,18 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     config = Phase3RouterConfig(
-        min_allocation_weight=args.min_allocation_weight,
-        min_candidate_score=args.min_candidate_score,
-        min_model_agreement=args.min_model_agreement,
-        max_risk_score=args.max_risk_score,
-        low_agreement_action=args.low_agreement_action,
-        allow_no_allocation=bool(args.allow_no_allocation),
+        risk_reject_threshold=args.max_risk_score,
     )
-    result = run_phase3_router(
+    result = run_phase3_router_from_files(
         args.input_dir,
         args.output_dir,
         config=config,
+        write_legacy_aliases=True,
     )
-    label_counts = result.route_decision["route_label"].value_counts().sort_index().to_dict()
-    print("Route labels:")
-    for label, count in label_counts.items():
-        print(f"  {label}: {count}")
+    decision_counts = result.router_decisions["route_decision"].value_counts().sort_index().to_dict()
+    print("Route decisions:")
+    for decision, count in decision_counts.items():
+        print(f"  {decision}: {count}")
     print("Outputs:")
     for name, path in sorted(result.output_paths.items()):
         print(f"  {name}: {path}")
