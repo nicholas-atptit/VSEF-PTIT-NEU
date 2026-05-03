@@ -5,7 +5,7 @@
 | --- | --- |
 | Document type | Governance note |
 | Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Thursday, 2026-04-30 11:57:00 ICT (UTC+07:00) |
+| Last updated | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
 | Commit | `5ceed8162b4658cd1ee3402fb147aa5246c1f540` |
@@ -48,6 +48,15 @@ When `--enable-scenario-engine` is set, the runner also writes:
 - `scenario_calibration_summary.csv`
 - `scenario_manifest.json`
 
+When `--enable-risk-governance` is set, the runner also writes:
+
+- `risk_governance_summary.csv`
+- `risk_adjusted_candidates.csv`
+- `risk_override_log.csv`
+- `risk_manifest.json`
+- `decision_lane_enriched_candidates.csv`
+- `decision_lane_manifest.json`
+
 The current smoke-run artifact check is documented in
 `docs/audits/VSEF_QUANT_CORE_SMOKE_AUDIT.md`.
 
@@ -75,6 +84,11 @@ Important additions for governance:
 When Scenario Evaluation Engine v1 is enabled, `artifact_paths` also records
 the scenario artifacts and `run_counts` records scenario probability, ranking,
 and dominance row counts.
+
+When Risk Governance Layer v1 is enabled, `artifact_paths` also records the risk
+governance artifacts plus Decision Lane v2 enriched artifacts. `run_counts`
+records risk governance rows, risk-adjusted candidate rows, risk override rows,
+and enriched Decision Lane candidate rows.
 
 ## Full Model Predictions
 
@@ -326,6 +340,51 @@ Key fields:
 - `top_policy_model`
 - `top_policy_sharpe`
 - `candidate_score`
+
+## Decision Lane Enriched Candidates
+
+`decision_lane_enriched_candidates.csv` is emitted when
+`--enable-risk-governance` is set. It preserves the legacy candidate artifact and
+adds a diagnostic-only enriched surface that joins:
+
+- legacy Decision Lane candidates
+- analysis packet model disagreement and scenario fields
+- Scenario Evaluation Engine dominance and probability context when available
+- Risk Governance Layer v1 risk scores and candidate actions
+
+Required fields:
+
+- `candidate_id`
+- `source_packet_id`
+- `timestamp`
+- `ticker`
+- `horizon`
+- `target_type`
+- `run_mode`
+- `core_run_id`
+- `primary_model_name`
+- `primary_prediction`
+- `candidate_score`
+- `model_agreement_score`
+- `disagreement_score`
+- `agreement_bucket`
+- `sign_conflict`
+- `dominant_scenario`
+- `dominant_scenario_probability`
+- `scenario_confidence_bucket`
+- `scenario_alignment`
+- `risk_score`
+- `risk_level`
+- `risk_action`
+- `risk_adjusted_confidence`
+- `risk_adjusted_candidate_score`
+- `candidate_status`
+- `reason_codes`
+- `reason_summary`
+
+`decision_lane_manifest.json` records the Decision Lane version, required
+fields, artifact paths, input and output row counts, scenario alignment rules,
+diagnostic-only authority, and no BUY/SELL recommendation authority.
 
 ## Fallback Provenance
 

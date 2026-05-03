@@ -28,6 +28,11 @@ from src.reporting.analysis_packets import (
     build_decision_lane_candidates,
     write_analysis_packets_jsonl,
 )
+from src.reporting.decision_lane import (
+    build_decision_lane_manifest,
+    build_enriched_decision_lane_candidates,
+    write_decision_lane_outputs,
+)
 from src.reporting.manifests import (
     collect_dependency_versions,
     collect_git_metadata,
@@ -243,6 +248,24 @@ def main() -> int:
             ),
             scenario_probability_df=scenario_result.scenario_probability if scenario_result is not None else None,
         )
+    decision_lane_enriched_candidates = pd.DataFrame()
+    decision_lane_manifest = None
+    if risk_governance_result is not None:
+        decision_lane_enriched_candidates = build_enriched_decision_lane_candidates(
+            decision_lane_candidates,
+            analysis_packets,
+            risk_adjusted_candidates_df=risk_governance_result.risk_adjusted_candidates,
+            scenario_dominance_df=scenario_result.scenario_dominance_summary if scenario_result is not None else None,
+            scenario_probability_df=scenario_result.scenario_probability if scenario_result is not None else None,
+        )
+        decision_lane_manifest = build_decision_lane_manifest(
+            candidates_df=decision_lane_candidates,
+            packets_df=analysis_packets,
+            enriched_candidates_df=decision_lane_enriched_candidates,
+            risk_adjusted_candidates_df=risk_governance_result.risk_adjusted_candidates,
+            scenario_dominance_df=scenario_result.scenario_dominance_summary if scenario_result is not None else None,
+            scenario_probability_df=scenario_result.scenario_probability if scenario_result is not None else None,
+        )
 
     table_paths = write_summary_tables(
         output_dir,
@@ -273,6 +296,15 @@ def main() -> int:
         if risk_governance_result is not None
         else {}
     )
+    decision_lane_artifact_paths = (
+        write_decision_lane_outputs(
+            output_dir,
+            enriched_candidates_df=decision_lane_enriched_candidates,
+            manifest=decision_lane_manifest,
+        )
+        if decision_lane_manifest is not None
+        else {}
+    )
     analysis_packets_path = write_analysis_packets_jsonl(output_dir, analysis_packets)
 
     completed_at = datetime.now(timezone.utc).isoformat()
@@ -298,6 +330,7 @@ def main() -> int:
                 "risk_governance_rows": int(len(risk_governance_result.risk_governance_summary)),
                 "risk_adjusted_candidate_rows": int(len(risk_governance_result.risk_adjusted_candidates)),
                 "risk_override_rows": int(len(risk_governance_result.risk_override_log)),
+                "decision_lane_enriched_candidate_rows": int(len(decision_lane_enriched_candidates)),
             }
         )
     manifest = build_quant_core_manifest(
@@ -317,6 +350,7 @@ def main() -> int:
             **dict(table_paths),
             **scenario_artifact_paths,
             **risk_governance_artifact_paths,
+            **decision_lane_artifact_paths,
             "analysis_packets": str(analysis_packets_path),
         },
         started_at=started_at,
@@ -349,6 +383,7 @@ def main() -> int:
         print(f"Scenario engine rows: {len(scenario_result.scenario_probability)}")
     if risk_governance_result is not None:
         print(f"Risk governance rows: {len(risk_governance_result.risk_governance_summary)}")
+        print(f"Decision Lane enriched rows: {len(decision_lane_enriched_candidates)}")
     print(f"Manifest: {manifest_path}")
     print(f"Summary: {summary_path}")
     return 0
