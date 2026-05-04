@@ -42,6 +42,25 @@ Roadmap and audit context:
 - [Decision Physics Next Steps](roadmap/DECISION_PHYSICS_NEXT_STEPS.md)
 - [Decision Chain Audit 2026-05-05](audits/DECISION_CHAIN_AUDIT_2026_05_05.md)
 
+## Source-of-Truth Matrix
+
+| Question | Source of truth |
+| --- | --- |
+| Current architecture | [docs/SYSTEM_OVERVIEW.md](SYSTEM_OVERVIEW.md) |
+| Current layer chain | [docs/DECISION_DIAGNOSTIC_CHAIN.md](DECISION_DIAGNOSTIC_CHAIN.md) |
+| Authority boundary | [docs/AUTHORITY_BOUNDARY.md](AUTHORITY_BOUNDARY.md) |
+| Pipeline contracts / join keys | [docs/governance/PIPELINE_CONTRACTS.md](governance/PIPELINE_CONTRACTS.md) |
+| Quant Core artifacts | [docs/governance/QUANT_CORE_OUTPUT_SCHEMA.md](governance/QUANT_CORE_OUTPUT_SCHEMA.md) |
+| Scenario artifacts | [docs/governance/SCENARIO_OUTPUT_SCHEMA.md](governance/SCENARIO_OUTPUT_SCHEMA.md) |
+| Risk scoring/actions | [docs/governance/RISK_GOVERNANCE_OUTPUT_SCHEMA.md](governance/RISK_GOVERNANCE_OUTPUT_SCHEMA.md) |
+| Decision Lane fields | [docs/governance/DECISION_LANE_OUTPUT_SCHEMA.md](governance/DECISION_LANE_OUTPUT_SCHEMA.md) |
+| Portfolio allocation rules | [docs/governance/PORTFOLIO_ALLOCATOR_OUTPUT_SCHEMA.md](governance/PORTFOLIO_ALLOCATOR_OUTPUT_SCHEMA.md) |
+| Router decisions | [docs/governance/PHASE3_ROUTER_OUTPUT_SCHEMA.md](governance/PHASE3_ROUTER_OUTPUT_SCHEMA.md) |
+| Smoke run | [docs/runbooks/RUN_FULL_DECISION_CHAIN_SMOKE.md](runbooks/RUN_FULL_DECISION_CHAIN_SMOKE.md) |
+| Troubleshooting | [docs/runbooks/TROUBLESHOOTING.md](runbooks/TROUBLESHOOTING.md) |
+| Future Social Listening | [docs/roadmap/SOCIAL_LISTENING_INTEGRATION.md](roadmap/SOCIAL_LISTENING_INTEGRATION.md) |
+| Next decision physics work | [docs/roadmap/DECISION_PHYSICS_NEXT_STEPS.md](roadmap/DECISION_PHYSICS_NEXT_STEPS.md) |
+
 Archive and reports:
 
 - [Archive Index](archive/README.md)
