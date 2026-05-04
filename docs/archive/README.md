@@ -5,14 +5,30 @@
 | --- | --- |
 | Document type | Historical archive |
 | Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:51:14 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-05-05 00:00:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
 | Commit | `ef20ce73b466d75a61ca4768d4f4129405df7fb0` |
-| Timestamp source | current metadata standardization run |
+| Timestamp source | Local documentation inventory and legacy migration |
 | Status | Active |
 
-This index records root documentation archived during the 2026-04-28 metadata and placement standardization passes.
+This index records documentation archived during metadata, placement, and
+decision-chain documentation cleanup passes.
+
+Active canonical docs override archived docs. Archived docs are retained for
+historical context only and are not source-of-truth governance documents for the
+current deterministic decision-diagnostic chain.
+
+## Archive Sets
+
+| Archive path | Purpose |
+| --- | --- |
+| `legacy_docs_2026_05_05/` | Legacy governance or scope documents moved during the 2026-05-05 decision-chain cleanup. See `legacy_docs_2026_05_05/INDEX.md` and `legacy_docs_2026_05_05/DEPRECATION_MAP.md`. |
+| `cleanup/` | Historical cleanup, refactor, changelog, and supervisor-summary notes. |
+| `phases/` | Historical phase maps, decisions, audits, and phase review notes. |
+| `retrieval/` | Superseded retrieval/RAG notes. |
+| `root/` | Former loose root-level docs retained for traceability. |
+| `vn100/` | Superseded VN100 pipeline notes. |
 
 | Current file | Previous root file | Category | Reason |
 | --- | --- | --- | --- |

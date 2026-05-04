@@ -21,6 +21,7 @@ Start here for the active deterministic decision-diagnostic chain:
 - [System Overview](SYSTEM_OVERVIEW.md)
 - [Decision Diagnostic Chain](DECISION_DIAGNOSTIC_CHAIN.md)
 - [Authority Boundary](AUTHORITY_BOUNDARY.md)
+- [Docs Inventory](DOCS_INVENTORY.md)
 - [Run Full Decision Chain Smoke](runbooks/RUN_FULL_DECISION_CHAIN_SMOKE.md)
 - [Troubleshooting](runbooks/TROUBLESHOOTING.md)
 
@@ -40,6 +41,17 @@ Roadmap and audit context:
 - [Social Listening Integration](roadmap/SOCIAL_LISTENING_INTEGRATION.md)
 - [Decision Physics Next Steps](roadmap/DECISION_PHYSICS_NEXT_STEPS.md)
 - [Decision Chain Audit 2026-05-05](audits/DECISION_CHAIN_AUDIT_2026_05_05.md)
+
+Archive and reports:
+
+- [Archive Index](archive/README.md)
+- [Legacy Docs 2026-05-05 Index](archive/legacy_docs_2026_05_05/INDEX.md)
+- [Legacy Docs 2026-05-05 Deprecation Map](archive/legacy_docs_2026_05_05/DEPRECATION_MAP.md)
+- [Reports Directory](../reports/README.md)
+
+Active canonical docs override archived docs and historical reports when there
+is any conflict about artifact names, schema fields, layer authority, or the
+current implemented chain.
 
 ## Documentation Timestamp Standard
 

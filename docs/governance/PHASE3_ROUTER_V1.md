@@ -131,7 +131,7 @@ route decision for review.
 | The router can reject or hold weak allocation candidates. | Yes | Risk, confidence, disagreement, conflict, scenario, and exposure gates are explicit. |
 | The router creates final BUY or SELL recommendations. | No | Recommendation authority remains out of scope. |
 | The router is a learned meta-model. | No | No model is trained in v1. |
-| The system is production trading ready. | No | Live execution, monitoring, validation, and recommendation governance are not implemented. |
+| The router grants production trading authority. | No | Live execution, monitoring, validation, and recommendation governance are not implemented. |
 
 ## Example CLI Command
 

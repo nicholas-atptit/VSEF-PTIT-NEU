@@ -134,7 +134,7 @@ final portfolio actions.
 | The allocator supports a governed no-allocation state. | Yes | Missing inputs or failed gates produce a valid all-cash diagnostic output. |
 | The allocator emits BUY or SELL recommendations. | No | The layer emits only diagnostic `allocation_candidate` or `no_allocation` states. |
 | The allocator executes trades. | No | Live execution is not implemented in this chain. |
-| The allocator is production trading ready. | No | Production trading readiness is out of scope. |
+| The allocator grants production trading authority. | No | Production trading authority is out of scope. |
 
 ## Limitations
 
