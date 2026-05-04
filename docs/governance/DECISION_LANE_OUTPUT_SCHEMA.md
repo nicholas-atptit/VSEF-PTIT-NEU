@@ -1,4 +1,15 @@
 # Decision Lane Output Schema
+## Document Metadata
+
+| Field | Value |
+| --- | --- |
+| Document type | Governance schema |
+| Created / authored | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-05-05 00:00:00 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Timestamp source | Local deterministic decision-chain documentation refactor |
+| Status | Active |
 
 ## Purpose
 
@@ -6,6 +17,9 @@ Decision Lane v2 is a diagnostic candidate surface for Quant Core outputs. It
 does not create BUY or SELL recommendations. It enriches the legacy
 `decision_lane_candidates.csv` filter with scenario context, model disagreement,
 Risk Governance Layer v1 outputs, and compact reason text for analyst review.
+
+Decision Lane v2 has no live execution, production trading, or learned
+meta-model authority.
 
 ## Legacy Candidate Artifact
 

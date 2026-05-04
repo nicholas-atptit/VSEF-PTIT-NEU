@@ -1,4 +1,21 @@
 # Scenario Output Schema
+## Document Metadata
+
+| Field | Value |
+| --- | --- |
+| Document type | Governance schema |
+| Created / authored | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-05-05 00:00:00 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Timestamp source | Local deterministic decision-chain documentation refactor |
+| Status | Active |
+
+## Authority Boundary
+
+Scenario Evaluation Engine v1 emits deterministic scenario diagnostics only. It
+does not emit BUY or SELL recommendations, live execution instructions,
+production trading authority, or learned meta-model authority.
 
 ## Artifact Set
 

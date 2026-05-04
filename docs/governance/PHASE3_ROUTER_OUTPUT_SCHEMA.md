@@ -5,8 +5,10 @@
 | --- | --- |
 | Document type | Governance schema |
 | Created / authored | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
-| Last updated | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-05-05 00:00:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Timestamp source | Local deterministic decision-chain documentation refactor |
 | Status | Active |
 
 ## Authority Boundary
@@ -14,6 +16,9 @@
 Phase 3 Router v1 is a deterministic diagnostic routing layer. It converts
 Portfolio Allocator v1 diagnostics into route decisions only. It has no BUY or
 SELL recommendation authority and does not train models.
+
+This document is the source of truth for canonical Phase 3 Router v1 artifact
+names, required fields, and valid route decisions.
 
 ## Inputs
 
@@ -30,15 +35,31 @@ Optional context:
 If allocator outputs are unavailable, the router emits a valid diagnostic
 `no_candidate` row with `missing_allocator_outputs`.
 
-## Outputs
+## Canonical Outputs
 
 - `router_decisions.csv`
 - `router_summary.csv`
 - `router_manifest.json`
 
+These are the only canonical Phase 3 Router v1 output artifact names.
+
+## Legacy Alias Policy
+
+Legacy aliases are optional compatibility outputs only when explicitly enabled
+by writer code with `write_legacy_aliases=True`:
+
+- `route_decision.csv`
+- `phase3_decision_cards.jsonl`
+- `routing_summary.csv`
+- `routing_manifest.json`
+
+Legacy aliases are not canonical outputs, are not required for downstream
+manifest interpretation, and must not be documented as required router
+artifacts.
+
 ## Route Decisions
 
-Valid `route_decision` values:
+Canonical `route_decision` values:
 
 - `route_allocation_candidate`
 - `hold`

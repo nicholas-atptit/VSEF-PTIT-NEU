@@ -5,12 +5,24 @@
 | --- | --- |
 | Document type | Governance note |
 | Created / authored | Sunday, 2026-04-19 13:48:26 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:51:14 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-05-05 00:00:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
 | Commit | `ef20ce73b466d75a61ca4768d4f4129405df7fb0` |
-| Timestamp source | Git history |
-| Status | Active |
+| Timestamp source | Local deterministic decision-chain documentation refactor |
+| Status | Historical reference |
+
+## Historical Status
+
+This audit predates the implemented deterministic decision-diagnostic chain.
+Its "avoid refactoring in this phase" notes describe the April 2026 Quant Core
+surface audit scope, not the current May 2026 implementation state. For current
+contracts, use:
+
+- `docs/SYSTEM_OVERVIEW.md`
+- `docs/DECISION_DIAGNOSTIC_CHAIN.md`
+- `docs/governance/PIPELINE_CONTRACTS.md`
+- `docs/governance/QUANT_CORE_OUTPUT_SCHEMA.md`
 
 ## Scope
 

@@ -5,17 +5,38 @@
 | --- | --- |
 | Document type | Governance note |
 | Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-05-05 00:00:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
 | Commit | `5ceed8162b4658cd1ee3402fb147aa5246c1f540` |
-| Timestamp source | Local smoke audit documentation update |
+| Timestamp source | Local deterministic decision-chain documentation refactor |
 | Status | Active |
 
-## Artifact Set
+## Authority Boundary
 
-`scripts/run_quant_core.py` now writes the following core artifacts under the
- requested output directory:
+Quant Core and all optional downstream layers are diagnostic-only. They may emit
+forecast diagnostics, scenario diagnostics, risk diagnostics, diagnostic
+candidates, allocation candidates, no-allocation states, and route decisions.
+They do not emit BUY or SELL recommendations, live execution instructions,
+production trading authority, or learned meta-model authority.
+
+## Canonical Artifact Inventory
+
+`scripts/run_quant_core.py` writes artifacts under the requested output
+directory. The active implemented chain is:
+
+```text
+Quant Core
+-> Scenario Evaluation Engine v1
+-> Risk Governance Layer v1
+-> Decision Lane v2
+-> Portfolio Allocator v1
+-> Phase 3 Router v1
+```
+
+### Base Quant Core
+
+Base Quant Core writes:
 
 - `run_manifest.json`
 - `summary.md`
@@ -39,6 +60,8 @@
 - `analysis_packets.jsonl`
 - `decision_lane_candidates.csv`
 
+### Scenario Evaluation Engine v1
+
 When `--enable-scenario-engine` is set, the runner also writes:
 
 - `scenario_probability.csv`
@@ -48,14 +71,24 @@ When `--enable-scenario-engine` is set, the runner also writes:
 - `scenario_calibration_summary.csv`
 - `scenario_manifest.json`
 
+### Risk Governance Layer v1
+
 When `--enable-risk-governance` is set, the runner also writes:
 
 - `risk_governance_summary.csv`
 - `risk_adjusted_candidates.csv`
 - `risk_override_log.csv`
 - `risk_manifest.json`
+
+### Decision Lane v2
+
+When Risk Governance Layer v1 is enabled, the runner builds Decision Lane v2
+enriched outputs:
+
 - `decision_lane_enriched_candidates.csv`
 - `decision_lane_manifest.json`
+
+### Portfolio Allocator v1
 
 When `--enable-portfolio-allocator` is set, the runner also writes:
 
@@ -64,6 +97,8 @@ When `--enable-portfolio-allocator` is set, the runner also writes:
 - `portfolio_risk_summary.csv`
 - `portfolio_decision_cards.jsonl`
 - `allocator_manifest.json`
+
+### Phase 3 Router v1
 
 When `--enable-phase3-router` is set, the runner also writes:
 
@@ -100,9 +135,12 @@ the scenario artifacts and `run_counts` records scenario probability, ranking,
 and dominance row counts.
 
 When Risk Governance Layer v1 is enabled, `artifact_paths` also records the risk
-governance artifacts plus Decision Lane v2 enriched artifacts. `run_counts`
-records risk governance rows, risk-adjusted candidate rows, risk override rows,
-and enriched Decision Lane candidate rows.
+governance artifacts. `run_counts` records risk governance rows, risk-adjusted
+candidate rows, and risk override rows.
+
+When Decision Lane v2 enriched outputs are written, `artifact_paths` records
+`decision_lane_enriched_candidates` and `decision_lane_manifest`, and
+`run_counts` records enriched Decision Lane candidate rows.
 
 When Portfolio Allocator v1 is enabled, `artifact_paths` records the portfolio
 allocation artifacts and `run_counts` records portfolio allocation rows and
@@ -300,6 +338,25 @@ Additional scenario artifacts:
 - `scenario_manifest.json`: method, labels, source counts, row counts, and
   artifact paths
 
+## Risk Governance Layer Artifacts
+
+Risk Governance Layer v1 is opt-in via `--enable-risk-governance`. It is a
+deterministic diagnostic layer that turns Decision Lane candidates and Quant
+Core context into risk-adjusted candidate diagnostics.
+
+Risk Governance outputs:
+
+- `risk_governance_summary.csv`: one risk summary row per diagnostic candidate.
+- `risk_adjusted_candidates.csv`: candidate rows enriched with risk action,
+  confidence adjustment, eligibility, and risk reason fields.
+- `risk_override_log.csv`: subset of adjusted candidates with reducing,
+  blocking, or force-hold risk actions.
+- `risk_manifest.json`: scoring weights, thresholds, artifact paths, row counts,
+  required fields, and diagnostic-only authority flags.
+
+See `docs/governance/RISK_GOVERNANCE_OUTPUT_SCHEMA.md` for risk-score formula,
+risk levels, risk actions, candidate flags, and required fields.
+
 ## Model Health Summary
 
 `model_health_summary.csv` is one row per model aggregated across the full run.
@@ -413,10 +470,10 @@ Portfolio Allocator v1 is opt-in via `--enable-portfolio-allocator`. The flow is
 
 ```text
 Quant Core
--> Scenario Evaluation if enabled
--> Risk Governance if enabled
+-> Scenario Evaluation Engine v1 if enabled
+-> Risk Governance Layer v1 if enabled
 -> Decision Lane v2 enriched candidates
--> Portfolio Allocator if enabled
+-> Portfolio Allocator v1 if enabled
 ```
 
 The allocator requires Decision Lane v2 enriched candidates. If the flag is used
