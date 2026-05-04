@@ -1,4 +1,15 @@
 # Scenario Evaluation Engine v1
+## Document Metadata
+
+| Field | Value |
+| --- | --- |
+| Document type | Governance note |
+| Created / authored | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-05-05 00:00:00 ICT (UTC+07:00) |
+| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Timestamp source | Local deterministic decision-chain documentation refactor |
+| Status | Active |
 
 ## Purpose
 
@@ -6,8 +17,9 @@ Scenario Evaluation Engine v1 upgrades the existing Quant Core scenario surface
 from metadata-only diagnostics into deterministic probabilistic scenario
 evaluation.
 
-The engine is diagnostic only. It does not emit final BUY, SELL, or production
-recommendation authority.
+The engine is diagnostic only. It does not emit BUY or SELL recommendations,
+live execution instructions, production trading authority, or learned
+meta-model authority.
 
 ## Invocation
 

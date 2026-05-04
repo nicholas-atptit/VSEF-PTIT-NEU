@@ -5,8 +5,10 @@
 | --- | --- |
 | Document type | Governance schema |
 | Created / authored | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
-| Last updated | Sunday, 2026-05-03 00:00:00 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-05-05 00:00:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
+| Branch | `vsef-doc-datetime-metadata-standardization` |
+| Timestamp source | Local deterministic decision-chain documentation refactor |
 | Status | Active |
 
 ## Authority Boundary
@@ -40,6 +42,9 @@ valid all-cash diagnostic result with `missing_enriched_candidates`.
 
 ## Default Config
 
+These defaults mirror `src.portfolio_allocator.schema.PortfolioAllocatorConfig`
+and are the canonical Portfolio Allocator v1 config contract:
+
 | Field | Default |
 | --- | ---: |
 | `max_position_weight` | `0.20` |
@@ -49,6 +54,14 @@ valid all-cash diagnostic result with `missing_enriched_candidates`.
 | `confidence_threshold` | `0.45` |
 | `disagreement_threshold` | `0.50` |
 | `dominance_threshold` | `0.15` |
+
+`effective_max_exposure` is:
+
+```text
+min(max_total_exposure, 1 - min_cash_buffer)
+```
+
+With defaults, `effective_max_exposure = 0.70`.
 
 ## portfolio_allocation.csv
 
