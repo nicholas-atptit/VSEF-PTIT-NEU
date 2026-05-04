@@ -17,6 +17,13 @@ ROUTER_ARTIFACT_FILENAMES: dict[str, str] = {
     "router_manifest": "router_manifest.json",
 }
 
+LEGACY_ROUTER_ARTIFACT_FILENAMES: dict[str, str] = {
+    "route_decision": "route_decision.csv",
+    "phase3_decision_cards": "phase3_decision_cards.jsonl",
+    "routing_summary": "routing_summary.csv",
+    "routing_manifest": "routing_manifest.json",
+}
+
 ROUTE_DECISIONS: tuple[str, ...] = (
     "route_allocation_candidate",
     "hold",

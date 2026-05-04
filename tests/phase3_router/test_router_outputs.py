@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.phase3_router import run_phase3_router, run_phase3_router_from_files, write_phase3_router_outputs
-from src.phase3_router.schema import ROUTER_DECISION_COLUMNS
+from src.phase3_router.schema import LEGACY_ROUTER_ARTIFACT_FILENAMES, ROUTER_DECISION_COLUMNS
 from tests.phase3_router.test_router_decisions import allocation_frame, portfolio_summary
 
 
@@ -20,6 +20,30 @@ def test_router_artifacts_are_written_with_required_columns(tmp_path: Path) -> N
 
     decisions = pd.read_csv(tmp_path / "router_decisions.csv")
     assert list(decisions.columns) == list(ROUTER_DECISION_COLUMNS)
+
+
+def test_legacy_aliases_are_optional_and_not_canonical_manifest_entries(tmp_path: Path) -> None:
+    result = run_phase3_router(allocation_frame(), portfolio_summary_df=portfolio_summary())
+    write_phase3_router_outputs(tmp_path, result)
+
+    for filename in LEGACY_ROUTER_ARTIFACT_FILENAMES.values():
+        assert not (tmp_path / filename).exists()
+
+    legacy_dir = tmp_path / "legacy"
+    result = run_phase3_router(allocation_frame(), portfolio_summary_df=portfolio_summary())
+    paths = write_phase3_router_outputs(legacy_dir, result, write_legacy_aliases=True)
+
+    for name, filename in LEGACY_ROUTER_ARTIFACT_FILENAMES.items():
+        assert name in paths
+        assert (legacy_dir / filename).exists()
+
+    manifest = json.loads((legacy_dir / "router_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["artifact_filenames"] == {
+        "router_decisions": "router_decisions.csv",
+        "router_summary": "router_summary.csv",
+        "router_manifest": "router_manifest.json",
+    }
+    assert set(manifest["artifact_paths"]) == {"router_decisions", "router_summary", "router_manifest"}
 
 
 def test_manifest_records_diagnostic_authority_and_counts(tmp_path: Path) -> None:

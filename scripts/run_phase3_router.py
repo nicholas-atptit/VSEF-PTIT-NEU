@@ -20,15 +20,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-dir", required=True, help="Directory containing allocator and Quant Core diagnostic outputs")
     parser.add_argument("--output-dir", default=None, help="Directory for router outputs; defaults to input-dir")
     parser.add_argument("--max-risk-score", type=float, default=0.70)
-    parser.add_argument("--min-candidate-score", type=float, default=0.0)
-    parser.add_argument("--min-model-agreement", type=float, default=0.5)
-    parser.add_argument("--min-allocation-weight", type=float, default=0.01)
-    parser.add_argument(
-        "--low-agreement-action",
-        choices=["hold_for_review", "reject_low_agreement"],
-        default="hold_for_review",
-    )
-    parser.add_argument("--allow-no-allocation", action=argparse.BooleanOptionalAction, default=True)
     return parser.parse_args()
 
 
@@ -41,7 +32,6 @@ def main() -> int:
         args.input_dir,
         args.output_dir,
         config=config,
-        write_legacy_aliases=True,
     )
     decision_counts = result.router_decisions["route_decision"].value_counts().sort_index().to_dict()
     print("Route decisions:")

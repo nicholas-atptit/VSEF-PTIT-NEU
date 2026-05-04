@@ -12,7 +12,12 @@ import pandas as pd
 
 from src.phase3_router.manifest import write_router_manifest
 from src.phase3_router.routing import run_phase3_router
-from src.phase3_router.schema import ROUTER_ARTIFACT_FILENAMES, Phase3RouterConfig, Phase3RouterResult
+from src.phase3_router.schema import (
+    LEGACY_ROUTER_ARTIFACT_FILENAMES,
+    ROUTER_ARTIFACT_FILENAMES,
+    Phase3RouterConfig,
+    Phase3RouterResult,
+)
 
 
 def _json_default(value: Any) -> Any:
@@ -97,10 +102,7 @@ def write_phase3_router_outputs(
 
     if write_legacy_aliases:
         legacy_paths = {
-            "route_decision": destination / "route_decision.csv",
-            "phase3_decision_cards": destination / "phase3_decision_cards.jsonl",
-            "routing_summary": destination / "routing_summary.csv",
-            "routing_manifest": destination / "routing_manifest.json",
+            name: destination / filename for name, filename in LEGACY_ROUTER_ARTIFACT_FILENAMES.items()
         }
         result.router_decisions.to_csv(legacy_paths["route_decision"], index=False)
         _write_jsonl(legacy_paths["phase3_decision_cards"], _legacy_cards(result.router_decisions))

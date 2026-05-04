@@ -5,11 +5,11 @@
 | --- | --- |
 | Document type | Governance note |
 | Created / authored | Tuesday, 2026-04-28 22:34:05 ICT (UTC+07:00) |
-| Last updated | Thursday, 2026-04-30 11:57:00 ICT (UTC+07:00) |
+| Last updated | Tuesday, 2026-05-05 00:00:00 ICT (UTC+07:00) |
 | Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
 | Branch | `vsef-doc-datetime-metadata-standardization` |
 | Commit | `5ceed8162b4658cd1ee3402fb147aa5246c1f540` |
-| Timestamp source | Local smoke audit documentation update |
+| Timestamp source | Local decision-chain audit fix |
 | Status | Active |
 
 ## Purpose
@@ -27,6 +27,16 @@ stack into a governed quant core with:
 The implementation keeps the full current quant-core forecast zoo available in
 `full_forecast` mode. It does not remove any currently supported forecast model
 family from the walk-forward quant-core lane.
+
+## Implemented Diagnostic Chain
+
+The current implemented diagnostic chain is:
+
+`Quant Core -> Scenario Evaluation -> Risk Governance -> Decision Lane v2 -> Portfolio Allocator v1 -> Phase 3 Router v1`
+
+Each layer remains diagnostic-only. Portfolio Allocator v1 emits allocation
+candidates or governed no-allocation states. Phase 3 Router v1 emits route
+decisions only. Neither layer has BUY or SELL recommendation authority.
 
 ## Governance Rules
 
@@ -114,14 +124,19 @@ is documented in `docs/audits/VSEF_QUANT_CORE_SMOKE_AUDIT.md`.
 - `src/reporting/analysis_packets.py`
 - `src/reporting/model_health.py`
 - `src/reporting/quant_core.py`
+- `src/scenario`
+- `src/risk_governance`
+- `src/reporting/decision_lane.py`
+- `src/portfolio_allocator`
+- `src/phase3_router`
 
 ## Out Of Scope
 
 This phase did not add:
 
 - new forecast model families
-- Phase 3 routing
 - stacking or meta-model decision logic
-- a portfolio allocator
 - deep sequence-model rollout into the current walk-forward quant-core lane
 - claims of broad robust edge
+- BUY or SELL recommendation authority
+- live execution or production trading readiness

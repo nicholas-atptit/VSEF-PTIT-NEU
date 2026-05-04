@@ -306,12 +306,8 @@ def test_cli_works_on_synthetic_fixtures(tmp_path: Path) -> None:
             str(input_dir),
             "--output-dir",
             str(output_dir),
-            "--min-allocation-weight",
-            "0.01",
-            "--min-model-agreement",
-            "0.5",
             "--max-risk-score",
-            "1.0",
+            "0.70",
         ],
         check=False,
         cwd=REPO_ROOT,
@@ -321,5 +317,8 @@ def test_cli_works_on_synthetic_fixtures(tmp_path: Path) -> None:
 
     assert completed.returncode == 0, completed.stderr
     assert "route_allocation_candidate" in completed.stdout
-    assert (output_dir / "route_decision.csv").exists()
-    assert (output_dir / "phase3_decision_cards.jsonl").exists()
+    assert (output_dir / "router_decisions.csv").exists()
+    assert (output_dir / "router_summary.csv").exists()
+    assert (output_dir / "router_manifest.json").exists()
+    assert not (output_dir / "route_decision.csv").exists()
+    assert not (output_dir / "phase3_decision_cards.jsonl").exists()

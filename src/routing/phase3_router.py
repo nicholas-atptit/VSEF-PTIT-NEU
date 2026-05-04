@@ -1,7 +1,11 @@
-"""Deterministic Phase 3 Router v1 for saved Quant Core diagnostics.
+"""Legacy deterministic Phase 3 Router v1 for saved Quant Core diagnostics.
 
 The router emits auditable route decisions only. It does not train a meta-model
 and does not create trading recommendations.
+
+Canonical Phase 3 Router v1 artifacts and route decisions live in
+``src.phase3_router``. This module is retained for compatibility with older
+tests and local artifacts that used the pre-canonical route-label schema.
 """
 
 from __future__ import annotations
@@ -31,14 +35,16 @@ OPTIONAL_DIAGNOSTIC_INPUT_FILES: tuple[str, ...] = (
     "strategy_metrics.csv",
 )
 
-PHASE3_ROUTER_OUTPUT_FILES: tuple[str, ...] = (
+LEGACY_PHASE3_ROUTER_OUTPUT_FILES: tuple[str, ...] = (
     "route_decision.csv",
     "phase3_decision_cards.jsonl",
     "routing_summary.csv",
     "routing_manifest.json",
 )
 
-PHASE3_ROUTE_LABELS: tuple[str, ...] = (
+PHASE3_ROUTER_OUTPUT_FILES = LEGACY_PHASE3_ROUTER_OUTPUT_FILES
+
+LEGACY_PHASE3_ROUTE_LABELS: tuple[str, ...] = (
     "route_allocation_candidate",
     "hold_for_review",
     "reject_low_confidence",
@@ -49,6 +55,8 @@ PHASE3_ROUTE_LABELS: tuple[str, ...] = (
     "no_candidate",
     "rejected_missing_required_data",
 )
+
+PHASE3_ROUTE_LABELS = LEGACY_PHASE3_ROUTE_LABELS
 
 CORE_ALLOCATION_COLUMNS: tuple[str, ...] = ("ticker", "allocation_weight")
 
