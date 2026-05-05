@@ -11,6 +11,16 @@
 | Timestamp source | Local documentation inventory and legacy migration |
 | Status | Active |
 
+## Executive Summary
+
+| Category | Count |
+| --- | ---: |
+| `ACTIVE_CANONICAL` | 19 |
+| `ACTIVE_REFERENCE` | 56 |
+| `DEPRECATED_LEGACY` | 59 |
+| `REPORT_ARCHIVE` | 12 |
+| `UNKNOWN_NEEDS_REVIEW` | 0 |
+
 ## Scope
 
 This inventory covers:
@@ -28,6 +38,14 @@ Reports are historical snapshots and are not canonical governance docs. Active c
 - `DEPRECATED_LEGACY`: archived or superseded docs retained for historical context only.
 - `REPORT_ARCHIVE`: report snapshots listed but not rewritten.
 - `UNKNOWN_NEEDS_REVIEW`: file needs a future human classification pass.
+
+## How to Use This Inventory
+
+- `ACTIVE_CANONICAL` = current source of truth.
+- `ACTIVE_REFERENCE` = useful only when it does not conflict with canonical docs.
+- `DEPRECATED_LEGACY` = historical context only.
+- `REPORT_ARCHIVE` = snapshot evidence only.
+- `UNKNOWN_NEEDS_REVIEW` = must not be used as source of truth.
 
 ## Inventory
 
