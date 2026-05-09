@@ -1,0 +1,19 @@
+removed_group,horizon,context_count,mean_delta_mae,mean_delta_rmse,mean_delta_mape,mean_delta_directional_accuracy,mae_worsened_when_removed_count,rmse_worsened_when_removed_count,directional_accuracy_worsened_when_removed_count,small_sample_flag,notes
+lag_returns,1,9,0.008530014717073264,0.010716289467948052,0.008740987020250786,0.0,3,3,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+lag_returns,3,9,-0.011743971958313929,-0.009131805367942657,-0.002412741952942178,0.0,3,3,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+lag_returns,5,9,0.027642163249958582,0.027191561516135047,0.018729785455394103,-0.0008888888888888897,2,2,1,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+momentum_indicators,1,9,-0.06228815220136494,-0.05879114848653599,-0.05893384739164942,0.0,2,2,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+momentum_indicators,3,9,-0.052123887351800985,-0.04992334276067223,-0.04174919568766934,-0.000874890638670177,2,2,1,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+momentum_indicators,5,9,0.04018549792786046,0.037773450029853696,0.0275630766621229,0.0008888888888888897,2,2,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+rolling_mean,1,9,0.528399141852351,0.5119515422384714,0.466369995953115,0.0,4,5,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+rolling_mean,3,9,0.6786196451540024,0.6541517765534796,0.6449477043912837,-0.0017497812773403416,5,5,1,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+rolling_mean,5,9,0.5361267399908578,0.5304528376027587,0.5486943045318181,-0.008000000000000007,4,4,2,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+rolling_volatility,1,9,-0.027327595751189964,-0.024766349524070863,-0.02027593734879396,0.0,3,3,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+rolling_volatility,3,9,-0.05613149156512657,-0.05169402549180687,-0.030913568954061957,0.0,2,2,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+rolling_volatility,5,9,-0.016684191191204716,-0.016151943390393893,-0.007198451037550384,-0.0008888888888888897,3,3,1,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+spread_range,1,9,0.06057133592639346,0.05846241255803301,0.053269783027912326,0.0,4,4,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+spread_range,3,9,-0.013930156275864025,-0.013164026894930101,-0.0067831469737044,-0.000874890638670177,4,5,1,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+spread_range,5,9,-0.020345509170511922,-0.022466686178081625,-0.022402656340153617,-0.0008888888888888897,2,2,1,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+volume,1,9,-0.004531721498004872,-0.0056802187553942,-0.002590012590338543,0.0,3,3,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+volume,3,9,-0.1077780003047913,-0.10265129873458569,-0.08995123620335911,0.0,2,2,0,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.
+volume,5,9,-0.14288769924548655,-0.14182677027277643,-0.13608489687663397,-0.0008888888888888897,2,2,1,False,Aggregated over model rows only; ablation deltas are diagnostic and not causal.

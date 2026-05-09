@@ -154,3 +154,50 @@ def test_orchestrator_expands_phase2_feature_aliases(tmp_path) -> None:
         "ma_5",
     ]
     assert orchestrator.warnings == []
+
+
+def test_orchestrator_filters_ablation_group_and_records_feature_event(tmp_path) -> None:
+    registry_path = tmp_path / "feature_group_registry.yaml"
+    registry_path.write_text(
+        yaml.safe_dump(
+            {
+                "feature_groups": {
+                    "volume": {
+                        "expected_patterns": ["volume"],
+                    }
+                },
+                "excluded_or_guarded_fields": ["date", "ticker", "y_true", "target"],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    orchestrator = ExperimentOrchestrator(str(tmp_path / "experiment.yaml"))
+    orchestrator.config = {
+        "experiment": {"id": "EXP-UNIT-ABLAT"},
+        "target": {"column": "close", "task_type": "price_forecast"},
+        "features": {
+            "enabled": True,
+            "registry": str(registry_path),
+            "feature_sets": ["default_ohlcv", "technical_basic", "technical_phase5"],
+            "ablation": {
+                "enabled": True,
+                "reference_experiment": "EXP-UNIT-REF",
+                "removed_group": "volume",
+                "removed_patterns": [],
+            },
+        },
+    }
+
+    frame = orchestrator._build_supervised_frame(_ohlcv(), horizon=1)
+    feature_columns = frame.attrs["feature_columns"]
+
+    assert "open" in feature_columns
+    assert "volume" not in feature_columns
+    assert "volume_mean_5" not in feature_columns
+    assert "volume_shock_5" not in feature_columns
+    assert orchestrator.feature_filter_events
+    event = orchestrator.feature_filter_events[-1]
+    assert event["removed_group"] == "volume"
+    assert "volume" in event["removed_feature_columns"]
+    assert event["active_feature_count"] == len(feature_columns)

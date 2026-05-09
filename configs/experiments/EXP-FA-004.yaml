@@ -1,0 +1,78 @@
+experiment:
+  id: EXP-FA-004
+  name: Feature Ablation Study - Remove Volume
+  description: Compare full feature set against a run with volume and volume-derived features removed.
+  phase: 5
+  owner: Project team / maintainer
+  created_at: "2026-05-09"
+  seed: 42
+
+data:
+  provider: vnstock_data
+  frequency: daily
+  universe: [FPT, ACB, HPG]
+  start_date: "2023-01-01"
+  end_date: "2024-12-31"
+  schema: [date, ticker, open, high, low, close, volume]
+
+target:
+  column: close
+  task_type: price_forecast
+  horizons: [1, 3, 5]
+
+features:
+  enabled: true
+  registry: configs/features/feature_group_registry.yaml
+  feature_sets: [default_ohlcv, technical_basic, technical_phase5]
+  ablation:
+    enabled: true
+    reference_experiment: EXP-FA-000
+    removed_group: volume
+    removed_patterns: []
+    notes: Remove raw volume and volume-derived features.
+
+models:
+  enabled: true
+  include: [xgboost, lightgbm, ets]
+  params:
+    xgboost: {task: regression, n_estimators: 20, max_depth: 3, learning_rate: 0.05}
+    lightgbm: {task: regression, n_estimators: 20, max_depth: 3, num_leaves: 15, learning_rate: 0.05}
+    ets: {task: regression, trend: add, seasonal: null}
+
+baselines:
+  enabled: true
+  include: [persistence, zero_return, moving_average_rule]
+  params:
+    moving_average_rule: {window: 5}
+
+evaluation:
+  method: fixed_chronological_split
+  train_start: "2023-01-01"
+  train_end: "2024-06-30"
+  test_start: "2024-07-01"
+  test_end: "2024-12-31"
+  metrics: [mae, rmse, mape, directional_accuracy, prediction_count, missing_prediction_rate]
+
+regime_context:
+  enabled: true
+  regime_labels: reports/regime_analysis/regime_labels.csv
+  regime_policy: configs/policies/regime_policy.yaml
+
+candidate_context:
+  enabled: true
+  source_candidate_metrics: reports/risk_aware/topn_basket_metrics.csv
+  metrics: [hit_ratio, average_realized_return, return_volatility_proxy]
+
+outputs:
+  root_dir: outputs/experiments
+  save_predictions: true
+  save_metrics: true
+  save_manifest: true
+  save_charts: false
+  save_summary: true
+
+runtime:
+  fail_fast: false
+  max_workers: 1
+  log_level: INFO
+  notes: SARIMAX was excluded from the local Phase 5 ablation runtime after the full default model set exceeded the 10-minute local timeout.

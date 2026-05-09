@@ -56,8 +56,65 @@ EXPECTED_ARTIFACTS = [
 FEATURE_SET_ALIASES = {
     "default_ohlcv": ("ohlcv_basic",),
     "technical_basic": ("returns_basic", "moving_average_basic"),
+    "technical_phase5": ("phase5_technical",),
 }
-SUPPORTED_FEATURE_SETS = {"ohlcv_basic", "returns_basic", "moving_average_basic"}
+SUPPORTED_FEATURE_SETS = {"ohlcv_basic", "returns_basic", "moving_average_basic", "phase5_technical"}
+GUARDED_FEATURE_FIELDS = {
+    "date",
+    "ticker",
+    "y_true",
+    "y_pred",
+    "target",
+    "future_return",
+    "realized_future_return",
+    "actual_direction",
+    "diagnostics",
+    "model_name",
+    "model_type",
+    "future_close",
+    "prediction_reference",
+    "target_kind",
+}
+FEATURE_SELECTION_COLUMNS = [
+    "experiment_id",
+    "ticker",
+    "horizon",
+    "feature_set",
+    "ablation_enabled",
+    "removed_group",
+    "removed_patterns",
+    "removed_feature_columns",
+    "active_feature_columns",
+    "active_feature_count",
+    "notes",
+]
+TREE_IMPORTANCE_COLUMNS = [
+    "experiment_id",
+    "ticker",
+    "horizon",
+    "model_name",
+    "feature_name",
+    "feature_group",
+    "importance_type",
+    "importance_value",
+    "normalized_importance",
+    "rank",
+    "sample_size",
+    "notes",
+]
+SHAP_SUMMARY_COLUMNS = [
+    "experiment_id",
+    "ticker",
+    "horizon",
+    "model_name",
+    "feature_name",
+    "feature_group",
+    "mean_abs_shap",
+    "normalized_mean_abs_shap",
+    "rank",
+    "sample_size",
+    "notes",
+]
 
 
 class ExperimentOrchestrator:
@@ -81,6 +138,12 @@ class ExperimentOrchestrator:
         self.provider_environment: dict[str, Any] = {}
         self.baseline_registry = BaselineRegistry()
         self.metrics_engine = MetricsEngine()
+        self.feature_filter_events: list[dict[str, Any]] = []
+        self.tree_feature_importance_rows: list[dict[str, Any]] = []
+        self.shap_summary_rows: list[dict[str, Any]] = []
+        self._feature_registry_cache: dict[str, Any] | None = None
+        self._shap_unavailable_recorded = False
+        self._ohlcv_cache: dict[str, pd.DataFrame] = {}
 
     def load_config(self) -> dict[str, Any]:
         """Load the YAML experiment configuration."""
@@ -242,6 +305,7 @@ class ExperimentOrchestrator:
             self._write_prediction_outputs()
             self.metrics = self.compute_metrics(self.predictions)
             self._write_metrics_outputs()
+            self._write_feature_outputs()
             self.write_summary()
 
             if self.errors and self.predictions.empty:
@@ -433,6 +497,22 @@ class ExperimentOrchestrator:
                     "",
                 ]
             )
+        feature_rows = self.feature_filter_events
+        if feature_rows:
+            lines.extend(["## Feature Selection", ""])
+            for event in feature_rows[:20]:
+                removed_group = event.get("removed_group") or "none"
+                removed_columns = event.get("removed_feature_columns") or []
+                active_count = event.get("active_feature_count")
+                notes = event.get("notes") or ""
+                lines.append(
+                    f"- ticker={event.get('ticker')}; horizon={event.get('horizon')}; "
+                    f"removed_group={removed_group}; removed_columns={len(removed_columns)}; "
+                    f"active_features={active_count}; notes={notes}"
+                )
+            if len(feature_rows) > 20:
+                lines.append(f"- Additional feature-selection rows: {len(feature_rows) - 20}")
+            lines.append("")
         if missing_artifacts:
             lines.extend(
                 [
@@ -488,6 +568,22 @@ class ExperimentOrchestrator:
             X_test, test_frame = self._sequence_test_frame(train_frame, test_frame, feature_columns, sequence_length)
         model = create_model(model_name, **params)
         model.fit(X_train, y_train)
+        self._record_tree_feature_importance(
+            model_name=model_name,
+            model=model,
+            feature_columns=feature_columns,
+            ticker=ticker,
+            horizon=horizon,
+            sample_size=len(train_frame),
+        )
+        self._record_shap_summary(
+            model_name=model_name,
+            model=model,
+            feature_columns=feature_columns,
+            X_test=X_test,
+            ticker=ticker,
+            horizon=horizon,
+        )
         y_pred = model.predict(X_test)
         return self._prediction_frame(
             test_frame,
@@ -505,17 +601,45 @@ class ExperimentOrchestrator:
         if provider_environment["import_status"] != "available":
             reason = "vnstock_data_not_installed" if provider_name == "vnstock_data" else "provider_import_failed"
             raise ValueError(f"No OHLCV data available for {ticker}: {reason}")
+        start_date = str(self._get_path(("data", "start_date")))
+        end_date = str(self._get_path(("data", "end_date")))
+        frequency = "1D"
+        cache_key = f"{provider_name}|{ticker}|{start_date}|{end_date}|{frequency}"
+        if cache_key in self._ohlcv_cache:
+            return self._ohlcv_cache[cache_key].copy()
+        cache_path = self._ohlcv_cache_path(provider_name, ticker, start_date, end_date, frequency)
+        if cache_path.exists():
+            frame = pd.read_csv(cache_path)
+            frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
+            self._ohlcv_cache[cache_key] = frame
+            self.warnings.append(f"ohlcv_loaded_from_local_cache:{ticker}")
+            return frame.copy()
         adapter = VnstockAdapter(symbol_list=[ticker])
         frame = adapter.get_ohlcv(
             ticker,
-            str(self._get_path(("data", "start_date"))),
-            str(self._get_path(("data", "end_date"))),
-            "1D",
+            start_date,
+            end_date,
+            frequency,
         )
         if frame.empty:
             reason = frame.attrs.get("source_notes") or frame.attrs.get("source_availability") or "empty_ohlcv"
             raise ValueError(f"No OHLCV data available for {ticker}: {reason}")
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        frame.to_csv(cache_path, index=False)
+        self._ohlcv_cache[cache_key] = frame
         return frame
+
+    @staticmethod
+    def _ohlcv_cache_path(provider_name: str, ticker: str, start_date: str, end_date: str, frequency: str) -> Path:
+        safe = "_".join(
+            str(value)
+            .replace("\\", "_")
+            .replace("/", "_")
+            .replace(":", "_")
+            .replace("|", "_")
+            for value in (provider_name, ticker.upper(), start_date, end_date, frequency)
+        )
+        return REPO_ROOT / "outputs" / "experiments" / "_ohlcv_cache" / f"{safe}.csv"
 
     def _build_supervised_frame(self, data: pd.DataFrame, horizon: int) -> pd.DataFrame:
         frame = data.copy()
@@ -540,14 +664,14 @@ class ExperimentOrchestrator:
             frame["prediction_reference"] = frame["close"]
             frame["target_kind"] = "price"
 
-        feature_columns = self._add_features(frame)
+        feature_columns = self._add_features(frame, horizon=horizon)
         frame = frame.dropna(subset=["y_true", *feature_columns]).reset_index(drop=True)
         frame.attrs["feature_columns"] = feature_columns
         if frame.empty:
             raise ValueError("No supervised rows available after applying horizon and feature filters")
         return frame
 
-    def _add_features(self, frame: pd.DataFrame) -> list[str]:
+    def _add_features(self, frame: pd.DataFrame, *, horizon: int | None = None) -> list[str]:
         features_cfg = dict(self.config.get("features") or {})
         if not bool(features_cfg.get("enabled", True)):
             frame["feature_close"] = frame["close"]
@@ -556,20 +680,171 @@ class ExperimentOrchestrator:
         feature_sets = self._normalize_feature_sets(features_cfg.get("feature_sets") or ["ohlcv_basic"])
         columns: list[str] = []
         if "ohlcv_basic" in feature_sets:
-            columns.extend(["open", "high", "low", "close", "volume"])
+            self._append_feature_columns(columns, ["open", "high", "low", "close", "volume"])
         if "returns_basic" in feature_sets:
             frame["return_1"] = frame["close"].pct_change().fillna(0.0)
             frame["high_low_range"] = (frame["high"] - frame["low"]) / frame["close"].replace(0.0, np.nan)
             frame["close_open_return"] = (frame["close"] - frame["open"]) / frame["open"].replace(0.0, np.nan)
-            columns.extend(["return_1", "high_low_range", "close_open_return"])
+            self._append_feature_columns(columns, ["return_1", "high_low_range", "close_open_return"])
         if "moving_average_basic" in feature_sets:
             frame["ma_3"] = frame["close"].rolling(window=3, min_periods=1).mean()
             frame["ma_5"] = frame["close"].rolling(window=5, min_periods=1).mean()
-            columns.extend(["ma_3", "ma_5"])
+            self._append_feature_columns(columns, ["ma_3", "ma_5"])
+        if "phase5_technical" in feature_sets:
+            self._add_phase5_technical_features(frame, columns)
         if not columns:
             frame["feature_close"] = frame["close"]
             columns.append("feature_close")
-        return columns
+        return self._apply_feature_ablation_filter(columns, features_cfg, frame=frame, horizon=horizon)
+
+    @staticmethod
+    def _append_feature_columns(columns: list[str], names: list[str]) -> None:
+        for name in names:
+            if name not in columns:
+                columns.append(name)
+
+    def _add_phase5_technical_features(self, frame: pd.DataFrame, columns: list[str]) -> None:
+        returns = frame["close"].pct_change()
+        for lag in (1, 2, 3, 5):
+            frame[f"close_return_lag_{lag}"] = returns.shift(lag).fillna(0.0)
+        frame["pct_change_lag_1"] = returns.shift(1).fillna(0.0)
+
+        frame["rolling_mean_5"] = frame["close"].rolling(window=5, min_periods=1).mean()
+        frame["rolling_mean_10"] = frame["close"].rolling(window=10, min_periods=1).mean()
+        frame["sma_20"] = frame["close"].rolling(window=20, min_periods=1).mean()
+
+        frame["rolling_std_5"] = returns.rolling(window=5, min_periods=2).std(ddof=0).fillna(0.0)
+        frame["rolling_std_10"] = returns.rolling(window=10, min_periods=2).std(ddof=0).fillna(0.0)
+        frame["realized_vol_10"] = frame["rolling_std_10"] * np.sqrt(252.0)
+
+        volume = frame["volume"].replace(0.0, np.nan)
+        frame["volume_mean_5"] = frame["volume"].rolling(window=5, min_periods=1).mean()
+        frame["volume_mean_10"] = frame["volume"].rolling(window=10, min_periods=1).mean()
+        frame["volume_shock_5"] = (frame["volume"] / frame["volume_mean_5"].replace(0.0, np.nan)).replace(
+            [np.inf, -np.inf],
+            np.nan,
+        )
+        frame["volume_return_lag_1"] = volume.pct_change().shift(1).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+        delta = frame["close"].diff()
+        gain = delta.clip(lower=0.0).rolling(window=14, min_periods=1).mean()
+        loss = (-delta.clip(upper=0.0)).rolling(window=14, min_periods=1).mean()
+        rs = gain / loss.replace(0.0, np.nan)
+        frame["rsi_14"] = (100.0 - (100.0 / (1.0 + rs))).fillna(50.0)
+        ema_12 = frame["close"].ewm(span=12, adjust=False, min_periods=1).mean()
+        ema_26 = frame["close"].ewm(span=26, adjust=False, min_periods=1).mean()
+        frame["macd_12_26"] = ema_12 - ema_26
+        frame["macd_signal_9"] = frame["macd_12_26"].ewm(span=9, adjust=False, min_periods=1).mean()
+        frame["momentum_5"] = (frame["close"] / frame["close"].shift(5)) - 1.0
+
+        frame["open_close_spread"] = (frame["close"] - frame["open"]) / frame["open"].replace(0.0, np.nan)
+        frame["high_low_spread"] = (frame["high"] - frame["low"]) / frame["close"].replace(0.0, np.nan)
+        true_range_parts = pd.concat(
+            [
+                (frame["high"] - frame["low"]).abs(),
+                (frame["high"] - frame["close"].shift(1)).abs(),
+                (frame["low"] - frame["close"].shift(1)).abs(),
+            ],
+            axis=1,
+        )
+        frame["true_range"] = true_range_parts.max(axis=1).fillna(0.0)
+        frame["atr_proxy_5"] = frame["true_range"].rolling(window=5, min_periods=1).mean()
+
+        phase5_columns = [
+            "close_return_lag_1",
+            "close_return_lag_2",
+            "close_return_lag_3",
+            "close_return_lag_5",
+            "pct_change_lag_1",
+            "rolling_mean_5",
+            "rolling_mean_10",
+            "sma_20",
+            "rolling_std_5",
+            "rolling_std_10",
+            "realized_vol_10",
+            "volume_mean_5",
+            "volume_mean_10",
+            "volume_shock_5",
+            "volume_return_lag_1",
+            "rsi_14",
+            "macd_12_26",
+            "macd_signal_9",
+            "momentum_5",
+            "open_close_spread",
+            "high_low_spread",
+            "true_range",
+            "atr_proxy_5",
+        ]
+        for column in phase5_columns:
+            frame[column] = pd.to_numeric(frame[column], errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        self._append_feature_columns(columns, phase5_columns)
+
+    def _apply_feature_ablation_filter(
+        self,
+        columns: list[str],
+        features_cfg: dict[str, Any],
+        *,
+        frame: pd.DataFrame,
+        horizon: int | None,
+    ) -> list[str]:
+        ablation_cfg = dict(features_cfg.get("ablation") or {})
+        enabled = bool(ablation_cfg.get("enabled", False))
+        removed_group = ablation_cfg.get("removed_group")
+        if isinstance(removed_group, list):
+            groups = [str(value).strip() for value in removed_group if str(value).strip()]
+        elif removed_group:
+            groups = [str(removed_group).strip()]
+        else:
+            groups = []
+
+        removed_patterns = [str(value).strip().lower() for value in ablation_cfg.get("removed_patterns") or [] if str(value).strip()]
+        active = list(dict.fromkeys(columns))
+        removed: list[str] = []
+        notes = "ablation_disabled_or_reference"
+        registry = self._load_feature_group_registry(features_cfg.get("registry"))
+        patterns_used = list(removed_patterns)
+
+        if enabled and groups:
+            patterns: list[str] = list(removed_patterns)
+            feature_groups = dict(registry.get("feature_groups") or {})
+            for group in groups:
+                group_config = dict(feature_groups.get(group) or {})
+                patterns.extend(str(value).strip().lower() for value in group_config.get("expected_patterns") or [] if str(value).strip())
+            patterns = list(dict.fromkeys(patterns))
+            patterns_used = patterns
+            guarded = self._guarded_feature_fields(registry)
+            for column in active:
+                lowered = column.lower()
+                if lowered in guarded:
+                    continue
+                if any(pattern and pattern in lowered for pattern in patterns):
+                    removed.append(column)
+            if removed:
+                active = [column for column in active if column not in set(removed)]
+                notes = "removed_matching_registry_patterns"
+            else:
+                notes = "no_matching_feature_columns_found"
+                self.warnings.append(f"feature_ablation_no_columns_matched:{','.join(groups)}")
+            if not active:
+                active = ["feature_close"]
+                frame["feature_close"] = frame["close"]
+                notes = f"{notes};fallback_feature_close_added"
+
+        event = {
+            "experiment_id": self._experiment_id(),
+            "ticker": str(frame["ticker"].iloc[0]) if "ticker" in frame.columns and not frame.empty else "",
+            "horizon": horizon,
+            "feature_set": ",".join(self._normalize_feature_sets(features_cfg.get("feature_sets") or ["ohlcv_basic"])),
+            "ablation_enabled": enabled,
+            "removed_group": ",".join(groups),
+            "removed_patterns": ",".join(patterns_used),
+            "removed_feature_columns": removed,
+            "active_feature_columns": active,
+            "active_feature_count": int(len(active)),
+            "notes": notes,
+        }
+        self.feature_filter_events.append(event)
+        return active
 
     def _normalize_feature_sets(self, configured_sets: list[Any]) -> list[str]:
         feature_sets: list[str] = []
@@ -585,6 +860,177 @@ class ExperimentOrchestrator:
         if unsupported:
             self.warnings.append(f"unsupported_feature_sets_ignored:{','.join(sorted(set(unsupported)))}")
         return feature_sets
+
+    def _load_feature_group_registry(self, registry_path: Any = None) -> dict[str, Any]:
+        if self._feature_registry_cache is not None:
+            return self._feature_registry_cache
+        if not registry_path:
+            self._feature_registry_cache = {}
+            return self._feature_registry_cache
+        path = self._resolve_repo_path(str(registry_path))
+        if not path.exists():
+            self.warnings.append(f"feature_group_registry_missing:{path}")
+            self._feature_registry_cache = {}
+            return self._feature_registry_cache
+        if yaml is None:
+            self.warnings.append("feature_group_registry_not_loaded:pyyaml_unavailable")
+            self._feature_registry_cache = {}
+            return self._feature_registry_cache
+        with path.open("r", encoding="utf-8") as handle:
+            loaded = yaml.safe_load(handle) or {}
+        if not isinstance(loaded, dict):
+            self.warnings.append(f"feature_group_registry_invalid:{path}")
+            loaded = {}
+        self._feature_registry_cache = loaded
+        return self._feature_registry_cache
+
+    def _guarded_feature_fields(self, registry: dict[str, Any]) -> set[str]:
+        guarded = {value.lower() for value in GUARDED_FEATURE_FIELDS}
+        guarded.update(str(value).strip().lower() for value in registry.get("excluded_or_guarded_fields") or [])
+        return guarded
+
+    def _feature_group_for_column(self, column: str) -> str:
+        features_cfg = dict(self.config.get("features") or {})
+        registry = self._load_feature_group_registry(features_cfg.get("registry"))
+        guarded = self._guarded_feature_fields(registry)
+        lowered = str(column).lower()
+        if lowered in guarded:
+            return "guarded"
+        for group_name, group_config in dict(registry.get("feature_groups") or {}).items():
+            patterns = [str(value).strip().lower() for value in dict(group_config or {}).get("expected_patterns") or []]
+            if any(pattern and pattern in lowered for pattern in patterns):
+                return str(group_name)
+        if lowered in {"open", "high", "low", "close"}:
+            return "default_ohlcv"
+        return "unmapped"
+
+    def _tree_importance_enabled(self) -> bool:
+        config = dict(self.config.get("interpretability") or {})
+        tree_config = dict(config.get("tree_feature_importance") or {})
+        return bool(tree_config.get("enabled", False))
+
+    def _shap_enabled(self) -> bool:
+        config = dict(self.config.get("interpretability") or {})
+        shap_config = dict(config.get("shap") or {})
+        return bool(shap_config.get("enabled", False))
+
+    def _record_tree_feature_importance(
+        self,
+        *,
+        model_name: str,
+        model: Any,
+        feature_columns: list[str],
+        ticker: str,
+        horizon: int,
+        sample_size: int,
+    ) -> None:
+        if not self._tree_importance_enabled() or model_name not in {"xgboost", "lightgbm"}:
+            return
+        importances = self._extract_feature_importance_values(model)
+        if importances is None or len(importances) != len(feature_columns):
+            self.warnings.append(f"tree_feature_importance_unavailable:{model_name}:{ticker}:T+{horizon}")
+            return
+        values = np.nan_to_num(np.asarray(importances, dtype=float).reshape(-1), nan=0.0, posinf=0.0, neginf=0.0)
+        total = float(values.sum())
+        normalized = values / total if total > 0.0 else np.zeros_like(values, dtype=float)
+        order = np.argsort(-values, kind="mergesort")
+        ranks = np.empty(len(values), dtype=int)
+        ranks[order] = np.arange(1, len(values) + 1)
+        for index, feature_name in enumerate(feature_columns):
+            self.tree_feature_importance_rows.append(
+                {
+                    "experiment_id": self._experiment_id(),
+                    "ticker": ticker,
+                    "horizon": int(horizon),
+                    "model_name": model_name,
+                    "feature_name": feature_name,
+                    "feature_group": self._feature_group_for_column(feature_name),
+                    "importance_type": "feature_importances_",
+                    "importance_value": float(values[index]),
+                    "normalized_importance": float(normalized[index]),
+                    "rank": int(ranks[index]),
+                    "sample_size": int(sample_size),
+                    "notes": "High feature importance indicates model reliance, not causal market influence.",
+                }
+            )
+
+    @staticmethod
+    def _extract_feature_importance_values(model: Any) -> np.ndarray | None:
+        for candidate in (model, getattr(model, "model", None), getattr(model, "estimator", None)):
+            if candidate is None:
+                continue
+            values = getattr(candidate, "feature_importances_", None)
+            if values is not None:
+                return np.asarray(values, dtype=float).reshape(-1)
+        return None
+
+    def _record_shap_summary(
+        self,
+        *,
+        model_name: str,
+        model: Any,
+        feature_columns: list[str],
+        X_test: np.ndarray,
+        ticker: str,
+        horizon: int,
+    ) -> None:
+        if not self._shap_enabled() or model_name not in {"xgboost", "lightgbm"}:
+            return
+        try:
+            shap = import_module("shap")
+        except Exception as exc:
+            if not self._shap_unavailable_recorded:
+                self.warnings.append(f"shap_unavailable:{exc}")
+                self._shap_unavailable_recorded = True
+            return
+        shap_config = dict((self.config.get("interpretability") or {}).get("shap") or {})
+        max_samples = int(shap_config.get("max_samples") or 100)
+        sample = np.asarray(X_test, dtype=float)[:max_samples]
+        if sample.size == 0:
+            self.warnings.append(f"shap_no_test_rows:{model_name}:{ticker}:T+{horizon}")
+            return
+        estimator = getattr(model, "model", model)
+        try:
+            explainer = shap.TreeExplainer(estimator)
+            values = explainer.shap_values(sample)
+        except Exception as exc:
+            self.warnings.append(f"shap_failed:{model_name}:{ticker}:T+{horizon}:{exc}")
+            return
+        if isinstance(values, list):
+            arrays = [np.asarray(item, dtype=float) for item in values if np.asarray(item).ndim >= 2]
+            if not arrays:
+                self.warnings.append(f"shap_empty_values:{model_name}:{ticker}:T+{horizon}")
+                return
+            value_array = np.mean(np.stack([np.abs(item) for item in arrays], axis=0), axis=0)
+        else:
+            value_array = np.asarray(values, dtype=float)
+            if value_array.ndim == 3:
+                value_array = np.mean(np.abs(value_array), axis=2)
+        if value_array.ndim != 2 or value_array.shape[1] != len(feature_columns):
+            self.warnings.append(f"shap_shape_mismatch:{model_name}:{ticker}:T+{horizon}")
+            return
+        mean_abs = np.nan_to_num(np.abs(value_array).mean(axis=0), nan=0.0, posinf=0.0, neginf=0.0)
+        total = float(mean_abs.sum())
+        normalized = mean_abs / total if total > 0.0 else np.zeros_like(mean_abs, dtype=float)
+        order = np.argsort(-mean_abs, kind="mergesort")
+        ranks = np.empty(len(mean_abs), dtype=int)
+        ranks[order] = np.arange(1, len(mean_abs) + 1)
+        for index, feature_name in enumerate(feature_columns):
+            self.shap_summary_rows.append(
+                {
+                    "experiment_id": self._experiment_id(),
+                    "ticker": ticker,
+                    "horizon": int(horizon),
+                    "model_name": model_name,
+                    "feature_name": feature_name,
+                    "feature_group": self._feature_group_for_column(feature_name),
+                    "mean_abs_shap": float(mean_abs[index]),
+                    "normalized_mean_abs_shap": float(normalized[index]),
+                    "rank": int(ranks[index]),
+                    "sample_size": int(len(sample)),
+                    "notes": "SHAP values explain model behavior for this run and are not causal effects.",
+                }
+            )
 
     def _split_supervised(self, frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         train_start = self._parse_iso_date(str(self._get_path(("evaluation", "train_start"))), "evaluation.train_start")
@@ -684,6 +1130,26 @@ class ExperimentOrchestrator:
         self.metrics.to_csv(self.output_dir / "metrics" / "metrics.csv", index=False)
         self._write_json(self.output_dir / "metrics" / "metrics_summary.json", self.metrics_engine.summarize(self.metrics))
 
+    def _write_feature_outputs(self) -> None:
+        if self.output_dir is None:
+            return
+        feature_summary = self._feature_selection_frame()
+        feature_summary.to_csv(self.output_dir / "artifacts" / "feature_selection_summary.csv", index=False)
+        tree_importance = pd.DataFrame(self.tree_feature_importance_rows, columns=TREE_IMPORTANCE_COLUMNS)
+        tree_importance.to_csv(self.output_dir / "artifacts" / "tree_feature_importance.csv", index=False)
+        shap_summary = pd.DataFrame(self.shap_summary_rows, columns=SHAP_SUMMARY_COLUMNS)
+        if not shap_summary.empty or self._shap_enabled():
+            shap_summary.to_csv(self.output_dir / "artifacts" / "shap_summary.csv", index=False)
+
+    def _feature_selection_frame(self) -> pd.DataFrame:
+        rows = []
+        for event in self.feature_filter_events:
+            row = dict(event)
+            row["removed_feature_columns"] = ",".join(str(value) for value in event.get("removed_feature_columns") or [])
+            row["active_feature_columns"] = ",".join(str(value) for value in event.get("active_feature_columns") or [])
+            rows.append(row)
+        return pd.DataFrame(rows, columns=FEATURE_SELECTION_COLUMNS)
+
     def _write_empty_outputs_if_needed(self) -> None:
         if self.output_dir is None:
             return
@@ -692,6 +1158,7 @@ class ExperimentOrchestrator:
         if self.metrics.empty:
             self.metrics = pd.DataFrame(columns=METRICS_COLUMNS)
         self._write_metrics_outputs()
+        self._write_feature_outputs()
         if self.config and not (self.output_dir / "config" / "resolved_config.yaml").exists():
             try:
                 self.save_resolved_config()
@@ -734,10 +1201,46 @@ class ExperimentOrchestrator:
             "models": self._get_path(("models", "include")) or [],
             "baselines": self._get_path(("baselines", "include")) or [],
             "metrics": self._get_path(("evaluation", "metrics")) or [],
+            "feature_selection": self._feature_manifest_payload(),
+            "interpretability": {
+                "tree_feature_importance_rows": int(len(self.tree_feature_importance_rows)),
+                "shap_summary_rows": int(len(self.shap_summary_rows)),
+                "tree_feature_importance_enabled": self._tree_importance_enabled(),
+                "shap_enabled": self._shap_enabled(),
+            },
             "artifacts": self._artifact_index(),
             "errors": errors,
             "warnings": warnings,
             "provider_environment": self.provider_environment,
+        }
+
+    def _feature_manifest_payload(self) -> dict[str, Any]:
+        features_cfg = dict(self.config.get("features") or {})
+        registry = self._load_feature_group_registry(features_cfg.get("registry")) if features_cfg.get("registry") else {}
+        removed_columns = sorted(
+            {
+                str(column)
+                for event in self.feature_filter_events
+                for column in event.get("removed_feature_columns") or []
+            }
+        )
+        active_columns = sorted(
+            {
+                str(column)
+                for event in self.feature_filter_events
+                for column in event.get("active_feature_columns") or []
+            }
+        )
+        ablation_cfg = dict(features_cfg.get("ablation") or {})
+        return {
+            "registry": features_cfg.get("registry"),
+            "registry_id": (registry.get("registry") or {}).get("id") if isinstance(registry, dict) else None,
+            "feature_sets": features_cfg.get("feature_sets") or [],
+            "ablation": ablation_cfg,
+            "events": self.feature_filter_events,
+            "removed_feature_columns": removed_columns,
+            "active_feature_columns": active_columns,
+            "active_feature_count": len(active_columns),
         }
 
     def _artifact_index(self) -> dict[str, Any]:
@@ -755,6 +1258,9 @@ class ExperimentOrchestrator:
             "baseline_predictions": self.output_dir / "predictions" / "baseline_predictions.csv",
             "model_predictions": self.output_dir / "predictions" / "model_predictions.csv",
             "summary": self.output_dir / "reports" / "summary.md",
+            "feature_selection_summary": self.output_dir / "artifacts" / "feature_selection_summary.csv",
+            "tree_feature_importance": self.output_dir / "artifacts" / "tree_feature_importance.csv",
+            "shap_summary": self.output_dir / "artifacts" / "shap_summary.csv",
         }
         artifacts = {
             name: {"path": str(path), "exists": path.exists()}
