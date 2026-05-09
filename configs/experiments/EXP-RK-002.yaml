@@ -1,0 +1,73 @@
+experiment:
+  id: EXP-RK-002
+  name: Risk-aware Candidate Basket Evaluation
+  description: Evaluate realized top-N basket outcomes for forecast-only and risk-aware diagnostic candidate policies.
+  phase: 3
+  owner: Project team / maintainer
+  created_at: "2026-05-09"
+  seed: 42
+
+data:
+  provider: vnstock_data
+  frequency: daily
+  universe:
+    - FPT
+    - ACB
+    - HPG
+    - MWG
+    - DGC
+  start_date: "2023-01-01"
+  end_date: "2024-12-31"
+  schema:
+    - date
+    - ticker
+    - open
+    - high
+    - low
+    - close
+    - volume
+
+source_candidates:
+  candidate_comparison_experiment: EXP-RK-001
+  source_output_root: outputs/experiments
+  fallback_report_path: reports/risk_aware/candidate_comparison.csv
+
+basket:
+  top_n:
+    - 1
+    - 3
+    - 5
+  horizons:
+    - 1
+    - 3
+    - 5
+  weighting: equal_weight_diagnostic
+  transaction_cost_bps: 0
+  allow_partial_basket: true
+
+evaluation:
+  method: realized_candidate_outcome
+  metrics:
+    - average_realized_return
+    - median_realized_return
+    - hit_ratio
+    - return_volatility_proxy
+    - max_drawdown
+    - var_95
+    - cvar_95
+    - worst_period_return
+    - candidate_count
+    - missing_outcome_rate
+
+outputs:
+  root_dir: outputs/experiments
+  save_candidates: true
+  save_metrics: true
+  save_manifest: true
+  save_charts: false
+  save_summary: true
+
+runtime:
+  fail_fast: false
+  max_workers: 1
+  log_level: INFO

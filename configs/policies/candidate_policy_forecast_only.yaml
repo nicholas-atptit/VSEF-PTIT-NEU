@@ -1,0 +1,71 @@
+policy:
+  id: candidate_policy_forecast_only
+  name: Forecast-only candidate ranking policy
+  phase: 3
+  status: research_policy
+  description: Rank diagnostic candidates using forecast-derived fields only.
+  diagnostic_only: true
+  not_investment_advice: true
+
+ranking:
+  primary_score: expected_return_proxy
+  secondary_score: directional_confidence
+  tie_breakers:
+    - prediction_count
+    - model_consensus_count
+    - ticker
+
+inputs:
+  required_fields:
+    - ticker
+    - horizon
+    - date
+    - model_name
+    - model_type
+    - y_pred
+    - y_true
+  optional_fields:
+    - predicted_direction
+    - actual_direction
+    - expected_return_proxy
+    - directional_confidence
+    - consensus_score
+    - model_health_score
+
+candidate_generation:
+  top_n: 5
+  per_date: true
+  per_horizon: true
+  allow_negative_expected_return: false
+  minimum_prediction_count: 1
+
+risk_controls:
+  enabled: false
+  notes:
+    - This policy intentionally excludes risk controls to provide the forecast-only comparison baseline.
+
+output:
+  candidate_type: forecast_only
+  required_columns:
+    - experiment_id
+    - policy_id
+    - candidate_date
+    - ticker
+    - horizon
+    - rank
+    - candidate_score
+    - expected_return_proxy
+    - directional_confidence
+    - model_name
+    - model_type
+    - diagnostics
+    - diagnostic_only
+
+governance:
+  forbidden_claims:
+    - BUY recommendation
+    - SELL recommendation
+    - HOLD recommendation
+    - capital allocation
+    - guaranteed profitable trade
+  required_disclaimer: Candidate outputs are diagnostic decision-support artifacts only and are not investment advice.
