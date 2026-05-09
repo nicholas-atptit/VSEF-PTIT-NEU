@@ -1,0 +1,68 @@
+policy:
+  id: regime_policy_v1
+  name: VSEF Regime Policy v1
+  phase: 4
+  status: research_policy
+  description: Rule-based market regime labeling using rolling return and realized volatility.
+  diagnostic_only: true
+
+data:
+  provider: vnstock_data
+  frequency: daily
+  price_column: close
+  return_method: pct_change
+
+windows:
+  return_window: 20
+  volatility_window: 20
+  min_periods: 10
+
+trend_regime:
+  method: rolling_return_threshold
+  bull_threshold: 0.03
+  bear_threshold: -0.03
+  sideway_band:
+    lower: -0.03
+    upper: 0.03
+
+volatility_regime:
+  method: quantile_threshold
+  high_vol_quantile: 0.70
+  low_vol_quantile: 0.30
+  fallback_method: median_split
+
+combined_regime:
+  enabled: true
+  format: "{trend_regime}_{volatility_regime}"
+
+robustness:
+  enabled: true
+  alternative_thresholds:
+    - id: conservative
+      bull_threshold: 0.05
+      bear_threshold: -0.05
+      high_vol_quantile: 0.75
+      low_vol_quantile: 0.25
+    - id: loose
+      bull_threshold: 0.02
+      bear_threshold: -0.02
+      high_vol_quantile: 0.65
+      low_vol_quantile: 0.35
+
+model_health_gate:
+  enabled: true
+  minimum_prediction_count: 10
+  maximum_missing_prediction_rate: 0.20
+  maximum_error_std: null
+  extreme_prediction_filter:
+    enabled: true
+    zscore_threshold: 5.0
+  baseline_gap_check:
+    enabled: true
+    metric: mae
+    maximum_model_underperformance_ratio: 2.0
+
+governance:
+  no_future_data: true
+  diagnostic_only: true
+  required_disclaimer: Regime labels are research diagnostics, not trading signals or investment advice.

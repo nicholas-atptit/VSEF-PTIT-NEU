@@ -1,0 +1,52 @@
+experiment:
+  id: EXP-RG-001
+  name: Model Performance By Regime
+  description: Evaluate forecasting model and baseline metrics across market regimes.
+  phase: 4
+  owner: Project team / maintainer
+  created_at: "2026-05-09"
+  seed: 42
+
+source_artifacts:
+  forecasting_experiments:
+    - EXP-FC-001
+    - EXP-FC-003
+  forecasting_report_dir: reports/forecasting_core
+  experiment_output_root: outputs/experiments
+  regime_labels: reports/regime_analysis/regime_labels.csv
+  regime_policy: configs/policies/regime_policy.yaml
+
+regime_analysis:
+  enabled: true
+  regime_columns:
+    - trend_regime
+    - volatility_regime
+    - combined_regime
+  minimum_observations_per_regime: 10
+  small_sample_policy: flag_not_drop
+
+metrics:
+  include:
+    - mae
+    - rmse
+    - mape
+    - directional_accuracy
+    - prediction_count
+    - missing_prediction_rate
+
+model_health_gate:
+  enabled: true
+  policy: configs/policies/regime_policy.yaml
+  apply_as_filter: false
+  report_flags: true
+
+outputs:
+  root_dir: outputs/experiments
+  save_metrics: true
+  save_manifest: true
+  save_summary: true
+  report_dir: reports/regime_analysis
+
+runtime:
+  fail_fast: false
+  log_level: INFO

@@ -1,0 +1,127 @@
+experiment:
+  id: EXP-FC-001
+  name: Forecasting Core Baseline Comparison
+  description: Compare simple baselines against individual VSEF v1 forecasting models.
+  phase: 2
+  owner: Project team / maintainer
+  created_at: "2026-05-09"
+  seed: 42
+
+data:
+  provider: vnstock_data
+  frequency: daily
+  universe:
+    - FPT
+    - ACB
+    - HPG
+    - MWG
+    - DGC
+  start_date: "2023-01-01"
+  end_date: "2024-12-31"
+  schema:
+    - date
+    - ticker
+    - open
+    - high
+    - low
+    - close
+    - volume
+
+target:
+  column: close
+  task_type: price_forecast
+  horizons:
+    - 1
+
+features:
+  enabled: true
+  feature_sets:
+    - default_ohlcv
+    - technical_basic
+
+models:
+  enabled: true
+  include:
+    - sarimax
+    - ets
+    - xgboost
+    - lightgbm
+    - lstm
+    - bilstm
+  params:
+    sarimax:
+      task: regression
+      order: [1, 0, 1]
+      seasonal_order: [0, 0, 0, 0]
+    ets:
+      task: regression
+      trend: add
+      seasonal: null
+    xgboost:
+      task: regression
+      n_estimators: 30
+      max_depth: 3
+      learning_rate: 0.05
+    lightgbm:
+      task: regression
+      n_estimators: 30
+      max_depth: 3
+      num_leaves: 15
+      learning_rate: 0.05
+    lstm:
+      task: regression
+      sequence_length: 5
+      hidden_size: 16
+      num_layers: 1
+      epochs: 5
+      patience: 2
+      batch_size: 32
+    bilstm:
+      task: regression
+      sequence_length: 5
+      hidden_size: 16
+      num_layers: 1
+      epochs: 5
+      patience: 2
+      batch_size: 32
+
+baselines:
+  enabled: true
+  include:
+    - persistence
+    - zero_return
+    - moving_average_rule
+  params:
+    moving_average_rule:
+      window: 5
+
+evaluation:
+  method: fixed_chronological_split
+  train_start: "2023-01-01"
+  train_end: "2024-06-30"
+  test_start: "2024-07-01"
+  test_end: "2024-12-31"
+  metrics:
+    - mae
+    - rmse
+    - mape
+    - directional_accuracy
+    - prediction_count
+    - missing_prediction_rate
+
+risk:
+  enabled: false
+  methods: []
+
+outputs:
+  root_dir: outputs/experiments
+  save_predictions: true
+  save_metrics: true
+  save_manifest: true
+  save_charts: false
+  save_summary: true
+
+runtime:
+  fail_fast: false
+  max_workers: 1
+  log_level: INFO

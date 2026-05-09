@@ -1,0 +1,89 @@
+experiment:
+  id: EXP-CONFIG-001
+  name: Phase 1 config reproducibility experiment
+  description: Check that repeated runs preserve config, manifest, metrics schema, and artifact-presence structure.
+  phase: 1
+  owner: Project team / maintainer
+  created_at: 2026-05-09
+  seed: 42
+
+data:
+  provider: vnstock_data
+  frequency: daily
+  universe:
+    - FPT
+  start_date: 2024-01-01
+  end_date: 2024-04-30
+  schema:
+    - date
+    - ticker
+    - open
+    - high
+    - low
+    - close
+    - volume
+
+target:
+  column: close
+  task_type: regression
+  horizons:
+    - 1
+
+features:
+  enabled: true
+  feature_sets:
+    - ohlcv_basic
+    - returns_basic
+
+models:
+  enabled: true
+  include:
+    - ets
+  params:
+    ets:
+      trend: add
+      seasonal:
+      seasonal_periods:
+
+baselines:
+  enabled: true
+  include:
+    - persistence
+    - moving_average_rule
+  params:
+    moving_average_rule:
+      window: 5
+
+evaluation:
+  method: fixed_chronological_split
+  train_start: 2024-01-01
+  train_end: 2024-03-29
+  test_start: 2024-04-01
+  test_end: 2024-04-26
+  metrics:
+    - mae
+    - rmse
+    - mape
+    - directional_accuracy
+    - coverage_count
+    - prediction_count
+    - prediction_std
+    - error_std
+    - missing_prediction_rate
+
+risk:
+  enabled: false
+  methods: []
+
+outputs:
+  root_dir: outputs/experiments
+  save_predictions: true
+  save_metrics: true
+  save_manifest: true
+  save_charts: false
+  save_summary: true
+
+runtime:
+  fail_fast: false
+  max_workers: 1
+  log_level: INFO

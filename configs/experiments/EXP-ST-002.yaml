@@ -1,0 +1,37 @@
+experiment:
+  id: EXP-ST-002
+  name: Bootstrap Confidence Interval Evaluation
+  description: Estimate bootstrap confidence intervals for candidate and basket outcomes.
+  phase: 6
+  owner: Project team / maintainer
+  created_at: "2026-05-09"
+  seed: 42
+
+source_artifacts:
+  risk_aware_report_dir: reports/risk_aware
+  topn_basket_metrics: reports/risk_aware/topn_basket_metrics.csv
+  candidate_comparison: reports/risk_aware/candidate_comparison.csv
+  basket_period_returns: outputs/experiments/EXP-RK-002/artifacts/basket_period_returns.csv
+  robustness_cost_sensitivity: reports/robustness/cost_sensitivity.csv
+
+bootstrap:
+  n_bootstrap: 1000
+  confidence: 0.95
+  seed: 42
+  metrics:
+    - average_realized_return
+    - hit_ratio
+    - return_volatility_proxy
+    - max_drawdown
+    - var_95
+    - cvar_95
+
+group_by:
+  - policy_id
+  - candidate_type
+  - top_n
+  - horizon
+
+outputs:
+  report_dir: reports/robustness
+  output_csv: reports/robustness/bootstrap_ci.csv

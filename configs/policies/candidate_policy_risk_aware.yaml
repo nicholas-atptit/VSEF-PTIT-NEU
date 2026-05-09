@@ -1,0 +1,77 @@
+policy:
+  id: candidate_policy_risk_aware
+  name: Risk-aware candidate ranking policy
+  phase: 3
+  status: research_policy
+  description: Rank diagnostic candidates using forecast score adjusted by risk diagnostics.
+  diagnostic_only: true
+  not_investment_advice: true
+
+ranking:
+  primary_score: risk_adjusted_score
+  forecast_component:
+    fields:
+      - expected_return_proxy
+      - directional_confidence
+      - consensus_score
+    weight: 0.60
+  risk_component:
+    fields:
+      - realized_volatility
+      - max_drawdown
+      - var_95
+      - cvar_95
+      - missing_prediction_rate
+    weight: 0.40
+  tie_breakers:
+    - lower_max_drawdown
+    - lower_realized_volatility
+    - higher_prediction_count
+    - ticker
+
+candidate_generation:
+  top_n: 5
+  per_date: true
+  per_horizon: true
+  allow_negative_expected_return: false
+  minimum_prediction_count: 1
+
+risk_controls:
+  enabled: true
+  max_drawdown_soft_limit: null
+  volatility_soft_limit: null
+  var_confidence: 0.95
+  cvar_confidence: 0.95
+  missing_metric_policy: penalize
+  missing_metric_penalty: 0.10
+
+output:
+  candidate_type: risk_aware
+  required_columns:
+    - experiment_id
+    - policy_id
+    - candidate_date
+    - ticker
+    - horizon
+    - rank
+    - candidate_score
+    - forecast_score
+    - risk_penalty
+    - risk_adjusted_score
+    - expected_return_proxy
+    - directional_confidence
+    - realized_volatility
+    - max_drawdown
+    - var_95
+    - cvar_95
+    - diagnostics
+    - diagnostic_only
+
+governance:
+  forbidden_claims:
+    - BUY recommendation
+    - SELL recommendation
+    - HOLD recommendation
+    - capital allocation
+    - guaranteed profitable trade
+  required_disclaimer: Candidate outputs are diagnostic decision-support artifacts only and are not investment advice.

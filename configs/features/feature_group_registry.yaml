@@ -1,0 +1,100 @@
+registry:
+  id: feature_group_registry_v1
+  name: VSEF v1 Feature Group Registry
+  phase: 5
+  status: research_registry
+  description: Defines governed feature groups for ablation and interpretability analysis.
+  diagnostic_only: true
+
+feature_groups:
+  lag_returns:
+    description: Lagged close returns and price-change features.
+    expected_patterns:
+      - lag
+      - return_lag
+      - close_return_lag
+      - pct_change_lag
+      - return_1
+    hypothesis: Captures short-term persistence and reversal behavior.
+    risk: May overfit short-term noise.
+
+  rolling_mean:
+    description: Rolling mean and moving-average level features.
+    expected_patterns:
+      - rolling_mean
+      - ma_
+      - moving_average
+      - sma
+    hypothesis: Captures smoothed trend and price level context.
+    risk: May lag turning points.
+
+  rolling_volatility:
+    description: Rolling standard deviation and realized volatility features.
+    expected_patterns:
+      - rolling_std
+      - volatility
+      - realized_vol
+      - vol_
+    hypothesis: Captures uncertainty and regime-sensitive variation.
+    risk: May react late to volatility shifts.
+
+  volume:
+    description: Volume and volume shock features.
+    expected_patterns:
+      - volume
+      - volume_mean
+      - volume_shock
+      - liquidity
+    hypothesis: Captures participation, attention, and liquidity pressure.
+    risk: Volume spikes may be noisy or event-driven.
+
+  momentum_indicators:
+    description: RSI, MACD, and momentum-style indicators.
+    expected_patterns:
+      - rsi
+      - macd
+      - momentum
+      - signal
+    hypothesis: Captures technical momentum and overbought/oversold behavior.
+    risk: Indicator performance may be regime-dependent.
+
+  spread_range:
+    description: Intraday range, high-low spread, open-close spread, ATR-like proxies.
+    expected_patterns:
+      - high_low
+      - range
+      - spread
+      - atr
+      - open_close
+      - close_open
+      - true_range
+    hypothesis: Captures intraday uncertainty and price pressure.
+    risk: Range features may overlap with volatility features.
+
+  calendar_optional:
+    description: Calendar/time features if present.
+    expected_patterns:
+      - day
+      - month
+      - quarter
+      - weekday
+    hypothesis: Captures seasonal or calendar effects.
+    risk: Weak evidence without sufficient cycles.
+
+excluded_or_guarded_fields:
+  - date
+  - ticker
+  - y_true
+  - y_pred
+  - target
+  - future_return
+  - realized_future_return
+  - actual_direction
+  - diagnostics
+  - model_name
+  - model_type
+
+governance:
+  no_future_leakage: true
+  importance_not_causality: true
+  required_disclaimer: Feature importance and ablation results are diagnostic evidence, not causal proof.

@@ -52,6 +52,9 @@ pytest-cache-files-*/
 tmp/
 tmp*/
 artifacts/
-outputs/
+outputs/*
+!outputs/experiments/
+outputs/experiments/*
+!outputs/experiments/.gitkeep
 logs/
 models/

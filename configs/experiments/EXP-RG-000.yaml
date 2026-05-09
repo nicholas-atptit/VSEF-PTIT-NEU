@@ -1,0 +1,42 @@
+experiment:
+  id: EXP-RG-000
+  name: Historical Regime Label Generation
+  description: Generate ticker-level rule-based regime labels for the Phase 2/3 universe.
+  phase: 4
+  owner: Project team / maintainer
+  created_at: "2026-05-09"
+  seed: 42
+
+data:
+  provider: vnstock_data
+  frequency: daily
+  universe:
+    - FPT
+    - ACB
+    - HPG
+    - MWG
+    - DGC
+  start_date: "2023-01-01"
+  end_date: "2024-12-31"
+  source_cache_dir: data/daily_market_split_data
+  schema:
+    - date
+    - ticker
+    - open
+    - high
+    - low
+    - close
+    - volume
+
+regime_policy: configs/policies/regime_policy.yaml
+
+outputs:
+  root_dir: outputs/experiments
+  report_dir: reports/regime_analysis
+  save_labels: true
+  save_summary: true
+  save_manifest: true
+
+runtime:
+  fail_fast: false
+  log_level: INFO

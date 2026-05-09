@@ -34,6 +34,7 @@ class LightgbmModel(BaseModel):
         colsample_bytree: float = 0.8,
         num_leaves: int = 31,
         random_state: int = 42,
+        verbose: int = -1,
         tuned: bool = False,
         tuning_backend: str = "none",
         validation_method: str = "time_series_split",
@@ -51,6 +52,7 @@ class LightgbmModel(BaseModel):
             "colsample_bytree": colsample_bytree,
             "num_leaves": num_leaves,
             "random_state": random_state,
+            "verbose": verbose,
         }
         self.tuned = tuned
         self.tuning_backend = tuning_backend
