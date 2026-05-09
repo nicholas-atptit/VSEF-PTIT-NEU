@@ -1,0 +1,28 @@
+section,item,value,note
+window,settings_with_exact_source_rows,1.0,Only exact local train/test artifacts are used for window metrics.
+window,settings_with_missing_exact_source,2.0,The result is sensitive to configuration choices and should be treated as exploratory.
+window,mae_mean_performance,1.0711942159775741e+89,Mean MAE across exact-source window rows.
+window,mae_worst_case_performance,1.1247539267764528e+91,Worst-case MAE across exact-source window rows; lower is better.
+window,mae_metric_variance,1.1933553302775631e+180,"Variance across available exact-source MAE rows, not across missing window reruns."
+window,mae_rank_stability_std,2.0,Rank spread across available exact-source MAE rows; full window stability needs missing reruns.
+universe,banking_baseline_winners_mae_rmse,4.0,4 of 6 MAE/RMSE first-rank rows are baselines.
+universe,banking_mae_mean_performance,5.35597107988787e+89,Mean MAE across this universe group.
+universe,banking_mae_worst_case_performance,1.1247539267764527e+91,Worst-case MAE across this universe group; lower is better.
+universe,banking_mae_metric_variance,5.737285241719049e+180,Metric variance across ticker/horizon/model rows in this universe group.
+universe,diversified_core_baseline_winners_mae_rmse,28.0,28 of 30 MAE/RMSE first-rank rows are baselines.
+universe,diversified_core_mae_mean_performance,1.071194215977574e+89,Mean MAE across this universe group.
+universe,diversified_core_mae_worst_case_performance,1.1247539267764527e+91,Worst-case MAE across this universe group; lower is better.
+universe,diversified_core_mae_metric_variance,1.1933553302775627e+180,Metric variance across ticker/horizon/model rows in this universe group.
+universe,industrial_materials_baseline_winners_mae_rmse,12.0,12 of 12 MAE/RMSE first-rank rows are baselines.
+universe,industrial_materials_mae_mean_performance,3.165801295420898,Mean MAE across this universe group.
+universe,industrial_materials_mae_worst_case_performance,21.574244358775307,Worst-case MAE across this universe group; lower is better.
+universe,industrial_materials_mae_metric_variance,25.134163474858923,Metric variance across ticker/horizon/model rows in this universe group.
+universe,large_cap_core_baseline_winners_mae_rmse,18.0,18 of 18 MAE/RMSE first-rank rows are baselines.
+universe,large_cap_core_mae_mean_performance,6.261517615838677e+24,Mean MAE across this universe group.
+universe,large_cap_core_mae_worst_case_performance,3.9437831609017264e+26,Worst-case MAE across this universe group; lower is better.
+universe,large_cap_core_mae_metric_variance,2.429591264895521e+51,Metric variance across ticker/horizon/model rows in this universe group.
+cost,cost_0bps_nonpositive_net_average_rows,6.0,"The diagnostic edge weakens or disappears under cost/slippage assumptions, so the result should not be interpreted as executable strategy evidence."
+cost,cost_10bps_nonpositive_net_average_rows,11.0,"The diagnostic edge weakens or disappears under cost/slippage assumptions, so the result should not be interpreted as executable strategy evidence."
+cost,cost_20bps_nonpositive_net_average_rows,11.0,"The diagnostic edge weakens or disappears under cost/slippage assumptions, so the result should not be interpreted as executable strategy evidence."
+cost,cost_50bps_nonpositive_net_average_rows,18.0,"The diagnostic edge weakens or disappears under cost/slippage assumptions, so the result should not be interpreted as executable strategy evidence."
+cost,cost_5bps_nonpositive_net_average_rows,7.0,"The diagnostic edge weakens or disappears under cost/slippage assumptions, so the result should not be interpreted as executable strategy evidence."
