@@ -1,0 +1,45 @@
+universe:
+  id: phase2_core_universe
+  name: Phase 2 Forecasting Core Universe
+  description: Small controlled VN equity universe for forecasting validation.
+  provider: vnstock_data
+  frequency: daily
+  tickers:
+    - ticker: FPT
+      sector: technology
+      reason: Large-cap liquid stock with common market coverage.
+      liquidity_note: Selected as a commonly traded VN equity.
+      expected_data_start: "2020-01-01"
+    - ticker: ACB
+      sector: banking
+      reason: Banking sector representative.
+      liquidity_note: Selected for liquidity and data availability.
+      expected_data_start: "2020-01-01"
+    - ticker: HPG
+      sector: materials
+      reason: Steel/materials sector representative.
+      liquidity_note: Selected for market relevance and trading activity.
+      expected_data_start: "2020-01-01"
+    - ticker: MWG
+      sector: retail
+      reason: Retail sector representative.
+      liquidity_note: Selected for consumer/retail exposure.
+      expected_data_start: "2020-01-01"
+    - ticker: DGC
+      sector: chemicals
+      reason: Chemicals/industrial representative.
+      liquidity_note: Selected for sector diversity.
+      expected_data_start: "2020-01-01"
+  selection_rules:
+    - Must be available through vnstock_data.
+    - Must have daily OHLCV data for the configured experiment window.
+    - Must not require manual price editing.
+    - Must be sufficiently liquid or commonly tracked for VN equity analysis.
+    - Missing data or provider failure must be logged, not hidden.
+  exclusions:
+    - ticker: null
+      reason: No manual exclusions at initial Phase 2 setup.
+  evidence_requirements:
+    - Experiment configs must reference this universe or duplicate its ticker list explicitly.
+    - Failed ticker fetches must appear in logs/manifests.
+    - Final report must disclose successful and failed ticker coverage.

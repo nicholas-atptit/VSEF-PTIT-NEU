@@ -53,6 +53,11 @@ EXPECTED_ARTIFACTS = [
     "decision_lane_candidates.csv",
     "analysis_packets.jsonl",
 ]
+FEATURE_SET_ALIASES = {
+    "default_ohlcv": ("ohlcv_basic",),
+    "technical_basic": ("returns_basic", "moving_average_basic"),
+}
+SUPPORTED_FEATURE_SETS = {"ohlcv_basic", "returns_basic", "moving_average_basic"}
 
 
 class ExperimentOrchestrator:
@@ -548,7 +553,7 @@ class ExperimentOrchestrator:
             frame["feature_close"] = frame["close"]
             return ["feature_close"]
 
-        feature_sets = [str(name) for name in features_cfg.get("feature_sets") or ["ohlcv_basic"]]
+        feature_sets = self._normalize_feature_sets(features_cfg.get("feature_sets") or ["ohlcv_basic"])
         columns: list[str] = []
         if "ohlcv_basic" in feature_sets:
             columns.extend(["open", "high", "low", "close", "volume"])
@@ -565,6 +570,21 @@ class ExperimentOrchestrator:
             frame["feature_close"] = frame["close"]
             columns.append("feature_close")
         return columns
+
+    def _normalize_feature_sets(self, configured_sets: list[Any]) -> list[str]:
+        feature_sets: list[str] = []
+        unsupported: list[str] = []
+        for raw_name in configured_sets:
+            name = str(raw_name).strip().lower()
+            expanded = FEATURE_SET_ALIASES.get(name, (name,))
+            if name not in FEATURE_SET_ALIASES and name not in SUPPORTED_FEATURE_SETS:
+                unsupported.append(name)
+            for feature_set in expanded:
+                if feature_set not in feature_sets:
+                    feature_sets.append(feature_set)
+        if unsupported:
+            self.warnings.append(f"unsupported_feature_sets_ignored:{','.join(sorted(set(unsupported)))}")
+        return feature_sets
 
     def _split_supervised(self, frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         train_start = self._parse_iso_date(str(self._get_path(("evaluation", "train_start"))), "evaluation.train_start")

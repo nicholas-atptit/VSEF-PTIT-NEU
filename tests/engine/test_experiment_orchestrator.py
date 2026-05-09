@@ -130,3 +130,27 @@ def test_orchestrator_rejects_unsupported_model(tmp_path) -> None:
         assert "outside the Phase 0 frozen registry" in str(exc)
     else:
         raise AssertionError("validate_config should reject unsupported models")
+
+
+def test_orchestrator_expands_phase2_feature_aliases(tmp_path) -> None:
+    orchestrator = ExperimentOrchestrator(str(tmp_path / "experiment.yaml"))
+    orchestrator.config = {
+        "target": {"column": "close", "task_type": "price_forecast"},
+        "features": {"enabled": True, "feature_sets": ["default_ohlcv", "technical_basic"]},
+    }
+
+    frame = orchestrator._build_supervised_frame(_ohlcv(), horizon=1)
+
+    assert frame.attrs["feature_columns"] == [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "return_1",
+        "high_low_range",
+        "close_open_return",
+        "ma_3",
+        "ma_5",
+    ]
+    assert orchestrator.warnings == []
