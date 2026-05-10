@@ -7,6 +7,7 @@ All field names match the contract specification from Phase 2 requirements.
 from __future__ import annotations
 
 import datetime as dt
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -172,6 +173,7 @@ class PredictionResponse(BaseModel):
     quantitative_signals: QuantitativeSignals
     qualitative_analysis: QualitativeAnalysis | None = Field(default=None)
     system_parameters: SystemParameters
+    data_provenance: dict[str, Any] = Field(default_factory=dict)
 
 
 class FinalExecutionResponse(BaseModel):
@@ -187,6 +189,7 @@ class FinalExecutionResponse(BaseModel):
     risk_management_override: RiskManagementOverride | None = None
     order_payload: OrderPayload | None = None
     system_confidence: dict[str, float]
+    data_provenance: dict[str, Any] = Field(default_factory=dict)
 
 
 # ── Request / utility models ─────────────────────────────────
@@ -199,6 +202,10 @@ class TrainRequest(BaseModel):
     use_mock: bool = Field(
         default=False,
         description="Use synthetic mock data instead of database",
+    )
+    runtime_mode: str = Field(
+        default="research",
+        description="Runtime mode: demo, research, or audit",
     )
 
 
@@ -216,6 +223,7 @@ class TrainResponse(BaseModel):
     ticker: str
     status: str
     metrics: dict
+    data_provenance: dict[str, Any] = Field(default_factory=dict)
 
 
 # ── Chat Endpoint Schemas ─────────────────────────────────────

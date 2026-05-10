@@ -24,6 +24,8 @@ def test_cart_training_and_manifest_report(tmp_path) -> None:
     assert result["ticker"] == "MOCK"
     assert result["primary_algorithm"] == "cart"
     assert result["report_rows"]
+    assert result["data_provenance"]["uses_mock_data"] is True
+    assert result["data_provenance"]["runtime_mode"] == "demo"
 
     row = result["report_rows"][0]
     assert row["algorithm"] == "cart"
@@ -36,6 +38,8 @@ def test_cart_training_and_manifest_report(tmp_path) -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["primary_algorithm"] == "cart"
     assert "short" in manifest["horizons"]
+    assert manifest["data_provenance"]["uses_mock_data"] is True
+    assert manifest["data_provenance"]["runtime_mode"] == "demo"
 
     features = trainer.compute_features_for_ticker("MOCK", df)
     prediction = trainer.predict("MOCK", features, horizon="short")

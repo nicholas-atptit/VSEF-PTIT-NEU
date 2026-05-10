@@ -24,8 +24,15 @@ from src.api.schemas_v2 import TerminalPayload
 from src.engine.matrix import evaluate_decision_matrix
 from src.engine.risk import apply_risk_constraints
 from src.api.tracing import trace_stage
+from src.core.runtime_mode import RuntimeMode, build_data_provenance, ensure_mock_allowed, normalize_runtime_mode
 from src.ml.llm.pipeline import run_qualitative_analysis
-from src.ml.data_loader import generate_mock_data, load_ohlcv_from_db, load_ohlcv_from_vnstock
+from src.ml.data_loader import (
+    attach_runtime_data_provenance,
+    frame_data_provenance,
+    generate_mock_data,
+    load_ohlcv_from_db,
+    load_ohlcv_from_vnstock,
+)
 from src.ml.signal_generator import SignalGenerator
 from src.ml.trainer import DualModelTrainer
 from src.utils.logging import get_logger
@@ -37,6 +44,67 @@ router = APIRouter(prefix="/api/v1", tags=["Phase 2 — Quantitative ML"])
 # Shared instances (singleton within the process)
 _trainer = DualModelTrainer()
 _signal_gen = SignalGenerator()
+
+
+def _resolve_runtime_mode(runtime_mode: str | RuntimeMode | None) -> RuntimeMode:
+    try:
+        return normalize_runtime_mode(runtime_mode)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _enforce_api_mock_policy(
+    runtime_mode: str | RuntimeMode | None,
+    *,
+    explicit_mock: bool = False,
+    fallback_triggered: bool = False,
+) -> RuntimeMode:
+    try:
+        return ensure_mock_allowed(
+            runtime_mode,
+            explicit_mock=explicit_mock,
+            fallback_triggered=fallback_triggered,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+def _load_governed_ohlcv(
+    ticker: str,
+    *,
+    use_mock: bool,
+    runtime_mode: str | RuntimeMode | None,
+    num_days: int = 600,
+):
+    mode = _resolve_runtime_mode(runtime_mode)
+    if use_mock:
+        _enforce_api_mock_policy(mode, explicit_mock=True)
+        return generate_mock_data(ticker=ticker, num_days=num_days, runtime_mode=mode)
+
+    try:
+        df = load_ohlcv_from_db(ticker)
+        return attach_runtime_data_provenance(df, runtime_mode=mode)
+    except Exception:
+        logger.warning(
+            "db_fallback_to_vnstock",
+            ticker=ticker,
+            reason="Database unavailable, attempting vnstock",
+        )
+        try:
+            df = load_ohlcv_from_vnstock(ticker, num_days=num_days)
+            return attach_runtime_data_provenance(df, runtime_mode=mode)
+        except Exception as exc:
+            if mode is RuntimeMode.DEMO:
+                logger.warning("vnstock_failed_using_demo_mock", ticker=ticker, error=str(exc))
+                return generate_mock_data(
+                    ticker=ticker,
+                    num_days=num_days,
+                    runtime_mode=mode,
+                    fallback_triggered=True,
+                    fallback_reason="DB and vnstock_data unavailable in demo mode.",
+                )
+            _enforce_api_mock_policy(mode, fallback_triggered=True)
+            raise
 
 
 # ── Prediction Endpoint ──────────────────────────────────────
@@ -56,6 +124,10 @@ async def predict(
         False,
         description="Use synthetic mock data (for testing without DB)",
     ),
+    runtime_mode: str = Query(
+        RuntimeMode.RESEARCH.value,
+        description="Runtime mode: demo, research, or audit",
+    ),
 ) -> dict:
     """Run the full prediction pipeline for a given ticker.
 
@@ -67,6 +139,7 @@ async def predict(
         5. Return JSON contract payload
     """
     ticker = ticker.upper().strip()
+    mode = _resolve_runtime_mode(runtime_mode)
 
     # ── Try Kafka pre-computed cache first (sub-ms response) ──
     if not use_mock:
@@ -88,6 +161,12 @@ async def predict(
                     model_output=model_output,
                     risk_tolerance=risk_tolerance,
                 )
+                payload["data_provenance"] = build_data_provenance(
+                    source="kafka_cache",
+                    uses_mock_data=False,
+                    fallback_triggered=False,
+                    runtime_mode=mode,
+                )
                 
                 # Add qualitative analysis if present in cache
                 if cached.get("llm_analysis"):
@@ -99,22 +178,11 @@ async def predict(
 
     try:
         with trace_stage(request, "quant_data_load"):
-            if use_mock:
-                raw_df = generate_mock_data(ticker=ticker)
-            else:
-                try:
-                    raw_df = load_ohlcv_from_db(ticker)
-                except Exception:
-                    logger.warning(
-                        "db_fallback_to_vnstock",
-                        ticker=ticker,
-                        reason="Database unavailable, attempting vnstock",
-                    )
-                    try:
-                        raw_df = load_ohlcv_from_vnstock(ticker)
-                    except Exception as ve:
-                        logger.warning("vnstock_failed_using_mock", error=str(ve))
-                        raw_df = generate_mock_data(ticker=ticker)
+            raw_df = _load_governed_ohlcv(
+                ticker,
+                use_mock=use_mock,
+                runtime_mode=mode,
+            )
 
         if len(raw_df) < 50:
             raise HTTPException(
@@ -134,6 +202,7 @@ async def predict(
                 model_output=model_output,
                 risk_tolerance=risk_tolerance,
             )
+            payload["data_provenance"] = frame_data_provenance(raw_df, runtime_mode=mode)
 
         return payload
 
@@ -162,24 +231,15 @@ async def train(request: TrainRequest) -> dict:
     Uses mock data by default if database is unavailable.
     """
     ticker = request.ticker.upper().strip()
+    mode = _resolve_runtime_mode(getattr(request, "runtime_mode", RuntimeMode.RESEARCH.value))
 
     try:
-        if request.use_mock:
-            df = generate_mock_data(ticker=ticker, num_days=600)
-        else:
-            try:
-                df = load_ohlcv_from_db(ticker)
-            except Exception:
-                logger.warning(
-                    "train_db_fallback",
-                    ticker=ticker,
-                    reason="Database unavailable, attempting vnstock",
-                )
-                try:
-                    df = load_ohlcv_from_vnstock(ticker)
-                except Exception as ve:
-                    logger.warning("vnstock_failed_using_mock", error=str(ve))
-                    df = generate_mock_data(ticker=ticker, num_days=600)
+        df = _load_governed_ohlcv(
+            ticker,
+            use_mock=request.use_mock,
+            runtime_mode=mode,
+            num_days=600,
+        )
 
         metrics = _trainer.train(ticker=ticker, df=df)
 
@@ -187,8 +247,11 @@ async def train(request: TrainRequest) -> dict:
             "ticker": ticker,
             "status": "trained",
             "metrics": metrics,
+            "data_provenance": frame_data_provenance(df, runtime_mode=mode),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("train_error", ticker=ticker, error=str(e))
         raise HTTPException(
@@ -218,6 +281,10 @@ async def analyze(
         False,
         description="Use synthetic mock data (for testing without DB)",
     ),
+    runtime_mode: str = Query(
+        RuntimeMode.RESEARCH.value,
+        description="Runtime mode: demo, research, or audit",
+    ),
 ) -> dict:
     """Run the FULL Phase 3 pipeline: Quantitative Predict + LLM Qualitative Analysis.
 
@@ -236,6 +303,7 @@ async def analyze(
             ticker=ticker,
             risk_tolerance=risk_tolerance,
             use_mock=use_mock,
+            runtime_mode=runtime_mode,
         )
 
         mock_parts = []
@@ -314,6 +382,10 @@ async def execute_trade(
         False,
         description="Use synthetic mock data",
     ),
+    runtime_mode: str = Query(
+        RuntimeMode.RESEARCH.value,
+        description="Runtime mode: demo, research, or audit",
+    ),
 ) -> dict:
     """Run the FULL Phase 4 pipeline.
 
@@ -334,6 +406,7 @@ async def execute_trade(
         risk_tolerance=risk_tolerance,
         allowed_zones=allowed_zones,
         use_mock=use_mock,
+        runtime_mode=runtime_mode,
     )
 
     # Convert dicts back to Pydantic objects for type-safe passing
@@ -386,7 +459,8 @@ async def execute_trade(
             "stock_data_rate": sys_params["confidence_metrics"]["stock_quantitative_data"],
             "context_data_rate": sys_params["confidence_metrics"]["general_market_context"],
             "applied_risk_cap": sys_params["max_risk_tolerance"],
-        }
+        },
+        "data_provenance": analysis_payload.get("data_provenance", {}),
     }
 
 
@@ -696,6 +770,11 @@ async def ingest_bctc(
 async def paper_trade(
     request: Request,
     ticker: str = Query(..., description="Ticker to simulate"),
+    use_mock: bool = Query(False, description="Use explicit mock market data"),
+    runtime_mode: str = Query(
+        RuntimeMode.RESEARCH.value,
+        description="Runtime mode: demo, research, or audit",
+    ),
 ) -> dict:
     """Run one cycle of the Paper Trading Engine.
     
@@ -706,7 +785,11 @@ async def paper_trade(
     
     engine = PaperTradingEngine()
     with trace_stage(request, "paper_trading_cycle"):
-        result = await engine.run_single_cycle(ticker=ticker.upper())
+        result = await engine.run_single_cycle(
+            ticker=ticker.upper(),
+            use_mock=use_mock,
+            runtime_mode=runtime_mode,
+        )
     return result
 
 
@@ -718,6 +801,10 @@ async def chat_interaction(
     request: Request,
     payload: ChatRequest,
     use_mock: bool = Query(False, description="Use mock data for ML predictions"),
+    runtime_mode: str = Query(
+        RuntimeMode.RESEARCH.value,
+        description="Runtime mode: demo, research, or audit",
+    ),
 ) -> dict:
     """Conversational endpoint for the Chatbot UI.
     
@@ -747,7 +834,8 @@ async def chat_interaction(
                  quant_data = await predict(
                      request=request, 
                      ticker=ticker, 
-                     use_mock=use_mock
+                     use_mock=use_mock,
+                     runtime_mode=runtime_mode,
                  )
                  context_used.append("ML Quantitative Signals (LightGBM)")
                  quant_json = json.dumps(quant_data["quantitative_signals"], ensure_ascii=False)

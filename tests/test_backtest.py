@@ -13,6 +13,7 @@ import pytest
 from src.ml.backtest.event_driven import get_safe_rag_context, simulate_execution_cost, walk_forward_chunks
 from src.ml.backtest.metrics import calculate_risk_adjusted_returns, calculate_veto_standby_rates
 from src.ml.backtest.paper import PaperTradingEngine, LatencyProfile, track_execution_slippage, validate_latency
+import src.ml.backtest.paper as paper_module
 
 
 class TestEventDriven:
@@ -121,3 +122,38 @@ class TestPaperTrading:
         summary = engine.get_portfolio_summary()
         assert summary["open_positions"] == 0
         assert summary["cash"] > 1_000_000.0
+
+    def test_paper_load_ohlcv_audit_blocks_explicit_mock(self):
+        with pytest.raises(RuntimeError, match="Mock data disabled for audit mode"):
+            PaperTradingEngine._load_ohlcv("SSI", use_mock=True, runtime_mode="audit")
+
+    def test_paper_load_ohlcv_research_blocks_silent_mock_fallback(self, monkeypatch: pytest.MonkeyPatch):
+        def fail_provider(*args, **kwargs):
+            raise RuntimeError("provider unavailable")
+
+        monkeypatch.setattr(paper_module, "load_ohlcv_from_db", fail_provider)
+        monkeypatch.setattr(paper_module, "load_ohlcv_from_vnstock", fail_provider)
+
+        with pytest.raises(RuntimeError, match="Mock fallback disabled for research mode"):
+            PaperTradingEngine._load_ohlcv("SSI", runtime_mode="research")
+
+    def test_paper_load_ohlcv_demo_fallback_declares_provenance(self, monkeypatch: pytest.MonkeyPatch):
+        def fail_provider(*args, **kwargs):
+            raise RuntimeError("provider unavailable")
+
+        monkeypatch.setattr(paper_module, "load_ohlcv_from_db", fail_provider)
+        monkeypatch.setattr(paper_module, "load_ohlcv_from_vnstock", fail_provider)
+
+        df = PaperTradingEngine._load_ohlcv("SSI", runtime_mode="demo")
+        provenance = df.attrs["data_provenance"]
+        assert provenance["uses_mock_data"] is True
+        assert provenance["fallback_triggered"] is True
+        assert provenance["runtime_mode"] == "demo"
+
+    def test_paper_market_snapshot_demo_mock_declares_provenance(self):
+        engine = PaperTradingEngine(initial_capital=1_000_000.0)
+        snapshot = engine._fetch_market_snapshot("SSI", use_mock=True, runtime_mode="demo")
+
+        assert snapshot["price"] > 0
+        assert snapshot["data_provenance"]["uses_mock_data"] is True
+        assert snapshot["data_provenance"]["runtime_mode"] == "demo"

@@ -63,6 +63,14 @@ class TestBackwardCompatibility:
         assert len(df) == 100
         assert set(["date", "open", "high", "low", "close", "volume"]).issubset(df.columns)
 
+    def test_generate_mock_data_declares_provenance(self):
+        df = generate_mock_data(ticker="MOCK", num_days=100, runtime_mode="demo")
+        provenance = df.attrs["data_provenance"]
+        assert provenance["source"] == "synthetic_mock_data"
+        assert provenance["uses_mock_data"] is True
+        assert provenance["fallback_triggered"] is False
+        assert provenance["runtime_mode"] == "demo"
+
     def test_load_ohlcv_from_csv_exists(self):
         """The new CSV loader is importable."""
         assert callable(load_ohlcv_from_csv)

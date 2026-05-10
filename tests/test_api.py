@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from src.api.main import app
 from src.api.schemas_v2 import TerminalPayload
+import src.api.routes as api_routes
 
 
 @pytest.fixture
@@ -55,13 +56,15 @@ class TestTrainEndpoint:
         """Training with mock data should succeed."""
         response = client.post(
             "/api/v1/train",
-            json={"ticker": "TEST", "use_mock": True},
+            json={"ticker": "TEST", "use_mock": True, "runtime_mode": "demo"},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "trained"
         assert data["ticker"] == "TEST"
         assert "metrics" in data
+        assert data["data_provenance"]["uses_mock_data"] is True
+        assert data["data_provenance"]["runtime_mode"] == "demo"
 
 
 class TestPredictEndpoint:
@@ -72,26 +75,28 @@ class TestPredictEndpoint:
         """Ensure a model is trained before prediction tests."""
         client.post(
             "/api/v1/train",
-            json={"ticker": "PRED", "use_mock": True},
+            json={"ticker": "PRED", "use_mock": True, "runtime_mode": "demo"},
         )
 
     def test_predict_success(self, client: TestClient):
         """Predict should return 200 with valid JSON."""
-        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true&runtime_mode=demo")
         assert response.status_code == 200
 
     def test_predict_json_contract(self, client: TestClient):
         """Response must match the TerminalPayload schema."""
-        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true&runtime_mode=demo")
         data = response.json()
 
         # Validate with Pydantic model
         parsed = TerminalPayload(**data)
         assert parsed.ticker == "PRED"
+        assert parsed.data_provenance["uses_mock_data"] is True
+        assert parsed.data_provenance["runtime_mode"] == "demo"
 
     def test_predict_has_trend_probabilities(self, client: TestClient):
         """Response must include up/down/sideways probabilities."""
-        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true&runtime_mode=demo")
         data = response.json()
         probs = data["technical"]["horizons"][0]["trend_probs"]
         assert "up" in probs
@@ -103,7 +108,7 @@ class TestPredictEndpoint:
 
     def test_predict_has_expected_range(self, client: TestClient):
         """Response must include quantile price ranges."""
-        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true&runtime_mode=demo")
         data = response.json()
         rng = data["technical"]["horizons"][0]["expected_range"]
         assert "bottom_10th" in rng
@@ -114,7 +119,7 @@ class TestPredictEndpoint:
 
     def test_predict_has_action_plan(self, client: TestClient):
         """Response must include a fusion decision."""
-        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true&runtime_mode=demo")
         data = response.json()
         fusion = data["fusion"]
         assert fusion["action"] in ("BUY", "SELL", "RANGE_TRADE", "STAND_ASIDE", "STRONG_BUY", "STRONG_SELL", "CANCEL_ORDER", "STANDBY")
@@ -122,7 +127,7 @@ class TestPredictEndpoint:
 
     def test_predict_risk_payload(self, client: TestClient):
         """Response must include risk monitoring."""
-        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true")
+        response = client.get("/api/v1/predict?ticker=PRED&use_mock=true&runtime_mode=demo")
         data = response.json()
         risk = data["risk"]
         assert "position_size_suggestion" in risk
@@ -139,6 +144,68 @@ class TestPredictErrors:
         assert response.status_code == 422
 
     def test_predict_untrained_ticker(self, client: TestClient):
-        """Untrained ticker should return 404 with the new manifest-based contract."""
-        response = client.get("/api/v1/predict?ticker=NONEXISTENT_TICKER_XYZ")
+        """Untrained ticker still returns 404 when demo data is explicitly requested."""
+        response = client.get(
+            "/api/v1/predict?ticker=NONEXISTENT_TICKER_XYZ&use_mock=true&runtime_mode=demo"
+        )
         assert response.status_code == 404
+
+
+class TestRuntimeModeGovernance:
+    """Mock usage must be explicit and mode-gated."""
+
+    def test_audit_mode_blocks_explicit_mock_prediction(self, client: TestClient):
+        response = client.get("/api/v1/predict?ticker=AUDIT&use_mock=true&runtime_mode=audit")
+
+        assert response.status_code == 403
+        assert "Mock data disabled for audit mode" in response.json()["detail"]
+
+    def test_research_mode_blocks_silent_mock_fallback(self, client: TestClient, monkeypatch: pytest.MonkeyPatch):
+        def fail_provider(*args, **kwargs):
+            raise RuntimeError("provider unavailable")
+
+        monkeypatch.setattr(api_routes, "load_ohlcv_from_db", fail_provider)
+        monkeypatch.setattr(api_routes, "load_ohlcv_from_vnstock", fail_provider)
+
+        response = client.get("/api/v1/predict?ticker=FAIL&runtime_mode=research")
+
+        assert response.status_code == 403
+        assert "Mock fallback disabled for research mode" in response.json()["detail"]
+
+    def test_research_mode_allows_explicit_mock_request(self):
+        df = api_routes._load_governed_ohlcv("RESEARCH", use_mock=True, runtime_mode="research")
+        provenance = df.attrs["data_provenance"]
+
+        assert provenance["uses_mock_data"] is True
+        assert provenance["fallback_triggered"] is False
+        assert provenance["runtime_mode"] == "research"
+
+    def test_demo_mode_fallback_is_explicitly_provenanced(self, monkeypatch: pytest.MonkeyPatch):
+        def fail_provider(*args, **kwargs):
+            raise RuntimeError("provider unavailable")
+
+        monkeypatch.setattr(api_routes, "load_ohlcv_from_db", fail_provider)
+        monkeypatch.setattr(api_routes, "load_ohlcv_from_vnstock", fail_provider)
+
+        df = api_routes._load_governed_ohlcv("DEMO", use_mock=False, runtime_mode="demo")
+        provenance = df.attrs["data_provenance"]
+
+        assert provenance["source"] == "synthetic_mock_data"
+        assert provenance["uses_mock_data"] is True
+        assert provenance["fallback_triggered"] is True
+        assert provenance["runtime_mode"] == "demo"
+
+    def test_v2_demo_endpoint_declares_mock_provenance(self, client: TestClient):
+        response = client.get("/predict/technical?ticker=SSI&runtime_mode=demo")
+
+        assert response.status_code == 200
+        provenance = response.json()["data_provenance"]
+        assert provenance["uses_mock_data"] is True
+        assert provenance["fallback_triggered"] is False
+        assert provenance["runtime_mode"] == "demo"
+
+    def test_v2_audit_mode_blocks_demo_endpoint_mock(self, client: TestClient):
+        response = client.get("/predict/technical?ticker=SSI&runtime_mode=audit")
+
+        assert response.status_code == 403
+        assert "Mock data disabled for audit mode" in response.json()["detail"]

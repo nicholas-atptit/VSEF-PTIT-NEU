@@ -11,6 +11,7 @@ from src.api.schemas_v2 import (
     SentimentForecast, SentimentSource,
     FusionDecision, RiskOverlay, TerminalPayload
 )
+from src.core.runtime_mode import RuntimeMode, build_data_provenance, ensure_mock_allowed, normalize_runtime_mode
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -35,6 +36,37 @@ logger = get_logger(__name__)
 
 router = APIRouter()
 
+
+def _resolve_runtime_mode(runtime_mode: str | RuntimeMode | None) -> RuntimeMode:
+    try:
+        return normalize_runtime_mode(runtime_mode)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _demo_output_provenance(
+    runtime_mode: str | RuntimeMode | None,
+    *,
+    source: str,
+    allow_mock_data: bool = False,
+) -> dict:
+    mode = _resolve_runtime_mode(runtime_mode)
+    if mode is RuntimeMode.RESEARCH and not allow_mock_data:
+        raise HTTPException(
+            status_code=403,
+            detail="Mock output requires allow_mock_data=true in research mode",
+        )
+    try:
+        ensure_mock_allowed(mode, explicit_mock=True)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return build_data_provenance(
+        source=source,
+        uses_mock_data=True,
+        fallback_triggered=False,
+        runtime_mode=mode,
+    )
+
 # Khá»Ÿi táº¡o repository & orchestrator dÃ¹ng chung
 _decision_repo = DecisionRepository()
 # Tá»± Ä‘á»™ng láº¥y provider tá»« env hoáº·c default 'ollama'
@@ -48,19 +80,34 @@ _PRICE_CACHE_TTL = 5  # seconds
 
 # â”€â”€ Lightweight Price Endpoint (for 100ms web dashboard polling) â”€â”€
 @router.get("/price", tags=["Real-time Price"])
-async def get_price(ticker: str = "FPT"):
+async def get_price(
+    ticker: str = "FPT",
+    runtime_mode: str = Query(RuntimeMode.RESEARCH.value, description="Runtime mode: demo, research, or audit"),
+):
     """Ultra-fast price lookup for the web dashboard (no ML pipeline).
 
     Uses a 5-second in-memory cache to avoid flooding the DB/vnstock_data
     with requests during 100ms polling from the frontend.
     """
     ticker = ticker.upper().strip()
+    mode = _resolve_runtime_mode(runtime_mode)
     now = _time.time()
 
     # Check in-memory cache first (instant, <1ms)
     cached = _price_cache.get(ticker)
     if cached and (now - cached["ts"]) < _PRICE_CACHE_TTL:
-        return {"ticker": ticker, "price": cached["price"], "change": cached["change"], "source": cached["source"]}
+        return {
+            "ticker": ticker,
+            "price": cached["price"],
+            "change": cached["change"],
+            "source": cached["source"],
+            "data_provenance": build_data_provenance(
+                source=str(cached["source"]),
+                uses_mock_data=False,
+                fallback_triggered=False,
+                runtime_mode=mode,
+            ),
+        }
 
     price = 0.0
     change = 0.0
@@ -151,7 +198,18 @@ async def get_price(ticker: str = "FPT"):
     # Store in memory cache
     _price_cache[ticker] = {"price": price, "change": change, "source": source, "ts": now}
 
-    return {"ticker": ticker, "price": price, "change": change, "source": source}
+    return {
+        "ticker": ticker,
+        "price": price,
+        "change": change,
+        "source": source,
+        "data_provenance": build_data_provenance(
+            source=source,
+            uses_mock_data=False,
+            fallback_triggered=False,
+            runtime_mode=mode,
+        ),
+    }
 
 
 @router.get("/market/summary")
@@ -198,9 +256,18 @@ _fe = FeatureEngineer()
 _signal_gen = SignalGenerator()
 
 @router.get("/predict/technical", response_model=TechnicalForecast)
-async def predict_technical(ticker: str = Query(...)) -> TechnicalForecast:
+async def predict_technical(
+    ticker: str = Query(...),
+    runtime_mode: str = Query(RuntimeMode.DEMO.value, description="Runtime mode: demo, research, or audit"),
+    allow_mock_data: bool = Query(False, description="Allow explicit mock output outside demo mode"),
+) -> TechnicalForecast:
     """Domain A: Quantitative Technical Forecasting."""
     ticker = ticker.upper().strip()
+    provenance = _demo_output_provenance(
+        runtime_mode,
+        source="routes_v2.predict_technical.demo_static",
+        allow_mock_data=allow_mock_data,
+    )
     # Mocking implementation for Phase 1 contract validation
     # In Phase 2, this will call the upgraded trainer with short/mid/long horizons
     horizons = []
@@ -215,29 +282,49 @@ async def predict_technical(ticker: str = Query(...)) -> TechnicalForecast:
     return TechnicalForecast(
         ticker=ticker,
         timestamp=dt.datetime.now(dt.UTC),
-        horizons=horizons
+        horizons=horizons,
+        data_provenance=provenance,
     )
 
 @router.get("/predict/sentiment", response_model=SentimentForecast)
-async def predict_sentiment(ticker: str = Query(...)) -> SentimentForecast:
+async def predict_sentiment(
+    ticker: str = Query(...),
+    runtime_mode: str = Query(RuntimeMode.DEMO.value, description="Runtime mode: demo, research, or audit"),
+    allow_mock_data: bool = Query(False, description="Allow explicit mock output outside demo mode"),
+) -> SentimentForecast:
     """Domain B: qualitative/LLM Sentiment Analysis."""
     ticker = ticker.upper().strip()
+    provenance = _demo_output_provenance(
+        runtime_mode,
+        source="routes_v2.predict_sentiment.demo_static",
+        allow_mock_data=allow_mock_data,
+    )
     return SentimentForecast(
         sentiment_score=0.45,
         sentiment_regime="greed",
         sentiment_confidence=0.75,
         source_breakdown=[SentimentSource(source="Vnstock", headline="Positive growth expected", sentiment=0.8, score=0.8)],
         market_psychology_tags=["optimism", "momentum"],
-        narrative_risk_flags=[]
+        narrative_risk_flags=[],
+        data_provenance=provenance,
     )
 
 @router.get("/predict/fused", response_model=TerminalPayload)
-async def predict_fused(ticker: str = Query(...)) -> TerminalPayload:
+async def predict_fused(
+    ticker: str = Query(...),
+    runtime_mode: str = Query(RuntimeMode.DEMO.value, description="Runtime mode: demo, research, or audit"),
+    allow_mock_data: bool = Query(False, description="Allow explicit mock output outside demo mode"),
+) -> TerminalPayload:
     """Domain C: Fused Decision Matrix + Risk Overlay."""
     ticker = ticker.upper().strip()
+    provenance = _demo_output_provenance(
+        runtime_mode,
+        source="routes_v2.predict_fused.demo_static",
+        allow_mock_data=allow_mock_data,
+    )
     
-    tech = await predict_technical(ticker)
-    sent = await predict_sentiment(ticker)
+    tech = await predict_technical(ticker, runtime_mode=runtime_mode, allow_mock_data=allow_mock_data)
+    sent = await predict_sentiment(ticker, runtime_mode=runtime_mode, allow_mock_data=allow_mock_data)
     
     fusion = FusionDecision(
         action="BUY",
@@ -260,7 +347,8 @@ async def predict_fused(ticker: str = Query(...)) -> TerminalPayload:
         sentiment=sent,
         fusion=fusion,
         risk=risk,
-        run_id="AGENT-RUN-123"
+        run_id="AGENT-RUN-123",
+        data_provenance=provenance,
     )
 
 @router.get("/debate", tags=["Multi-Agent Debate"])

@@ -28,6 +28,7 @@ class TechnicalForecast(BaseModel):
     current_price: Optional[float] = Field(default=None, description="Actual price at prediction time")
     horizons: List[TechnicalHorizon]
     feature_set_version: str = "v4.0"
+    data_provenance: Dict[str, Any] = Field(default_factory=dict)
 
 # --- Branch 2: Sentiment Forecast ---
 
@@ -45,6 +46,7 @@ class SentimentForecast(BaseModel):
     source_breakdown: List[SentimentSource]
     market_psychology_tags: List[str]
     narrative_risk_flags: List[str]
+    data_provenance: Dict[str, Any] = Field(default_factory=dict)
 
 # --- Branch 3: Fusion & Decision ---
 
@@ -78,3 +80,4 @@ class TerminalPayload(BaseModel):
     # Audit Trace
     run_id: str
     status: str = "success"
+    data_provenance: Dict[str, Any] = Field(default_factory=dict)

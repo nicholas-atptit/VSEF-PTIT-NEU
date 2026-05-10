@@ -23,6 +23,12 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 
 from config.settings import get_settings, PROJECT_ROOT
+from src.core.runtime_mode import (
+    MOCK_SOURCE,
+    RuntimeMode,
+    build_data_provenance,
+    normalize_runtime_mode,
+)
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -63,6 +69,7 @@ DIRECT_VNSTOCK_PROVENANCE = "direct_vnstock_data"
 DERIVED_VNSTOCK_PROVENANCE = "derived_from_vnstock_data"
 LOCAL_COMPUTATION_PROVENANCE = "local_computation"
 STUB_PROVENANCE = "stub_todo"
+MOCK_PROVENANCE = MOCK_SOURCE
 DATA_QUALITY_CONTRACT_VERSION = 1
 DEFAULT_STALE_AFTER_DAYS = {
     "market_proxy.csv": 14,
@@ -344,6 +351,57 @@ def _attach_source_attrs(
     return df
 
 
+def attach_runtime_data_provenance(
+    df: pd.DataFrame,
+    *,
+    runtime_mode: str | RuntimeMode | None = None,
+    source: str | None = None,
+    uses_mock_data: bool | None = None,
+    fallback_triggered: bool = False,
+    reason: str | None = None,
+) -> pd.DataFrame:
+    """Attach additive runtime provenance to a data frame."""
+
+    mode = normalize_runtime_mode(runtime_mode)
+    existing = df.attrs.get("data_provenance")
+    existing_provenance = existing if isinstance(existing, dict) else {}
+    resolved_source = (
+        source
+        or existing_provenance.get("source")
+        or df.attrs.get("source_name")
+        or df.attrs.get("source_provenance")
+        or "unknown"
+    )
+    resolved_uses_mock = (
+        bool(uses_mock_data)
+        if uses_mock_data is not None
+        else bool(existing_provenance.get("uses_mock_data", df.attrs.get("source_provenance") == MOCK_PROVENANCE))
+    )
+    resolved_fallback = bool(fallback_triggered or existing_provenance.get("fallback_triggered", False))
+    df.attrs["data_provenance"] = build_data_provenance(
+        source=str(resolved_source),
+        uses_mock_data=resolved_uses_mock,
+        fallback_triggered=resolved_fallback,
+        runtime_mode=mode,
+        reason=reason or existing_provenance.get("reason"),
+    )
+    return df
+
+
+def frame_data_provenance(
+    df: pd.DataFrame,
+    *,
+    runtime_mode: str | RuntimeMode | None = None,
+) -> dict[str, Any]:
+    """Return frame provenance, adding a default non-mock payload if needed."""
+
+    existing = df.attrs.get("data_provenance")
+    if isinstance(existing, dict):
+        return dict(existing)
+    attach_runtime_data_provenance(df, runtime_mode=runtime_mode)
+    return dict(df.attrs["data_provenance"])
+
+
 def _stub_frame(source_name: str, reason: str) -> pd.DataFrame:
     logger.debug("context_source_stubbed", source=source_name, reason=reason)
     frame = pd.DataFrame()
@@ -520,6 +578,10 @@ def generate_mock_data(
     num_days: int = 600,
     start_price: float = 30.0,
     seed: int = 42,
+    *,
+    runtime_mode: str | RuntimeMode | None = RuntimeMode.DEMO,
+    fallback_triggered: bool = False,
+    fallback_reason: str | None = None,
 ) -> pd.DataFrame:
     """Generate realistic synthetic daily OHLCV data for testing.
 
@@ -586,8 +648,29 @@ def generate_mock_data(
         }
     )
 
-    logger.info("mock_data_generated", ticker=ticker, rows=len(df))
-    return df
+    result = _attach_source_attrs(
+        df,
+        provenance=MOCK_PROVENANCE,
+        source_name=MOCK_SOURCE,
+        adjustment_status="synthetic",
+        notes=fallback_reason or "Synthetic OHLCV generated for explicit mock/demo execution.",
+    )
+    attach_runtime_data_provenance(
+        result,
+        runtime_mode=runtime_mode,
+        source=MOCK_SOURCE,
+        uses_mock_data=True,
+        fallback_triggered=fallback_triggered,
+        reason=fallback_reason,
+    )
+    logger.info(
+        "mock_data_generated",
+        ticker=ticker,
+        rows=len(result),
+        runtime_mode=normalize_runtime_mode(runtime_mode).value,
+        fallback_triggered=fallback_triggered,
+    )
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════
