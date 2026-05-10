@@ -12,6 +12,7 @@ venv/
 
 # ── Secrets ──
 .env
+.env.local
 *.pem
 
 # ── IDE ──
@@ -46,15 +47,14 @@ scripts/_patch_settings.py
 .gemini/
 .pytest_cache/
 pytest-cache-files-*/
+*.log
 *.bak
 *.tmp
 *.broken
-tmp/
-tmp*/
-artifacts/
-outputs/*
-!outputs/experiments/
-outputs/experiments/*
-!outputs/experiments/.gitkeep
+/tmp/
+/artifacts/
+/outputs/
 logs/
-models/
+/models/
+node_modules/
+*.db

@@ -136,7 +136,7 @@ route decision for review.
 ## Example CLI Command
 
 ```powershell
-C:\Users\luong\.venv\Scripts\python.exe scripts/run_phase3_router.py `
+python scripts/run_phase3_router.py `
   --input-dir tmp\portfolio_allocator_v1_smoke `
   --output-dir tmp\phase3_router_v1_smoke `
   --max-risk-score 0.70

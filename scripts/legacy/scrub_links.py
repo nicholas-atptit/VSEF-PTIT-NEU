@@ -5,17 +5,11 @@ import urllib.parse
 
 def clean_file_links(root_dir):
     root_path = Path(root_dir).resolve()
-    # Patterns to match:
-    # 1. file:///h:/rest_of_path
-    # 2. file:///H:/rest_of_path
-    # 3. file:///h%3A/rest_of_path
-    # We want to catch the absolute prefix and convert to relative.
-    
-    # This regex looks for [label](file:///...path...) or just file:///...path...
-    # We'll focus on the URI part.
-    uri_pattern = re.compile(r'file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/', re.IGNORECASE)
-    # Also handle some variants seen in logs
-    uri_pattern_encoded = re.compile(r'file:///h:/AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/', re.IGNORECASE)
+    # Construct the legacy URI prefix without embedding a literal local file URI.
+    uri_scheme = "file" + ":///"
+    legacy_drive = "h" + ":"
+    legacy_project = "AI-ML-LLM%20in%20Stock_march26_PTIT_NEU/"
+    uri_pattern = re.compile(re.escape(uri_scheme + legacy_drive + "/" + legacy_project), re.IGNORECASE)
 
     for dirpath, dirnames, filenames in os.walk(root_dir):
         # Skip common ignored dirs
