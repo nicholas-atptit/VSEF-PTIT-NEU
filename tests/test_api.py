@@ -47,6 +47,18 @@ class TestRootEndpoint:
         data = response.json()
         assert "docs" in data
         assert "predict" in data
+        assert "/web" not in str(data)
+        assert "/dashboard" not in str(data)
+
+    def test_web_dashboard_removed(self, client: TestClient):
+        response = client.get("/web/index.html")
+        assert response.status_code == 404
+
+        dashboard_response = client.get("/dashboard")
+        assert dashboard_response.status_code == 200
+        data = dashboard_response.json()
+        assert data["status"] == "removed"
+        assert "/web/index.html" not in str(data)
 
 
 class TestTrainEndpoint:

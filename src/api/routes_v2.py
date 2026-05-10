@@ -78,16 +78,16 @@ import time as _time
 _price_cache: dict = {}
 _PRICE_CACHE_TTL = 5  # seconds
 
-# â”€â”€ Lightweight Price Endpoint (for 100ms web dashboard polling) â”€â”€
+# â”€â”€ Lightweight Price Endpoint for API clients that poll price data â”€â”€
 @router.get("/price", tags=["Real-time Price"])
 async def get_price(
     ticker: str = "FPT",
     runtime_mode: str = Query(RuntimeMode.RESEARCH.value, description="Runtime mode: demo, research, or audit"),
 ):
-    """Ultra-fast price lookup for the web dashboard (no ML pipeline).
+    """Ultra-fast price lookup for API clients (no ML pipeline).
 
     Uses a 5-second in-memory cache to avoid flooding the DB/vnstock_data
-    with requests during 100ms polling from the frontend.
+    with requests during frequent client polling.
     """
     ticker = ticker.upper().strip()
     mode = _resolve_runtime_mode(runtime_mode)

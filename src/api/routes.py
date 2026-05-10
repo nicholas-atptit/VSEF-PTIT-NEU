@@ -528,7 +528,7 @@ async def stock_history(
     ticker: str = Query(..., description="Stock ticker symbol"),
     days: int = Query(90, description="Number of days of history"),
 ) -> dict:
-    """Fetch recent OHLCV history for a ticker (for frontend charting)."""
+    """Fetch recent OHLCV history for API clients that render charts."""
     import datetime as _dt
     from src.data.adapters.vnstock_adapter import VnstockAdapter
 
