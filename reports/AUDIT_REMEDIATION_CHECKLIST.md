@@ -37,8 +37,9 @@ Allowed statuses: NOT STARTED, IN PROGRESS, BLOCKED, PARTIALLY VERIFIED, VERIFIE
 | Phase 3 | Repository Hygiene Cleanup. | VERIFIED | `reports/PHASE3_REPOSITORY_HYGIENE_EVIDENCE.md`; hygiene check, npm rebuild, full pytest, and git status recorded. | Revert Phase 3 hygiene commit; rerun hygiene check, npm rebuild, and full pytest. | 2026-05-10 | API Governance Enforcement is deferred to Phase 4 unless separately approved. |
 | Phase 4A | Frontend Web UI De-Scope. | VERIFIED | `reports/PHASE4A_FRONTEND_DESCOPE_EVIDENCE.md`; `tests/test_api.py`: `19 passed`; full suite: `808 passed, 5 skipped`; hygiene check passed. | Restore dedicated frontend removal commit if required; rerun required checks. | 2026-05-10 | Removed repository web UI surfaces while retaining backend API runtime. |
 | Phase 4 | API Governance Enforcement. | VERIFIED | `reports/PHASE4_API_GOVERNANCE_EVIDENCE.md`; API tests `26 passed`; full suite `815 passed, 5 skipped`; hygiene check passed. | Revert Phase 4 API governance commit; rerun API tests, full suite, and hygiene check. | 2026-05-11 | Governed API public contracts now use diagnostic-only wording; legacy high-risk routes are gated. |
-| Phase 5 | Architecture Cleanup. | NOT STARTED | Pending. | Pending. | TBD | Cleanup requires explicit approval for removals. |
-| Phase 6 | Final Verification and Signoff. | NOT STARTED | Pending. | Pending. | TBD | Full suite and git status signoff required. |
+| Phase 5 | Reproducibility and Command Registry. | VERIFIED | `reports/PHASE5_REPRODUCIBILITY_COMMAND_REGISTRY_EVIDENCE.md`; `python scripts/check_runtime_preflight.py`: `ok=40 warn=20 fail=0`; full suite `815 passed, 5 skipped`; hygiene check passed. | Remove/revert Phase 5 docs/preflight commit if required; rerun preflight, hygiene, and full suite. | 2026-05-11 | CA-009, CA-012, and CA-016 were addressed. Statistical Acceptance Governance is deferred to Phase 6. |
+| Phase 6 | Statistical Acceptance Governance. | NOT STARTED | Pending. | Pending. | TBD | Deferred from Phase 5 tracking reconciliation. |
+| Phase 7 | Final Verification and Signoff. | NOT STARTED | Pending. | Pending. | TBD | Full suite and git status signoff required. |
 
 ## Baseline Verification Record
 
