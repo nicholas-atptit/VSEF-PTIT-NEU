@@ -68,11 +68,12 @@ def main() -> None:
     if not summary_df.empty:
         best = summary_df.sort_values(["sharpe", "calmar", "directional_accuracy"], ascending=False).iloc[0]
         print(
-            "Top benchmark mode:",
+            "Top leaderboard mode:",
             f"{best['benchmark_mode']}",
             f"Sharpe={best['sharpe']:.2f}",
             f"Calmar={best['calmar']:.4f}",
             f"DirectionalAcc={best['directional_accuracy']:.4f}",
+            f"AcceptanceStatus={best.get('status', 'exploratory_only')}",
         )
     print(f"Benchmark detail report written to {result['detail_path']}")
     print(f"Benchmark markdown report written to {result['markdown_path']}")

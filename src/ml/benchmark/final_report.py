@@ -21,6 +21,22 @@ def _markdown_table(df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
+def _acceptance_table(df: pd.DataFrame | None) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
+    columns = [
+        "benchmark_mode",
+        "accepted",
+        "status",
+        "effect_size",
+        "bootstrap_ci",
+        "dm_p_value",
+        "warnings",
+        "acceptance_interpretation",
+    ]
+    return df[[column for column in columns if column in df.columns]].copy()
+
+
 def write_full_system_report(
     *,
     benchmark_summary: pd.DataFrame | None = None,
@@ -53,24 +69,28 @@ def write_full_system_report(
             "## 2. Benchmark Results",
             _markdown_table(benchmark_summary.round(6) if benchmark_summary is not None and not benchmark_summary.empty else pd.DataFrame()),
             "",
-            "## 3. Stress Test Results",
+            "## 3. Benchmark Acceptance Governance",
+            "Leaderboard averages are not promotion criteria. Benchmark rows without required statistical evidence are labeled `exploratory_only`, `inconclusive`, or `rejected`.",
+            _markdown_table(_acceptance_table(benchmark_summary)),
+            "",
+            "## 4. Stress Test Results",
             _markdown_table(stress_summary.round(6) if stress_summary is not None and not stress_summary.empty else pd.DataFrame()),
             "",
-            "## 4. Risk Tuning Improvements",
+            "## 5. Risk Tuning Improvements",
             *tuning_lines,
             "",
-            "## 5. Trade-offs",
+            "## 6. Trade-offs",
             "- Performance vs stability: richer risk/regime overlays can reduce exposure and headline return while improving drawdown behavior.",
             "- Complexity vs benefit: benchmark/stress/tuning orchestration adds operational complexity but makes model comparisons and deployment decisions auditable.",
             "",
-            "## 6. Limitations",
+            "## 7. Limitations",
             "- Stress testing re-evaluates held-out predictions under shocked returns/costs instead of retraining on synthetic crisis histories.",
             "- Regime logic remains rule-based Option A; no latent-state model is introduced.",
             "- Allocation remains a modular overlay, not a mandatory execution engine.",
             "",
-            "## 7. Recommendation",
-            "- Use the full system in production only with benchmark plus stress plus tuning outputs reviewed together.",
-            "- Prefer the tuned full-system configuration when it improves Sharpe/Sortino without materially worsening max drawdown or turnover.",
+            "## 8. Recommendation",
+            "- Use the full system in production only when benchmark acceptance status and stress outputs are reviewed together.",
+            "- Treat tuned configurations as exploratory unless governed acceptance evidence supports promotion.",
         ]
     )
     output_path.write_text(content, encoding="utf-8")
