@@ -1,4 +1,5 @@
-"""Temporal Fusion Transformer (TFT) Training Pipeline for Phase 10.
+"""Experimental placeholder module.
+Not part of canonical governed runtime.
 
 Implements multi-quantile forecasting [0.1, 0.5, 0.9] for OHLCV data
 using PyTorch Forecasting and PyTorch Lightning.

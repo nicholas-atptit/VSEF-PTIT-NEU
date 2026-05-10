@@ -1,3 +1,8 @@
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
+"""
+
 import pandas as pd
 import os
 

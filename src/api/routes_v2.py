@@ -1,6 +1,9 @@
 ﻿"""API v2 routes â€” The Agentic Domain.
 
-Separates Technical, Sentiment, and Fusion logic into distinct domains.
+Demo module.
+Non-authoritative and not part of canonical governed runtime.
+
+Retains the agentic API v2 demo surface and gated legacy routes.
 """
 
 from __future__ import annotations

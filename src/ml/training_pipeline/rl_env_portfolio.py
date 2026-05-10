@@ -1,3 +1,7 @@
+"""Experimental placeholder module.
+Not part of canonical governed runtime.
+"""
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np

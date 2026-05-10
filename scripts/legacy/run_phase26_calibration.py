@@ -1,4 +1,7 @@
-"""Bounded Phase 2.6 calibration runner for policy ablations."""
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
+"""
 
 from __future__ import annotations
 

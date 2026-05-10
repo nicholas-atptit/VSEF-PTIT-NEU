@@ -1,4 +1,5 @@
-"""Model Export and Optimization Pipeline for Local 8GB VRAM.
+"""Experimental placeholder module.
+Not part of canonical governed runtime.
 
 Converts PyTorch models (TFT, CNN, PPO) to ONNX format 
 and applies INT8 Quantization for maximum performance.

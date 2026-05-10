@@ -1,4 +1,5 @@
-"""Professional Terminal UI (TUI) Dashboard v3.8 - SYSTEM TERMINAL (LEGACY-FIRST).
+"""Demo module.
+Non-authoritative and not part of canonical governed runtime.
 
 Features:
 - Legacy Data Initialization (uses src.ml.data_loader).

@@ -1,3 +1,8 @@
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
+"""
+
 import requests
 from config.settings import get_settings
 

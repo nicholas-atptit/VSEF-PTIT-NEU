@@ -1,4 +1,5 @@
-"""1D-CNN Training Pipeline for LOB Microstructure Analysis.
+"""Experimental placeholder module.
+Not part of canonical governed runtime.
 
 Uses 10-level Limit Order Book (LOB) data to predict mid-price 
 movement (-1, 0, 1) and optimize slippage.

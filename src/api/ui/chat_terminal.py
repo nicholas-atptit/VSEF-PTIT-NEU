@@ -1,3 +1,7 @@
+"""Demo module.
+Non-authoritative and not part of canonical governed runtime.
+"""
+
 import sys
 from pathlib import Path
 import asyncio

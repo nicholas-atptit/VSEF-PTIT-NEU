@@ -1,4 +1,7 @@
-"""Small end-to-end Phase 1 benchmark over the repo's prepared data backbone."""
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
+"""
 
 from __future__ import annotations
 
