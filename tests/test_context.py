@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -67,24 +67,24 @@ class TestNewsCrawler:
 
     @pytest.mark.asyncio
     async def test_crawl_ticker_mock(self):
-        """Should call vnstock and return documents."""
-        with patch("src.context.news_crawler.Vnstock") as mock_vn:
-            # Mock the stock().news() chain
-            mock_stock = MagicMock()
-            mock_stock.news.return_value = pd.DataFrame([{
-                "title": "Mock Title",
-                "description": "Mock Content",
-                "link": "https://mock.com",
-                "source": "Mock Source"
-            }])
-            mock_vn.return_value.stock.return_value = mock_stock
-            
-            # Instantiate INSIDE the patch
-            crawler = NewsCrawler()
-            docs = await crawler.crawl_ticker("HPG", count=1)
-            assert len(docs) == 1
-            assert docs[0].title == "Mock Title"
-            assert docs[0].primary_ticker == "HPG"
+        """Should call the public provider interface and return documents."""
+        mock_provider = MagicMock()
+        mock_stock = MagicMock()
+        mock_stock.news.return_value = pd.DataFrame([{
+            "title": "Mock Title",
+            "description": "Mock Content",
+            "link": "https://mock.com",
+            "source": "Mock Source"
+        }])
+        mock_provider.stock.return_value = mock_stock
+
+        crawler = NewsCrawler(provider_factory=lambda: mock_provider)
+        docs = await crawler.crawl_ticker("HPG", count=1)
+
+        mock_provider.stock.assert_called_once_with(symbol="HPG")
+        assert len(docs) == 1
+        assert docs[0].title == "Mock Title"
+        assert docs[0].primary_ticker == "HPG"
 
 
 class TestDocumentEmbedder:

@@ -349,7 +349,7 @@ class StressTestRunner:
         detail_csv = report_path if report_path.suffix.lower() == ".csv" else report_path.with_suffix(".csv")
         summary_csv = detail_csv.with_name(f"{detail_csv.stem}_summary.csv")
         json_path = detail_csv.with_suffix(".json")
-        markdown_path = Path("reports") / "stress_test_report.md"
+        markdown_path = detail_csv.parent / "stress_test_report.md"
 
         detail_csv.parent.mkdir(parents=True, exist_ok=True)
         detail_df.to_csv(detail_csv, index=False)

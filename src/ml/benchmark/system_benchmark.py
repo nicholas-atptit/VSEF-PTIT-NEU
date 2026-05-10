@@ -405,7 +405,7 @@ class SystemBenchmarkRunner:
         detail_csv = report_path if report_path.suffix.lower() == ".csv" else report_path.with_suffix(".csv")
         summary_csv = detail_csv.with_name(f"{detail_csv.stem}_summary.csv")
         json_path = detail_csv.with_suffix(".json")
-        markdown_path = Path("reports") / "system_benchmark.md"
+        markdown_path = detail_csv.parent / "system_benchmark.md"
         self._write_outputs(
             detail_df=detail_df,
             summary_df=summary_df,

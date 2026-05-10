@@ -44,6 +44,7 @@ def test_stress_test_runner_generates_all_scenarios_and_outputs(tmp_path) -> Non
     assert result["summary_path"].exists()
     assert result["json_path"].exists()
     assert result["markdown_path"].exists()
+    assert result["markdown_path"] == tmp_path / "reports" / "stress_test_report.md"
     payload = json.loads(result["json_path"].read_text(encoding="utf-8"))
     assert len(payload["detail_rows"]) == len(detail)
     markdown = result["markdown_path"].read_text(encoding="utf-8")

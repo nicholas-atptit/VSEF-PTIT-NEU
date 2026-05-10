@@ -44,6 +44,7 @@ def test_system_benchmark_generates_all_modes_and_outputs(tmp_path) -> None:
     assert result["summary_path"].exists()
     assert result["json_path"].exists()
     assert result["markdown_path"].exists()
+    assert result["markdown_path"] == tmp_path / "reports" / "system_benchmark.md"
     markdown = result["markdown_path"].read_text(encoding="utf-8")
     assert "# System Benchmark" in markdown
 

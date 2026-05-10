@@ -330,7 +330,7 @@ class RiskTuningRunner:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         csv_path = report_path if report_path.suffix.lower() == ".csv" else report_path.with_suffix(".csv")
         json_path = csv_path.with_suffix(".json")
-        markdown_path = Path("reports") / "risk_tuning_report.md"
+        markdown_path = csv_path.parent / "risk_tuning_report.md"
         trials_df.to_csv(csv_path, index=False)
         json_path.write_text(
             json.dumps(

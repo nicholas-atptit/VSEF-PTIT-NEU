@@ -676,9 +676,6 @@ class DualModelTrainer:
             ):
                 if column in prepared.feature_frame.columns and column not in selected:
                     selected.append(column)
-        for column in RISK_FEATURE_COLUMNS + REGIME_FEATURE_COLUMNS:
-            if column in prepared.feature_frame.columns and column not in selected:
-                selected.append(column)
         return selected
 
     def prepare_ticker_data(

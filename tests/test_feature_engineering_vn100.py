@@ -18,6 +18,76 @@ from src.ml.data_loader import generate_mock_data
 from src.ml.feature_engineering import FeatureEngineer, VN100_DAILY_FEATURES
 
 
+# Catalogue contract as of Phase 1 runtime stabilization.
+# The list intentionally evolved beyond the original 19-feature contract; the
+# audit contract now preserves exact ordering plus required canonical features.
+EXPECTED_VN100_DAILY_FEATURES_2026_05_10 = [
+    "prev_close",
+    "close_to_close_return_1d",
+    "close_return_2d",
+    "close_return_3d",
+    "open_to_close_return_1d",
+    "overnight_return_1d",
+    "open_close_spread",
+    "open_close_spread_pct",
+    "high_low_range",
+    "high_low_range_pct",
+    "true_range",
+    "atr_14",
+    "atr_proxy_5",
+    "atr_proxy_10",
+    "close_mean_5",
+    "close_mean_10",
+    "close_mean_20",
+    "close_std_5",
+    "close_std_10",
+    "close_std_20",
+    "return_3d",
+    "return_5d",
+    "return_10d",
+    "return_20d",
+    "volume_ma_5",
+    "volume_ma_10",
+    "volume_ma_20",
+    "volume_shock_5",
+    "volume_shock_10",
+    "volume_shock_20",
+    "volume_ratio_5",
+    "volume_ratio_20",
+    "value_ratio_5",
+    "value_ratio_20",
+    "rolling_volatility_5",
+    "rolling_volatility_10",
+    "rolling_volatility_20",
+    "rsi_14",
+    "macd_line",
+    "macd_signal",
+    "macd_hist",
+]
+
+REQUIRED_CANONICAL_VN100_FEATURES = {
+    "prev_close",
+    "close_to_close_return_1d",
+    "open_to_close_return_1d",
+    "overnight_return_1d",
+    "high_low_range_pct",
+    "true_range",
+    "return_3d",
+    "return_5d",
+    "return_20d",
+    "volume_ma_5",
+    "volume_ratio_5",
+    "value_ratio_5",
+    "value_ratio_20",
+    "rolling_volatility_5",
+    "rolling_volatility_20",
+    "rsi_14",
+    "macd_line",
+    "macd_signal",
+    "macd_hist",
+}
+
+
 # ── Fixtures ─────────────────────────────────────────────────────────────
 
 @pytest.fixture
@@ -221,6 +291,15 @@ class TestVN100Catalogue:
     def test_catalogue_unique(self):
         assert len(VN100_DAILY_FEATURES) == len(set(VN100_DAILY_FEATURES))
 
-    def test_catalogue_count(self):
-        """Should have exactly 19 features."""
-        assert len(VN100_DAILY_FEATURES) == 19
+    def test_catalogue_ordered_contract(self):
+        """The expanded catalogue keeps a deterministic audited order."""
+        assert VN100_DAILY_FEATURES == EXPECTED_VN100_DAILY_FEATURES_2026_05_10
+
+    def test_catalogue_required_canonical_features(self):
+        """Core public features remain present after catalogue expansion."""
+        assert REQUIRED_CANONICAL_VN100_FEATURES <= set(VN100_DAILY_FEATURES)
+
+    def test_catalogue_transform_compatibility(self, result: pd.DataFrame):
+        """Every audited catalogue feature is produced by transform()."""
+        assert list(VN100_DAILY_FEATURES) == EXPECTED_VN100_DAILY_FEATURES_2026_05_10
+        assert set(VN100_DAILY_FEATURES) <= set(result.columns)
