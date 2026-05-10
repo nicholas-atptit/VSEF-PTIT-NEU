@@ -1,8 +1,4 @@
-"""Pydantic response schemas — enforces the JSON API contract.
-
-These models define the exact output structure of the prediction endpoint.
-All field names match the contract specification from Phase 2 requirements.
-"""
+"""Pydantic response schemas for the diagnostic research API."""
 
 from __future__ import annotations
 
@@ -12,40 +8,40 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-# ── Nested schema components ──────────────────────────────────
+# --- Internal quantitative components retained for legacy engine compatibility ---
 
 
 class TrendProbabilities(BaseModel):
-    """Probability vector from Model A (XGBoost Trend Classifier)."""
+    """Probability vector from the trend classifier."""
 
-    up: float = Field(..., ge=0.0, le=1.0, description="Probability of uptrend (>+2%)")
-    down: float = Field(..., ge=0.0, le=1.0, description="Probability of downtrend (<-2%)")
-    sideways: float = Field(..., ge=0.0, le=1.0, description="Probability of sideways (±2%)")
+    up: float = Field(..., ge=0.0, le=1.0, description="Probability of uptrend")
+    down: float = Field(..., ge=0.0, le=1.0, description="Probability of downtrend")
+    sideways: float = Field(..., ge=0.0, le=1.0, description="Probability of sideways movement")
 
 
 class ExpectedRange(BaseModel):
-    """Quantile price range from Model B (LightGBM Range Regressor)."""
+    """Quantile price range from the range regressor."""
 
-    bottom_10th: float = Field(..., description="10th percentile — support floor")
-    median_50th: float = Field(..., description="50th percentile — median expectation")
-    ceiling_90th: float = Field(..., description="90th percentile — resistance ceiling")
+    bottom_10th: float = Field(..., description="10th percentile range floor")
+    median_50th: float = Field(..., description="50th percentile range midpoint")
+    ceiling_90th: float = Field(..., description="90th percentile range ceiling")
 
 
 class ActionPlan(BaseModel):
-    """Trading action derived from combined model outputs."""
+    """Internal legacy route label used by engine tests and non-public adapters."""
 
     recommendation: str = Field(
         ...,
-        description="Action: BUY, SELL, RANGE_TRADE, STAND_ASIDE",
+        description="Internal legacy route label; not a public API authority field.",
     )
     entry_zone: list[float] = Field(
         ...,
         min_length=2,
         max_length=2,
-        description="[lower_bound, upper_bound] entry price range",
+        description="Internal model price range candidate",
     )
-    stop_loss: float = Field(..., description="Stop-loss price level")
-    take_profit: float = Field(..., description="Take-profit price level")
+    stop_loss: float = Field(..., description="Internal downside-control reference")
+    take_profit: float = Field(..., description="Internal upside-range reference")
 
 
 class QuantitativeSignals(BaseModel):
@@ -57,57 +53,67 @@ class QuantitativeSignals(BaseModel):
 
 
 class ConfidenceMetrics(BaseModel):
-    """Confidence routing — different confidence levels by data source."""
+    """Confidence routing by data source."""
 
     stock_quantitative_data: float = Field(
         default=0.95,
-        description="Confidence for model-derived stock data (always 0.95)",
+        description="Confidence for model-derived stock data",
     )
     general_market_context: float = Field(
         default=0.70,
-        description="Confidence for contextual/metadata info (always 0.70)",
+        description="Confidence for contextual metadata",
     )
 
 
 class SystemParameters(BaseModel):
-    """Enforced system constraints for downstream consumers (LLM / Phase 3)."""
+    """Enforced system constraints for downstream diagnostics."""
 
     max_risk_tolerance: float = Field(
         ...,
         le=0.70,
-        description="Risk cap — always ≤ 0.70 regardless of input",
+        description="Risk cap, always at or below 0.70 regardless of input",
     )
     confidence_metrics: ConfidenceMetrics
 
 
 class MainRisk(BaseModel):
-    """Specific risk identified by the Analyst."""
+    """Specific risk identified by the analyst engine."""
+
     risk_type: str = Field(..., description="macro, legal, financial, or operational")
     description: str
     zone: str | None = None
 
+
 class QualitativeSignalEvidence(BaseModel):
     """Evidence linked to a specific zone."""
+
     evidence: str
     zone: str
 
+
 class QualitativeSignals(BaseModel):
-    """Bulish and bearish signals with evidence."""
+    """Bullish and bearish evidence groups."""
+
     bullish: list[QualitativeSignalEvidence]
     bearish: list[QualitativeSignalEvidence]
 
+
 class DeepLearningContext(BaseModel):
-    """Context from Phase 10 Deep Learning models (TFT & CNN)."""
-    tft_forecast: str | None = Field(default=None, description="TFT Sequence forecast summary")
-    cnn_microstructure: str | None = Field(default=None, description="CNN LOB microstructure summary")
+    """Context from deep learning models."""
+
+    tft_forecast: str | None = Field(default=None, description="TFT sequence forecast summary")
+    cnn_microstructure: str | None = Field(default=None, description="CNN microstructure summary")
+
 
 class RLRecommendation(BaseModel):
-    """Context from Phase 10 RL Portfolio Manager (PPO)."""
+    """Internal RL diagnostic context retained for legacy parser compatibility."""
+
     suggested_allocation_pct: float | None = Field(default=None, ge=0.0, le=0.70)
     justification: str | None = Field(default=None)
 
+
 class QualitativeAnalysis(BaseModel):
-    """Phase 3 qualitative analysis output generated by the Risk Analyst Engine."""
+    """Qualitative risk analysis output generated by the analyst engine."""
 
     analysis_status: str = Field(..., description="success or insufficient_data")
     confidence_score: float = Field(..., ge=0.0, le=1.0)
@@ -121,20 +127,20 @@ class QualitativeAnalysis(BaseModel):
     anti_hallucination_check_passed: bool = Field(default=True)
 
 
-# ── Phase 4: Final Execution Schemas ─────────────────────────
+# --- Internal matrix/risk compatibility models ---
 
 
 class MatrixConsensus(BaseModel):
-    """Output of the Decision Matrix matching ML and LLM signals."""
+    """Output of the internal matrix compatibility layer."""
 
-    ml_signal: str = Field(..., description="BUY, SELL, RANGE_TRADE, STAND_ASIDE")
-    llm_sentiment: str = Field(..., description="positive, neutral, negative, N/A")
-    veto_triggered: bool = Field(..., description="True if LLM vetoed an ML signal")
-    consensus_score: float = Field(default=0.0, description="Weighted numeric score Tech+Sent")
+    ml_signal: str = Field(..., description="Internal model route label")
+    llm_sentiment: str = Field(..., description="positive, neutral, negative, or N/A")
+    veto_triggered: bool = Field(..., description="True if qualitative risk vetoed a model lane")
+    consensus_score: float = Field(default=0.0, description="Weighted numeric score")
 
 
 class RiskManagementOverride(BaseModel):
-    """Records how the engine mutated the ML suggestions based on constraints."""
+    """Records internal risk-bound adjustments."""
 
     original_stop_loss_pct: float
     applied_stop_loss_pct: float
@@ -142,57 +148,56 @@ class RiskManagementOverride(BaseModel):
 
 
 class OrderPayload(BaseModel):
-    """The final actionable payload ready to be sent to a broker."""
+    """Internal risk sizing candidate retained outside governed API responses."""
 
-    order_type: str = Field(..., description="LIMIT, MARKET, etc.")
+    order_type: str = Field(..., description="Internal route type label")
     entry_price: float
     volume: int
     hard_stop_loss_price: float
     take_profit_price: float
 
 
-# ── Top-level response models ────────────────────────────────
+# --- Governed public response models ---
 
 
 class PredictionResponse(BaseModel):
-    """Full prediction response — the JSON API contract.
-
-    Example::
-
-        {
-            "ticker": "SSI",
-            "timestamp": "2026-03-15T14:15:00Z",
-            "quantitative_signals": { ... },
-            "qualitative_analysis": { ... },  # Present if /analyze is called
-            "system_parameters": { ... }
-        }
-    """
+    """Diagnostic prediction/analysis response."""
 
     ticker: str = Field(..., description="Stock symbol")
-    timestamp: str = Field(..., description="ISO-8601 UTC timestamp")
-    quantitative_signals: QuantitativeSignals
-    qualitative_analysis: QualitativeAnalysis | None = Field(default=None)
-    system_parameters: SystemParameters
-    data_provenance: dict[str, Any] = Field(default_factory=dict)
-
-
-class FinalExecutionResponse(BaseModel):
-    """The final Phase 4 output payload after risk management and LLM consensus."""
-
-    order_id: str
-    ticker: str
-    execution_decision: str = Field(
-        ...,
-        description="EXECUTE_BUY, EXECUTE_SELL, CANCEL_ORDER, STANDBY",
+    timestamp: str | dt.datetime = Field(..., description="ISO-8601 UTC timestamp")
+    technical: dict[str, Any]
+    sentiment: dict[str, Any] | None = None
+    fusion: dict[str, Any] | None = None
+    risk: dict[str, Any] | None = None
+    run_id: str
+    status: str = "success"
+    candidate_status: str = "diagnostic_only"
+    review_required: bool = True
+    diagnostic_plan: list[str] = Field(default_factory=list)
+    non_authoritative_summary: str = (
+        "Research diagnostics only; not financial advice or account-routing authority."
     )
-    matrix_consensus: MatrixConsensus
-    risk_management_override: RiskManagementOverride | None = None
-    order_payload: OrderPayload | None = None
-    system_confidence: dict[str, float]
     data_provenance: dict[str, Any] = Field(default_factory=dict)
 
 
-# ── Request / utility models ─────────────────────────────────
+class LegacyRouteDiagnosticResponse(BaseModel):
+    """Response used by retained legacy/demo routes."""
+
+    route_id: str
+    ticker: str | None = None
+    status: str
+    candidate_status: str
+    diagnostic_signal: str
+    route_decision: str
+    decision_lane: str
+    risk_flag: str
+    review_required: bool = True
+    diagnostic_summary: str
+    diagnostic_plan: list[str] = Field(default_factory=list)
+    data_provenance: dict[str, Any] = Field(default_factory=dict)
+
+
+# --- Request / utility models ---
 
 
 class TrainRequest(BaseModel):
@@ -214,7 +219,7 @@ class HealthResponse(BaseModel):
 
     status: str = "ok"
     version: str = "2.0.0"
-    phase: str = "Phase 2 — Quantitative ML Pipeline"
+    phase: str = "Diagnostic research API"
 
 
 class TrainResponse(BaseModel):
@@ -226,7 +231,7 @@ class TrainResponse(BaseModel):
     data_provenance: dict[str, Any] = Field(default_factory=dict)
 
 
-# ── Chat Endpoint Schemas ─────────────────────────────────────
+# --- Chat endpoint schemas ---
 
 
 class ChatMessage(BaseModel):
@@ -248,4 +253,3 @@ class ChatResponse(BaseModel):
 
     response: str
     context_used: list[str] = Field(default_factory=list)
-

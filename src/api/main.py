@@ -1,15 +1,9 @@
-"""FastAPI application entrypoint for the trading system."""
+"""FastAPI application entrypoint for the diagnostic research API."""
 
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
-import sys
-import os
-
-print(f"DEBUG: ROOT_FILE={__file__}")
-print(f"DEBUG: CWD={os.getcwd()}")
-print(f"DEBUG: SYS_PATH_0={sys.path[0]}")
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,11 +32,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="Algo Trading System - Full Pipeline (Phase 1-5)",
+    title="Diagnostic Research API",
     description=(
-        "End-to-end algorithmic trading system integrating: "
-        "real-time data infrastructure, quantitative ML, qualitative LLM analysis, "
-        "decision matrix, risk management, and paper trading."
+        "Forecast, risk, scenario, and route diagnostics for research workflows. "
+        "The service is non-executing, non-advisory, and not connected to account routing."
     ),
     version="5.0.0",
     lifespan=lifespan,
@@ -64,20 +57,30 @@ app.include_router(v2_router)
 
 @app.get("/", tags=["Root"])
 async def root() -> dict:
-    """Return a compact service overview."""
+    """Return a compact diagnostic service overview."""
     return {
-        "service": "Algo Trading System - Phase 1-5",
+        "service": "Diagnostic Research API",
         "version": "5.0.0",
         "docs": "/docs",
+        "scope": [
+            "forecast_diagnostics",
+            "risk_diagnostics",
+            "scenario_diagnostics",
+            "route_diagnostics",
+        ],
+        "boundaries": [
+            "research_only",
+            "non_executing",
+            "non_advisory",
+            "no_account_routing",
+        ],
         "predict": "/api/v1/predict?ticker=SSI",
         "endpoints": {
             "health": "/api/v1/health",
             "predict": "/api/v1/predict?ticker=SSI",
             "analyze": "/api/v1/analyze?ticker=SSI",
-            "execute": "/api/v1/execute?ticker=SSI",
-            "paper_trade": "/api/v1/paper-trade?ticker=SSI",
-            "ingest_news": "POST /api/v1/ingest-news",
-            "ingest_bctc": "POST /api/v1/ingest-bctc",
+            "chat": "POST /api/v1/chat",
+            "market_depth": "/api/v1/order-book?ticker=SSI",
         },
     }
 

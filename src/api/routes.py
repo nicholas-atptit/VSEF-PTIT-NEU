@@ -8,21 +8,20 @@ Endpoints:
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from src.api.schemas import (
-    FinalExecutionResponse,
     HealthResponse,
+    LegacyRouteDiagnosticResponse,
     PredictionResponse,
     TrainRequest,
     TrainResponse,
     ChatRequest,
     ChatResponse,
-    ChatMessage,
 )
 from src.api.schemas_v2 import TerminalPayload
-from src.engine.matrix import evaluate_decision_matrix
-from src.engine.risk import apply_risk_constraints
 from src.api.tracing import trace_stage
 from src.core.runtime_mode import RuntimeMode, build_data_provenance, ensure_mock_allowed, normalize_runtime_mode
 from src.ml.llm.pipeline import run_qualitative_analysis
@@ -107,6 +106,186 @@ def _load_governed_ohlcv(
             raise
 
 
+_DIAGNOSTIC_SIGNAL_BY_LEGACY_LABEL = {
+    "BUY": "upward_bias",
+    "EXECUTE_BUY": "upward_bias",
+    "STRONG_BUY": "high_upward_bias",
+    "SELL": "downward_bias",
+    "EXECUTE_SELL": "downward_bias",
+    "STRONG_SELL": "high_downward_bias",
+    "RANGE_TRADE": "range_bound",
+    "STAND_ASIDE": "hold_review",
+    "STANDBY": "hold_review",
+    "HOLD": "hold_review",
+    "CANCEL_ORDER": "risk_blocked",
+}
+
+_ROUTE_DECISION_BY_LEGACY_LABEL = {
+    "BUY": "monitor_upward_candidate",
+    "EXECUTE_BUY": "monitor_upward_candidate",
+    "STRONG_BUY": "monitor_high_upward_candidate",
+    "SELL": "monitor_downward_candidate",
+    "EXECUTE_SELL": "monitor_downward_candidate",
+    "STRONG_SELL": "monitor_high_downward_candidate",
+    "RANGE_TRADE": "range_scenario_review",
+    "STAND_ASIDE": "hold_review",
+    "STANDBY": "hold_review",
+    "HOLD": "hold_review",
+    "CANCEL_ORDER": "risk_review_block",
+}
+
+_DECISION_LANE_BY_LEGACY_LABEL = {
+    "BUY": "forecast_risk_review",
+    "EXECUTE_BUY": "forecast_risk_review",
+    "STRONG_BUY": "forecast_risk_review",
+    "SELL": "forecast_risk_review",
+    "EXECUTE_SELL": "forecast_risk_review",
+    "STRONG_SELL": "forecast_risk_review",
+    "RANGE_TRADE": "range_scenario_review",
+    "STAND_ASIDE": "hold_review",
+    "STANDBY": "hold_review",
+    "HOLD": "hold_review",
+    "CANCEL_ORDER": "risk_veto_review",
+}
+
+_AUTHORITY_TEXT_REPLACEMENTS = (
+    ("STRONG_BUY", "high_upward_bias"),
+    ("STRONG_SELL", "high_downward_bias"),
+    ("EXECUTE_BUY", "upward_candidate_review"),
+    ("EXECUTE_SELL", "downward_candidate_review"),
+    ("CANCEL_ORDER", "risk_review_block"),
+    ("BUY", "upward_bias"),
+    ("SELL", "downward_bias"),
+    ("RANGE_TRADE", "range_scenario_review"),
+    ("STAND_ASIDE", "hold_review"),
+    ("STANDBY", "hold_review"),
+    ("recommendation", "diagnostic note"),
+    ("execution", "routing"),
+    ("execute", "route"),
+    ("order_payload", "diagnostic_payload"),
+    ("final_order", "final_diagnostic"),
+    ("broker", "account intermediary"),
+    ("trade now", "review now"),
+)
+
+
+def _legacy_label(value: Any) -> str:
+    if value is None:
+        return "STANDBY"
+    return str(value).upper().replace(" ", "_")
+
+
+def _sanitize_authority_text(value: Any) -> str:
+    text = "" if value is None else str(value)
+    for source, replacement in _AUTHORITY_TEXT_REPLACEMENTS:
+        text = text.replace(source, replacement)
+        text = text.replace(source.lower(), replacement)
+        text = text.replace(source.title(), replacement)
+    return text
+
+
+def _candidate_weight(value: Any) -> float:
+    try:
+        candidate = float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+    if candidate > 1.0:
+        return 0.0
+    return max(candidate, 0.0)
+
+
+def _normalize_terminal_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Translate legacy internal labels into diagnostic public response fields."""
+    normalized = dict(payload)
+
+    fusion = dict(normalized.get("fusion") or {})
+    legacy = _legacy_label(fusion.get("action") or fusion.get("diagnostic_signal"))
+    normalized["fusion"] = {
+        "diagnostic_signal": _DIAGNOSTIC_SIGNAL_BY_LEGACY_LABEL.get(legacy, "review_required"),
+        "route_decision": _ROUTE_DECISION_BY_LEGACY_LABEL.get(legacy, "manual_review"),
+        "decision_lane": _DECISION_LANE_BY_LEGACY_LABEL.get(legacy, "manual_review"),
+        "confidence": float(fusion.get("confidence") or 0.0),
+        "diagnostic_summary": _sanitize_authority_text(
+            fusion.get("diagnostic_summary")
+            or fusion.get("rationale")
+            or "Model diagnostics available for research review."
+        ),
+        "review_required": True,
+        "agent_weights": fusion.get("agent_weights") or {"technical": 0.6, "sentiment": 0.4},
+        "regime_detected": fusion.get("regime_detected", "trend"),
+    }
+
+    risk = dict(normalized.get("risk") or {})
+    constraints = [_sanitize_authority_text(item) for item in risk.get("constraints_hit", [])]
+    risk_flag = "risk_review" if risk.get("veto_flag") or constraints else "diagnostic_clear"
+    normalized["risk"] = {
+        "allocation_candidate_weight": _candidate_weight(
+            risk.get("allocation_candidate_weight", risk.get("position_size_suggestion"))
+        ),
+        "risk_flag": risk_flag,
+        "review_required": True,
+        "constraints_hit": constraints,
+        "risk_budget_consumed": float(risk.get("risk_budget_consumed") or 0.0),
+        "risk_control_note": "Research diagnostic only; human review required.",
+        "model_accuracy_1w": risk.get("model_accuracy_1w"),
+    }
+
+    normalized["candidate_status"] = "diagnostic_only"
+    normalized["review_required"] = True
+    normalized["diagnostic_plan"] = [
+        "Review forecast probabilities and risk flags.",
+        "Validate data provenance before any external workflow.",
+        "Escalate to human governance when risk_flag is not diagnostic_clear.",
+    ]
+    normalized["non_authoritative_summary"] = (
+        "Research diagnostics only; not financial advice or account-routing authority."
+    )
+    return normalized
+
+
+def _terminal_quant_context(payload: dict[str, Any]) -> dict[str, Any]:
+    technical = dict(payload.get("technical") or {})
+    horizons = technical.get("horizons") or [{}]
+    first_horizon = dict(horizons[0] or {})
+    return {
+        "trend_probabilities": first_horizon.get("trend_probs", {}),
+        "expected_range": first_horizon.get("expected_range", {}),
+        "diagnostic_signal": (payload.get("fusion") or {}).get("diagnostic_signal"),
+        "route_decision": (payload.get("fusion") or {}).get("route_decision"),
+    }
+
+
+def _legacy_route_diagnostic(
+    *,
+    route_id: str,
+    ticker: str | None,
+    runtime_mode: RuntimeMode,
+    summary: str,
+) -> dict[str, Any]:
+    return {
+        "route_id": route_id,
+        "ticker": ticker.upper().strip() if ticker else None,
+        "status": "legacy_route_gated",
+        "candidate_status": "legacy_diagnostic_only",
+        "diagnostic_signal": "review_required",
+        "route_decision": "manual_research_review",
+        "decision_lane": "legacy_route_review",
+        "risk_flag": "review_required",
+        "review_required": True,
+        "diagnostic_summary": summary,
+        "diagnostic_plan": [
+            "Use diagnostic forecast and risk endpoints for current research.",
+            "Do not treat this legacy route as account-routing authority.",
+        ],
+        "data_provenance": build_data_provenance(
+            source="legacy_governance_gate",
+            uses_mock_data=False,
+            fallback_triggered=False,
+            runtime_mode=runtime_mode,
+        ),
+    }
+
+
 # ── Prediction Endpoint ──────────────────────────────────────
 
 
@@ -129,14 +308,14 @@ async def predict(
         description="Runtime mode: demo, research, or audit",
     ),
 ) -> dict:
-    """Run the full prediction pipeline for a given ticker.
+    """Run the forecast/risk diagnostic pipeline for a given ticker.
 
     Pipeline:
         1. Load latest OHLCV data
         2. Compute features
         3. Predict with dual models
-        4. Generate trading signal
-        5. Return JSON contract payload
+        4. Generate diagnostic route state
+        5. Return governed JSON contract payload
     """
     ticker = ticker.upper().strip()
     mode = _resolve_runtime_mode(runtime_mode)
@@ -172,7 +351,7 @@ async def predict(
                 if cached.get("llm_analysis"):
                     payload["qualitative_analysis"] = cached["llm_analysis"]
                     
-                return payload
+                return _normalize_terminal_payload(payload)
         except Exception as e:
             logger.debug("kafka_cache_miss", ticker=ticker, error=str(e))
 
@@ -204,7 +383,7 @@ async def predict(
             )
             payload["data_provenance"] = frame_data_provenance(raw_df, runtime_mode=mode)
 
-        return payload
+        return _normalize_terminal_payload(payload)
 
     except FileNotFoundError as e:
         raise HTTPException(
@@ -286,13 +465,13 @@ async def analyze(
         description="Runtime mode: demo, research, or audit",
     ),
 ) -> dict:
-    """Run the FULL Phase 3 pipeline: Quantitative Predict + LLM Qualitative Analysis.
+    """Run the Phase 3 diagnostic pipeline: quantitative forecast plus qualitative context.
 
     Pipeline:
-        1. Call the predict logic (Phase 2) to get quant signals.
+        1. Call the predict logic to get diagnostics.
         2. Fetch RAG context strictly from `allowed_zones` (Targeted Query).
         3. Call the local LLM via Ollama to generate qualitative JSON.
-        4. Merge and return the complete PredictionResponse contract.
+        4. Merge sanitized context into the governed diagnostic contract.
     """
     ticker = ticker.upper().strip()
 
@@ -340,14 +519,15 @@ async def analyze(
         with trace_stage(request, "llm_inference"):
             qualitative_result = await run_qualitative_analysis(
                 ticker=ticker,
-                quant_data=quant_payload["quantitative_signals"],
+                quant_data=_terminal_quant_context(quant_payload),
                 rag_context=rag_context,
                 news_context=news_headlines,
-                user_risk_input=risk_tolerance or 1.0,
             )
 
-        # Step 5: Merge results into the final payload payload
-        quant_payload["qualitative_analysis"] = qualitative_result
+        sentiment = dict(quant_payload.get("sentiment") or {})
+        sentiment["qualitative_status"] = qualitative_result.get("analysis_status", "insufficient_data")
+        sentiment["qualitative_summary"] = _sanitize_authority_text(qualitative_result.get("reasoning", ""))
+        quant_payload["sentiment"] = sentiment
 
         return quant_payload
 
@@ -364,8 +544,8 @@ async def analyze(
 # ── Execution Endpoint (Phase 4: Decision Matrix + Risk Management) ──
 
 
-@router.get("/execute", response_model=FinalExecutionResponse)
-async def execute_trade(
+@router.get("/execute", response_model=LegacyRouteDiagnosticResponse, deprecated=True)
+async def legacy_route_gate(
     request: Request,
     ticker: str = Query(..., description="Stock ticker symbol (e.g., SSI, HPG)"),
     risk_tolerance: float | None = Query(
@@ -387,81 +567,17 @@ async def execute_trade(
         description="Runtime mode: demo, research, or audit",
     ),
 ) -> dict:
-    """Run the FULL Phase 4 pipeline.
-
-    Pipeline:
-        1. Step 1-3 from `/analyze`: Predict Quant -> Fetch RAG -> Analyze Qual (LLM).
-        2. Matrix Match: Evaluates `BUY` + `POSITIVE` via `evaluate_decision_matrix`.
-        3. Risk Hard-Constraints: Evaluates -7% Stop loss cap & Anti FOMO sizing.
-        4. Produce Final Order Payload `FinalExecutionResponse`.
-    """
-    import datetime as dt
-    import uuid
-    from src.api.schemas import FinalExecutionResponse, QualitativeAnalysis, QuantitativeSignals
-
-    # 1. Fetch data from Phase 2 + Phase 3 pipeline
-    analysis_payload = await analyze(
-        request=request,
+    """Return a diagnostic gate response for a retained legacy route."""
+    mode = _resolve_runtime_mode(runtime_mode)
+    return _legacy_route_diagnostic(
+        route_id="v1_legacy_high_risk_route",
         ticker=ticker,
-        risk_tolerance=risk_tolerance,
-        allowed_zones=allowed_zones,
-        use_mock=use_mock,
-        runtime_mode=runtime_mode,
+        runtime_mode=mode,
+        summary=(
+            "Retained legacy route is gated for research diagnostics only and returns "
+            "no account-routing payload."
+        ),
     )
-
-    # Convert dicts back to Pydantic objects for type-safe passing
-    quant = QuantitativeSignals(**analysis_payload["quantitative_signals"])
-    sys_params = analysis_payload["system_parameters"]
-    qual = None
-    if analysis_payload.get("qualitative_analysis"):
-        qual = QualitativeAnalysis(**analysis_payload["qualitative_analysis"])
-
-    with trace_stage(request, "decision_matrix"):
-        decision_action, matrix_consensus = evaluate_decision_matrix(quant, qual)
-
-    # If matrix says CANCEL or STANDBY, we don't apply order-specific risk constraints
-    order_payload = None
-    risk_override = None
-
-    if decision_action in ("EXECUTE_BUY", "EXECUTE_SELL"):
-        # We need simulated Real-time price and ATR for Module 2.
-        # Since Phase 1/2 gives us EOD (End-Of-Day) data, we mock current realtime price
-        # as close to the ML's recommended max_entry for testing Anti-FOMO logic.
-        real_time_price = max(quant.action_plan.entry_zone) * 1.01  # +1% padding
-
-        # We extract the ATR from the feature engineering module inside Phase 2 payload conceptually.
-        # For this demonstration, we mock ATR directly.
-        mock_atr_14 = real_time_price * 0.05  # Assume 5% daily volatility
-        
-        with trace_stage(request, "risk_engine"):
-            order_payload, risk_override = apply_risk_constraints(
-                ticker=ticker,
-                action_plan=quant.action_plan,
-                real_time_price=real_time_price,
-                atr_14=mock_atr_14,
-                applied_risk_tolerance=sys_params["max_risk_tolerance"],
-            )
-        
-        # Anti-FOMO trigger
-        if risk_override.fomo_check_passed is False:
-            decision_action = "CANCEL_ORDER"
-
-    # 4. Module 3: Final Execution Format
-    dt_now = dt.datetime.now(dt.UTC).strftime("%Y%m%d")
-    return {
-        "order_id": f"ORD-{dt_now}-{ticker.upper()}-{str(uuid.uuid4())[:8]}",
-        "ticker": ticker.upper(),
-        "execution_decision": decision_action,
-        "matrix_consensus": matrix_consensus.model_dump(),
-        "risk_management_override": risk_override.model_dump() if risk_override else None,
-        "order_payload": order_payload.model_dump() if order_payload else None,
-        "system_confidence": {
-            "stock_data_rate": sys_params["confidence_metrics"]["stock_quantitative_data"],
-            "context_data_rate": sys_params["confidence_metrics"]["general_market_context"],
-            "applied_risk_cap": sys_params["max_risk_tolerance"],
-        },
-        "data_provenance": analysis_payload.get("data_provenance", {}),
-    }
 
 
 # ── Health Endpoint ───────────────────────────────────────────
@@ -473,7 +589,7 @@ async def health() -> dict:
     return {
         "status": "ok",
         "version": "5.0.0",
-        "phase": "Phase 1-5 — Full Algo Trading System",
+        "phase": "Diagnostic research API",
     }
 
 
@@ -631,12 +747,12 @@ async def ticker_info(ticker: str = Query(...)) -> dict:
 
 @router.get("/order-book")
 async def order_book(ticker: str = Query(...)) -> dict:
-    """Fetch Bid/Ask depth (Mocked if API fails)."""
+    """Fetch market-depth bid/ask levels."""
     import random
 
     ticker = ticker.upper().strip()
     try:
-        # Mocking Order Book for now as price_depth is unstable
+        # Mocking market depth for now as provider depth data is unstable.
         last_price = 30.0  # Base price for mock
 
         bids = []
@@ -653,6 +769,7 @@ async def order_book(ticker: str = Query(...)) -> dict:
 
         return {
             "ticker": ticker,
+            "data_role": "market_depth_only",
             "bids": sorted(bids, key=lambda x: x["price"], reverse=True),
             "asks": sorted(asks, key=lambda x: x["price"]),
             "timestamp": "GMT+7 Hanoi"
@@ -766,7 +883,7 @@ async def ingest_bctc(
 # ── Paper Trading Endpoint ───────────────────────────────────
 
 
-@router.get("/paper-trade")
+@router.get("/paper-trade", response_model=LegacyRouteDiagnosticResponse, deprecated=True)
 async def paper_trade(
     request: Request,
     ticker: str = Query(..., description="Ticker to simulate"),
@@ -776,21 +893,17 @@ async def paper_trade(
         description="Runtime mode: demo, research, or audit",
     ),
 ) -> dict:
-    """Run one cycle of the Paper Trading Engine.
-    
-    Executes: Fetch Price → ML → RAG → LLM → Matrix → Risk → Virtual Order
-    Returns full latency profile and portfolio status.
-    """
-    from src.ml.backtest.paper import PaperTradingEngine
-    
-    engine = PaperTradingEngine()
-    with trace_stage(request, "paper_trading_cycle"):
-        result = await engine.run_single_cycle(
-            ticker=ticker.upper(),
-            use_mock=use_mock,
-            runtime_mode=runtime_mode,
-        )
-    return result
+    """Return a diagnostic gate response for a retained demo route."""
+    mode = _resolve_runtime_mode(runtime_mode)
+    return _legacy_route_diagnostic(
+        route_id="v1_legacy_demo_route",
+        ticker=ticker,
+        runtime_mode=mode,
+        summary=(
+            "Retained demo route is gated for research diagnostics only and returns "
+            "no account-routing payload."
+        ),
+    )
 
 
 # ── Conversational AI Chat Endpoint ──────────────────────────
@@ -806,13 +919,7 @@ async def chat_interaction(
         description="Runtime mode: demo, research, or audit",
     ),
 ) -> dict:
-    """Conversational endpoint for the Chatbot UI.
-    
-    Acts as a wrapper around the Ollama LLM. If a `ticker` is provided,
-    it automatically runs the ML prediction pipeline and fetches RAG/News
-    context, injecting these into the LLM's system prompt so the bot
-    can answer questions about the stock based on real-time data.
-    """
+    """Conversational endpoint for diagnostic research questions."""
     from src.ml.llm.client import get_llm_client
     from config.settings import get_settings
     from src.api.schemas import ChatResponse, ChatRequest
@@ -829,7 +936,7 @@ async def chat_interaction(
     if ticker:
         context_used.append(f"Focus Ticker: {ticker}")
         try:
-            # 1a. Get ML Quantitative Data
+            # 1a. Get forecast/risk diagnostics.
             with trace_stage(request, "chat_quant_data"):
                  quant_data = await predict(
                      request=request, 
@@ -837,8 +944,15 @@ async def chat_interaction(
                      use_mock=use_mock,
                      runtime_mode=runtime_mode,
                  )
-                 context_used.append("ML Quantitative Signals (LightGBM)")
-                 quant_json = json.dumps(quant_data["quantitative_signals"], ensure_ascii=False)
+                 context_used.append("Forecast/Risk Diagnostics")
+                 diagnostic_context = {
+                     "technical": quant_data.get("technical"),
+                     "fusion": quant_data.get("fusion"),
+                     "risk": quant_data.get("risk"),
+                     "candidate_status": quant_data.get("candidate_status"),
+                     "data_provenance": quant_data.get("data_provenance"),
+                 }
+                 quant_json = json.dumps(diagnostic_context, ensure_ascii=False)
                  
             # 1b. Get RAG Context (BCTC / Industry Reports)
             with trace_stage(request, "chat_rag_data"):
@@ -891,6 +1005,12 @@ async def chat_interaction(
         "Tuyệt đối không bịa đặt số liệu tài chính nếu không có trong ngữ cảnh. "
     )
     
+    system_instruction += (
+        "Governance boundary: research diagnostics only; no financial advice; "
+        "no BUY/SELL recommendation authority; no trade execution instructions; "
+        "no broker authority; no order authority. "
+    )
+
     if financial_context_str:
         system_instruction += f"\n\n{financial_context_str}"
 
@@ -904,7 +1024,7 @@ async def chat_interaction(
     try:
         with trace_stage(request, "chat_llm_inference"):
             response = await client.chat.completions.create(
-                model=settings.llm_model_name,
+                model=getattr(settings, "llm_model_name", getattr(settings, "ollama_model_name", "qwen3:8b")),
                 messages=messages,
                 temperature=0.7, # Higher temp for chat vs strict JSON analysis
                 timeout=45.0,    # Chat can take longer
