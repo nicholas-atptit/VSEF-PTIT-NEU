@@ -10,6 +10,8 @@ from __future__ import annotations
 import importlib
 import os
 import time
+import warnings
+from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Callable, Iterable, Optional
 
@@ -66,19 +68,47 @@ _VNSTOCK_LAZY_EXPORTS = {
     "Macro": ("vnstock_data.api.macro", "Macro"),
     "TopStock": ("vnstock_data.api.insight", "TopStock"),
 }
+_VNSTOCK_SPONSOR_WARNING_PATTERN = r"\s*\*+\s*\[vnstock\].*Sponsor `vnstock_data`.*"
+
+
+@dataclass(frozen=True)
+class ProviderCallAttempt:
+    func: Callable[[], Any]
+    call_type: str
+    symbol: str | None = None
+    frequency: str | None = None
+    source: str | None = None
+
+
+class _NoopProviderRateLimiter:
+    def wait(self) -> float:
+        return 0.0
 
 
 def _load_vnstock_namespace() -> dict[str, Any]:
     try:
-        module = importlib.import_module("vnstock_data")
-    except ImportError:
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=_VNSTOCK_SPONSOR_WARNING_PATTERN,
+                category=UserWarning,
+            )
+            module = importlib.import_module("vnstock_data")
+    except (ImportError, SystemExit) as exc:
+        logger.warning("vnstock_data_namespace_unavailable", error=str(exc))
         return {}
     namespace = {name: getattr(module, name, None) for name in _VNSTOCK_EXPORTS}
     for export_name, (module_name, attr_name) in _VNSTOCK_LAZY_EXPORTS.items():
         if namespace.get(export_name) is not None:
             continue
         try:
-            lazy_module = importlib.import_module(module_name)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=_VNSTOCK_SPONSOR_WARNING_PATTERN,
+                    category=UserWarning,
+                )
+                lazy_module = importlib.import_module(module_name)
             namespace[export_name] = getattr(lazy_module, attr_name, None)
         except Exception:
             namespace.setdefault(export_name, None)
@@ -92,9 +122,10 @@ class VnstockAdapter:
     in environments where ``vnstock_data`` is not installed.
     """
 
-    def __init__(self, symbol_list: Optional[list[str]] = None) -> None:
+    def __init__(self, symbol_list: Optional[list[str]] = None, rate_limiter: Any | None = None) -> None:
         self.settings = get_settings()
         self.symbols = symbol_list or []
+        self._rate_limiter = rate_limiter if rate_limiter is not None else _NoopProviderRateLimiter()
         self._vnstock_namespace: dict[str, Any] | None = None
         self._setup_env()
         logger.info(
@@ -112,7 +143,11 @@ class VnstockAdapter:
 
     def _namespace(self) -> dict[str, Any]:
         if self._vnstock_namespace is None:
-            self._vnstock_namespace = _load_vnstock_namespace()
+            self._vnstock_namespace = self._provider_call(
+                _load_vnstock_namespace,
+                call_type="vnstock_data.import",
+                source="vnstock_data",
+            )
         return self._vnstock_namespace
 
     def _get_class(self, name: str) -> Any | None:
@@ -210,6 +245,62 @@ class VnstockAdapter:
             return pd.DataFrame(result)
         return pd.DataFrame()
 
+    @staticmethod
+    def _result_row_count(result: Any) -> int | None:
+        if isinstance(result, (pd.DataFrame, pd.Series)):
+            return int(len(result))
+        if isinstance(result, (list, tuple)):
+            return int(len(result))
+        return None
+
+    def _wait_for_provider(self) -> float:
+        wait = getattr(self._rate_limiter, "wait", None)
+        if not callable(wait):
+            return 0.0
+        return float(wait() or 0.0)
+
+    def _provider_call(
+        self,
+        func: Callable[[], Any],
+        *,
+        call_type: str,
+        symbol: str | None = None,
+        frequency: str | None = None,
+        source: str | None = None,
+    ) -> Any:
+        throttled_seconds = self._wait_for_provider()
+        log_context: dict[str, Any] = {
+            "call_type": call_type,
+            "throttled_seconds": float(throttled_seconds),
+        }
+        if symbol is not None:
+            log_context["symbol"] = symbol
+        if frequency is not None:
+            log_context["frequency"] = frequency
+        if source is not None:
+            log_context["source"] = source
+
+        logger.info("provider_call_started", **log_context)
+        start_ns = time.perf_counter_ns()
+        try:
+            result = func()
+            elapsed_ms = (time.perf_counter_ns() - start_ns) / 1e6
+            rows = self._result_row_count(result)
+            completed_context = {**log_context, "elapsed_ms": f"{elapsed_ms:.2f}"}
+            if rows is not None:
+                completed_context["rows"] = rows
+            logger.info("provider_call_completed", **completed_context)
+            return result
+        except Exception as exc:
+            elapsed_ms = (time.perf_counter_ns() - start_ns) / 1e6
+            logger.warning(
+                "provider_call_failed",
+                **log_context,
+                elapsed_ms=f"{elapsed_ms:.2f}",
+                error=str(exc),
+            )
+            raise
+
     def _standardize_history_frame(
         self,
         frame: pd.DataFrame,
@@ -265,16 +356,38 @@ class VnstockAdapter:
             source_name=source_name,
         )
 
-    @staticmethod
     def _call_first_success(
-        attempts: Iterable[Callable[[], Any]],
+        self,
+        attempts: Iterable[Callable[[], Any] | ProviderCallAttempt],
         *,
         source_name: str,
+        call_type: str | None = None,
+        symbol: str | None = None,
+        frequency: str | None = None,
+        source: str | None = None,
     ) -> pd.DataFrame:
         last_error: Exception | None = None
         for attempt in attempts:
+            if isinstance(attempt, ProviderCallAttempt):
+                attempt_func = attempt.func
+                attempt_call_type = attempt.call_type
+                attempt_symbol = attempt.symbol
+                attempt_frequency = attempt.frequency
+                attempt_source = attempt.source
+            else:
+                attempt_func = attempt
+                attempt_call_type = call_type or source_name
+                attempt_symbol = symbol
+                attempt_frequency = frequency
+                attempt_source = source
             try:
-                result = attempt()
+                result = self._provider_call(
+                    attempt_func,
+                    call_type=attempt_call_type,
+                    symbol=attempt_symbol,
+                    frequency=attempt_frequency,
+                    source=attempt_source,
+                )
                 frame = VnstockAdapter._as_dataframe(result)
                 if frame is not None and not frame.empty:
                     return frame
@@ -311,7 +424,7 @@ class VnstockAdapter:
                         source=source,
                     )
                     if frame.empty:
-                        raise ValueError(f"Empty OHLCV response from vnstock source={source}")
+                        raise ValueError(f"Empty OHLCV response from vnstock_data source={source}")
                     return self._standardize_history_frame(
                         frame,
                         symbol=ticker,
@@ -348,22 +461,34 @@ class VnstockAdapter:
     ) -> pd.DataFrame:
         Quote = self._get_class("Quote")
         QuoteHistory = self._get_class("QuoteHistory")
-        attempts: list[Callable[[], Any]] = []
+        attempts: list[Callable[[], Any] | ProviderCallAttempt] = []
         if Quote is not None:
             attempts.append(
-                lambda: Quote(source=source, symbol=symbol).history(
-                    start=start_date,
-                    end=end_date,
-                    interval=interval,
-                    get_all=True,
+                ProviderCallAttempt(
+                    lambda: Quote(source=source, symbol=symbol).history(
+                        start=start_date,
+                        end=end_date,
+                        interval=interval,
+                        get_all=True,
+                    ),
+                    call_type="Quote.history",
+                    symbol=symbol,
+                    frequency=interval,
+                    source=source,
                 )
             )
         if QuoteHistory is not None:
             attempts.append(
-                lambda: QuoteHistory(source=source, symbol=symbol).history(
-                    start_date=start_date,
-                    end_date=end_date,
-                    timeframe=interval,
+                ProviderCallAttempt(
+                    lambda: QuoteHistory(source=source, symbol=symbol).history(
+                        start_date=start_date,
+                        end_date=end_date,
+                        timeframe=interval,
+                    ),
+                    call_type="QuoteHistory.history",
+                    symbol=symbol,
+                    frequency=interval,
+                    source=source,
                 )
             )
         return self._call_first_success(attempts, source_name=f"Quote[{source}].history")
@@ -393,8 +518,18 @@ class VnstockAdapter:
         ticker = symbol.upper().strip()
         frame = self._call_first_success(
             [
-                lambda: Company(symbol=ticker, source="KBS").overview(),
-                lambda: Company(symbol=ticker, source="VCI").overview(),
+                ProviderCallAttempt(
+                    lambda: Company(symbol=ticker, source="KBS").overview(),
+                    call_type="Company.overview",
+                    symbol=ticker,
+                    source="KBS",
+                ),
+                ProviderCallAttempt(
+                    lambda: Company(symbol=ticker, source="VCI").overview(),
+                    call_type="Company.overview",
+                    symbol=ticker,
+                    source="VCI",
+                ),
             ],
             source_name="Company.overview",
         )
@@ -424,11 +559,27 @@ class VnstockAdapter:
 
     def get_financial_ratios(self, symbol: str) -> pd.DataFrame:
         ticker = symbol.upper().strip()
-        attempts: list[Callable[[], Any]] = []
+        attempts: list[Callable[[], Any] | ProviderCallAttempt] = []
         Finance = self._get_class("Finance")
         if Finance is not None:
-            attempts.append(lambda: Finance(source="VCI", symbol=ticker).ratio(period="quarter", get_all=False))
-            attempts.append(lambda: Finance(source="KBS", symbol=ticker).ratio(period="quarter", get_all=False))
+            attempts.append(
+                ProviderCallAttempt(
+                    lambda: Finance(source="VCI", symbol=ticker).ratio(period="quarter", get_all=False),
+                    call_type="Finance.ratio",
+                    symbol=ticker,
+                    frequency="quarter",
+                    source="VCI",
+                )
+            )
+            attempts.append(
+                ProviderCallAttempt(
+                    lambda: Finance(source="KBS", symbol=ticker).ratio(period="quarter", get_all=False),
+                    call_type="Finance.ratio",
+                    symbol=ticker,
+                    frequency="quarter",
+                    source="KBS",
+                )
+            )
 
         if not attempts:
             return self._empty_frame(
@@ -459,12 +610,26 @@ class VnstockAdapter:
 
     def get_news(self, ticker: str, count: int = 10) -> pd.DataFrame:
         symbol = ticker.upper().strip()
-        attempts: list[Callable[[], Any]] = []
+        attempts: list[Callable[[], Any] | ProviderCallAttempt] = []
         Company = self._get_class("Company")
 
         if Company is not None:
-            attempts.append(lambda: Company(symbol=symbol, source="KBS").news(page=1, page_size=max(int(count), 1)))
-            attempts.append(lambda: Company(symbol=symbol, source="VCI").news(page=1, page_size=max(int(count), 1)))
+            attempts.append(
+                ProviderCallAttempt(
+                    lambda: Company(symbol=symbol, source="KBS").news(page=1, page_size=max(int(count), 1)),
+                    call_type="Company.news",
+                    symbol=symbol,
+                    source="KBS",
+                )
+            )
+            attempts.append(
+                ProviderCallAttempt(
+                    lambda: Company(symbol=symbol, source="VCI").news(page=1, page_size=max(int(count), 1)),
+                    call_type="Company.news",
+                    symbol=symbol,
+                    source="VCI",
+                )
+            )
 
         if not attempts:
             return self._empty_frame(
@@ -525,7 +690,12 @@ class VnstockAdapter:
 
         for source in ("KBS", "VCI"):
             try:
-                company = Company(symbol=ticker, source=source)
+                company = self._provider_call(
+                    lambda source=source: Company(symbol=ticker, source=source),
+                    call_type="Company.init",
+                    symbol=ticker,
+                    source=source,
+                )
             except Exception as exc:
                 audit["live_probe_error"] = str(exc)
                 continue
@@ -570,7 +740,14 @@ class VnstockAdapter:
 
         ticker = symbol.upper().strip()
         frame = self._call_first_success(
-            [lambda: Trading(source="KBS", symbol=ticker).trade_history(page=1, page_size=1000)],
+            [
+                ProviderCallAttempt(
+                    lambda: Trading(source="KBS", symbol=ticker).trade_history(page=1, page_size=1000),
+                    call_type="Trading.trade_history",
+                    symbol=ticker,
+                    source="KBS",
+                )
+            ],
             source_name="Trading.trade_history",
         )
         if frame.empty:
@@ -612,17 +789,29 @@ class VnstockAdapter:
 
         ticker = symbol.upper().strip()
         attempts = [
-            lambda: Trading(source="VCI", symbol=ticker).foreign_trade(
-                resolution="1D",
-                start=start_date,
-                end=end_date,
-                limit=5000,
+            ProviderCallAttempt(
+                lambda: Trading(source="VCI", symbol=ticker).foreign_trade(
+                    resolution="1D",
+                    start=start_date,
+                    end=end_date,
+                    limit=5000,
+                ),
+                call_type="Trading.foreign_trade",
+                symbol=ticker,
+                frequency="1D",
+                source="VCI",
             ),
-            lambda: Trading(source="CAFEF", symbol=ticker).foreign_trade(
-                start=start_date,
-                end=end_date,
-                page=1,
-                limit=5000,
+            ProviderCallAttempt(
+                lambda: Trading(source="CAFEF", symbol=ticker).foreign_trade(
+                    start=start_date,
+                    end=end_date,
+                    page=1,
+                    limit=5000,
+                ),
+                call_type="Trading.foreign_trade",
+                symbol=ticker,
+                frequency="1D",
+                source="CAFEF",
             ),
         ]
         frame = self._call_first_success(attempts, source_name="Trading.foreign_trade")
@@ -697,7 +886,13 @@ class VnstockAdapter:
                 source_name=f"Market.{metric_name}",
             )
         attempts = [
-            lambda: getattr(Market(source="vnd"), metric_name)(duration=duration),
+            ProviderCallAttempt(
+                lambda: getattr(Market(source="vnd"), metric_name)(duration=duration),
+                call_type=f"Market.{metric_name}",
+                symbol=index.upper(),
+                frequency=duration,
+                source="vnd",
+            ),
         ]
         frame = self._call_first_success(attempts, source_name=f"Market.{metric_name}")
         if frame.empty:
@@ -715,7 +910,12 @@ class VnstockAdapter:
         if Macro is None:
             return self._empty_frame("Macro class unavailable", source_name="Macro.exchange_rate")
         attempts = [
-            lambda: Macro(source="mbk").exchange_rate(start=start_date, end=end_date, period="day"),
+            ProviderCallAttempt(
+                lambda: Macro(source="mbk").exchange_rate(start=start_date, end=end_date, period="day"),
+                call_type="Macro.exchange_rate",
+                frequency="day",
+                source="mbk",
+            ),
         ]
         frame = self._call_first_success(attempts, source_name="Macro.exchange_rate")
         if frame.empty:
@@ -735,11 +935,16 @@ class VnstockAdapter:
         if Macro is None:
             return self._empty_frame("Macro class unavailable", source_name="Macro.interest_rate")
         attempts = [
-            lambda: Macro(source="mbk").interest_rate(
-                start=start_date,
-                end=end_date,
-                period="day",
-                format="long",
+            ProviderCallAttempt(
+                lambda: Macro(source="mbk").interest_rate(
+                    start=start_date,
+                    end=end_date,
+                    period="day",
+                    format="long",
+                ),
+                call_type="Macro.interest_rate",
+                frequency="day",
+                source="mbk",
             ),
         ]
         frame = self._call_first_success(attempts, source_name="Macro.interest_rate")
@@ -757,12 +962,20 @@ class VnstockAdapter:
 
     def get_commodity_gold(self, start_date: str, end_date: str) -> pd.DataFrame:
         CommodityPrice = self._get_class("CommodityPrice")
-        attempts: list[Callable[[], Any]] = []
+        attempts: list[Callable[[], Any] | ProviderCallAttempt] = []
         if CommodityPrice is not None:
             attempts.extend(
                 [
-                    lambda: CommodityPrice(source="spl").gold_vn(start=start_date, end=end_date),
-                    lambda: CommodityPrice(source="spl").gold_global(start=start_date, end=end_date),
+                    ProviderCallAttempt(
+                        lambda: CommodityPrice(source="spl").gold_vn(start=start_date, end=end_date),
+                        call_type="CommodityPrice.gold_vn",
+                        source="spl",
+                    ),
+                    ProviderCallAttempt(
+                        lambda: CommodityPrice(source="spl").gold_global(start=start_date, end=end_date),
+                        call_type="CommodityPrice.gold_global",
+                        source="spl",
+                    ),
                 ]
             )
         if not attempts:
@@ -782,9 +995,15 @@ class VnstockAdapter:
 
     def get_commodity_oil(self, start_date: str, end_date: str) -> pd.DataFrame:
         CommodityPrice = self._get_class("CommodityPrice")
-        attempts: list[Callable[[], Any]] = []
+        attempts: list[Callable[[], Any] | ProviderCallAttempt] = []
         if CommodityPrice is not None:
-            attempts.append(lambda: CommodityPrice(source="spl").oil_crude(start=start_date, end=end_date))
+            attempts.append(
+                ProviderCallAttempt(
+                    lambda: CommodityPrice(source="spl").oil_crude(start=start_date, end=end_date),
+                    call_type="CommodityPrice.oil_crude",
+                    source="spl",
+                )
+            )
         if not attempts:
             return self._empty_frame("Commodity interface unavailable", source_name="CommodityPrice.oil_crude")
         frame = self._call_first_success(attempts, source_name="CommodityPrice.oil_crude")
@@ -806,8 +1025,16 @@ class VnstockAdapter:
             return self._empty_frame("Listing class unavailable", source_name="Listing.symbols_by_industries")
         frame = self._call_first_success(
             [
-                lambda: Listing(source="KBS").symbols_by_industries(),
-                lambda: Listing(source="VCI").symbols_by_industries(),
+                ProviderCallAttempt(
+                    lambda: Listing(source="KBS").symbols_by_industries(),
+                    call_type="Listing.symbols_by_industries",
+                    source="KBS",
+                ),
+                ProviderCallAttempt(
+                    lambda: Listing(source="VCI").symbols_by_industries(),
+                    call_type="Listing.symbols_by_industries",
+                    source="VCI",
+                ),
             ],
             source_name="Listing.symbols_by_industries",
         )
@@ -833,9 +1060,21 @@ class VnstockAdapter:
             return self._empty_frame("Listing class unavailable", source_name="Listing.all_symbols")
         frame = self._call_first_success(
             [
-                lambda: Listing(source="VCI").all_symbols(),
-                lambda: Listing(source="KBS").all_symbols(),
-                lambda: Listing(source="VND").all_symbols(),
+                ProviderCallAttempt(
+                    lambda: Listing(source="VCI").all_symbols(),
+                    call_type="Listing.all_symbols",
+                    source="VCI",
+                ),
+                ProviderCallAttempt(
+                    lambda: Listing(source="KBS").all_symbols(),
+                    call_type="Listing.all_symbols",
+                    source="KBS",
+                ),
+                ProviderCallAttempt(
+                    lambda: Listing(source="VND").all_symbols(),
+                    call_type="Listing.all_symbols",
+                    source="VND",
+                ),
             ],
             source_name="Listing.all_symbols",
         )
@@ -862,8 +1101,18 @@ class VnstockAdapter:
         if Listing is not None:
             frame = self._call_first_success(
                 [
-                    lambda: Listing(source="VCI").symbols_by_group("VN100"),
-                    lambda: Listing(source="KBS").symbols_by_group("VN100"),
+                    ProviderCallAttempt(
+                        lambda: Listing(source="VCI").symbols_by_group("VN100"),
+                        call_type="Listing.symbols_by_group",
+                        symbol="VN100",
+                        source="VCI",
+                    ),
+                    ProviderCallAttempt(
+                        lambda: Listing(source="KBS").symbols_by_group("VN100"),
+                        call_type="Listing.symbols_by_group",
+                        symbol="VN100",
+                        source="KBS",
+                    ),
                 ],
                 source_name="Listing.symbols_by_group",
             )

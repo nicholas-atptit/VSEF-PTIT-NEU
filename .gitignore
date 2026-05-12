@@ -1,5 +1,6 @@
 # ── Python ──
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 *.egg-info/
@@ -34,6 +35,7 @@ data/sector_proxies.csv
 data/fundamentals_latest.csv
 data/market_proxy.csv
 data/latest_predictions.json
+data/market_cache/
 
 # ── OS ──
 Thumbs.db
