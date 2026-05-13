@@ -20,6 +20,10 @@ This index organizes the final-review submission and defense materials for the V
 | Presentation outline | `reports/NCKH_PRESENTATION_OUTLINE.md` | 7-10 minute slide plan. |
 | Questions and answers | `reports/NCKH_QUESTIONS_AND_ANSWERS.md` | Committee Q&A preparation with safe wording. |
 | Final submission notes | `reports/NCKH_FINAL_SUBMISSION_NOTES.md` | Readiness, partial evidence, prohibited claims, and final evidence gaps. |
+| V2 evidence addendum | `reports/NCKH_EVIDENCE_UPGRADE_ADDENDUM_V2.md` | Evidence-upgrade addendum after gap-closure diagnostics; not a full-paper rewrite. |
+| V2 update plan | `reports/NCKH_FULL_PAPER_V2_UPDATE_PLAN.md` | Exact instructions for later table, figure, Chapter 4, appendix, abstract, and conclusion updates. |
+| V2 claim register | `reports/NCKH_RESULTS_CLAIM_REGISTER_V2.md` | Updated claim boundaries for derived diagnostics. |
+| Supervisor gap-closure brief | `reports/NCKH_SUPERVISOR_BRIEF_AFTER_GAP_CLOSURE.md` | One-page supervisor-facing explanation and cautious wording. |
 
 ## Artifact Map
 
@@ -42,6 +46,9 @@ This index organizes the final-review submission and defense materials for the V
 | `reports/generated/vn100_confidence_coverage_review.md` | Coverage-floor review | partial |
 | `reports/generated/vn100_cost_slippage_readiness_review.md` | Cost/slippage readiness gap | ready |
 | `reports/generated/vn100_ticker_concentration_summary.md` | Ticker concentration diagnostics | ready |
+| `reports/generated/evidence_gap_closure/` | Evidence-upgrade diagnostics for cache coverage, v2 confidence sweep, ex-ante regime proxy, multi-window availability, and cost/slippage proxy | partial |
+| `reports/NCKH_EVIDENCE_UPGRADE_ADDENDUM_V2.md` | Paper V2 evidence-upgrade addendum | ready |
+| `reports/NCKH_FULL_PAPER_V2_UPDATE_PLAN.md` | Paper V2 update instructions | ready |
 
 ## Recommended Submission Order
 
@@ -56,6 +63,10 @@ This index organizes the final-review submission and defense materials for the V
 9. `reports/NCKH_PRESENTATION_OUTLINE.md`
 10. `reports/NCKH_QUESTIONS_AND_ANSWERS.md`
 11. `reports/NCKH_FINAL_SUBMISSION_NOTES.md`
+12. `reports/NCKH_EVIDENCE_UPGRADE_ADDENDUM_V2.md`
+13. `reports/NCKH_FULL_PAPER_V2_UPDATE_PLAN.md`
+14. `reports/NCKH_RESULTS_CLAIM_REGISTER_V2.md`
+15. `reports/NCKH_SUPERVISOR_BRIEF_AFTER_GAP_CLOSURE.md`
 
 ## Final Claim Boundary
 

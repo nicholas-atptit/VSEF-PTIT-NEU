@@ -163,3 +163,14 @@ This v2/evidence-upgrade section records the follow-up experiment-expansion arti
 | `reports/NCKH_POST_GAP_CLOSURE_PAPER_UPDATE_NOTES.md` | Table, figure, abstract, and conclusion update guidance after the evidence upgrade. |
 
 Evidence-upgrade conclusion: cache coverage and multi-window validation remain open gaps; confidence sweep breadth, ex-ante regime diagnostics, and cost/slippage diagnostic artifacts are partially closed. The global benchmark and trading-readiness claim boundaries do not change.
+
+## Paper V2 Addendum Planning Artifacts
+
+This paper-addendum phase converts the evidence-gap-closure outputs into manuscript update guidance without rewriting the full paper.
+
+| Artifact | Use |
+|---|---|
+| `reports/NCKH_EVIDENCE_UPGRADE_ADDENDUM_V2.md` | Supervisor-readable addendum summarizing new evidence, remaining gaps, and Chapter 4 implications. |
+| `reports/NCKH_FULL_PAPER_V2_UPDATE_PLAN.md` | Exact table, figure, Chapter 4, appendix, abstract, and conclusion update instructions for a later V2 manuscript. |
+| `reports/NCKH_RESULTS_CLAIM_REGISTER_V2.md` | Updated claim governance separating unchanged safe claims, new derived-diagnostic claims, upgraded conditional claims, and still-unsafe claims. |
+| `reports/NCKH_SUPERVISOR_BRIEF_AFTER_GAP_CLOSURE.md` | One-page supervisor-facing explanation of what improved, what did not, and recommended cautious wording. |
