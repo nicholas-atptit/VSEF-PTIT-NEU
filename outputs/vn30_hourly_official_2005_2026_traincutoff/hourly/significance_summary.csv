@@ -1,1 +1,0 @@
-frequency,model,horizon,n_obs,accuracy,null_accuracy,binomial_p_value,bootstrap_ci_low,bootstrap_ci_high,significant_at_5pct,significant_at_10pct
