@@ -174,3 +174,13 @@ This paper-addendum phase converts the evidence-gap-closure outputs into manuscr
 | `reports/NCKH_FULL_PAPER_V2_UPDATE_PLAN.md` | Exact table, figure, Chapter 4, appendix, abstract, and conclusion update instructions for a later V2 manuscript. |
 | `reports/NCKH_RESULTS_CLAIM_REGISTER_V2.md` | Updated claim governance separating unchanged safe claims, new derived-diagnostic claims, upgraded conditional claims, and still-unsafe claims. |
 | `reports/NCKH_SUPERVISOR_BRIEF_AFTER_GAP_CLOSURE.md` | One-page supervisor-facing explanation of what improved, what did not, and recommended cautious wording. |
+
+## Full Paper V2 Manuscript Artifacts
+
+This full-manuscript phase rewrites the paper into a complete V2 draft using existing evidence-upgrade outputs. It does not add experiments, model logic, runtime behavior, or official benchmark artifacts.
+
+| Artifact | Use |
+|---|---|
+| `reports/NCKH_FULL_PAPER_DRAFT_VN100_V2_WITH_FIGURES.md` | Complete V2 manuscript with updated evidence, embedded tables, embedded PNG figures, references, and appendices. |
+| `reports/NCKH_FULL_PAPER_V2_TABLE_FIGURE_MAP.md` | Table/figure insertion map with source artifacts, claim support, status, and limitations. |
+| `reports/NCKH_FULL_PAPER_V2_CHANGELOG.md` | Change summary from clean V1, new V2 evidence, strengthened claims, unchanged boundaries, unsafe claims, and remaining gaps. |

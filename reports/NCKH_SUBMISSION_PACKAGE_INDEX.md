@@ -24,6 +24,9 @@ This index organizes the final-review submission and defense materials for the V
 | V2 update plan | `reports/NCKH_FULL_PAPER_V2_UPDATE_PLAN.md` | Exact instructions for later table, figure, Chapter 4, appendix, abstract, and conclusion updates. |
 | V2 claim register | `reports/NCKH_RESULTS_CLAIM_REGISTER_V2.md` | Updated claim boundaries for derived diagnostics. |
 | Supervisor gap-closure brief | `reports/NCKH_SUPERVISOR_BRIEF_AFTER_GAP_CLOSURE.md` | One-page supervisor-facing explanation and cautious wording. |
+| Full V2 manuscript | `reports/NCKH_FULL_PAPER_DRAFT_VN100_V2_WITH_FIGURES.md` | Complete V2 manuscript with updated evidence, embedded tables, embedded figures, references, and appendices. |
+| V2 table/figure map | `reports/NCKH_FULL_PAPER_V2_TABLE_FIGURE_MAP.md` | Source-to-manuscript table and figure map with claim support and limitations. |
+| V2 changelog | `reports/NCKH_FULL_PAPER_V2_CHANGELOG.md` | Summary of changes from clean V1 and remaining evidence gaps. |
 
 ## Artifact Map
 
@@ -49,6 +52,9 @@ This index organizes the final-review submission and defense materials for the V
 | `reports/generated/evidence_gap_closure/` | Evidence-upgrade diagnostics for cache coverage, v2 confidence sweep, ex-ante regime proxy, multi-window availability, and cost/slippage proxy | partial |
 | `reports/NCKH_EVIDENCE_UPGRADE_ADDENDUM_V2.md` | Paper V2 evidence-upgrade addendum | ready |
 | `reports/NCKH_FULL_PAPER_V2_UPDATE_PLAN.md` | Paper V2 update instructions | ready |
+| `reports/NCKH_FULL_PAPER_DRAFT_VN100_V2_WITH_FIGURES.md` | Complete V2 manuscript | ready |
+| `reports/NCKH_FULL_PAPER_V2_TABLE_FIGURE_MAP.md` | V2 table/figure traceability | ready |
+| `reports/NCKH_FULL_PAPER_V2_CHANGELOG.md` | V2 manuscript changelog | ready |
 
 ## Recommended Submission Order
 
@@ -67,6 +73,9 @@ This index organizes the final-review submission and defense materials for the V
 13. `reports/NCKH_FULL_PAPER_V2_UPDATE_PLAN.md`
 14. `reports/NCKH_RESULTS_CLAIM_REGISTER_V2.md`
 15. `reports/NCKH_SUPERVISOR_BRIEF_AFTER_GAP_CLOSURE.md`
+16. `reports/NCKH_FULL_PAPER_DRAFT_VN100_V2_WITH_FIGURES.md`
+17. `reports/NCKH_FULL_PAPER_V2_TABLE_FIGURE_MAP.md`
+18. `reports/NCKH_FULL_PAPER_V2_CHANGELOG.md`
 
 ## Final Claim Boundary
 
