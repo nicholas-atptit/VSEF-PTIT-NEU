@@ -32,6 +32,7 @@ CONTENT_ALLOWLIST_PREFIXES = {
 }
 
 CONTENT_ALLOWLIST_FILES = {
+    "reports/VNSTOCK_DATA_INTERPRETER_FIX_PLAN.md": "documents exact local interpreter remediation commands requested for environment repair.",
     "reports/VSEF_1000_SEED_SMOKE_STABILITY_REPORT.md": "historical benchmark evidence retained.",
     "reports/stress_test_report.md": "historical benchmark evidence retained until report migration is approved.",
     "reports/system_benchmark.md": "historical benchmark evidence retained until report migration is approved.",
