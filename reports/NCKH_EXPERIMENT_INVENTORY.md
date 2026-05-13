@@ -91,6 +91,10 @@ These output directories exist locally and should be treated as generated artifa
 | `reports/NCKH_REFERENCES_APA7.md` | APA 7 reference scaffold using locally verified citation metadata from the existing benchmark report. |
 | `reports/NCKH_FULL_PAPER_FINAL_REVIEW_CHECKLIST.md` | Final-review checklist for title, abstract, claims, tables, figures, references, and evidence limitations. |
 | `reports/NCKH_FULL_PAPER_DRAFT_VN100_CLEAN.md` | Clean final-review manuscript with softened abstract artifact wording, citation placeholders, and table/figure insertion markers. |
+| `reports/NCKH_SUBMISSION_PACKAGE_INDEX.md` | Final submission package index and recommended submission order. |
+| `reports/NCKH_FINAL_SUBMISSION_NOTES.md` | Readiness summary, partial evidence list, prohibited claims, and final evidence gaps. |
+| `reports/NCKH_PRESENTATION_OUTLINE.md` | 7-10 minute defense presentation outline with slide claim boundaries. |
+| `reports/NCKH_QUESTIONS_AND_ANSWERS.md` | Committee Q&A preparation with safe answers. |
 
 ## Existing Tests Related to the Research
 

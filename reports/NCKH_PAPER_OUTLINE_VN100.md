@@ -7,6 +7,10 @@ Generated full-draft artifacts:
 - `reports/NCKH_FULL_PAPER_DRAFT_VN100_CLEAN.md`
 - `reports/NCKH_REFERENCES_APA7.md`
 - `reports/NCKH_FULL_PAPER_FINAL_REVIEW_CHECKLIST.md`
+- `reports/NCKH_SUBMISSION_PACKAGE_INDEX.md`
+- `reports/NCKH_FINAL_SUBMISSION_NOTES.md`
+- `reports/NCKH_PRESENTATION_OUTLINE.md`
+- `reports/NCKH_QUESTIONS_AND_ANSWERS.md`
 
 ## Chapter 1: Introduction
 
