@@ -1,0 +1,118 @@
+{
+  "sys_executable": "<python-dir>\\python.exe",
+  "sys_version": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+  "current_working_directory": "<repo>",
+  "sys_path_first_10": [
+    "<repo>\\scripts\\research",
+    "<python-dir>\\python313.zip",
+    "<python-dir>\\DLLs",
+    "<python-dir>\\Lib",
+    "<python-dir>",
+    "<python-dir>\\Lib\\site-packages"
+  ],
+  "pip_version": {
+    "args": [
+      "<python-dir>\\python.exe",
+      "-m",
+      "pip",
+      "--version"
+    ],
+    "returncode": 0,
+    "stdout": "pip 26.0.1 from <python-dir>\\Lib\\site-packages\\pip (python 3.13)",
+    "stderr": ""
+  },
+  "pip_show_vnstock_data": {
+    "args": [
+      "<python-dir>\\python.exe",
+      "-m",
+      "pip",
+      "show",
+      "vnstock_data"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "WARNING: Package(s) not found: vnstock_data"
+  },
+  "pip_show_vnstock": {
+    "args": [
+      "<python-dir>\\python.exe",
+      "-m",
+      "pip",
+      "show",
+      "vnstock"
+    ],
+    "returncode": 0,
+    "stdout": "Name: vnstock\nVersion: 3.5.0\nSummary: A beginner-friendly yet powerful Python toolkit for financial analysis and automation � built to make modern investing accessible to everyone\nHome-page:\nAuthor:\nAuthor-email: Thinh Vu <support@vnstocks.com>\nLicense: Custom: Personal, research, non-commercial; contact support@vnstocks.com for other use\nLocation: <python-dir>\\Lib\\site-packages\nRequires: beautifulsoup4, importlib-metadata, openpyxl, packaging, pandas, psutil, pydantic, pytz, requests, seaborn, tenacity, vnai, vnstock_ezchart\nRequired-by: vnstock_ezchart",
+    "stderr": ""
+  },
+  "pip_list_vnstock_entries": {
+    "args": [
+      "<python-dir>\\python.exe",
+      "-m",
+      "pip",
+      "list"
+    ],
+    "returncode": 0,
+    "stdout": "vnstock                                  3.5.0\nvnstock_ezchart                          0.0.3\nvnstock-installer                        3.1.1",
+    "stderr": "",
+    "matching_lines": [
+      "vnstock                                  3.5.0",
+      "vnstock_ezchart                          0.0.3",
+      "vnstock-installer                        3.1.1"
+    ]
+  },
+  "find_spec_vnstock_data": {
+    "found": false,
+    "origin": "",
+    "submodule_search_locations": []
+  },
+  "find_spec_vnstock": {
+    "found": true,
+    "origin": "<python-dir>\\Lib\\site-packages\\vnstock\\__init__.py",
+    "submodule_search_locations": [
+      "<python-dir>\\Lib\\site-packages\\vnstock"
+    ]
+  },
+  "import_vnstock_data": {
+    "success": false,
+    "module_file": "",
+    "version": "",
+    "traceback": "Traceback (most recent call last):\n  File \"<repo>\\scripts\\research\\verify_vnstock_data_environment.py\", line 84, in import_attempt\n    module = importlib.import_module(package_name)\n  File \"<python-dir>\\Lib\\importlib\\__init__.py\", line 88, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1324, in _find_and_load_unlocked\nModuleNotFoundError: No module named 'vnstock_data'",
+    "error_type": "ModuleNotFoundError",
+    "error_message": "No module named 'vnstock_data'"
+  },
+  "import_vnstock": {
+    "success": true,
+    "module_file": "<python-dir>\\Lib\\site-packages\\vnstock\\__init__.py",
+    "version": "3.5.0",
+    "traceback": "",
+    "error_type": "",
+    "error_message": ""
+  },
+  "local_shadow_checks": [
+    {
+      "candidate": "vnstock_data.py",
+      "exists": false,
+      "kind": "",
+      "path": ""
+    },
+    {
+      "candidate": "vnstock_data",
+      "exists": false,
+      "kind": "",
+      "path": ""
+    },
+    {
+      "candidate": "vnstock.py",
+      "exists": false,
+      "kind": "",
+      "path": ""
+    },
+    {
+      "candidate": "vnstock",
+      "exists": false,
+      "kind": "",
+      "path": ""
+    }
+  ]
+}
