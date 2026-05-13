@@ -1,0 +1,24 @@
+index_code,chunk_start,chunk_end,chunk_days,provider,source,success,rows,exception_type,exception_message,raw_columns
+VNINDEX,2026-05-04,2026-05-08,5,vnstock_data,KBS,True,25,,,"time,open,high,low,close,volume"
+VNINDEX,2026-05-09,2026-05-13,5,vnstock_data,KBS,True,22,,,"time,open,high,low,close,volume"
+VNINDEX,2026-05-14,2026-05-14,1,vnstock_data,KBS,True,0,,,"time,open,high,low,close,volume"
+VNINDEX,,,5,dedupe,,True,-5,,dropped 5 exact duplicate datetime/index_code rows,
+HNXINDEX,2026-05-04,2026-05-08,5,vnstock_data,KBS,True,25,,,"time,open,high,low,close,volume"
+HNXINDEX,2026-05-09,2026-05-13,5,vnstock_data,KBS,True,22,,,"time,open,high,low,close,volume"
+HNXINDEX,2026-05-14,2026-05-14,1,vnstock_data,KBS,True,0,,,"time,open,high,low,close,volume"
+HNXINDEX,,,5,dedupe,,True,-5,,dropped 5 exact duplicate datetime/index_code rows,
+UPCOMINDEX,2026-05-04,2026-05-08,5,vnstock_data,KBS,True,30,,,"time,open,high,low,close,volume"
+UPCOMINDEX,2026-05-09,2026-05-13,5,vnstock_data,KBS,True,25,,,"time,open,high,low,close,volume"
+UPCOMINDEX,2026-05-14,2026-05-14,1,vnstock_data,KBS,True,0,,,"time,open,high,low,close,volume"
+UPCOMINDEX,,,5,dedupe,,True,-6,,dropped 6 exact duplicate datetime/index_code rows,
+VN30,2026-05-04,2026-05-08,5,vnstock_data,KBS,True,25,,,"time,open,high,low,close,volume"
+VN30,2026-05-09,2026-05-13,5,vnstock_data,KBS,True,22,,,"time,open,high,low,close,volume"
+VN30,2026-05-14,2026-05-14,1,vnstock_data,KBS,True,0,,,"time,open,high,low,close,volume"
+VN30,,,5,dedupe,,True,-5,,dropped 5 exact duplicate datetime/index_code rows,
+HNX30,2026-05-04,2026-05-08,5,vnstock_data,KBS,True,25,,,"time,open,high,low,close,volume"
+HNX30,2026-05-09,2026-05-13,5,vnstock_data,KBS,True,22,,,"time,open,high,low,close,volume"
+HNX30,2026-05-14,2026-05-14,1,vnstock_data,KBS,True,0,,,"time,open,high,low,close,volume"
+HNX30,,,5,dedupe,,True,-5,,dropped 5 exact duplicate datetime/index_code rows,
+VN100,2026-05-04,2026-05-08,5,vnstock_data,KBS,True,0,,,
+VN100,2026-05-09,2026-05-13,5,vnstock_data,KBS,True,7,,,"time,open,high,low,close,volume"
+VN100,2026-05-14,2026-05-14,1,vnstock_data,KBS,True,0,,,"time,open,high,low,close,volume"
