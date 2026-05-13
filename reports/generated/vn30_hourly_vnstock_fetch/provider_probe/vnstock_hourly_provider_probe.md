@@ -5,7 +5,7 @@
 | package | installed | version | origin |
 | --- | --- | --- | --- |
 | vnstock_data | false |  |  |
-| vnstock | true | 3.5.0 | C:\Python\Lib\site-packages\vnstock\__init__.py |
+| vnstock | true | 3.5.0 | [local path redacted] |
 
 ## Probe Decision
 
