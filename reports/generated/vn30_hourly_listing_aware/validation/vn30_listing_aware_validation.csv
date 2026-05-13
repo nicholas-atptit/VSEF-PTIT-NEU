@@ -1,0 +1,34 @@
+symbol,asset_type,gate_required,fetched,listing_date_used,requested_start,ticker_training_start,actual_eval_end,cache_path,row_count,first_datetime,last_datetime,training_rows,evaluation_rows,duplicate_datetime_count,non_hourly_timestamp_count,ohlcv_numeric_pass,positive_price_pass,volume_nonnegative_pass,provider_source_recorded,benchmark_usable,missing_reason
+ACB,stock,true,true,2006-11-21 00:00:00,2006-11-21 00:00:00,2023-09-11 10:00:00,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/ACB.csv,237,2023-09-11 10:00:00,2026-05-13 14:00:00,91,146,0,0,true,true,true,true,false,training_rows_below_1000
+BID,stock,true,true,,2005-01-01 00:00:00,2023-09-11 10:00:00,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/BID.csv,247,2023-09-11 10:00:00,2026-05-13 14:00:00,91,156,0,0,true,true,true,true,false,training_rows_below_1000
+CTG,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/CTG.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+DGC,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/DGC.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+FPT,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/FPT.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+GAS,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/GAS.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+GVR,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/GVR.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+HDB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/HDB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+HPG,stock,true,false,2007-11-15 00:00:00,2007-11-15 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/HPG.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+LPB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/LPB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+MBB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/MBB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+MSN,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/MSN.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+MWG,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/MWG.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+PLX,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/PLX.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+SAB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/SAB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+SHB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/SHB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+SSB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/SSB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+SSI,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/SSI.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+STB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/STB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+TCB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/TCB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+TPB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/TPB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VCB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VCB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VHM,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VHM.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VIB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VIB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VIC,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VIC.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VJC,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VJC.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VNM,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VNM.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VPB,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VPB.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VPL,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VPL.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VRE,stock,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VRE.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VNINDEX,index,true,false,,2005-01-01 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VNINDEX.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VN30INDEX,index,false,false,,2012-02-06 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VN30INDEX.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
+VNXALL,index,false,false,,2016-10-24 00:00:00,,,data/market_cache/vnstock_data/vn30/hourly_listing_aware/VNXALL.csv,0,,,0,0,,,false,false,false,false,false,cache_file_missing
