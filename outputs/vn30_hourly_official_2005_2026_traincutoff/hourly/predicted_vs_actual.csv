@@ -1,0 +1,1 @@
+timestamp,date,ticker,frequency,horizon,model,target_mode,actual_close,predicted_close,actual_return,predicted_return,actual_direction,predicted_direction,confidence,filtered_out,regime,volatility_regime,is_correct

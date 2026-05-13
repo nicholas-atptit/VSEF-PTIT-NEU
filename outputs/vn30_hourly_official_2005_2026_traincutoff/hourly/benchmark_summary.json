@@ -1,0 +1,20 @@
+{
+  "universe": "VN30",
+  "frequency": "hourly",
+  "benchmark_run": false,
+  "status": "stopped_missing_evidence",
+  "n_predictions": 0,
+  "overall_accuracy": null,
+  "passed": false,
+  "evaluated_tickers": [],
+  "benchmark_usable_ticker_count": 0,
+  "benchmark_usable_tickers": [],
+  "failed_ticker_count": 30,
+  "train_start": "2005-01-01 00:00:00",
+  "train_cutoff": "2024-12-31 23:59:59",
+  "eval_start": "2025-01-01 00:00:00",
+  "eval_end": "2026-05-31 23:59:59",
+  "target_mode": "classification",
+  "training_label_cutoff_rule": "target_timestamp <= train_cutoff",
+  "missing_evidence_report": "reports/generated/vn30_hourly_2005_2026/vn30_hourly_benchmark_missing_evidence.md"
+}
