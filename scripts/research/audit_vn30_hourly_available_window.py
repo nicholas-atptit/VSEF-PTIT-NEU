@@ -63,6 +63,25 @@ WINDOW_COLUMNS = [
     "valid_split",
     "selected_tickers",
 ]
+INDEX_CODES = ["VNINDEX", "VN30INDEX", "VNXALL"]
+INDEX_AUDIT_COLUMNS = [
+    "index_code",
+    "exact_code_local_file_found",
+    "first_available_hourly_timestamp",
+    "last_available_hourly_timestamp",
+    "hourly_rows",
+    "selected_window_start",
+    "selected_window_end",
+    "selected_window_rows",
+    "selected_train_rows",
+    "selected_eval_rows",
+    "overlaps_selected_window",
+    "covers_selected_window",
+    "available_window_context_ready",
+    "limitation",
+    "raw_hourly_sources",
+    "raw_hourly_files",
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -463,6 +482,119 @@ def write_decision_report(path: Path, design: dict[str, Any]) -> None:
     path.write_text("\n".join(content), encoding="utf-8")
 
 
+def index_audit_rows(design: dict[str, Any]) -> list[dict[str, Any]]:
+    window_start_text = str(design.get("training_start", ""))
+    train_cutoff_text = str(design.get("training_cutoff", ""))
+    eval_start_text = str(design.get("evaluation_start", ""))
+    window_end_text = str(design.get("evaluation_end", ""))
+    has_design_window = bool(window_start_text and train_cutoff_text and eval_start_text and window_end_text)
+    window_start = pd.Timestamp(window_start_text) if has_design_window else None
+    train_cutoff = pd.Timestamp(train_cutoff_text) if has_design_window else None
+    eval_start = pd.Timestamp(eval_start_text) if has_design_window else None
+    window_end = pd.Timestamp(window_end_text) if has_design_window else None
+    rows: list[dict[str, Any]] = []
+    for index_code in INDEX_CODES:
+        frame, sources, files = load_hourly_sources_for_ticker(index_code)
+        timestamps = pd.to_datetime(frame["datetime"], errors="coerce").dropna() if not frame.empty else pd.Series(dtype="datetime64[ns]")
+        first_ts = pd.Timestamp(timestamps.min()) if not timestamps.empty else None
+        last_ts = pd.Timestamp(timestamps.max()) if not timestamps.empty else None
+        if has_design_window and not frame.empty:
+            selected_rows = int(((frame["datetime"] >= window_start) & (frame["datetime"] <= window_end)).sum())
+            selected_train_rows = int(((frame["datetime"] >= window_start) & (frame["datetime"] <= train_cutoff)).sum())
+            selected_eval_rows = int(((frame["datetime"] >= eval_start) & (frame["datetime"] <= window_end)).sum())
+            overlaps = bool(selected_rows > 0)
+            covers = bool(first_ts is not None and last_ts is not None and first_ts <= window_start and last_ts >= window_end)
+        else:
+            selected_rows = 0
+            selected_train_rows = 0
+            selected_eval_rows = 0
+            overlaps = False
+            covers = False
+        exact_found = bool(not frame.empty)
+        ready = bool(exact_found and overlaps and covers and selected_train_rows > 0 and selected_eval_rows > 0)
+        if not has_design_window:
+            limitation = "selected_available_window_design_missing"
+        elif not exact_found:
+            limitation = "exact_code_local_hourly_index_data_missing; context_not_fabricated"
+        elif not overlaps:
+            limitation = "exact_code_local_hourly_index_data_does_not_overlap_selected_window"
+        elif not covers:
+            limitation = "exact_code_local_hourly_index_data_does_not_cover_selected_window"
+        elif selected_train_rows == 0 or selected_eval_rows == 0:
+            limitation = "selected_train_or_eval_index_rows_missing"
+        else:
+            limitation = "usable_for_available_window_context"
+        rows.append(
+            {
+                "index_code": index_code,
+                "exact_code_local_file_found": exact_found,
+                "first_available_hourly_timestamp": timestamp_text(first_ts),
+                "last_available_hourly_timestamp": timestamp_text(last_ts),
+                "hourly_rows": int(len(frame)),
+                "selected_window_start": window_start_text,
+                "selected_window_end": window_end_text,
+                "selected_window_rows": selected_rows,
+                "selected_train_rows": selected_train_rows,
+                "selected_eval_rows": selected_eval_rows,
+                "overlaps_selected_window": overlaps,
+                "covers_selected_window": covers,
+                "available_window_context_ready": ready,
+                "limitation": limitation,
+                "raw_hourly_sources": ";".join(sources),
+                "raw_hourly_files": ";".join(files),
+            }
+        )
+    return rows
+
+
+def write_index_audit_report(path: Path, rows: list[dict[str, Any]], design: dict[str, Any]) -> None:
+    ready_count = sum(1 for row in rows if bool(row.get("available_window_context_ready")))
+    selected_window = f"{design.get('training_start', '')} to {design.get('evaluation_end', '')}"
+    content = [
+        "# VN30 Hourly Available-Window Market Index Audit",
+        "",
+        "## Scope",
+        "",
+        "- Exact local hourly index codes audited: `VNINDEX`, `VN30INDEX`, `VNXALL`.",
+        "- No aliases are used. Local stock symbols such as `VNI` or `VNX` are not treated as market indices.",
+        "- Daily data, daily-to-hourly resampling, and fabricated index context are not used.",
+        f"- Selected stock available-window period: {selected_window}.",
+        "",
+        "## Result",
+        "",
+        f"- Available-window index context ready: {ready_count} of 3 exact codes.",
+        "- If exact local index data is missing, this is a limitation rather than a reason to fabricate context.",
+        "",
+        "## Per-Index Audit",
+        "",
+        markdown_table(
+            [
+                "index_code",
+                "exact_code_local_file_found",
+                "first_available_hourly_timestamp",
+                "last_available_hourly_timestamp",
+                "selected_window_rows",
+                "selected_train_rows",
+                "selected_eval_rows",
+                "overlaps_selected_window",
+                "covers_selected_window",
+                "available_window_context_ready",
+                "limitation",
+            ],
+            rows,
+        ),
+        "",
+        "## Boundary",
+        "",
+        "- The available-window stock benchmark remains real local hourly evidence.",
+        "- Missing exact-code local index data must be disclosed as a market-context limitation.",
+        "- Do not reconstruct pre-start or missing index history unless the vendor supplies it and clearly labels it.",
+        "",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(content), encoding="utf-8")
+
+
 def main() -> int:
     args = parse_args()
     tickers = read_universe()
@@ -479,6 +611,11 @@ def main() -> int:
     write_csv(audit_csv, rows, fieldnames=AUDIT_COLUMNS)
     write_csv(windows_csv, threshold_rows, fieldnames=WINDOW_COLUMNS)
     write_audit_report(audit_md, rows, threshold_rows, design)
+    index_rows = index_audit_rows(design)
+    index_csv = args.output_dir / "vn30_hourly_available_window_index_audit.csv"
+    index_md = args.output_dir / "vn30_hourly_available_window_index_audit.md"
+    write_csv(index_csv, index_rows, fieldnames=INDEX_AUDIT_COLUMNS)
+    write_index_audit_report(index_md, index_rows, design)
     write_json(args.decision_json, design)
     write_decision_report(args.decision_md, design)
     write_docx_build_notes(DOCX_NOTES_PATH, design)

@@ -12,6 +12,13 @@
 - Evaluation window: 2026-03-13 13:00:00 to 2026-05-11 14:00:00.
 - Final paper can proceed: true.
 
+## Market Index Context
+
+- `VNINDEX`, `VN30INDEX`, and `VNXALL` index context should be included only if exact-code local hourly index data overlaps the available-window design.
+- For the full 2005-2026 design, `VN30INDEX` is not required before `2012-02-06 00:00:00` and `VNXALL` is not required before `2016-10-24 00:00:00`.
+- The full-design comparison/evaluation window remains aligned from `2025-01-01 00:00:00` to `2026-05-31 23:59:59`.
+- Missing pre-start `VN30INDEX`/`VNXALL` rows are not a readiness failure.
+
 ## Artifact Directories
 
 - Tables: `reports/generated/vn30_hourly_available_window/paper_tables`.

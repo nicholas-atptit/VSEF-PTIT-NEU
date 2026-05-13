@@ -15,18 +15,20 @@ Required tickers:
 - Required time range: `2005-01-01 00:00:00` to `2026-05-31 23:59:59`.
 - Training period: `2005-01-01 00:00:00` to `2024-12-31 23:59:59`.
 - Evaluation/comparison period: `2025-01-01 00:00:00` to `2026-05-31 23:59:59`.
+- Market index role: market context features, benchmark comparison, and regime/market-state diagnostics; market indices are not stock target labels.
 - Daily data is not accepted.
 - Daily-to-hourly resampling is not accepted.
 - Old VN100 evidence is not accepted.
 
-## Required Schema
+## Stock Schema
 
-Every record must contain:
+Every stock record must contain:
 
 | column | requirement |
 | --- | --- |
 | timestamp | Hourly bar timestamp parseable as a datetime. |
 | ticker | Frozen VN30 ticker. |
+| index_code | Empty for stock rows in the combined external file. |
 | open | Numeric hourly open price. |
 | high | Numeric hourly high price. |
 | low | Numeric hourly low price. |
@@ -42,6 +44,41 @@ Optional columns:
 | exchange | HOSE or source exchange label. |
 | session | Trading session or auction/session marker. |
 | corporate_action_flag | Split, dividend, listing, suspension, or adjustment marker. |
+
+## Market Index Coverage
+
+The market-index coverage rule is intentionally not the same for all indices:
+
+- `VNINDEX` must cover the full stock research range from `2005-01-01 00:00:00` to `2026-05-31 23:59:59`.
+- `VN30INDEX` must cover its official-use range from `2012-02-06 00:00:00` to `2026-05-31 23:59:59`.
+- `VNXALL` must cover its official-use range from `2016-10-24 00:00:00` to `2026-05-31 23:59:59`.
+- The common comparison/evaluation window remains `2025-01-01 00:00:00` to `2026-05-31 23:59:59` for stocks and all three indices.
+- Missing pre-start `VN30INDEX` or `VNXALL` rows must not fail validation.
+- Pre-start vendor-backfilled or vendor-reconstructed `VN30INDEX`/`VNXALL` rows are optional and must be labeled if supplied.
+
+## Market Index Schema
+
+Every index record must contain:
+
+| column | requirement |
+| --- | --- |
+| timestamp | Hourly index bar timestamp parseable as a datetime. |
+| index_code | One of `VNINDEX`, `VN30INDEX`, `VNXALL`. |
+| open | Numeric hourly open index level. |
+| high | Numeric hourly high index level. |
+| low | Numeric hourly low index level. |
+| close | Numeric hourly close index level. |
+| volume | Numeric hourly traded volume or vendor-provided index volume. |
+
+The combined external file must still include the `ticker` column; it should be empty for index rows.
+
+Optional column:
+
+| column | allowed values |
+| --- | --- |
+| source_status | `official_live`, `vendor_backfilled`, `vendor_reconstructed`, `unknown` |
+
+For `VN30INDEX` and `VNXALL`, rows before their official start dates are optional. If present, pre-start rows must use `source_status=vendor_backfilled` or `source_status=vendor_reconstructed`. If absent, that is acceptable and must not fail readiness.
 
 ## Timezone Assumption
 
@@ -89,32 +126,53 @@ A ticker is benchmark-usable only if:
 
 The full VN30 2005-2026 design may proceed only when all 30 frozen tickers are benchmark-usable.
 
+Index readiness passes only if:
+
+- `VNINDEX` has hourly coverage from `2005-01-01 00:00:00` to `2026-05-31 23:59:59`.
+- `VN30INDEX` has hourly coverage from `2012-02-06 00:00:00` to `2026-05-31 23:59:59`.
+- `VNXALL` has hourly coverage from `2016-10-24 00:00:00` to `2026-05-31 23:59:59`.
+- All three indices cover the common comparison/evaluation window from `2025-01-01 00:00:00` to `2026-05-31 23:59:59`.
+- Missing pre-start `VN30INDEX`/`VNXALL` rows are not treated as failures.
+
+Combined readiness passes only when stock readiness and corrected index readiness both pass.
+
 ## Validation Checklist
 
 - Confirm the file is CSV or Parquet.
 - Confirm all required columns exist.
 - Confirm exactly the frozen 30 VN30 tickers are present.
+- Confirm `VNINDEX`, `VN30INDEX`, and `VNXALL` are present with their corrected required start dates.
 - Confirm timestamp parsing succeeds.
 - Confirm timestamps are hourly-aligned in Vietnam exchange time.
 - Confirm per-ticker rows are sorted by timestamp.
+- Confirm per-index rows are sorted by timestamp.
 - Confirm no duplicate `(ticker, timestamp)` rows exist.
+- Confirm no duplicate `(index_code, timestamp)` rows exist.
 - Confirm OHLCV values are finite and valid.
 - Confirm training coverage is present for every ticker.
-- Confirm evaluation coverage is present for every ticker.
+- Confirm evaluation coverage is present for every ticker and every required market index.
+- Confirm optional pre-start `VN30INDEX`/`VNXALL` rows are labeled `vendor_backfilled` or `vendor_reconstructed`.
 - Confirm missing trading-hour gaps are explainable.
 - Confirm corporate action adjustment policy is documented.
 
 ## Acceptable CSV Schema Example
 
 ```csv
-timestamp,ticker,open,high,low,close,volume,adjusted_close,source,exchange,session,corporate_action_flag
-2005-01-03 09:00:00,ACB,12.10,12.25,12.05,12.20,125000,12.20,vendor_name,HOSE,continuous,
-2005-01-03 10:00:00,ACB,12.20,12.30,12.15,12.25,98000,12.25,vendor_name,HOSE,continuous,
+timestamp,ticker,index_code,open,high,low,close,volume,adjusted_close,source,exchange,session,corporate_action_flag,source_status
+2005-01-03 09:00:00,ACB,,12.10,12.25,12.05,12.20,125000,12.20,vendor_name,HOSE,continuous,,official_live
+2005-01-03 09:00:00,,VNINDEX,244.50,245.20,243.90,244.80,0,,vendor_name,HOSE,continuous,,official_live
+2012-02-06 09:00:00,,VN30INDEX,470.10,471.00,468.90,470.60,0,,vendor_name,HOSE,continuous,,official_live
+2016-10-24 09:00:00,,VNXALL,1000.10,1002.00,998.40,1001.20,0,,vendor_name,HOSE,continuous,,official_live
 ```
 
 ## Unacceptable Cases
 
 - Missing any frozen VN30 ticker.
+- Missing `VNINDEX` from the full 2005-2026 range.
+- Missing `VN30INDEX` from `2012-02-06` onward.
+- Missing `VNXALL` from `2016-10-24` onward.
+- Treating absent pre-start `VN30INDEX`/`VNXALL` rows as a validation failure.
+- Supplying pre-start `VN30INDEX`/`VNXALL` rows with `source_status=official_live` or `source_status=unknown`.
 - Using daily bars or daily-to-hourly synthetic bars.
 - Ticker history starts in 2024, 2025, or 2026 for the full-history benchmark.
 - Evaluation ends before `2026-05-31 23:59:59` without an exchange-calendar explanation.
