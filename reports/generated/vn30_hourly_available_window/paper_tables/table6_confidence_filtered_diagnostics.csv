@@ -1,0 +1,5 @@
+frequency,model,horizon,threshold,evaluated_rows,coverage_ratio,filtered_accuracy,passed_60pct,ticker_count,ticker_concentration_warning
+hourly,random_forest,1,0.57,2688,0.5868995633187772,0.5885416666666666,False,27,no
+hourly,random_forest,1,0.6,1966,0.4292576419213973,0.6027466937945066,True,27,no
+hourly,random_forest,1,0.62,1526,0.3331877729257642,0.617300131061599,True,27,no
+hourly,xgboost,1,0.79,924,0.2017467248908297,0.6396103896103896,True,27,no
