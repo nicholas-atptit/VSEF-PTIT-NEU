@@ -8,11 +8,9 @@ from __future__ import annotations
 
 import argparse
 import csv
-import importlib
 import json
 import sys
 import time
-import traceback
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -20,8 +18,13 @@ from typing import Any
 import pandas as pd
 
 
-INTENDED_EXECUTABLE = Path(r"C:\Users\luong\.venv\Scripts\python.exe")
 REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.data.providers.vn_price_gateway import ProviderFetchError, fetch_price_history  # noqa: E402
+from src.data.providers.vn_provider_contract import AssetType, FetchRequest, Frequency, SourceName  # noqa: E402
+
 RAW_ROOT = REPO_ROOT / "data" / "raw" / "vnstock_fetch" / "index_hourly"
 CACHE_ROOT = REPO_ROOT / "data" / "market_cache" / "vnstock_data" / "indices" / "hourly"
 REPORT_DIR = REPO_ROOT / "reports" / "generated" / "index_hourly_fetch" / "fetch"
@@ -32,7 +35,7 @@ CHUNK_LOG_CSV = REPORT_DIR / "index_hourly_chunk_log.csv"
 
 INDEX_CODES = ("VNINDEX", "HNXINDEX", "UPCOMINDEX", "VN30", "HNX30", "VN100")
 SOURCES = ("KBS", "VCI")
-INTERVAL = "1H"
+INTERVAL = Frequency.HOURLY.value
 
 
 def _parse_date(value: str) -> date:
@@ -49,108 +52,49 @@ def _date_ranges(start: date, end: date, chunk_days: int) -> list[tuple[date, da
     return ranges
 
 
-def _call_history(package: str, source: str, symbol: str, start: str, end: str) -> pd.DataFrame:
-    module = importlib.import_module(package)
-    quote_cls = getattr(module, "Quote", None)
-    if quote_cls is None:
-        raise AttributeError(f"{package}.Quote is unavailable")
-    last_error: Exception | None = None
-    quote = None
-    for kwargs in ({"symbol": symbol, "source": source}, {"source": source, "symbol": symbol}, {"symbol": symbol}):
-        try:
-            quote = quote_cls(**kwargs)
-            break
-        except Exception as exc:
-            last_error = exc
-    if quote is None:
-        raise RuntimeError(f"could not initialize {package}.Quote") from last_error
-    history = getattr(quote, "history", None)
-    if history is None:
-        raise AttributeError(f"{package}.Quote.history is unavailable")
-    last_error = None
-    for kwargs in (
-        {"start": start, "end": end, "interval": INTERVAL},
-        {"start": start, "end": end, "interval": INTERVAL, "get_all": False},
-        {"start": start, "end": end, "timeframe": INTERVAL},
-        {"start_date": start, "end_date": end, "interval": INTERVAL},
-        {"start_date": start, "end_date": end, "timeframe": INTERVAL},
-    ):
-        try:
-            data = history(**kwargs)
-            if data is None:
-                return pd.DataFrame()
-            if isinstance(data, pd.DataFrame):
-                return data.copy()
-            return pd.DataFrame(data)
-        except TypeError as exc:
-            last_error = exc
-            continue
-    raise RuntimeError(f"no compatible {package}.Quote.history signature worked") from last_error
-
-
-def _normalize(raw: pd.DataFrame, code: str, package: str, source: str) -> pd.DataFrame:
-    if raw.empty:
-        return pd.DataFrame(columns=["datetime", "index_code", "open", "high", "low", "close", "volume", "provider", "source"])
-    rename = {
-        "time": "datetime",
-        "date": "datetime",
-        "tradingDate": "datetime",
-        "Open": "open",
-        "High": "high",
-        "Low": "low",
-        "Close": "close",
-        "Volume": "volume",
-    }
-    df = raw.rename(columns={key: value for key, value in rename.items() if key in raw.columns}).copy()
-    if "datetime" not in df.columns:
-        raise ValueError(f"no timestamp column in provider columns: {list(raw.columns)}")
-    required = ["open", "high", "low", "close", "volume"]
-    missing = [column for column in required if column not in df.columns]
-    if missing:
-        raise ValueError(f"missing OHLCV columns: {missing}; provider columns: {list(raw.columns)}")
-    out = pd.DataFrame(
-        {
-            "datetime": pd.to_datetime(df["datetime"], errors="coerce"),
-            "index_code": code,
-            "open": pd.to_numeric(df["open"], errors="coerce"),
-            "high": pd.to_numeric(df["high"], errors="coerce"),
-            "low": pd.to_numeric(df["low"], errors="coerce"),
-            "close": pd.to_numeric(df["close"], errors="coerce"),
-            "volume": pd.to_numeric(df["volume"], errors="coerce").fillna(0),
-            "provider": package,
-            "source": source,
-        }
-    )
-    out = out.dropna(subset=["datetime", "open", "high", "low", "close"])
-    return out.sort_values("datetime")
+def _covered_dates(frame: pd.DataFrame) -> set[date]:
+    if frame.empty or "datetime" not in frame.columns:
+        return set()
+    dt = pd.to_datetime(frame["datetime"], errors="coerce").dropna()
+    return set(dt.dt.date)
 
 
 def _fetch_one_chunk(code: str, start: date, end: date, chunk_days: int) -> tuple[pd.DataFrame, dict[str, Any]]:
     start_s = start.isoformat()
     end_s = end.isoformat()
-    packages = [pkg for pkg in ("vnstock_data", "vnstock") if importlib.util.find_spec(pkg) is not None]
-    errors: list[str] = []
-    for package in packages:
-        for source in SOURCES:
-            try:
-                raw = _call_history(package, source, code, start_s, end_s)
-                normalized = _normalize(raw, code, package, source)
-                return normalized, {
-                    "index_code": code,
-                    "chunk_start": start_s,
-                    "chunk_end": end_s,
-                    "chunk_days": chunk_days,
-                    "provider": package,
-                    "source": source,
-                    "success": True,
-                    "rows": int(len(normalized)),
-                    "exception_type": "",
-                    "exception_message": "",
-                    "raw_columns": ",".join(map(str, raw.columns)),
-                }
-            except BaseException as exc:
-                errors.append(f"{package}/{source}: {type(exc).__name__}: {exc}")
-    raise RuntimeError(" | ".join(errors))
+    request = FetchRequest(
+        symbol=code,
+        asset_type=AssetType.INDEX,
+        start=start_s,
+        end=end_s,
+        frequency=Frequency.HOURLY,
+        preferred_sources=tuple(SourceName(source) for source in SOURCES),
+        allow_legacy_fallback=True,
+        allow_daily=False,
+        allow_resample=False,
+    )
+    try:
+        response = fetch_price_history(request)
+    except ProviderFetchError as exc:
+        errors = [
+            f"{attempt.get('provider')}/{attempt.get('source')}: {attempt.get('error_type')}: {attempt.get('error_message')}"
+            for attempt in exc.attempts
+        ]
+        raise RuntimeError(" | ".join(errors) or str(exc)) from exc
+    normalized = response.data.copy()
+    return normalized, {
+        "index_code": code,
+        "chunk_start": start_s,
+        "chunk_end": end_s,
+        "chunk_days": chunk_days,
+        "provider": str(response.provider),
+        "source": str(response.source),
+        "success": True,
+        "rows": int(len(normalized)),
+        "exception_type": "",
+        "exception_message": "",
+        "raw_columns": ",".join(map(str, normalized.columns)),
+    }
 
 
 def _save_rows(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None:
@@ -191,6 +135,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default="2005-01-01")
     parser.add_argument("--end", default="auto")
+    parser.add_argument("--index-code", choices=INDEX_CODES, help="Optional supported index code to fetch.")
     parser.add_argument("--chunk-days", type=int, default=5)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--force", action="store_true")
@@ -204,22 +149,29 @@ def main(argv: list[str] | None = None) -> int:
     chunk_log: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
     summary: list[dict[str, Any]] = []
+    index_codes = (args.index_code,) if args.index_code else INDEX_CODES
 
-    for code in INDEX_CODES:
+    for code in index_codes:
         frames: list[pd.DataFrame] = []
+        covered_dates: set[date] = set()
         cache_path = CACHE_ROOT / f"{code}.csv"
         if args.resume and cache_path.exists() and not args.force:
             try:
                 existing = pd.read_csv(cache_path)
                 if not existing.empty:
                     frames.append(existing)
+                    covered_dates = _covered_dates(existing)
             except Exception:
                 frames = []
+                covered_dates = set()
 
         for chunk_start, chunk_end in _date_ranges(start_date, end_date, args.chunk_days):
             if args.max_runtime_seconds and time.monotonic() - started >= args.max_runtime_seconds:
                 stopped_reason = f"max_runtime_seconds={args.max_runtime_seconds}"
                 break
+            chunk_dates = {chunk_start + timedelta(days=offset) for offset in range((chunk_end - chunk_start).days + 1)}
+            if args.resume and not args.force and chunk_dates.issubset(covered_dates):
+                continue
             chunk_success = False
             last_error: Exception | None = None
             for days in (args.chunk_days, 3, 1):

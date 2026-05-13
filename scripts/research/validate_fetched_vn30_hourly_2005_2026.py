@@ -59,6 +59,7 @@ FIELDNAMES = [
     "evaluation_rows",
     "duplicate_datetime_count",
     "non_hourly_timestamp_count",
+    "frequency_recorded_pass",
     "ohlcv_numeric_pass",
     "positive_price_pass",
     "volume_nonnegative_pass",
@@ -95,6 +96,7 @@ def validate_symbol(symbol: str, *, required: bool) -> dict[str, Any]:
         "evaluation_rows": 0,
         "duplicate_datetime_count": "",
         "non_hourly_timestamp_count": "",
+        "frequency_recorded_pass": "false",
         "ohlcv_numeric_pass": "false",
         "positive_price_pass": "false",
         "volume_nonnegative_pass": "false",
@@ -137,6 +139,7 @@ def validate_symbol(symbol: str, *, required: bool) -> dict[str, Any]:
     numeric_pass = bool(not symbol_frame[OHLCV_COLUMNS].isna().any().any()) if not symbol_frame.empty else False
     positive_price_pass = bool((symbol_frame[["open", "high", "low", "close"]] > 0).all().all()) if not symbol_frame.empty else False
     volume_pass = bool((symbol_frame["volume"] >= 0).all()) if not symbol_frame.empty else False
+    frequency_pass = bool("frequency" in symbol_frame.columns and symbol_frame["frequency"].astype(str).eq("1H").all()) if not symbol_frame.empty else False
     if not symbol_frame.empty:
         first_ts = pd.Timestamp(symbol_frame["datetime"].min())
         last_ts = pd.Timestamp(symbol_frame["datetime"].max())
@@ -165,7 +168,7 @@ def validate_symbol(symbol: str, *, required: bool) -> dict[str, Any]:
         training_coverage = False
         evaluation_coverage = False
 
-    quality_pass = numeric_pass and positive_price_pass and volume_pass and duplicate_count == 0 and non_hourly == 0 and sorted_pass
+    quality_pass = numeric_pass and positive_price_pass and volume_pass and frequency_pass and duplicate_count == 0 and non_hourly == 0 and sorted_pass
     benchmark_usable = bool(quality_pass and training_coverage and evaluation_coverage)
     reasons: list[str] = []
     if symbol_frame.empty:
@@ -180,6 +183,8 @@ def validate_symbol(symbol: str, *, required: bool) -> dict[str, Any]:
         reasons.append("missing_zero_or_negative_prices")
     if not volume_pass:
         reasons.append("negative_volume")
+    if not frequency_pass:
+        reasons.append("frequency_not_recorded_as_1H")
     if not sorted_pass:
         reasons.append("timestamps_not_sorted")
     if not training_coverage:
@@ -191,6 +196,7 @@ def validate_symbol(symbol: str, *, required: bool) -> dict[str, Any]:
         {
             "duplicate_datetime_count": duplicate_count,
             "non_hourly_timestamp_count": non_hourly,
+            "frequency_recorded_pass": bool_text(frequency_pass),
             "ohlcv_numeric_pass": bool_text(numeric_pass),
             "positive_price_pass": bool_text(positive_price_pass),
             "volume_nonnegative_pass": bool_text(volume_pass),
@@ -220,8 +226,9 @@ def write_report(path: Path, rows: list[dict[str, Any]]) -> None:
     stocks = [row for row in rows if row.get("asset_type") == "stock"]
     stock_usable = [row for row in stocks if row.get("benchmark_usable") == "true"]
     vnindex = next((row for row in rows if row.get("symbol") == "VNINDEX"), {})
-    vn30index = next((row for row in rows if row.get("symbol") == "VN30INDEX"), {})
-    vnxall = next((row for row in rows if row.get("symbol") == "VNXALL"), {})
+    vn30 = next((row for row in rows if row.get("symbol") == "VN30"), {})
+    hnx30 = next((row for row in rows if row.get("symbol") == "HNX30"), {})
+    vn100 = next((row for row in rows if row.get("symbol") == "VN100"), {})
     failed = [row for row in rows if row.get("gate_required") == "true" and row.get("benchmark_usable") != "true"]
     content = [
         "# VN30 Hourly vnstock Fetched Data Validation",
@@ -231,17 +238,17 @@ def write_report(path: Path, rows: list[dict[str, Any]]) -> None:
         f"- Full fetched stock+VNINDEX gate passed: {gate_pass}.",
         f"- Benchmark-usable VN30 stocks: {len(stock_usable)}/30.",
         f"- VNINDEX benchmark-usable: {vnindex.get('benchmark_usable') == 'true'}.",
-        f"- VN30INDEX support/usable if fetched: supported={vn30index.get('optional_supported')}, usable={vn30index.get('benchmark_usable')}.",
-        f"- VNXALL support/usable if fetched: supported={vnxall.get('optional_supported')}, usable={vnxall.get('benchmark_usable')}.",
+        f"- VN30 support/usable if fetched: supported={vn30.get('optional_supported')}, usable={vn30.get('benchmark_usable')}.",
+        f"- HNX30 support/usable if fetched: supported={hnx30.get('optional_supported')}, usable={hnx30.get('benchmark_usable')}.",
+        f"- VN100 support/usable if fetched: supported={vn100.get('optional_supported')}, usable={vn100.get('benchmark_usable')}.",
         "",
         "## Required Coverage",
         "",
         f"- VN30 stocks: {TRAIN_START_TEXT} to {EVAL_END_TEXT}; train cutoff {TRAIN_CUTOFF_TEXT}.",
         f"- VNINDEX: {TRAIN_START_TEXT} to {EVAL_END_TEXT}.",
-        "- VN30INDEX optional context if fetched: 2012-02-06 00:00:00 to 2026-05-31 23:59:59.",
-        "- VNXALL optional context if fetched: 2016-10-24 00:00:00 to 2026-05-31 23:59:59.",
+        "- Optional supported index context if fetched: VN30, HNX30, VN100.",
         f"- Common evaluation/comparison window: {EVAL_START_TEXT} to {EVAL_END_TEXT}.",
-        "- Optional VN30INDEX/VNXALL absence does not fail the stock+VNINDEX gate.",
+        "- Optional supported-index absence does not fail the stock+VNINDEX gate.",
         "",
         "## Required Failures",
         "",

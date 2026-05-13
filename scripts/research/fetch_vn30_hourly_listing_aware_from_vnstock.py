@@ -370,8 +370,9 @@ def write_report(path: Path, rows: list[dict[str, Any]], failures: list[dict[str
     actual_eval_candidates = [pd.Timestamp(item) for item in actual_eval_candidates if not pd.isna(item)]
     actual_eval_end = timestamp_text(min(actual_eval_candidates)) if len(actual_eval_candidates) == 30 else ""
     vnindex = next((row for row in rows if row.get("ticker") == "VNINDEX"), {})
-    vn30index = next((row for row in rows if row.get("ticker") == "VN30INDEX"), {})
-    vnxall = next((row for row in rows if row.get("ticker") == "VNXALL"), {})
+    vn30 = next((row for row in rows if row.get("ticker") == "VN30"), {})
+    hnx30 = next((row for row in rows if row.get("ticker") == "HNX30"), {})
+    vn100 = next((row for row in rows if row.get("ticker") == "VN100"), {})
     package_rows = []
     for package_row in package_status_rows():
         cleaned = dict(package_row)
@@ -385,7 +386,7 @@ def write_report(path: Path, rows: list[dict[str, Any]], failures: list[dict[str
         "",
         "- Universe: frozen VN30 30 tickers.",
         "- Frequency: hourly only.",
-        "- Provider path: vnstock_data if importable, otherwise legacy vnstock.",
+        "- Provider path: src.data.providers.vn_price_gateway.",
         f"- Raw chunk directory: `{rel(RAW_FETCH_DIR)}`.",
         f"- Provider attempt log: `{rel(REPORT_ROOT / 'fetch' / 'vn30_listing_aware_provider_attempt_log.csv')}` for completed provider-call runs; persisted raw chunks and normalized cache are summarized separately after interrupted runs.",
         "- Per-ticker start rule: max(first trading/listing date, first provider-available hourly timestamp).",
@@ -400,8 +401,9 @@ def write_report(path: Path, rows: list[dict[str, Any]], failures: list[dict[str
         f"- Usable VN30 stocks from fetch summary: {len(usable_stocks)}/30.",
         f"- actual_eval_end candidate: {actual_eval_end or 'not available'}.",
         f"- VNINDEX fetched/usable: fetched={bool(vnindex.get('total_rows') and str(vnindex.get('total_rows')) != '0')}, usable={vnindex.get('usable') == 'true'}.",
-        f"- VN30INDEX support: {vn30index.get('usable') == 'true'}.",
-        f"- VNXALL support: {vnxall.get('usable') == 'true'}.",
+        f"- VN30 support: {vn30.get('usable') == 'true'}.",
+        f"- HNX30 support: {hnx30.get('usable') == 'true'}.",
+        f"- VN100 support: {vn100.get('usable') == 'true'}.",
         "",
         "## Per-Symbol Summary",
         "",

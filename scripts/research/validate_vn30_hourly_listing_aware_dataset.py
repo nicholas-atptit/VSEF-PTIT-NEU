@@ -63,6 +63,7 @@ FIELDNAMES = [
     "evaluation_rows",
     "duplicate_datetime_count",
     "non_hourly_timestamp_count",
+    "frequency_recorded_pass",
     "ohlcv_numeric_pass",
     "positive_price_pass",
     "volume_nonnegative_pass",
@@ -132,6 +133,7 @@ def validate_symbol(symbol: str, listing_rows: dict[str, dict[str, str]], actual
         "evaluation_rows": 0,
         "duplicate_datetime_count": "",
         "non_hourly_timestamp_count": "",
+        "frequency_recorded_pass": "false",
         "ohlcv_numeric_pass": "false",
         "positive_price_pass": "false",
         "volume_nonnegative_pass": "false",
@@ -158,6 +160,7 @@ def validate_symbol(symbol: str, listing_rows: dict[str, dict[str, str]], actual
     numeric_pass = bool(not frame[OHLCV_COLUMNS].isna().any().any())
     positive_pass = bool((frame[["open", "high", "low", "close"]] > 0).all().all())
     volume_pass = bool((frame["volume"] >= 0).all())
+    frequency_pass = bool("frequency" in frame.columns and frame["frequency"].astype(str).eq("1H").all())
     provider_source = bool(
         "provider" in frame.columns
         and "source" in frame.columns
@@ -185,6 +188,8 @@ def validate_symbol(symbol: str, listing_rows: dict[str, dict[str, str]], actual
         reasons.append("missing_zero_or_negative_prices")
     if not volume_pass:
         reasons.append("negative_volume")
+    if not frequency_pass:
+        reasons.append("frequency_not_recorded_as_1H")
     if not provider_source:
         reasons.append("provider_or_source_missing")
     if symbol not in ALL_INDEX_CODES and training_rows < MIN_TRAINING_ROWS_PER_TICKER:
@@ -210,6 +215,7 @@ def validate_symbol(symbol: str, listing_rows: dict[str, dict[str, str]], actual
             "evaluation_rows": evaluation_rows,
             "duplicate_datetime_count": duplicate_count,
             "non_hourly_timestamp_count": non_hourly,
+            "frequency_recorded_pass": bool_text(frequency_pass),
             "ohlcv_numeric_pass": bool_text(numeric_pass),
             "positive_price_pass": bool_text(positive_pass),
             "volume_nonnegative_pass": bool_text(volume_pass),
@@ -239,8 +245,9 @@ def write_report(path: Path, rows: list[dict[str, Any]]) -> None:
     usable_stocks = [row for row in stocks if row.get("benchmark_usable") == "true"]
     actual_eval_end = compute_actual_eval_end(rows) or (rows[0].get("actual_eval_end", "") if rows else "")
     vnindex = next((row for row in rows if row.get("symbol") == "VNINDEX"), {})
-    vn30index = next((row for row in rows if row.get("symbol") == "VN30INDEX"), {})
-    vnxall = next((row for row in rows if row.get("symbol") == "VNXALL"), {})
+    vn30 = next((row for row in rows if row.get("symbol") == "VN30"), {})
+    hnx30 = next((row for row in rows if row.get("symbol") == "HNX30"), {})
+    vn100 = next((row for row in rows if row.get("symbol") == "VN100"), {})
     failed = [row for row in rows if row.get("gate_required") == "true" and row.get("benchmark_usable") != "true"]
     content = [
         "# VN30 Hourly Listing-Aware Validation",
@@ -251,8 +258,9 @@ def write_report(path: Path, rows: list[dict[str, Any]]) -> None:
         f"- Usable VN30 stocks: {len(usable_stocks)}/30.",
         f"- actual_eval_end: {actual_eval_end or 'not available'}.",
         f"- VNINDEX fetched/usable: fetched={vnindex.get('fetched') == 'true'}, usable={vnindex.get('benchmark_usable') == 'true'}.",
-        f"- VN30INDEX support: {vn30index.get('benchmark_usable') == 'true'}.",
-        f"- VNXALL support: {vnxall.get('benchmark_usable') == 'true'}.",
+        f"- VN30 support: {vn30.get('benchmark_usable') == 'true'}.",
+        f"- HNX30 support: {hnx30.get('benchmark_usable') == 'true'}.",
+        f"- VN100 support: {vn100.get('benchmark_usable') == 'true'}.",
         "",
         "## Thresholds and Rules",
         "",

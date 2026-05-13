@@ -48,7 +48,7 @@ def _time_fetch(method_name: str) -> Callable:
 
 MAX_FETCH_RETRIES = 3
 BASE_RETRY_DELAY_SECONDS = 0.75
-QUOTE_SOURCE_PRIORITY = ("VCI", "KBS", "VND", "MAS")
+QUOTE_SOURCE_PRIORITY = ("KBS", "VCI")
 DIRECT_VNSTOCK_PROVENANCE = "direct_vnstock_data"
 STUB_PROVENANCE = "stub_todo"
 _VNSTOCK_EXPORTS = (

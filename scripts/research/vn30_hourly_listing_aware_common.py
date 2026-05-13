@@ -47,11 +47,10 @@ DEFAULT_MODELS = ["xgboost", "lightgbm", "random_forest", "stacking"]
 DEFAULT_HORIZONS = [1, 4, 8, 20]
 
 VNINDEX_START = pd.Timestamp("2005-01-01 00:00:00")
-VN30INDEX_START = pd.Timestamp("2012-02-06 00:00:00")
-VNXALL_START = pd.Timestamp("2016-10-24 00:00:00")
-INDEX_STARTS = {"VNINDEX": VNINDEX_START, "VN30INDEX": VN30INDEX_START, "VNXALL": VNXALL_START}
-OPTIONAL_INDEX_CODES = ("VN30INDEX", "VNXALL")
-ALL_INDEX_CODES = ("VNINDEX", "VN30INDEX", "VNXALL")
+VN30_START = pd.Timestamp("2012-02-06 00:00:00")
+INDEX_STARTS = {"VNINDEX": VNINDEX_START, "VN30": VN30_START, "HNX30": TRAIN_START, "VN100": TRAIN_START}
+OPTIONAL_INDEX_CODES = ("VN30", "HNX30", "VN100")
+ALL_INDEX_CODES = ("VNINDEX", *OPTIONAL_INDEX_CODES)
 
 OHLCV_COLUMNS = ["open", "high", "low", "close", "volume"]
 NORMALIZED_COLUMNS = [
@@ -64,6 +63,7 @@ NORMALIZED_COLUMNS = [
     "volume",
     "provider",
     "source",
+    "frequency",
     "requested_start",
     "actual_first_datetime",
     "actual_last_datetime",
@@ -157,6 +157,8 @@ def write_normalized_symbol(symbol: str, frame: pd.DataFrame, requested_start: p
     output["requested_start"] = timestamp_text(requested_start)
     output["actual_first_datetime"] = actual_first
     output["actual_last_datetime"] = actual_last
+    if "frequency" not in output.columns:
+        output["frequency"] = "1H"
     output["datetime"] = output["datetime"].dt.strftime("%Y-%m-%d %H:%M:%S")
     output[NORMALIZED_COLUMNS].to_csv(path, index=False)
 
@@ -171,6 +173,8 @@ def write_listing_raw_chunk(path: Path, frame: pd.DataFrame, requested_start: pd
     output["requested_start"] = timestamp_text(requested_start)
     output["actual_first_datetime"] = timestamp_text(output["datetime"].min())
     output["actual_last_datetime"] = timestamp_text(output["datetime"].max())
+    if "frequency" not in output.columns:
+        output["frequency"] = "1H"
     output["datetime"] = output["datetime"].dt.strftime("%Y-%m-%d %H:%M:%S")
     output[NORMALIZED_COLUMNS].to_csv(path, index=False)
 
@@ -299,7 +303,7 @@ def write_docx_notes(*, paper_exists: bool, validation_rows: list[dict[str, Any]
         f"- Training labels end: {TRAIN_CUTOFF_TEXT}.",
         f"- Evaluation starts: {EVAL_START_TEXT}.",
         f"- actual_eval_end: {actual_eval_end or 'not available'}.",
-        "- VNINDEX is market context if fetched and validated; VN30INDEX and VNXALL are optional exact-code probes.",
+        "- VNINDEX is market context if fetched and validated; VN30, HNX30, and VN100 are optional supported-index context.",
         "- Old VN100 evidence, daily data, daily-to-hourly resampling, and fabricated bars are excluded.",
         "",
         "## Validation Snapshot",

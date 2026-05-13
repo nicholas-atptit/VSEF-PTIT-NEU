@@ -7,10 +7,7 @@ import importlib
 import importlib.metadata
 import importlib.util
 import json
-import multiprocessing as mp
 import time
-import warnings
-from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -35,16 +32,18 @@ from scripts.research.vn30_hourly_common import (
     write_csv,
     write_json,
 )
+from src.data.providers.vn_price_gateway import ProviderFetchError, fetch_price_history  # noqa: E402
+from src.data.providers.vn_provider_contract import AssetType, FetchRequest, Frequency, SourceName  # noqa: E402
 
 
 LOCAL_EXCHANGE_TZ = "Asia/Ho_Chi_Minh"
-SOURCE_PRIORITY = ("VCI", "KBS", "VND", "MAS")
+SOURCE_PRIORITY = ("KBS", "VCI")
 PROBE_WINDOWS = (
     ("2024-01-02", "2024-01-05"),
     ("2025-01-02", "2025-01-05"),
     ("2026-05-04", "2026-05-11"),
 )
-PROBE_SYMBOLS = ("ACB", "HPG", "VNINDEX", "VN30INDEX", "VNXALL")
+PROBE_SYMBOLS = ("ACB", "HPG", "VNINDEX", "VN30")
 
 FETCH_REPORT_ROOT = REPO_ROOT / "reports" / "generated" / "vn30_hourly_vnstock_fetch"
 FULL_REPORT_ROOT = REPO_ROOT / "reports" / "generated" / "vn30_hourly_vnstock_full"
@@ -56,36 +55,19 @@ DOCX_NOTES_PATH = REPO_ROOT / "reports" / "NCKH_VN30_HOURLY_VNSTOCK_2005_2026_DO
 MISSING_EVIDENCE_PATH = FETCH_REPORT_ROOT / "vn30_full_benchmark_missing_evidence.md"
 
 VNINDEX_REQUIREMENT_START = pd.Timestamp("2005-01-01 00:00:00")
-VN30INDEX_REQUIREMENT_START = pd.Timestamp("2012-02-06 00:00:00")
-VNXALL_REQUIREMENT_START = pd.Timestamp("2016-10-24 00:00:00")
+VN30_REQUIREMENT_START = pd.Timestamp("2012-02-06 00:00:00")
 INDEX_REQUIREMENTS = {
     "VNINDEX": VNINDEX_REQUIREMENT_START,
-    "VN30INDEX": VN30INDEX_REQUIREMENT_START,
-    "VNXALL": VNXALL_REQUIREMENT_START,
+    "VN30": VN30_REQUIREMENT_START,
+    "HNX30": TRAIN_START,
+    "VN100": TRAIN_START,
 }
 REQUIRED_INDEX_CODES = ("VNINDEX",)
-OPTIONAL_INDEX_CODES = ("VN30INDEX", "VNXALL")
+OPTIONAL_INDEX_CODES = ("VN30", "HNX30", "VN100")
 ALL_INDEX_CODES = (*REQUIRED_INDEX_CODES, *OPTIONAL_INDEX_CODES)
 
 OHLCV_COLUMNS = ["open", "high", "low", "close", "volume"]
-NORMALIZED_COLUMNS = ["datetime", "ticker", *OHLCV_COLUMNS, "provider", "source"]
-
-
-@dataclass(frozen=True)
-class ProviderCall:
-    package: str
-    provider: str
-    source: str
-    function_used: str
-    call: Callable[[], Any]
-
-
-@dataclass(frozen=True)
-class ProviderSpec:
-    package: str
-    provider: str
-    source: str
-    function_used: str
+NORMALIZED_COLUMNS = ["datetime", "ticker", *OHLCV_COLUMNS, "provider", "source", "frequency"]
 
 
 @dataclass
@@ -166,470 +148,117 @@ def package_status_rows() -> list[dict[str, Any]]:
     return rows
 
 
-def _import_module_safely(package_name: str) -> Any | None:
-    if importlib.util.find_spec(package_name) is None:
-        return None
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            return importlib.import_module(package_name)
-    except BaseException:
-        return None
-
-
-def _load_vnstock_data_namespace() -> dict[str, Any]:
-    module = _import_module_safely("vnstock_data")
-    if module is None:
-        return {}
-    namespace = {name: getattr(module, name, None) for name in ("Quote", "QuoteHistory")}
-    for module_name, attr_name in (
-        ("vnstock_data.api.quote", "Quote"),
-        ("vnstock_data.api.quote", "QuoteHistory"),
-        ("vnstock_data.explorer.vci.quote", "Quote"),
-    ):
-        if namespace.get(attr_name) is not None:
-            continue
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                lazy_module = importlib.import_module(module_name)
-            namespace[attr_name] = getattr(lazy_module, attr_name, None)
-        except Exception:
-            continue
-    return namespace
-
-
-def iter_provider_calls(symbol: str, start_date: str, end_date: str) -> Iterator[ProviderCall]:
-    """Yield direct hourly provider calls without falling back to daily data."""
-    code = symbol.upper().strip()
-    namespace = _load_vnstock_data_namespace()
-    quote = namespace.get("Quote")
-    quote_history = namespace.get("QuoteHistory")
-    for source in SOURCE_PRIORITY:
-        if quote is not None:
-            yield ProviderCall(
-                package="vnstock_data",
-                provider="vnstock_data",
-                source=source,
-                function_used="Quote.history(interval=1H)",
-                call=lambda quote=quote, source=source: quote(source=source, symbol=code).history(
-                    start=start_date,
-                    end=end_date,
-                    interval="1H",
-                    get_all=True,
-                ),
-            )
-        if quote_history is not None:
-            yield ProviderCall(
-                package="vnstock_data",
-                provider="vnstock_data",
-                source=source,
-                function_used="QuoteHistory.history(timeframe=1H)",
-                call=lambda quote_history=quote_history, source=source: quote_history(source=source, symbol=code).history(
-                    start_date=start_date,
-                    end_date=end_date,
-                    timeframe="1H",
-                ),
-            )
-
-    legacy = _import_module_safely("vnstock")
-    if legacy is None:
-        return
-    legacy_quote = getattr(legacy, "Quote", None)
-    if legacy_quote is not None:
-        for source in SOURCE_PRIORITY:
-            yield ProviderCall(
-                package="vnstock",
-                provider="vnstock",
-                source=source,
-                function_used="Quote.history(interval=1H)",
-                call=lambda legacy_quote=legacy_quote, source=source: legacy_quote(source=source, symbol=code).history(
-                    start=start_date,
-                    end=end_date,
-                    interval="1H",
-                ),
-            )
-    stock_historical_data = getattr(legacy, "stock_historical_data", None)
-    if callable(stock_historical_data):
-        for resolution in ("1H", "60"):
-            yield ProviderCall(
-                package="vnstock",
-                provider="vnstock",
-                source="legacy_stock_historical_data",
-                function_used=f"stock_historical_data(resolution={resolution})",
-                call=lambda resolution=resolution: stock_historical_data(
-                    symbol=code,
-                    start_date=start_date,
-                    end_date=end_date,
-                    resolution=resolution,
-                    type="stock",
-                    beautify=False,
-                    decor=False,
-                ),
-            )
-    vnstock_class = getattr(legacy, "Vnstock", None)
-    if vnstock_class is not None:
-        for source in SOURCE_PRIORITY:
-            yield ProviderCall(
-                package="vnstock",
-                provider="vnstock",
-                source=source,
-                function_used="Vnstock.stock.quote.history(interval=1H)",
-                call=lambda vnstock_class=vnstock_class, source=source: vnstock_class()
-                .stock(symbol=code, source=source)
-                .quote.history(start=start_date, end=end_date, interval="1H"),
-            )
-
-
-def iter_provider_specs(symbol: str) -> Iterator[ProviderSpec]:
-    """Yield provider call specs that can be reconstructed in a child process."""
-    _ = symbol
-    namespace = _load_vnstock_data_namespace()
-    if namespace.get("Quote") is not None:
-        for source in SOURCE_PRIORITY:
-            yield ProviderSpec("vnstock_data", "vnstock_data", source, "Quote.history(interval=1H)")
-    if namespace.get("QuoteHistory") is not None:
-        for source in SOURCE_PRIORITY:
-            yield ProviderSpec("vnstock_data", "vnstock_data", source, "QuoteHistory.history(timeframe=1H)")
-    legacy = _import_module_safely("vnstock")
-    if legacy is None:
-        return
-    if getattr(legacy, "Quote", None) is not None:
-        for source in SOURCE_PRIORITY:
-            yield ProviderSpec("vnstock", "vnstock", source, "Quote.history(interval=1H)")
-    if callable(getattr(legacy, "stock_historical_data", None)):
-        for resolution in ("1H", "60"):
-            yield ProviderSpec("vnstock", "vnstock", "legacy_stock_historical_data", f"stock_historical_data(resolution={resolution})")
-    if getattr(legacy, "Vnstock", None) is not None:
-        for source in SOURCE_PRIORITY:
-            yield ProviderSpec("vnstock", "vnstock", source, "Vnstock.stock.quote.history(interval=1H)")
-
-
-def _lazy_quote_class(module: Any, class_name: str) -> Any | None:
-    cls = getattr(module, class_name, None)
-    if cls is not None:
-        return cls
-    for module_name in ("vnstock_data.api.quote", "vnstock_data.explorer.vci.quote"):
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                lazy_module = importlib.import_module(module_name)
-            cls = getattr(lazy_module, class_name, None)
-            if cls is not None:
-                return cls
-        except Exception:
-            continue
-    return None
-
-
-def _run_provider_spec(symbol: str, start_date: str, end_date: str, spec: ProviderSpec) -> Any:
-    code = symbol.upper().strip()
-    if spec.package == "vnstock_data":
-        module = importlib.import_module("vnstock_data")
-        if spec.function_used.startswith("Quote.history"):
-            quote = _lazy_quote_class(module, "Quote")
-            if quote is None:
-                raise ImportError("vnstock_data Quote class is unavailable")
-            return quote(source=spec.source, symbol=code).history(
-                start=start_date,
-                end=end_date,
-                interval="1H",
-                get_all=True,
-            )
-        if spec.function_used.startswith("QuoteHistory.history"):
-            quote_history = _lazy_quote_class(module, "QuoteHistory")
-            if quote_history is None:
-                raise ImportError("vnstock_data QuoteHistory class is unavailable")
-            return quote_history(source=spec.source, symbol=code).history(
-                start_date=start_date,
-                end_date=end_date,
-                timeframe="1H",
-            )
-    if spec.package == "vnstock":
-        module = importlib.import_module("vnstock")
-        if spec.function_used.startswith("Quote.history"):
-            quote = getattr(module, "Quote", None)
-            if quote is None:
-                raise ImportError("vnstock Quote class is unavailable")
-            return quote(source=spec.source, symbol=code).history(start=start_date, end=end_date, interval="1H")
-        if spec.function_used.startswith("stock_historical_data"):
-            stock_historical_data = getattr(module, "stock_historical_data", None)
-            if not callable(stock_historical_data):
-                raise ImportError("vnstock stock_historical_data is unavailable")
-            resolution = "60" if "resolution=60" in spec.function_used else "1H"
-            return stock_historical_data(
-                symbol=code,
-                start_date=start_date,
-                end_date=end_date,
-                resolution=resolution,
-                type="stock",
-                beautify=False,
-                decor=False,
-            )
-        if spec.function_used.startswith("Vnstock.stock"):
-            vnstock_class = getattr(module, "Vnstock", None)
-            if vnstock_class is None:
-                raise ImportError("vnstock Vnstock class is unavailable")
-            return vnstock_class().stock(symbol=code, source=spec.source).quote.history(
-                start=start_date,
-                end=end_date,
-                interval="1H",
-            )
-    raise ValueError(f"Unsupported provider spec: {spec}")
-
-
-def _provider_timeout_worker(queue: Any, symbol: str, start_date: str, end_date: str, spec: ProviderSpec) -> None:
-    try:
-        result = _run_provider_spec(symbol, start_date, end_date, spec)
-        raw = as_dataframe(result)
-        standardized = standardize_provider_frame(raw, symbol, provider=spec.provider, source=spec.source)
-        if not standardized.empty:
-            standardized = standardized.copy()
-            standardized["datetime"] = pd.to_datetime(standardized["datetime"], errors="coerce").dt.strftime("%Y-%m-%d %H:%M:%S")
-        queue.put(
-            {
-                "ok": True,
-                "raw_rows": int(len(raw)),
-                "columns": ",".join(str(column) for column in raw.columns),
-                "records": standardized.to_dict("records"),
-            }
-        )
-    except BaseException as exc:
-        queue.put(
-            {
-                "ok": False,
-                "exception_type": type(exc).__name__,
-                "exception_message": str(exc).replace("\n", " ")[:800],
-            }
-        )
-
-
-def attempt_provider_fetch_with_timeout(symbol: str, start_date: str, end_date: str, timeout_seconds: float) -> list[AttemptResult]:
-    rows: list[AttemptResult] = []
-    specs = list(iter_provider_specs(symbol))
-    for spec in specs:
-        queue: Any = mp.Queue()
-        process = mp.Process(target=_provider_timeout_worker, args=(queue, symbol, start_date, end_date, spec))
-        process.start()
-        process.join(timeout=max(1.0, float(timeout_seconds)))
-        standardized = pd.DataFrame(columns=NORMALIZED_COLUMNS)
-        raw_rows = 0
-        columns = ""
-        first_ts = ""
-        last_ts = ""
-        exception_type = ""
-        exception_message = ""
-        if process.is_alive():
-            process.terminate()
-            process.join(5)
-            exception_type = "TimeoutError"
-            exception_message = f"provider call exceeded {timeout_seconds:.1f} seconds"
-        else:
-            payload = queue.get() if not queue.empty() else {"ok": False, "exception_type": "NoResult", "exception_message": "provider process returned no result"}
-            if payload.get("ok"):
-                raw_rows = int(payload.get("raw_rows", 0) or 0)
-                columns = str(payload.get("columns", ""))
-                records = payload.get("records", [])
-                standardized = pd.DataFrame(records, columns=NORMALIZED_COLUMNS)
-                if not standardized.empty:
-                    standardized["datetime"] = pd.to_datetime(standardized["datetime"], errors="coerce")
-                    first_ts = timestamp_text(standardized["datetime"].min())
-                    last_ts = timestamp_text(standardized["datetime"].max())
-            else:
-                exception_type = str(payload.get("exception_type", "ProviderError"))
-                exception_message = str(payload.get("exception_message", ""))[:800]
-        rows.append(
-            AttemptResult(
-                symbol=symbol.upper().strip(),
-                asset_type=asset_type(symbol),
-                start_date=start_date,
-                end_date=end_date,
-                package=spec.package,
-                package_version=package_version(spec.package),
-                provider=spec.provider,
-                source=spec.source,
-                function_used=spec.function_used,
-                returned_rows=raw_rows,
-                standardized_rows=int(len(standardized)),
-                returned_columns=columns,
-                first_timestamp=first_ts,
-                last_timestamp=last_ts,
-                success=not standardized.empty,
-                exception_type=exception_type,
-                exception_message=exception_message,
-                frame=standardized,
-            )
-        )
-    if not rows:
-        return attempt_provider_fetch(symbol, start_date, end_date)
-    return rows
-
-
-def as_dataframe(result: Any) -> pd.DataFrame:
-    if isinstance(result, pd.DataFrame):
-        return result.copy()
-    if isinstance(result, pd.Series):
-        return result.to_frame(name=result.name or "value").reset_index()
-    if isinstance(result, (list, tuple)):
-        return pd.DataFrame(result)
-    if isinstance(result, dict):
-        try:
-            return pd.DataFrame(result)
-        except Exception:
-            return pd.DataFrame([result])
-    return pd.DataFrame()
-
-
-def _column_by_lower(frame: pd.DataFrame) -> dict[str, str]:
-    return {str(column).strip().lower(): str(column) for column in frame.columns}
-
-
-def find_provider_time_column(frame: pd.DataFrame) -> str | None:
-    lower = _column_by_lower(frame)
-    for candidate in ("datetime", "time", "timestamp", "date", "trading_date", "tradingdate"):
-        if candidate in lower:
-            return lower[candidate]
-    if isinstance(frame.index, pd.DatetimeIndex):
-        return "__index__"
-    return None
-
-
-def _parse_exchange_datetime(values: Any) -> pd.Series:
-    parsed = pd.to_datetime(values, errors="coerce")
-    try:
-        if isinstance(parsed.dtype, pd.DatetimeTZDtype):
-            return parsed.dt.tz_convert(LOCAL_EXCHANGE_TZ).dt.tz_localize(None)
-    except Exception:
-        pass
-    try:
-        return parsed.dt.tz_localize(None)
-    except (AttributeError, TypeError, ValueError):
-        return parsed
-
-
-def standardize_provider_frame(raw: pd.DataFrame, symbol: str, *, provider: str, source: str) -> pd.DataFrame:
-    if raw is None or raw.empty:
-        return pd.DataFrame(columns=NORMALIZED_COLUMNS)
-    prepared = raw.copy()
-    if isinstance(prepared.index, pd.DatetimeIndex) and "datetime" not in prepared.columns:
-        prepared = prepared.reset_index().rename(columns={prepared.index.name or "index": "datetime"})
-    time_column = find_provider_time_column(prepared)
-    if time_column is None:
-        return pd.DataFrame(columns=NORMALIZED_COLUMNS)
-    if time_column == "__index__":
-        prepared = prepared.reset_index().rename(columns={prepared.index.name or "index": "datetime"})
-    elif time_column != "datetime":
-        prepared = prepared.rename(columns={time_column: "datetime"})
-
-    lower = _column_by_lower(prepared)
-    rename_map: dict[str, str] = {}
-    for target in OHLCV_COLUMNS:
-        source_column = lower.get(target)
-        if source_column is not None and source_column != target:
-            rename_map[source_column] = target
-    if rename_map:
-        prepared = prepared.rename(columns=rename_map)
-
-    missing = [column for column in ["datetime", *OHLCV_COLUMNS] if column not in prepared.columns]
-    if missing:
-        return pd.DataFrame(columns=NORMALIZED_COLUMNS)
-
-    standardized = prepared[["datetime", *OHLCV_COLUMNS]].copy()
-    standardized["datetime"] = _parse_exchange_datetime(standardized["datetime"])
-    standardized["ticker"] = symbol.upper().strip()
-    standardized["provider"] = provider
-    standardized["source"] = source
-    for column in OHLCV_COLUMNS:
-        standardized[column] = pd.to_numeric(standardized[column], errors="coerce")
-    standardized = standardized.dropna(subset=["datetime", "open", "high", "low", "close", "volume"])
-    standardized = standardized[
-        (standardized["open"] > 0)
-        & (standardized["high"] > 0)
-        & (standardized["low"] > 0)
-        & (standardized["close"] > 0)
-        & (standardized["volume"] >= 0)
-    ].copy()
-    if standardized.empty:
-        return pd.DataFrame(columns=NORMALIZED_COLUMNS)
-    standardized = standardized.sort_values(["ticker", "datetime"]).drop_duplicates(["ticker", "datetime"], keep="last")
-    return standardized[NORMALIZED_COLUMNS].reset_index(drop=True)
-
-
 def attempt_provider_fetch(symbol: str, start_date: str, end_date: str) -> list[AttemptResult]:
-    rows: list[AttemptResult] = []
-    for provider_call in iter_provider_calls(symbol, start_date, end_date):
-        raw_rows = 0
-        columns = ""
-        first_ts = ""
-        last_ts = ""
-        standardized = pd.DataFrame(columns=NORMALIZED_COLUMNS)
-        exception_type = ""
-        exception_message = ""
-        try:
-            result = provider_call.call()
-            raw = as_dataframe(result)
-            raw_rows = int(len(raw))
-            columns = ",".join(str(column) for column in raw.columns)
-            standardized = standardize_provider_frame(
-                raw,
-                symbol,
-                provider=provider_call.provider,
-                source=provider_call.source,
-            )
-            if not standardized.empty:
-                first_ts = timestamp_text(standardized["datetime"].min())
-                last_ts = timestamp_text(standardized["datetime"].max())
-        except BaseException as exc:
-            exception_type = type(exc).__name__
-            exception_message = str(exc).replace("\n", " ")[:800]
-        rows.append(
+    """Fetch through the canonical gateway and adapt metadata to legacy logs."""
+    request = FetchRequest(
+        symbol=symbol.upper().strip(),
+        asset_type=AssetType.INDEX if asset_type(symbol) == "index" else AssetType.STOCK,
+        start=start_date,
+        end=end_date,
+        frequency=Frequency.HOURLY,
+        preferred_sources=tuple(SourceName(source) for source in SOURCE_PRIORITY),
+        allow_legacy_fallback=True,
+        allow_daily=False,
+        allow_resample=False,
+    )
+    try:
+        response = fetch_price_history(request)
+        frame = response.data.copy()
+        if response.asset_type == AssetType.INDEX and "index_code" in frame.columns:
+            frame = frame.rename(columns={"index_code": "ticker"})
+        frame = frame.reindex(columns=NORMALIZED_COLUMNS)
+        return [
             AttemptResult(
                 symbol=symbol.upper().strip(),
                 asset_type=asset_type(symbol),
                 start_date=start_date,
                 end_date=end_date,
-                package=provider_call.package,
-                package_version=package_version(provider_call.package),
-                provider=provider_call.provider,
-                source=provider_call.source,
-                function_used=provider_call.function_used,
-                returned_rows=raw_rows,
-                standardized_rows=int(len(standardized)),
-                returned_columns=columns,
-                first_timestamp=first_ts,
-                last_timestamp=last_ts,
-                success=not standardized.empty,
-                exception_type=exception_type,
-                exception_message=exception_message,
-                frame=standardized,
+                package=str(response.provider),
+                package_version=package_version("vnstock_data") if "vnstock" in str(response.provider) else "",
+                provider=str(response.provider),
+                source=str(response.source),
+                function_used="src.data.providers.vn_price_gateway.fetch_price_history",
+                returned_rows=response.rows,
+                standardized_rows=response.rows,
+                returned_columns=",".join(str(column) for column in frame.columns),
+                first_timestamp=timestamp_text(response.first_datetime) if response.first_datetime is not None else "",
+                last_timestamp=timestamp_text(response.last_datetime) if response.last_datetime is not None else "",
+                success=response.rows > 0,
+                exception_type="",
+                exception_message="",
+                frame=frame,
             )
-        )
-    if not rows:
-        for package_name in ("vnstock_data", "vnstock"):
-            if importlib.util.find_spec(package_name) is None:
-                rows.append(
-                    AttemptResult(
-                        symbol=symbol.upper().strip(),
-                        asset_type=asset_type(symbol),
-                        start_date=start_date,
-                        end_date=end_date,
-                        package=package_name,
-                        package_version="",
-                        provider=package_name,
-                        source="not_installed",
-                        function_used="package_import",
-                        returned_rows=0,
-                        standardized_rows=0,
-                        returned_columns="",
-                        first_timestamp="",
-                        last_timestamp="",
-                        success=False,
-                        exception_type="PackageNotFound",
-                        exception_message=f"{package_name} is not installed",
-                        frame=pd.DataFrame(columns=NORMALIZED_COLUMNS),
-                    )
+        ]
+    except ProviderFetchError as exc:
+        rows = []
+        for attempt in exc.attempts:
+            rows.append(
+                AttemptResult(
+                    symbol=symbol.upper().strip(),
+                    asset_type=asset_type(symbol),
+                    start_date=start_date,
+                    end_date=end_date,
+                    package=str(attempt.get("provider", "")),
+                    package_version="",
+                    provider=str(attempt.get("provider", "")),
+                    source=str(attempt.get("source", "")),
+                    function_used="src.data.providers.vn_price_gateway.fetch_price_history",
+                    returned_rows=int(attempt.get("rows", 0) or 0),
+                    standardized_rows=int(attempt.get("rows", 0) or 0),
+                    returned_columns="",
+                    first_timestamp=str(attempt.get("first_datetime", "")),
+                    last_timestamp=str(attempt.get("last_datetime", "")),
+                    success=False,
+                    exception_type=str(attempt.get("error_type", "ProviderFetchError") or "ProviderFetchError"),
+                    exception_message=str(attempt.get("error_message", str(exc)))[:800],
+                    frame=pd.DataFrame(columns=NORMALIZED_COLUMNS),
                 )
-    return rows
+            )
+        return rows or [
+            AttemptResult(
+                symbol=symbol.upper().strip(),
+                asset_type=asset_type(symbol),
+                start_date=start_date,
+                end_date=end_date,
+                package="vn_price_gateway",
+                package_version="",
+                provider="vn_price_gateway",
+                source="",
+                function_used="src.data.providers.vn_price_gateway.fetch_price_history",
+                returned_rows=0,
+                standardized_rows=0,
+                returned_columns="",
+                first_timestamp="",
+                last_timestamp="",
+                success=False,
+                exception_type=type(exc).__name__,
+                exception_message=str(exc)[:800],
+                frame=pd.DataFrame(columns=NORMALIZED_COLUMNS),
+            )
+        ]
+    except BaseException as exc:
+        return [
+            AttemptResult(
+                symbol=symbol.upper().strip(),
+                asset_type=asset_type(symbol),
+                start_date=start_date,
+                end_date=end_date,
+                package="vn_price_gateway",
+                package_version="",
+                provider="vn_price_gateway",
+                source="",
+                function_used="src.data.providers.vn_price_gateway.fetch_price_history",
+                returned_rows=0,
+                standardized_rows=0,
+                returned_columns="",
+                first_timestamp="",
+                last_timestamp="",
+                success=False,
+                exception_type=type(exc).__name__,
+                exception_message=str(exc)[:800],
+                frame=pd.DataFrame(columns=NORMALIZED_COLUMNS),
+            )
+        ]
 
 
 def fetch_first_success(
@@ -643,10 +272,8 @@ def fetch_first_success(
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     attempt_logs: list[dict[str, Any]] = []
     for attempt_number in range(1, retries + 1):
-        if timeout_seconds is not None and timeout_seconds > 0:
-            results = attempt_provider_fetch_with_timeout(symbol, start_date, end_date, timeout_seconds)
-        else:
-            results = attempt_provider_fetch(symbol, start_date, end_date)
+        _ = timeout_seconds
+        results = attempt_provider_fetch(symbol, start_date, end_date)
         for result in results:
             row = result.to_log_row()
             row["retry_attempt"] = attempt_number
@@ -720,6 +347,8 @@ def write_normalized_symbol(symbol: str, frame: pd.DataFrame) -> None:
     path = normalized_cache_path(symbol)
     path.parent.mkdir(parents=True, exist_ok=True)
     output = frame.copy()
+    if "frequency" not in output.columns:
+        output["frequency"] = "1H"
     output["datetime"] = pd.to_datetime(output["datetime"], errors="coerce").dt.strftime("%Y-%m-%d %H:%M:%S")
     output[NORMALIZED_COLUMNS].to_csv(path, index=False)
 
@@ -776,7 +405,7 @@ def build_docx_notes(*, paper_exists: bool, validation_rows: list[dict[str, Any]
         "",
         f"- Benchmark-usable VN30 stocks: {len(usable_stocks)}/30.",
         f"- VNINDEX benchmark-usable: {str(vnindex_row.get('benchmark_usable', '')).lower() == 'true'}.",
-        "- VN30INDEX and VNXALL are optional context indices in this track; unsupported exact codes do not fail the stock+VNINDEX gate.",
+        "- Optional supported context indices are VN30, HNX30, and VN100; unsupported aliases do not fail the stock+VNINDEX gate.",
         "",
         "## Artifact Directories",
         "",

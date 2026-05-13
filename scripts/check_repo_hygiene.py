@@ -32,6 +32,9 @@ CONTENT_ALLOWLIST_PREFIXES = {
 }
 
 CONTENT_ALLOWLIST_FILES = {
+    "reports/VNSTOCK_AGENT_DATA_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
+    "reports/VNSTOCK_AGENT_DATA_GUIDE_SUMMARY.md": "documents exact approved local provider interpreter for future agents.",
+    "reports/VNSTOCK_PROVIDER_STANDARDIZATION_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
     "reports/VNSTOCK_DATA_INTERPRETER_FIX_PLAN.md": "documents exact local interpreter remediation commands requested for environment repair.",
     "reports/VSEF_1000_SEED_SMOKE_STABILITY_REPORT.md": "historical benchmark evidence retained.",
     "reports/stress_test_report.md": "historical benchmark evidence retained until report migration is approved.",
