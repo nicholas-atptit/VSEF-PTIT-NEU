@@ -4,6 +4,9 @@ Generated full-draft artifacts:
 - `reports/NCKH_FULL_PAPER_DRAFT_VN100.md`
 - `reports/NCKH_ABSTRACT_AND_KEYWORDS.md`
 - `reports/NCKH_DEFENSE_SUMMARY.md`
+- `reports/NCKH_FULL_PAPER_DRAFT_VN100_CLEAN.md`
+- `reports/NCKH_REFERENCES_APA7.md`
+- `reports/NCKH_FULL_PAPER_FINAL_REVIEW_CHECKLIST.md`
 
 ## Chapter 1: Introduction
 

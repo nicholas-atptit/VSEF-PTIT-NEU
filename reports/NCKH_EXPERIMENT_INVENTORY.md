@@ -88,6 +88,9 @@ These output directories exist locally and should be treated as generated artifa
 | `reports/NCKH_FULL_PAPER_DRAFT_VN100.md` | Full paper draft assembled from the design, outline, artifact pack, Chapter 3 draft, Chapter 4 draft, and claim register. |
 | `reports/NCKH_ABSTRACT_AND_KEYWORDS.md` | Vietnamese and English titles, abstracts, and keywords. |
 | `reports/NCKH_DEFENSE_SUMMARY.md` | Defense-ready 1-minute, 3-minute, and 5-minute summaries with safe committee answers. |
+| `reports/NCKH_REFERENCES_APA7.md` | APA 7 reference scaffold using locally verified citation metadata from the existing benchmark report. |
+| `reports/NCKH_FULL_PAPER_FINAL_REVIEW_CHECKLIST.md` | Final-review checklist for title, abstract, claims, tables, figures, references, and evidence limitations. |
+| `reports/NCKH_FULL_PAPER_DRAFT_VN100_CLEAN.md` | Clean final-review manuscript with softened abstract artifact wording, citation placeholders, and table/figure insertion markers. |
 
 ## Existing Tests Related to the Research
 
