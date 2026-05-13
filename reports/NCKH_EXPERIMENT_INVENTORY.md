@@ -146,3 +146,20 @@ Heavy benchmark reruns should be avoided unless the experiment protocol explicit
 Safe claim: the global benchmark did not pass 60%, but selected confidence-filtered and bear-regime diagnostics show conditional signal.
 
 Unsafe claim: the system is ready for live trading, guarantees profitability, or demonstrates a stable full-market 63% method.
+
+## Evidence Gap Closure V1 Artifacts
+
+This v2/evidence-upgrade section records the follow-up experiment-expansion artifacts. The phase did not add model families, did not change runtime/model logic, and did not rerun heavy benchmarks.
+
+| Artifact | Use |
+|---|---|
+| `scripts/research/audit_vn100_cache_coverage.py` | Audits local VN100 cache coverage and official cache usability for expanded benchmark readiness. |
+| `scripts/research/run_vn100_full_confidence_sweep.py` | Derives all available daily/hourly model/horizon confidence-threshold diagnostics from official prediction rows. |
+| `scripts/research/run_vn100_multiwindow_validation.py` | Records 2022-2025 window availability and missing multi-window evidence without rerunning benchmarks. |
+| `scripts/research/run_vn100_exante_regime_validation.py` | Builds lagged ex-ante regime diagnostics from prior realized rows only. |
+| `scripts/research/run_vn100_cost_slippage_validation.py` | Produces cost/slippage-aware selected-signal diagnostic proxies and baselines from official predictions. |
+| `reports/generated/evidence_gap_closure/` | Paper-readable CSV, Markdown, and PNG outputs for cache coverage, confidence sweep, multi-window availability, ex-ante regime validation, and cost/slippage diagnostics. |
+| `reports/NCKH_EVIDENCE_GAP_CLOSURE_REGISTER.md` | Gap-by-gap closure status and claim-boundary impact. |
+| `reports/NCKH_POST_GAP_CLOSURE_PAPER_UPDATE_NOTES.md` | Table, figure, abstract, and conclusion update guidance after the evidence upgrade. |
+
+Evidence-upgrade conclusion: cache coverage and multi-window validation remain open gaps; confidence sweep breadth, ex-ante regime diagnostics, and cost/slippage diagnostic artifacts are partially closed. The global benchmark and trading-readiness claim boundaries do not change.
