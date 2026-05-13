@@ -43,8 +43,9 @@ The current gap is not simply model selection. The stronger gap is methodologica
 ## Dataset Scope
 
 - Universe: VN100.
-- Daily historical inputs: 2006-01-01 to 2015-12-31.
-- Hourly raw/cache actual data: 2016-01-01 to 2025-12-31 for held-out label calculation.
+- Raw daily cache request range: 2006-01-01 to 2015-12-31; official metadata records effective raw daily data starting on 2006-01-03.
+- Raw hourly cache request range: 2016-01-01 to 2025-12-31; the benchmark-usable official cache rows are the seven partial hourly pairs with actual/effective range 2024-01-02 to 2025-12-31.
+- Official daily benchmark method: daily OHLCV for 2006-2015 plus hourly OHLCV from 2016 onward resampled to daily. The standalone daily cache rows in `usable_cache_summary.csv` are not benchmark-usable because they end before the 2025 evaluation window.
 - Training-label cutoff: 2024-12-31.
 - Official evaluation window: 2025-01-01 to 2025-12-31.
 - Current official evaluated tickers: ANV, BCM, BID, BMP, BVH, BWE, CII.
@@ -79,7 +80,7 @@ The official design uses walk-forward out-of-sample evaluation with raw/cache da
 - Re-run official 2025 benchmark from the same command and compare artifact fields.
 - Repeat confidence sweeps with stricter coverage thresholds such as 50%, 40%, and 30%.
 - Validate regime-specific findings across additional evaluation windows.
-- Add ticker concentration diagnostics to avoid small-subset overinterpretation.
+- Use ticker concentration diagnostics to avoid small-subset overinterpretation; the current selected hourly confidence slice is concentrated in five tickers, with the top three tickers contributing most selected rows.
 - Add transaction-cost, slippage, turnover, drawdown, and profit-factor tests before practical readiness claims.
 - Expand usable cache coverage before presenting a full-market VN100 conclusion.
 
@@ -91,7 +92,7 @@ The expected contribution is a leakage-safe VN100 benchmarking framework and an 
 
 - The official benchmark did not pass the global 60% threshold.
 - The official run currently evaluates only seven usable tickers.
-- The strategy-level pass has limited coverage: hourly stacking h=1 reaches 60.03% with 31.30% coverage.
+- The strategy-level pass has limited and concentrated coverage: hourly stacking h=1 reaches 60.03% with 31.30% coverage, and selected rows are concentrated in five tickers.
 - The 63%+ results are regime-specific diagnostics, not stable benchmark-wide methods.
 - Practical trading readiness is not established because cost-adjusted PnL, slippage, turnover, and drawdown are not yet verified.
 

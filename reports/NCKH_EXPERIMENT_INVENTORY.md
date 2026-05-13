@@ -67,6 +67,17 @@ These output directories exist locally and should be treated as generated artifa
 | `outputs/vn100_hybrid_fetch_full` | Fetch/full-cache artifact family. |
 | `outputs/walkforward_*` | Earlier walk-forward experiment families useful as background, not official VN100 evidence. |
 
+## Generated Evidence-Hardening Reports
+
+| Report | Evidence added |
+|---|---|
+| `reports/generated/vn100_artifact_date_schema_verification.md` | Artifact-backed date/schema verification and corrected interpretation of the raw daily versus hybrid daily benchmark range. |
+| `reports/generated/vn100_ticker_concentration_summary.csv` | Per-ticker prediction counts, accuracy, contribution share, and positive-edge share for global, selected-confidence, and best-regime scopes. |
+| `reports/generated/vn100_ticker_concentration_summary.md` | Paper-readable concentration assessment; selected hourly confidence slice is concentrated in five tickers. |
+| `reports/generated/vn100_confidence_coverage_review.md` | Coverage-floor review at 50%, 40%, and 30%; only the 30% floor has an available selected 60% pass, and daily sweep rows are missing. |
+| `reports/generated/vn100_cost_slippage_readiness_review.md` | Trading-readiness gap review showing that official selected VN100 slices do not yet have cost-adjusted return, slippage, turnover, drawdown, or profit-factor artifacts. |
+| `reports/NCKH_PAPER_TABLES_AND_FIGURES_PLAN.md` | Paper table and figure source map with fields, target chapter, supported claim, and evidence readiness status. |
+
 ## Existing Tests Related to the Research
 
 | Test path | Coverage area |
@@ -104,9 +115,9 @@ Heavy benchmark reruns should be avoided unless the experiment protocol explicit
 1. Expanded usable-cache coverage for a larger share of VN100.
 2. Official 2025 rerun after coverage improvement with the same train-cutoff rule.
 3. Multi-window walk-forward validation beyond the single 2025 evaluation year.
-4. Ticker concentration diagnostics for selected strategy and regime findings.
+4. Expanded ticker concentration diagnostics after cache coverage improves; an initial concentration report now exists for the current seven evaluated tickers.
 5. Cost-adjusted backtests with transaction costs, slippage, turnover, drawdown, and profit factor.
-6. Coverage-constrained confidence sweeps at multiple minimum coverage levels.
+6. Broader coverage-constrained confidence sweeps at multiple minimum coverage levels; the current official artifact supports hourly stacking h=1 only, while daily sweep rows are missing.
 7. Ex-ante regime rule validation so regime-specific findings are not post-hoc.
 8. Baseline robustness across additional simple policies.
 9. Statistical tests for selected strategy-level and regime-specific slices after multiple-testing controls are defined.

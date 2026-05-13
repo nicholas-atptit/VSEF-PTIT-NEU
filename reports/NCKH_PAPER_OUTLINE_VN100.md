@@ -113,10 +113,11 @@ Unsafe claims:
 
 ### 3.1 Data Scope
 
-Describe VN100, daily historical inputs, hourly raw/cache actual data, train cutoff, and official 2025 evaluation.
+Describe VN100, raw daily cache request range, raw hourly cache request range, hybrid daily benchmark construction, train cutoff, and official 2025 evaluation.
 
 Supporting artifacts:
 - `run_config.json`.
+- `manifest.json`.
 - `usable_cache_summary.csv`.
 - Official benchmark research report evidence map.
 
@@ -248,6 +249,9 @@ Supporting artifacts:
 - `usable_cache_summary.csv`.
 - `model_error_summary.csv`.
 - `source_health_summary.csv`.
+- `reports/generated/vn100_ticker_concentration_summary.md`.
+- `reports/generated/vn100_confidence_coverage_review.md`.
+- `reports/generated/vn100_cost_slippage_readiness_review.md`.
 
 ## Chapter 5: Conclusion and Recommendations
 
