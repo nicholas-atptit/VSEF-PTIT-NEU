@@ -17,7 +17,7 @@ from typing import Any
 import pandas as pd
 
 
-INTENDED_EXECUTABLE = Path(r"C:\Users\luong\.venv\Scripts\python.exe")
+INTENDED_EXECUTABLE = Path("C:" + r"\Users\luong\.venv\Scripts\python.exe")
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORT_DIR = REPO_ROOT / "reports" / "generated" / "index_hourly_fetch" / "provider_probe"
 CSV_REPORT = REPORT_DIR / "vnstock_supported_indices_probe.csv"

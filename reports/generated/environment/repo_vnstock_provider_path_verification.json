@@ -1,5 +1,5 @@
 {
-  "cwd": "K:\\Repos\\VSEF-PTIT-NEU",
+  "cwd": "<repo>",
   "local_shadow_paths": [],
   "recommended_provider_path": [
     "repo adapter first",
@@ -9,19 +9,19 @@
   "repo_adapter": {
     "exists": true,
     "import_success": true,
-    "module_file": "K:\\Repos\\VSEF-PTIT-NEU\\src\\data\\adapters\\vnstock_adapter.py",
+    "module_file": "<repo>/src/data/adapters/vnstock_adapter.py",
     "path": "src/data/adapters/vnstock_adapter.py",
     "traceback": null
   },
-  "sys_executable": "C:\\Users\\luong\\.venv\\Scripts\\python.exe",
+  "sys_executable": "<repo-approved-venv-python>",
   "sys_path_first_10": [
-    "K:\\Repos\\VSEF-PTIT-NEU\\scripts\\research",
-    "c:\\Python\\python313.zip",
-    "c:\\Python\\DLLs",
-    "c:\\Python\\Lib",
-    "c:\\Python",
-    "C:\\Users\\luong\\.venv",
-    "C:\\Users\\luong\\.venv\\Lib\\site-packages"
+    "<repo>/scripts/research",
+    "[local path redacted]/python313.zip",
+    "[local path redacted]/DLLs",
+    "[local path redacted]/Lib",
+    "[local path redacted]",
+    "<repo-approved-venv>",
+    "<repo-approved-venv>/Lib/site-packages"
   ],
   "vn30_scripts": {
     "bypass_detected": true,
@@ -191,18 +191,18 @@
   "vnstock": {
     "import_success": true,
     "module": "vnstock",
-    "module_file": "C:\\Users\\luong\\.venv\\Lib\\site-packages\\vnstock\\__init__.py",
+    "module_file": "<repo-approved-venv>/Lib/site-packages/vnstock/__init__.py",
     "spec_found": true,
-    "spec_origin": "C:\\Users\\luong\\.venv\\Lib\\site-packages\\vnstock\\__init__.py",
+    "spec_origin": "<repo-approved-venv>/Lib/site-packages/vnstock/__init__.py",
     "traceback": null,
     "version": null
   },
   "vnstock_data": {
     "import_success": true,
     "module": "vnstock_data",
-    "module_file": "C:\\Users\\luong\\.venv\\Lib\\site-packages\\vnstock_data\\__init__.py",
+    "module_file": "<repo-approved-venv>/Lib/site-packages/vnstock_data/__init__.py",
     "spec_found": true,
-    "spec_origin": "C:\\Users\\luong\\.venv\\Lib\\site-packages\\vnstock_data\\__init__.py",
+    "spec_origin": "<repo-approved-venv>/Lib/site-packages/vnstock_data/__init__.py",
     "traceback": null,
     "version": "3.0.0"
   }

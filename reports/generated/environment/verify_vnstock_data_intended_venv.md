@@ -1,10 +1,10 @@
 # vnstock_data Intended Venv Verification
 
-- Intended venv executable: `C:\Users\luong\.venv\Scripts\python.exe`
+- Intended venv executable: `<repo-approved-venv-python>`
 - Intended venv exists: yes
-- `sys.executable`: `C:\Users\luong\.venv\Scripts\python.exe`
+- `sys.executable`: `<repo-approved-venv-python>`
 - `sys.version`: `3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]`
-- pip version: `pip 26.0.1 from C:\Users\luong\.venv\Lib\site-packages\pip (python 3.13)`
+- pip version: `pip 26.0.1 from <repo-approved-venv>/Lib/site-packages/pip (python 3.13)`
 - vnstock_data installed: yes
 - vnstock_data spec found: yes
 - vnstock_data import success: yes
@@ -24,7 +24,7 @@ ValueError: invalid literal for int() with base 10: ''
 The package is still importable from:
 
 ```text
-C:\Users\luong\.venv\Lib\site-packages\vnstock_data\__init__.py
+<repo-approved-venv>/Lib/site-packages/vnstock_data/__init__.py
 ```
 
 ## pip show vnstock
@@ -32,7 +32,7 @@ C:\Users\luong\.venv\Lib\site-packages\vnstock_data\__init__.py
 ```text
 Name: vnstock
 Version: 3.5.1
-Location: C:\Users\luong\.venv\Lib\site-packages
+Location: <repo-approved-venv>/Lib/site-packages
 ```
 
 ## Import Traceback

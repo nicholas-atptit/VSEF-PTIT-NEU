@@ -1,7 +1,7 @@
 # Repo vnstock Provider Path Verification
 
-- sys.executable: `C:\Users\luong\.venv\Scripts\python.exe`
-- cwd: `K:\Repos\VSEF-PTIT-NEU`
+- sys.executable: `<repo-approved-venv-python>`
+- cwd: `<repo>`
 - local shadowing detected: no
 - vnstock_data import success: yes
 - vnstock import success: yes
@@ -11,13 +11,13 @@
 
 ## sys.path First 10
 
-1. `K:\Repos\VSEF-PTIT-NEU\scripts\research`
-2. `c:\Python\python313.zip`
-3. `c:\Python\DLLs`
-4. `c:\Python\Lib`
-5. `c:\Python`
-6. `C:\Users\luong\.venv`
-7. `C:\Users\luong\.venv\Lib\site-packages`
+1. `<repo>/scripts/research`
+2. `[local path redacted]/python313.zip`
+3. `[local path redacted]/DLLs`
+4. `[local path redacted]/Lib`
+5. `[local path redacted]`
+6. `<repo-approved-venv>`
+7. `<repo-approved-venv>/Lib/site-packages`
 
 ## Recommended Provider Path
 

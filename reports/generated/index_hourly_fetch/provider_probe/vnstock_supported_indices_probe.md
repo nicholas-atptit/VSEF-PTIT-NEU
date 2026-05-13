@@ -1,6 +1,6 @@
 # vnstock Supported Indices Hourly Probe
 
-- interpreter: `C:\Users\luong\.venv\Scripts\python.exe`
+- interpreter: `<repo-approved-venv-python>`
 - intended venv used: yes
 - vnstock_data importable: yes
 - vnstock importable: yes

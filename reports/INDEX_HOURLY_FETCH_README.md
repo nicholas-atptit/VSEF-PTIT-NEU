@@ -54,7 +54,7 @@ Validation reports:
 The required 2005-start command was run:
 
 ```text
-C:\Users\luong\.venv\Scripts\python.exe scripts\research\fetch_vnstock_supported_indices_hourly.py --start 2005-01-01 --end auto --chunk-days 5 --resume
+<repo-approved-venv-python> scripts\research\fetch_vnstock_supported_indices_hourly.py --start 2005-01-01 --end auto --chunk-days 5 --resume
 ```
 
 It stopped at the explicit progress cap with `stopped_reason=max_runtime_seconds=240` while scanning early VNINDEX chunks. The early chunks returned no rows before the cap, so full 2005-current index history is not yet complete.
