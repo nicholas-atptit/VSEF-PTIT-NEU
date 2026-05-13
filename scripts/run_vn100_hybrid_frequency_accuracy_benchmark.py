@@ -1,8 +1,19 @@
 """VN100 hybrid-frequency walk-forward directional-accuracy benchmark.
 
 The benchmark keeps daily and hourly market data in separate raw caches. Daily
-evaluation combines true daily 2006-2015 OHLCV with hourly 2016+ OHLCV
+evaluation combines true daily 2006-2015 OHLCV with hourly 2016-2024 OHLCV
 resampled to daily bars. Hourly evaluation uses the hourly cache directly.
+
+Official VN100 benchmark design:
+- historical/training label cutoff: 2024-12-31
+- daily data range: 2006-01-01 to 2015-12-31
+- hourly raw/actual data may extend to 2025-12-31 for held-out labels
+- out-of-sample evaluation range: 2025-01-01 to 2025-12-31
+
+The 2025 window is held out for walk-forward out-of-sample evaluation only.
+Models must not train on 2025 data before predicting 2025 targets. Later data,
+such as 2026-05-11 snapshots, belongs to explicitly labeled extended
+monitoring runs and is not part of the official benchmark period.
 """
 
 from __future__ import annotations
@@ -20,8 +31,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import Ridge
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.model_selection import TimeSeriesSplit
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -43,12 +54,17 @@ PREDICTED_COLUMNS = [
     "frequency",
     "horizon",
     "model",
+    "target_mode",
     "actual_close",
     "predicted_close",
     "actual_return",
     "predicted_return",
     "actual_direction",
     "predicted_direction",
+    "confidence",
+    "filtered_out",
+    "regime",
+    "volatility_regime",
     "is_correct",
 ]
 
@@ -99,8 +115,129 @@ SIGNIFICANCE_COLUMNS = [
     "bootstrap_ci_high",
     "significant_at_5pct",
     "significant_at_10pct",
-    "mcnemar_p_value",
+]
+
+MCNEMAR_SUMMARY_COLUMNS = [
+    "frequency",
+    "model",
+    "horizon",
+    "baseline",
     "matched_n_obs",
+    "model_correct_only",
+    "baseline_correct_only",
+    "both_correct",
+    "both_wrong",
+    "mcnemar_p_value",
+]
+
+BASELINE_PREDICTION_COLUMNS = [
+    "timestamp",
+    "date",
+    "ticker",
+    "frequency",
+    "horizon",
+    "baseline",
+    "actual_direction",
+    "predicted_direction",
+    "is_correct",
+    "regime",
+    "volatility_regime",
+]
+
+REGIME_ACCURACY_COLUMNS = [
+    "frequency",
+    "regime",
+    "model",
+    "horizon",
+    "n_obs",
+    "accuracy",
+    "passed_60pct",
+    "reliable",
+]
+
+REGIME_BASELINE_DELTA_COLUMNS = [
+    "frequency",
+    "regime",
+    "model",
+    "horizon",
+    "baseline",
+    "model_accuracy",
+    "baseline_accuracy",
+    "accuracy_delta",
+    "model_better_than_baseline",
+]
+
+CLASSIFICATION_ACCURACY_COLUMNS = [
+    "frequency",
+    "model",
+    "horizon",
+    "target_mode",
+    "n_obs",
+    "accuracy",
+    "passed_60pct",
+    "reliable",
+]
+
+CONFIDENCE_FILTER_COLUMNS = [
+    "frequency",
+    "model",
+    "horizon",
+    "confidence_threshold",
+    "total_rows",
+    "evaluated_rows",
+    "coverage_ratio",
+    "unfiltered_accuracy",
+    "filtered_accuracy",
+    "filtered_passed_60pct",
+    "min_coverage_after_filter",
+    "coverage_ok",
+]
+
+CONFIDENCE_THRESHOLD_SWEEP_COLUMNS = [
+    "frequency",
+    "model",
+    "horizon",
+    "threshold",
+    "total_rows",
+    "evaluated_rows",
+    "coverage_ratio",
+    "filtered_accuracy",
+    "passed_60pct",
+    "coverage_ok",
+    "selected_candidate",
+]
+
+STRATEGY_SELECTION_COLUMNS = [
+    "frequency",
+    "model",
+    "horizon",
+    "target_mode",
+    "regime",
+    "confidence_threshold",
+    "candidate_type",
+    "total_eligible_rows",
+    "n_obs",
+    "evaluated_rows",
+    "coverage_ratio",
+    "accuracy",
+    "pass_60",
+    "pass_63",
+    "pass_level",
+    "selected_candidate",
+    "selection_reason",
+]
+
+TUNING_SUMMARY_COLUMNS = [
+    "frequency",
+    "horizon",
+    "model",
+    "tuning_trials",
+    "best_params",
+    "best_validation_score",
+    "tuning_metric",
+    "tuning_status",
+    "error_message",
+    "tuning_backend",
 ]
 
 MODEL_ERROR_COLUMNS = [
@@ -196,6 +333,20 @@ DEFAULT_MIN_EVAL_ROWS_DAILY = 60
 DEFAULT_MIN_EVAL_ROWS_HOURLY = 500
 DEFAULT_BOOTSTRAP_SAMPLES = 1000
 DEFAULT_BOOTSTRAP_SEED = 42
+DEFAULT_REGIME_RETURN_WINDOW = 20
+DEFAULT_REGIME_VOL_WINDOW = 20
+DEFAULT_REGIME_BULL_THRESHOLD = 0.03
+DEFAULT_REGIME_BEAR_THRESHOLD = -0.03
+DEFAULT_REGIME_VOL_QUANTILE = 0.70
+DEFAULT_CONFIDENCE_THRESHOLD = 0.55
+DEFAULT_CONFIDENCE_THRESHOLD_GRID = "0.50,0.525,0.55,0.575,0.60,0.625,0.65,0.675,0.70"
+DEFAULT_NO_TRADE_BAND = 0.00
+DEFAULT_MIN_COVERAGE_AFTER_FILTER = 0.30
+DEFAULT_MIN_SWEEP_COVERAGE = 0.30
+DEFAULT_TUNING_MODELS = "xgboost,lightgbm"
+DEFAULT_TUNING_TRIALS = 20
+DEFAULT_TUNING_SEED = 42
+DEFAULT_TUNING_METRIC = "directional_accuracy"
 DEFAULT_PROVIDER_TIMEOUT_SECONDS = 30.0
 DEFAULT_MODEL_FIT_TIMEOUT_SECONDS = 300.0
 DEFAULT_CACHE_DIR = "data/market_cache/vnstock_data/vn100"
@@ -213,6 +364,7 @@ class BenchmarkConfig:
     daily_end: str
     hourly_start: str
     hourly_end: str
+    train_cutoff: str | None
     eval_start: str
     eval_end: str
     models: list[str]
@@ -252,6 +404,27 @@ class BenchmarkConfig:
     min_eval_rows_hourly: int
     bootstrap_samples: int
     bootstrap_seed: int
+    enable_regime_evaluation: bool
+    regime_return_window: int
+    regime_vol_window: int
+    regime_bull_threshold: float
+    regime_bear_threshold: float
+    regime_vol_quantile: float
+    target_mode: str
+    enable_confidence_filter: bool
+    confidence_threshold: float
+    enable_confidence_threshold_sweep: bool
+    confidence_threshold_grid: list[float]
+    min_sweep_coverage: float
+    no_trade_band: float
+    min_coverage_after_filter: float
+    enable_horizon_tuning: bool
+    tuning_models: list[str]
+    tuning_trials: int
+    tuning_seed: int
+    tuning_metric: str
+    tuning_time_budget_seconds: float | None
+    tuning_output_dir: str | None
     provider_timeout_seconds: float
     model_fit_timeout_seconds: float
     retrain_frequency: str
@@ -264,9 +437,10 @@ def parse_args() -> BenchmarkConfig:
     parser.add_argument("--daily-start", default="2006-01-01")
     parser.add_argument("--daily-end", default="2015-12-31")
     parser.add_argument("--hourly-start", default="2016-01-01")
-    parser.add_argument("--hourly-end", default="2026-05-11")
+    parser.add_argument("--hourly-end", default="2024-12-31")
+    parser.add_argument("--train-cutoff", default=None)
     parser.add_argument("--eval-start", default="2025-01-01")
-    parser.add_argument("--eval-end", default="2026-05-11")
+    parser.add_argument("--eval-end", default="2025-12-31")
     parser.add_argument("--models", default=DEFAULT_MODELS)
     parser.add_argument("--daily-horizons", default=DEFAULT_DAILY_HORIZONS)
     parser.add_argument("--hourly-horizons", default=DEFAULT_HOURLY_HORIZONS)
@@ -302,6 +476,27 @@ def parse_args() -> BenchmarkConfig:
     parser.add_argument("--min-eval-rows-hourly", type=int, default=DEFAULT_MIN_EVAL_ROWS_HOURLY)
     parser.add_argument("--bootstrap-samples", type=int, default=DEFAULT_BOOTSTRAP_SAMPLES)
     parser.add_argument("--bootstrap-seed", type=int, default=DEFAULT_BOOTSTRAP_SEED)
+    parser.add_argument("--enable-regime-evaluation", action="store_true")
+    parser.add_argument("--regime-return-window", type=int, default=DEFAULT_REGIME_RETURN_WINDOW)
+    parser.add_argument("--regime-vol-window", type=int, default=DEFAULT_REGIME_VOL_WINDOW)
+    parser.add_argument("--regime-bull-threshold", type=float, default=DEFAULT_REGIME_BULL_THRESHOLD)
+    parser.add_argument("--regime-bear-threshold", type=float, default=DEFAULT_REGIME_BEAR_THRESHOLD)
+    parser.add_argument("--regime-vol-quantile", type=float, default=DEFAULT_REGIME_VOL_QUANTILE)
+    parser.add_argument("--target-mode", choices=["regression", "classification"], default="regression")
+    parser.add_argument("--enable-confidence-filter", action="store_true")
+    parser.add_argument("--confidence-threshold", type=float, default=DEFAULT_CONFIDENCE_THRESHOLD)
+    parser.add_argument("--enable-confidence-threshold-sweep", action="store_true")
+    parser.add_argument("--confidence-threshold-grid", default=DEFAULT_CONFIDENCE_THRESHOLD_GRID)
+    parser.add_argument("--min-sweep-coverage", type=float, default=DEFAULT_MIN_SWEEP_COVERAGE)
+    parser.add_argument("--no-trade-band", type=float, default=DEFAULT_NO_TRADE_BAND)
+    parser.add_argument("--min-coverage-after-filter", type=float, default=DEFAULT_MIN_COVERAGE_AFTER_FILTER)
+    parser.add_argument("--enable-horizon-tuning", action="store_true")
+    parser.add_argument("--tuning-models", default=DEFAULT_TUNING_MODELS)
+    parser.add_argument("--tuning-trials", type=int, default=DEFAULT_TUNING_TRIALS)
+    parser.add_argument("--tuning-seed", type=int, default=DEFAULT_TUNING_SEED)
+    parser.add_argument("--tuning-metric", choices=["directional_accuracy"], default=DEFAULT_TUNING_METRIC)
+    parser.add_argument("--tuning-time-budget-seconds", type=float, default=None)
+    parser.add_argument("--tuning-output-dir", default=None)
     parser.add_argument("--provider-timeout-seconds", type=float, default=DEFAULT_PROVIDER_TIMEOUT_SECONDS)
     parser.add_argument("--model-fit-timeout-seconds", type=float, default=DEFAULT_MODEL_FIT_TIMEOUT_SECONDS)
     parser.add_argument("--retrain-frequency", default="monthly", choices=["daily", "weekly", "monthly", "quarterly", "never"])
@@ -309,6 +504,9 @@ def parse_args() -> BenchmarkConfig:
     args = parser.parse_args()
     if args.cache_only and args.fetch_only:
         raise ValueError("--cache-only and --fetch-only are mutually exclusive")
+    train_cutoff = str(args.train_cutoff).strip() if args.train_cutoff is not None and str(args.train_cutoff).strip() else None
+    if train_cutoff is not None and _to_date(train_cutoff) >= _to_date(args.eval_start):
+        raise ValueError("--train-cutoff must be earlier than --eval-start")
     cache_dir = str(args.cache_dir)
     if args.cache_only:
         required_cache_dir = (REPO_ROOT / DEFAULT_CACHE_DIR).resolve()
@@ -323,6 +521,13 @@ def parse_args() -> BenchmarkConfig:
     if not models:
         raise ValueError("--models must contain at least one model")
     _validate_benchmark_models(models)
+    tuning_models = _parse_str_list(args.tuning_models)
+    unsupported_tuning_models = [model for model in tuning_models if model not in BENCHMARK_SUPPORTED_MODELS]
+    if unsupported_tuning_models:
+        raise ValueError(
+            f"Unsupported --tuning-models value(s): {sorted(dict.fromkeys(unsupported_tuning_models))}. "
+            f"Supported benchmark models: {list(BENCHMARK_SUPPORTED_MODELS)}."
+        )
     pull_missing = False if args.cache_only else bool(args.pull_missing)
     provider_calls_allowed = bool(not args.cache_only and pull_missing)
     return BenchmarkConfig(
@@ -331,6 +536,7 @@ def parse_args() -> BenchmarkConfig:
         daily_end=args.daily_end,
         hourly_start=args.hourly_start,
         hourly_end=args.hourly_end,
+        train_cutoff=train_cutoff,
         eval_start=args.eval_start,
         eval_end=args.eval_end,
         models=models,
@@ -370,6 +576,29 @@ def parse_args() -> BenchmarkConfig:
         min_eval_rows_hourly=max(int(args.min_eval_rows_hourly), 1),
         bootstrap_samples=max(int(args.bootstrap_samples), 0),
         bootstrap_seed=int(args.bootstrap_seed),
+        enable_regime_evaluation=bool(args.enable_regime_evaluation),
+        regime_return_window=max(int(args.regime_return_window), 2),
+        regime_vol_window=max(int(args.regime_vol_window), 2),
+        regime_bull_threshold=float(args.regime_bull_threshold),
+        regime_bear_threshold=float(args.regime_bear_threshold),
+        regime_vol_quantile=min(max(float(args.regime_vol_quantile), 0.01), 0.99),
+        target_mode=str(args.target_mode).lower(),
+        enable_confidence_filter=bool(args.enable_confidence_filter),
+        confidence_threshold=min(max(float(args.confidence_threshold), 0.0), 1.0),
+        enable_confidence_threshold_sweep=bool(args.enable_confidence_threshold_sweep),
+        confidence_threshold_grid=_parse_float_list(args.confidence_threshold_grid, "--confidence-threshold-grid"),
+        min_sweep_coverage=min(max(float(args.min_sweep_coverage), 0.0), 1.0),
+        no_trade_band=max(float(args.no_trade_band), 0.0),
+        min_coverage_after_filter=min(max(float(args.min_coverage_after_filter), 0.0), 1.0),
+        enable_horizon_tuning=bool(args.enable_horizon_tuning),
+        tuning_models=tuning_models,
+        tuning_trials=max(int(args.tuning_trials), 1),
+        tuning_seed=int(args.tuning_seed),
+        tuning_metric=str(args.tuning_metric).lower(),
+        tuning_time_budget_seconds=max(float(args.tuning_time_budget_seconds), 0.0)
+        if args.tuning_time_budget_seconds is not None
+        else None,
+        tuning_output_dir=str(args.tuning_output_dir) if args.tuning_output_dir else None,
         provider_timeout_seconds=max(float(args.provider_timeout_seconds), 0.0),
         model_fit_timeout_seconds=max(float(args.model_fit_timeout_seconds), 0.0),
         retrain_frequency=str(args.retrain_frequency).lower(),
@@ -404,6 +633,22 @@ def _parse_int_list(raw: str, name: str) -> list[int]:
             values.append(parsed)
     if not values:
         raise ValueError(f"{name} must contain at least one horizon")
+    return values
+
+
+def _parse_float_list(raw: str, name: str) -> list[float]:
+    values: list[float] = []
+    for value in str(raw).split(","):
+        if not value.strip():
+            continue
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            raise ValueError(f"{name} values must be finite")
+        parsed = min(max(parsed, 0.0), 1.0)
+        if parsed not in values:
+            values.append(parsed)
+    if not values:
+        raise ValueError(f"{name} must contain at least one threshold")
     return values
 
 
@@ -954,6 +1199,68 @@ def _benchmark_row_thresholds(frequency: str, config: BenchmarkConfig) -> tuple[
     return int(config.min_pre_eval_rows_daily), int(config.min_eval_rows_daily)
 
 
+def _training_label_cutoff(config: BenchmarkConfig, fallback_end: str | None = None) -> pd.Timestamp | None:
+    cutoff = getattr(config, "train_cutoff", None) or fallback_end
+    if cutoff is None or str(cutoff).strip() == "":
+        return None
+    return _to_end_of_day(str(cutoff))
+
+
+def _training_label_cutoff_rule(config: BenchmarkConfig) -> str:
+    if getattr(config, "train_cutoff", None):
+        return "target_timestamp <= train_cutoff"
+    return "target_timestamp < forecast_chunk_start"
+
+
+def _config_data_end(config: BenchmarkConfig) -> str:
+    candidates = []
+    for value in (config.daily_end, config.hourly_end, config.eval_end):
+        try:
+            candidates.append(_to_date(value))
+        except Exception:
+            continue
+    if not candidates:
+        return ""
+    return str(max(candidates).date())
+
+
+def _benchmark_metadata_fields(config: BenchmarkConfig, *, data_end: str | None = None) -> dict[str, Any]:
+    return {
+        "train_cutoff": getattr(config, "train_cutoff", None) or "",
+        "data_end": data_end or _config_data_end(config),
+        "eval_start": config.eval_start,
+        "eval_end": config.eval_end,
+        "training_label_cutoff_rule": _training_label_cutoff_rule(config),
+        "actual_rows_allowed_after_train_cutoff": True,
+    }
+
+
+def _run_config_payload(config: BenchmarkConfig) -> dict[str, Any]:
+    payload = asdict(config)
+    payload.update(_benchmark_metadata_fields(config, data_end=_config_data_end(config)))
+    return payload
+
+
+def _training_label_mask(
+    labeled: pd.DataFrame,
+    *,
+    initial_train_start: str,
+    forecast_chunk_start: pd.Timestamp,
+    config: BenchmarkConfig,
+) -> pd.Series:
+    timestamps = pd.to_datetime(labeled["timestamp"], errors="coerce")
+    target_timestamps = pd.to_datetime(labeled["target_timestamp"], errors="coerce")
+    mask = (
+        (timestamps >= _to_date(initial_train_start))
+        & target_timestamps.notna()
+        & labeled["actual_return"].notna()
+    )
+    cutoff = _training_label_cutoff(config)
+    if cutoff is not None:
+        return mask & (target_timestamps <= cutoff)
+    return mask & (target_timestamps < pd.Timestamp(forecast_chunk_start))
+
+
 def _benchmark_usability_metrics(
     frame: pd.DataFrame,
     frequency: str,
@@ -969,7 +1276,9 @@ def _benchmark_usability_metrics(
             timestamps = pd.to_datetime(frame[time_column], errors="coerce").dropna()
             eval_start = _to_date(config.eval_start)
             eval_end = _to_end_of_day(config.eval_end)
-            pre_eval_rows = int((timestamps < eval_start).sum())
+            train_cutoff = _training_label_cutoff(config)
+            pre_eval_boundary = train_cutoff if train_cutoff is not None else eval_start
+            pre_eval_rows = int((timestamps <= pre_eval_boundary).sum()) if train_cutoff is not None else int((timestamps < pre_eval_boundary).sum())
             eval_rows = int(((timestamps >= eval_start) & (timestamps <= eval_end)).sum())
 
     eval_start_day = _to_date(config.eval_start)
@@ -1493,7 +1802,7 @@ class FetchCheckpointWriter:
         self.output_dir = output_dir
         self.config = config
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        write_json(self.output_dir / "run_config.json", asdict(config))
+        write_json(self.output_dir / "run_config.json", _run_config_payload(config))
 
     def write(self, fetch_rows: list[dict[str, Any]], source_health_summary: pd.DataFrame) -> None:
         fetch_summary = pd.DataFrame(fetch_rows, columns=FETCH_SUMMARY_COLUMNS)
@@ -1801,15 +2110,27 @@ def _add_horizon_labels_single(frame: pd.DataFrame, horizon: int) -> pd.DataFram
     return prepared
 
 
-def make_regressor(model_name: str, seed: int) -> Any:
+def _merge_model_params(defaults: dict[str, Any], overrides: dict[str, Any] | None) -> dict[str, Any]:
+    params = dict(defaults)
+    if overrides:
+        params.update(overrides)
+    return params
+
+
+def make_regressor(model_name: str, seed: int, params: dict[str, Any] | None = None) -> Any:
     name = model_name.lower()
     if name == "random_forest":
         return RandomForestRegressor(
-            n_estimators=160,
-            max_depth=8,
-            min_samples_leaf=5,
-            random_state=seed,
-            n_jobs=1,
+            **_merge_model_params(
+                {
+                    "n_estimators": 160,
+                    "max_depth": 8,
+                    "min_samples_leaf": 5,
+                    "random_state": seed,
+                    "n_jobs": 1,
+                },
+                params,
+            )
         )
     if name == "xgboost":
         try:
@@ -1817,17 +2138,22 @@ def make_regressor(model_name: str, seed: int) -> Any:
         except ImportError as exc:
             raise ImportError("xgboost is not installed") from exc
         return XGBRegressor(
-            n_estimators=140,
-            max_depth=3,
-            learning_rate=0.05,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            reg_lambda=1.0,
-            objective="reg:squarederror",
-            random_state=seed,
-            n_jobs=1,
-            tree_method="hist",
-            verbosity=0,
+            **_merge_model_params(
+                {
+                    "n_estimators": 140,
+                    "max_depth": 3,
+                    "learning_rate": 0.05,
+                    "subsample": 0.8,
+                    "colsample_bytree": 0.8,
+                    "reg_lambda": 1.0,
+                    "objective": "reg:squarederror",
+                    "random_state": seed,
+                    "n_jobs": 1,
+                    "tree_method": "hist",
+                    "verbosity": 0,
+                },
+                params,
+            )
         )
     if name == "lightgbm":
         try:
@@ -1835,20 +2161,93 @@ def make_regressor(model_name: str, seed: int) -> Any:
         except ImportError as exc:
             raise ImportError("lightgbm is not installed") from exc
         return LGBMRegressor(
-            n_estimators=140,
-            max_depth=4,
-            learning_rate=0.05,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            num_leaves=31,
-            random_state=seed,
-            n_jobs=1,
-            verbosity=-1,
-            deterministic=True,
-            force_col_wise=True,
+            **_merge_model_params(
+                {
+                    "n_estimators": 140,
+                    "max_depth": 4,
+                    "learning_rate": 0.05,
+                    "subsample": 0.8,
+                    "colsample_bytree": 0.8,
+                    "num_leaves": 31,
+                    "random_state": seed,
+                    "n_jobs": 1,
+                    "verbosity": -1,
+                    "deterministic": True,
+                    "force_col_wise": True,
+                },
+                params,
+            )
         )
     raise ValueError(
         f"Unsupported model '{model_name}' for VN100 hybrid-frequency benchmark. "
+        f"Supported benchmark models: {list(BENCHMARK_SUPPORTED_MODELS)}."
+    )
+
+
+def make_classifier(model_name: str, seed: int, params: dict[str, Any] | None = None) -> Any:
+    name = model_name.lower()
+    if name == "random_forest":
+        return RandomForestClassifier(
+            **_merge_model_params(
+                {
+                    "n_estimators": 160,
+                    "max_depth": 8,
+                    "min_samples_leaf": 5,
+                    "random_state": seed,
+                    "n_jobs": 1,
+                },
+                params,
+            )
+        )
+    if name == "xgboost":
+        try:
+            from xgboost import XGBClassifier
+        except ImportError as exc:
+            raise ImportError("xgboost is not installed") from exc
+        return XGBClassifier(
+            **_merge_model_params(
+                {
+                    "n_estimators": 140,
+                    "max_depth": 3,
+                    "learning_rate": 0.05,
+                    "subsample": 0.8,
+                    "colsample_bytree": 0.8,
+                    "reg_lambda": 1.0,
+                    "objective": "binary:logistic",
+                    "eval_metric": "logloss",
+                    "random_state": seed,
+                    "n_jobs": 1,
+                    "tree_method": "hist",
+                    "verbosity": 0,
+                },
+                params,
+            )
+        )
+    if name == "lightgbm":
+        try:
+            from lightgbm import LGBMClassifier
+        except ImportError as exc:
+            raise ImportError("lightgbm is not installed") from exc
+        return LGBMClassifier(
+            **_merge_model_params(
+                {
+                    "n_estimators": 140,
+                    "max_depth": 4,
+                    "learning_rate": 0.05,
+                    "subsample": 0.8,
+                    "colsample_bytree": 0.8,
+                    "num_leaves": 31,
+                    "random_state": seed,
+                    "n_jobs": 1,
+                    "verbosity": -1,
+                    "deterministic": True,
+                    "force_col_wise": True,
+                },
+                params,
+            )
+        )
+    raise ValueError(
+        f"Unsupported classifier '{model_name}' for VN100 hybrid-frequency benchmark. "
         f"Supported benchmark models: {list(BENCHMARK_SUPPORTED_MODELS)}."
     )
 
@@ -1876,10 +2275,11 @@ def fit_predict_model(
     feature_columns: list[str],
     target_column: str,
     seed: int,
+    model_params: dict[str, Any] | None = None,
 ) -> np.ndarray:
     # TODO: Enforce model_fit_timeout_seconds with a Windows-safe process or
     # cooperative model wrapper. The option is metadata-only for now.
-    model = make_regressor(model_name, seed)
+    model = make_regressor(model_name, seed, model_params)
     train_x, train_y, train_mask, fill_values = _prepare_xy(train_df, feature_columns, target_column)
     if int(train_mask.sum()) < 60:
         raise ValueError(f"insufficient training rows for {model_name}: {int(train_mask.sum())}")
@@ -1888,14 +2288,69 @@ def fit_predict_model(
     return np.asarray(model.predict(test_x), dtype=float)
 
 
+def _prepare_classifier_xy(
+    frame: pd.DataFrame,
+    feature_columns: list[str],
+    *,
+    fill_values: pd.Series | None = None,
+) -> tuple[pd.DataFrame, pd.Series, pd.Series, pd.Series]:
+    x_raw = frame[feature_columns].apply(_finite_numeric)
+    actual_return = _finite_numeric(frame["actual_return"])
+    y = (actual_return > 0.0).astype(int)
+    mask = actual_return.notna() & (actual_return != 0.0)
+    if fill_values is None:
+        fill_values = x_raw.loc[mask].median(axis=0, skipna=True).fillna(0.0).astype(float)
+    x = x_raw.fillna(fill_values).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    return x, y, mask, fill_values
+
+
+def _classifier_probability_up(model: Any, test_x: pd.DataFrame) -> np.ndarray:
+    if not hasattr(model, "predict_proba"):
+        raise ValueError(f"{model.__class__.__name__} does not support predict_proba")
+    probabilities = np.asarray(model.predict_proba(test_x), dtype=float)
+    classes = getattr(model, "classes_", np.array([0, 1]))
+    if probabilities.ndim != 2 or probabilities.shape[1] == 0:
+        raise ValueError("predict_proba returned no class probabilities")
+    class_values = [int(value) for value in classes]
+    if 1 in class_values:
+        up_idx = class_values.index(1)
+    else:
+        up_idx = min(probabilities.shape[1] - 1, 1)
+    return probabilities[:, up_idx]
+
+
+def fit_predict_classifier(
+    model_name: str,
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+    feature_columns: list[str],
+    seed: int,
+    model_params: dict[str, Any] | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    model = make_classifier(model_name, seed, model_params)
+    train_x, train_y, train_mask, fill_values = _prepare_classifier_xy(train_df, feature_columns)
+    if int(train_mask.sum()) < 60:
+        raise ValueError(f"insufficient classification training rows for {model_name}: {int(train_mask.sum())}")
+    clean_y = train_y.loc[train_mask].astype(int)
+    if clean_y.nunique(dropna=True) < 2:
+        raise ValueError(f"classification target has one class for {model_name}")
+    model.fit(train_x.loc[train_mask], clean_y)
+    test_x, _, _, _ = _prepare_classifier_xy(test_df, feature_columns, fill_values=fill_values)
+    probability_up = _classifier_probability_up(model, test_x)
+    predicted_direction = (probability_up >= 0.5).astype(int)
+    confidence = np.maximum(probability_up, 1.0 - probability_up)
+    return predicted_direction, confidence
+
+
 def _fit_model_on_frame(
     model_name: str,
     train_df: pd.DataFrame,
     feature_columns: list[str],
     target_column: str,
     seed: int,
+    model_params: dict[str, Any] | None = None,
 ) -> tuple[Any, pd.Series]:
-    model = make_regressor(model_name, seed)
+    model = make_regressor(model_name, seed, model_params)
     train_x, train_y, train_mask, fill_values = _prepare_xy(train_df, feature_columns, target_column)
     if int(train_mask.sum()) < 30:
         raise ValueError(f"insufficient training rows for {model_name}: {int(train_mask.sum())}")
@@ -1915,11 +2370,12 @@ def fit_predict_stacking(
     feature_columns: list[str],
     target_column: str,
     seed: int,
+    model_params_by_model: dict[str, dict[str, Any]] | None = None,
 ) -> np.ndarray:
     available_base_models: list[str] = []
     for base_name in base_model_names:
         try:
-            make_regressor(base_name, seed)
+            make_regressor(base_name, seed, (model_params_by_model or {}).get(base_name))
             available_base_models.append(base_name)
         except Exception:
             continue
@@ -1949,6 +2405,7 @@ def fit_predict_stacking(
                     feature_columns,
                     target_column,
                     seed + fold_id + col_idx,
+                    (model_params_by_model or {}).get(base_name),
                 )
                 oof[valid_idx, col_idx] = _predict_with_fitted(model, fold_valid, feature_columns, target_column, fill_values)
             except Exception:
@@ -1958,7 +2415,14 @@ def fit_predict_stacking(
     if int(meta_mask.sum()) < 30:
         full_train_predictions = []
         for col_idx, base_name in enumerate(base_model_names):
-            model, fill_values = _fit_model_on_frame(base_name, clean_train, feature_columns, target_column, seed + col_idx)
+            model, fill_values = _fit_model_on_frame(
+                base_name,
+                clean_train,
+                feature_columns,
+                target_column,
+                seed + col_idx,
+                (model_params_by_model or {}).get(base_name),
+            )
             full_train_predictions.append(_predict_with_fitted(model, clean_train, feature_columns, target_column, fill_values))
         oof = np.column_stack(full_train_predictions)
         meta_mask = np.isfinite(oof).all(axis=1) & clean_y.notna().to_numpy()
@@ -1970,10 +2434,130 @@ def fit_predict_stacking(
 
     test_predictions = []
     for col_idx, base_name in enumerate(base_model_names):
-        model, fill_values = _fit_model_on_frame(base_name, clean_train, feature_columns, target_column, seed + 100 + col_idx)
+        model, fill_values = _fit_model_on_frame(
+            base_name,
+            clean_train,
+            feature_columns,
+            target_column,
+            seed + 100 + col_idx,
+            (model_params_by_model or {}).get(base_name),
+        )
         test_predictions.append(_predict_with_fitted(model, test_df, feature_columns, target_column, fill_values))
     meta_test = np.column_stack(test_predictions)
     return np.asarray(meta_model.predict(meta_test), dtype=float)
+
+
+def _fit_classifier_on_frame(
+    model_name: str,
+    train_df: pd.DataFrame,
+    feature_columns: list[str],
+    seed: int,
+    model_params: dict[str, Any] | None = None,
+) -> tuple[Any, pd.Series]:
+    model = make_classifier(model_name, seed, model_params)
+    train_x, train_y, train_mask, fill_values = _prepare_classifier_xy(train_df, feature_columns)
+    if int(train_mask.sum()) < 30:
+        raise ValueError(f"insufficient classification training rows for {model_name}: {int(train_mask.sum())}")
+    clean_y = train_y.loc[train_mask].astype(int)
+    if clean_y.nunique(dropna=True) < 2:
+        raise ValueError(f"classification target has one class for {model_name}")
+    model.fit(train_x.loc[train_mask], clean_y)
+    return model, fill_values
+
+
+def _predict_classifier_probability_up(
+    model: Any,
+    frame: pd.DataFrame,
+    feature_columns: list[str],
+    fill_values: pd.Series,
+) -> np.ndarray:
+    x, _, _, _ = _prepare_classifier_xy(frame, feature_columns, fill_values=fill_values)
+    return _classifier_probability_up(model, x)
+
+
+def fit_predict_stacking_classifier(
+    base_model_names: list[str],
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+    feature_columns: list[str],
+    seed: int,
+    model_params_by_model: dict[str, dict[str, Any]] | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    available_base_models: list[str] = []
+    for base_name in base_model_names:
+        try:
+            make_classifier(base_name, seed, (model_params_by_model or {}).get(base_name))
+            available_base_models.append(base_name)
+        except Exception:
+            continue
+    base_model_names = available_base_models
+    if len(base_model_names) < 2:
+        raise ValueError("classification stacking requires at least two available base models")
+
+    _, train_y, train_mask, _ = _prepare_classifier_xy(train_df, feature_columns)
+    clean_train = train_df.loc[train_mask].reset_index(drop=True)
+    clean_y = train_y.loc[train_mask].astype(int).reset_index(drop=True)
+    if len(clean_train) < 90:
+        raise ValueError(f"insufficient classification training rows for stacking: {len(clean_train)}")
+    if clean_y.nunique(dropna=True) < 2:
+        raise ValueError("classification stacking target has one class")
+
+    oof = np.full((len(clean_train), len(base_model_names)), np.nan, dtype=float)
+    n_splits = min(3, max(2, len(clean_train) // 120))
+    splitter = TimeSeriesSplit(n_splits=n_splits)
+    for fold_id, (fit_idx, valid_idx) in enumerate(splitter.split(clean_train)):
+        fold_train = clean_train.iloc[fit_idx].copy()
+        fold_valid = clean_train.iloc[valid_idx].copy()
+        if len(fold_train) < 30:
+            continue
+        for col_idx, base_name in enumerate(base_model_names):
+            try:
+                model, fill_values = _fit_classifier_on_frame(
+                    base_name,
+                    fold_train,
+                    feature_columns,
+                    seed + fold_id + col_idx,
+                    (model_params_by_model or {}).get(base_name),
+                )
+                oof[valid_idx, col_idx] = _predict_classifier_probability_up(model, fold_valid, feature_columns, fill_values)
+            except Exception:
+                continue
+
+    meta_mask = np.isfinite(oof).all(axis=1)
+    if int(meta_mask.sum()) < 30:
+        full_train_probabilities = []
+        for col_idx, base_name in enumerate(base_model_names):
+            model, fill_values = _fit_classifier_on_frame(
+                base_name,
+                clean_train,
+                feature_columns,
+                seed + col_idx,
+                (model_params_by_model or {}).get(base_name),
+            )
+            full_train_probabilities.append(_predict_classifier_probability_up(model, clean_train, feature_columns, fill_values))
+        oof = np.column_stack(full_train_probabilities)
+        meta_mask = np.isfinite(oof).all(axis=1)
+    if int(meta_mask.sum()) < 30:
+        raise ValueError("classification stacking meta learner could not build enough finite meta samples")
+
+    meta_model = LogisticRegression(max_iter=1000, random_state=seed)
+    meta_model.fit(oof[meta_mask], clean_y.loc[meta_mask].to_numpy(dtype=int))
+
+    test_probabilities = []
+    for col_idx, base_name in enumerate(base_model_names):
+        model, fill_values = _fit_classifier_on_frame(
+            base_name,
+            clean_train,
+            feature_columns,
+            seed + 100 + col_idx,
+            (model_params_by_model or {}).get(base_name),
+        )
+        test_probabilities.append(_predict_classifier_probability_up(model, test_df, feature_columns, fill_values))
+    meta_test = np.column_stack(test_probabilities)
+    probability_up = _classifier_probability_up(meta_model, pd.DataFrame(meta_test))
+    predicted_direction = (probability_up >= 0.5).astype(int)
+    confidence = np.maximum(probability_up, 1.0 - probability_up)
+    return predicted_direction, confidence
 
 
 def _model_execution_summary(
@@ -2046,6 +2630,84 @@ def _valid_prediction_rows(test_df: pd.DataFrame, predictions: np.ndarray) -> pd
     return result.loc[mask].copy()
 
 
+def _valid_classification_prediction_rows(
+    test_df: pd.DataFrame,
+    predicted_direction: np.ndarray,
+    confidence: np.ndarray,
+) -> pd.DataFrame:
+    result = test_df.copy()
+    result["predicted_direction"] = pd.Series(predicted_direction, index=result.index)
+    result["confidence"] = pd.Series(confidence, index=result.index)
+    result["actual_return"] = _finite_numeric(result["actual_return"])
+    result["actual_close"] = _finite_numeric(result["actual_close"])
+    result["close"] = _finite_numeric(result["close"])
+    result["confidence"] = _finite_numeric(result["confidence"])
+    result["predicted_direction"] = pd.to_numeric(result["predicted_direction"], errors="coerce")
+    mask = (
+        result["actual_return"].notna()
+        & result["actual_close"].notna()
+        & result["close"].notna()
+        & result["predicted_direction"].isin([0, 1])
+        & (result["actual_return"] != 0.0)
+    )
+    result = result.loc[mask].copy()
+    result["predicted_direction"] = result["predicted_direction"].astype(int)
+    probability_edge = result["confidence"].where(result["predicted_direction"].eq(1), 1.0 - result["confidence"]) - 0.5
+    result["predicted_return"] = probability_edge.fillna(0.0)
+    return result
+
+
+def add_regime_labels(feature_frame: pd.DataFrame, config: BenchmarkConfig) -> pd.DataFrame:
+    if feature_frame.empty:
+        return feature_frame.copy()
+    prepared = feature_frame.copy().sort_values("timestamp").reset_index(drop=True)
+    close = _finite_numeric(prepared["close"])
+    return_window = int(config.regime_return_window)
+    vol_window = int(config.regime_vol_window)
+    returns = _finite_numeric(prepared.get("return_1", close.pct_change(periods=1, fill_method=None)))
+    rolling_return = close / close.shift(return_window) - 1.0
+    rolling_volatility = returns.rolling(vol_window, min_periods=max(3, min(vol_window, vol_window // 2))).std()
+    vol_quantile_window = max(vol_window * 5, vol_window + 1)
+    high_vol_threshold = rolling_volatility.rolling(
+        vol_quantile_window,
+        min_periods=vol_window,
+    ).quantile(float(config.regime_vol_quantile))
+    low_vol_threshold = rolling_volatility.rolling(
+        vol_quantile_window,
+        min_periods=vol_window,
+    ).quantile(1.0 - float(config.regime_vol_quantile))
+
+    trend_regime = pd.Series("unknown", index=prepared.index, dtype=object)
+    trend_regime.loc[rolling_return > float(config.regime_bull_threshold)] = "bull"
+    trend_regime.loc[rolling_return < float(config.regime_bear_threshold)] = "bear"
+    sideways_mask = rolling_return.notna() & trend_regime.eq("unknown")
+    trend_regime.loc[sideways_mask] = "sideways"
+
+    volatility_regime = pd.Series("unknown", index=prepared.index, dtype=object)
+    volatility_regime.loc[rolling_volatility.notna() & high_vol_threshold.notna() & (rolling_volatility >= high_vol_threshold)] = "high_volatility"
+    volatility_regime.loc[rolling_volatility.notna() & low_vol_threshold.notna() & (rolling_volatility <= low_vol_threshold)] = "low_volatility"
+    prepared["regime"] = trend_regime
+    prepared["volatility_regime"] = volatility_regime
+    return prepared
+
+
+def _filter_prediction_flag(
+    *,
+    enable_confidence_filter: bool,
+    predicted_return: float,
+    confidence: float | None,
+    confidence_threshold: float,
+    no_trade_band: float,
+) -> bool:
+    if not enable_confidence_filter:
+        return False
+    if abs(float(predicted_return)) <= float(no_trade_band):
+        return True
+    if confidence is None or not math.isfinite(float(confidence)):
+        return True
+    return bool(float(confidence) < float(confidence_threshold))
+
+
 def _prediction_records(
     rows: pd.DataFrame,
     *,
@@ -2053,13 +2715,31 @@ def _prediction_records(
     frequency: str,
     horizon: int,
     model_name: str,
+    target_mode: str,
+    enable_confidence_filter: bool,
+    confidence_threshold: float,
+    no_trade_band: float,
 ) -> list[dict[str, Any]]:
     records = []
     for row in rows.itertuples(index=False):
         actual_return = float(row.actual_return)
         predicted_return = float(row.predicted_return)
         actual_direction = 1 if actual_return > 0.0 else 0
-        predicted_direction = 1 if predicted_return > 0.0 else 0
+        predicted_direction = int(getattr(row, "predicted_direction", 1 if predicted_return > 0.0 else 0))
+        confidence_value = getattr(row, "confidence", np.nan)
+        confidence = _finite_float_or_none(confidence_value)
+        filtered_out = _filter_prediction_flag(
+            enable_confidence_filter=enable_confidence_filter,
+            predicted_return=predicted_return,
+            confidence=confidence,
+            confidence_threshold=confidence_threshold,
+            no_trade_band=no_trade_band,
+        )
+        predicted_close = (
+            float(row.close) * (1.0 + predicted_return)
+            if str(target_mode) == "regression"
+            else float("nan")
+        )
         records.append(
             {
                 "timestamp": pd.Timestamp(row.timestamp).isoformat(),
@@ -2068,12 +2748,17 @@ def _prediction_records(
                 "frequency": frequency,
                 "horizon": int(horizon),
                 "model": model_name,
+                "target_mode": target_mode,
                 "actual_close": float(row.actual_close),
-                "predicted_close": float(row.close) * (1.0 + predicted_return),
+                "predicted_close": predicted_close,
                 "actual_return": actual_return,
                 "predicted_return": predicted_return,
                 "actual_direction": actual_direction,
                 "predicted_direction": predicted_direction,
+                "confidence": confidence,
+                "filtered_out": bool(filtered_out),
+                "regime": str(getattr(row, "regime", "unknown") or "unknown"),
+                "volatility_regime": str(getattr(row, "volatility_regime", "unknown") or "unknown"),
                 "is_correct": int(actual_direction == predicted_direction),
             }
         )
@@ -2141,6 +2826,245 @@ def _baseline_summary_rows(
     return rows
 
 
+def _baseline_prediction_records(
+    eval_frame: pd.DataFrame,
+    *,
+    frequency: str,
+    ticker: str,
+    horizon: int,
+    seed: int,
+) -> list[dict[str, Any]]:
+    if eval_frame.empty:
+        return []
+
+    frame = eval_frame.copy().sort_values("timestamp").reset_index(drop=True)
+    actual_return = _finite_numeric(frame["actual_return"])
+    actual_direction = (actual_return > 0.0).astype(int)
+    valid_actual = actual_return.notna() & (actual_return != 0.0)
+    candidates: dict[str, pd.Series] = {
+        "always_up": pd.Series(1, index=frame.index, dtype=int),
+    }
+    if "return_1" in frame.columns:
+        previous_return = _finite_numeric(frame["return_1"])
+        candidates["previous_direction"] = (previous_return > 0.0).astype("Int64").where(previous_return.notna())
+    rng = np.random.default_rng(_stable_seed(seed, frequency, ticker, horizon, "random_seeded_direction"))
+    candidates["random_seeded_direction"] = pd.Series(rng.integers(0, 2, size=len(frame)), index=frame.index, dtype=int)
+    for column in ("rolling_return_mean_5", "rolling_return_mean_10", "rolling_return_mean_20"):
+        if column in frame.columns:
+            signal = _finite_numeric(frame[column])
+            candidates["moving_average_signal"] = (signal > 0.0).astype("Int64").where(signal.notna())
+            break
+
+    records: list[dict[str, Any]] = []
+    for baseline_name, predicted_direction in candidates.items():
+        predicted_numeric = pd.to_numeric(predicted_direction, errors="coerce")
+        mask = valid_actual & predicted_numeric.isin([0, 1])
+        for idx in frame.index[mask]:
+            predicted = int(predicted_numeric.loc[idx])
+            actual = int(actual_direction.loc[idx])
+            timestamp = pd.Timestamp(frame.loc[idx, "timestamp"])
+            records.append(
+                {
+                    "timestamp": timestamp.isoformat(),
+                    "date": str(timestamp.date()),
+                    "ticker": ticker,
+                    "frequency": frequency,
+                    "horizon": int(horizon),
+                    "baseline": baseline_name,
+                    "actual_direction": actual,
+                    "predicted_direction": predicted,
+                    "is_correct": int(actual == predicted),
+                    "regime": str(frame.loc[idx, "regime"]) if "regime" in frame.columns else "unknown",
+                    "volatility_regime": str(frame.loc[idx, "volatility_regime"]) if "volatility_regime" in frame.columns else "unknown",
+                }
+            )
+    return records
+
+
+def _parameter_grid(model_name: str) -> list[dict[str, Any]]:
+    if model_name == "lightgbm":
+        return [
+            {"num_leaves": 15, "learning_rate": 0.03, "n_estimators": 80, "max_depth": 3, "min_child_samples": 20, "subsample": 0.8, "colsample_bytree": 0.8},
+            {"num_leaves": 31, "learning_rate": 0.05, "n_estimators": 120, "max_depth": 4, "min_child_samples": 20, "subsample": 0.8, "colsample_bytree": 0.8},
+            {"num_leaves": 31, "learning_rate": 0.03, "n_estimators": 180, "max_depth": 5, "min_child_samples": 30, "subsample": 0.9, "colsample_bytree": 0.8},
+            {"num_leaves": 63, "learning_rate": 0.02, "n_estimators": 220, "max_depth": 6, "min_child_samples": 30, "subsample": 0.8, "colsample_bytree": 0.9},
+            {"num_leaves": 15, "learning_rate": 0.08, "n_estimators": 100, "max_depth": 3, "min_child_samples": 40, "subsample": 0.9, "colsample_bytree": 0.9},
+        ]
+    if model_name == "xgboost":
+        return [
+            {"max_depth": 2, "learning_rate": 0.03, "n_estimators": 80, "subsample": 0.8, "colsample_bytree": 0.8, "min_child_weight": 1, "reg_lambda": 1.0, "reg_alpha": 0.0},
+            {"max_depth": 3, "learning_rate": 0.05, "n_estimators": 120, "subsample": 0.8, "colsample_bytree": 0.8, "min_child_weight": 1, "reg_lambda": 1.0, "reg_alpha": 0.0},
+            {"max_depth": 4, "learning_rate": 0.03, "n_estimators": 180, "subsample": 0.9, "colsample_bytree": 0.8, "min_child_weight": 3, "reg_lambda": 1.5, "reg_alpha": 0.0},
+            {"max_depth": 3, "learning_rate": 0.02, "n_estimators": 220, "subsample": 0.8, "colsample_bytree": 0.9, "min_child_weight": 5, "reg_lambda": 2.0, "reg_alpha": 0.1},
+            {"max_depth": 2, "learning_rate": 0.08, "n_estimators": 100, "subsample": 0.9, "colsample_bytree": 0.9, "min_child_weight": 1, "reg_lambda": 1.0, "reg_alpha": 0.1},
+        ]
+    return []
+
+
+def _ordered_tuning_candidates(model_name: str, *, trials: int, seed: int, frequency: str, horizon: int) -> list[dict[str, Any]]:
+    grid = _parameter_grid(model_name)
+    if not grid:
+        return []
+    rng = np.random.default_rng(_stable_seed(seed, frequency, horizon, model_name, "tuning"))
+    order = list(rng.permutation(len(grid)))
+    ordered = [grid[idx] for idx in order]
+    return ordered[: max(1, min(int(trials), len(ordered)))]
+
+
+def _pre_eval_validation_split(
+    labeled: pd.DataFrame,
+    eval_start: str,
+    *,
+    config: BenchmarkConfig,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    cutoff = _training_label_cutoff(config)
+    if cutoff is not None:
+        cutoff_mask = pd.to_datetime(labeled["target_timestamp"], errors="coerce") <= cutoff
+    else:
+        cutoff_mask = pd.to_datetime(labeled["target_timestamp"], errors="coerce") < _to_date(eval_start)
+    pre_eval = labeled[
+        cutoff_mask
+        & labeled["actual_return"].notna()
+        & (labeled["actual_return"] != 0.0)
+    ].copy().sort_values("timestamp")
+    if len(pre_eval) < 120:
+        return pd.DataFrame(), pd.DataFrame()
+    valid_size = min(max(int(len(pre_eval) * 0.20), 60), max(len(pre_eval) - 60, 1))
+    train = pre_eval.iloc[:-valid_size].copy()
+    valid = pre_eval.iloc[-valid_size:].copy()
+    if len(train) < 60 or valid.empty:
+        return pd.DataFrame(), pd.DataFrame()
+    return train, valid
+
+
+def _directional_validation_score(
+    *,
+    model_name: str,
+    target_mode: str,
+    train: pd.DataFrame,
+    valid: pd.DataFrame,
+    feature_columns: list[str],
+    seed: int,
+    params: dict[str, Any],
+) -> float:
+    if target_mode == "classification":
+        predicted_direction, _ = fit_predict_classifier(model_name, train, valid, feature_columns, seed, params)
+    else:
+        predicted_return = fit_predict_model(model_name, train, valid, feature_columns, "actual_return", seed, params)
+        predicted_direction = (np.asarray(predicted_return, dtype=float) > 0.0).astype(int)
+    actual_return = _finite_numeric(valid["actual_return"])
+    mask = actual_return.notna() & (actual_return != 0.0)
+    if int(mask.sum()) <= 0:
+        return float("nan")
+    actual_direction = (actual_return.loc[mask] > 0.0).astype(int).to_numpy()
+    predicted = np.asarray(predicted_direction, dtype=int)[np.where(mask.to_numpy())[0]]
+    return float((actual_direction == predicted).mean())
+
+
+def build_horizon_tuning_summary(
+    *,
+    prepared_raw: pd.DataFrame,
+    frequency: str,
+    horizons: list[int],
+    models: list[str],
+    eval_start: str,
+    target_mode: str,
+    feature_frames_by_ticker: dict[str, tuple[pd.DataFrame, list[str]]],
+    config: BenchmarkConfig,
+) -> tuple[pd.DataFrame, dict[tuple[str, int, str], dict[str, Any]]]:
+    if not config.enable_horizon_tuning:
+        return pd.DataFrame(columns=TUNING_SUMMARY_COLUMNS), {}
+    tuning_models = [model for model in models if model in set(config.tuning_models) and model in {"xgboost", "lightgbm"}]
+    rows: list[dict[str, Any]] = []
+    best_params: dict[tuple[str, int, str], dict[str, Any]] = {}
+    started = time.monotonic()
+
+    for horizon in horizons:
+        labeled_frames: list[pd.DataFrame] = []
+        feature_columns: list[str] = []
+        for feature_frame, ticker_features in feature_frames_by_ticker.values():
+            if feature_frame.empty or not ticker_features:
+                continue
+            feature_columns = ticker_features
+            labeled = add_horizon_labels(feature_frame, horizon)
+            if not labeled.empty:
+                labeled_frames.append(labeled)
+        if not labeled_frames or not feature_columns:
+            for model_name in tuning_models:
+                rows.append(
+                    {
+                        "frequency": frequency,
+                        "horizon": int(horizon),
+                        "model": model_name,
+                        "tuning_trials": int(config.tuning_trials),
+                        "best_params": "{}",
+                        "best_validation_score": None,
+                        "tuning_metric": config.tuning_metric,
+                        "tuning_status": "skipped",
+                        "error_message": "no_pre_eval_labeled_rows",
+                        "tuning_backend": "grid",
+                    }
+                )
+            continue
+        pooled = pd.concat(labeled_frames, ignore_index=True).sort_values(["timestamp", "ticker"]).reset_index(drop=True)
+        train, valid = _pre_eval_validation_split(pooled, eval_start, config=config)
+        for model_name in tuning_models:
+            best_score: float | None = None
+            selected_params: dict[str, Any] = {}
+            status = "skipped"
+            error_message = ""
+            candidates = _ordered_tuning_candidates(
+                model_name,
+                trials=config.tuning_trials,
+                seed=config.tuning_seed,
+                frequency=frequency,
+                horizon=int(horizon),
+            )
+            if train.empty or valid.empty:
+                error_message = "insufficient_pre_eval_validation_rows"
+            elif not candidates:
+                error_message = "no_tuning_grid"
+            else:
+                for trial_idx, params in enumerate(candidates, start=1):
+                    if config.tuning_time_budget_seconds is not None and time.monotonic() - started > float(config.tuning_time_budget_seconds):
+                        error_message = "tuning_time_budget_exceeded"
+                        break
+                    try:
+                        score = _directional_validation_score(
+                            model_name=model_name,
+                            target_mode=target_mode,
+                            train=train,
+                            valid=valid,
+                            feature_columns=feature_columns,
+                            seed=int(config.tuning_seed) + trial_idx,
+                            params=params,
+                        )
+                        if math.isfinite(score) and (best_score is None or score > best_score):
+                            best_score = float(score)
+                            selected_params = dict(params)
+                            status = "ok"
+                    except Exception as exc:
+                        error_message = str(exc)
+                        continue
+            if selected_params:
+                best_params[(frequency, int(horizon), model_name)] = selected_params
+            rows.append(
+                {
+                    "frequency": frequency,
+                    "horizon": int(horizon),
+                    "model": model_name,
+                    "tuning_trials": int(min(config.tuning_trials, len(candidates))) if candidates else int(config.tuning_trials),
+                    "best_params": json.dumps(_json_safe(selected_params), sort_keys=True),
+                    "best_validation_score": best_score,
+                    "tuning_metric": config.tuning_metric,
+                    "tuning_status": status,
+                    "error_message": error_message,
+                    "tuning_backend": "grid",
+                }
+            )
+    return pd.DataFrame(rows, columns=TUNING_SUMMARY_COLUMNS), best_params
+
+
 def run_frequency_benchmark(
     *,
     raw_df: pd.DataFrame,
@@ -2159,10 +3083,12 @@ def run_frequency_benchmark(
     min_history_days: int | None,
     min_obs_per_group: int,
     max_daily_gap_days: int,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], pd.DataFrame, pd.DataFrame]:
+    config: BenchmarkConfig,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     time_column = "datetime" if frequency == "hourly" else "date"
     prediction_rows: list[dict[str, Any]] = []
     baseline_rows: list[dict[str, Any]] = []
+    baseline_prediction_rows: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     model_error_rows: list[dict[str, Any]] = []
     base_models = [model for model in models if model != "stacking"]
@@ -2189,8 +3115,19 @@ def run_frequency_benchmark(
             data_gap_warnings=[],
         )
         benchmark_summary.update(_model_execution_summary(requested_models=models, predictions=predictions, skipped=[]))
+        benchmark_summary["target_mode"] = str(config.target_mode)
+        benchmark_summary["regime_evaluation_enabled"] = bool(config.enable_regime_evaluation)
+        benchmark_summary["confidence_filter_enabled"] = bool(config.enable_confidence_filter)
+        benchmark_summary["confidence_sweep_enabled"] = bool(config.enable_confidence_threshold_sweep)
+        benchmark_summary["horizon_tuning_enabled"] = bool(config.enable_horizon_tuning)
+        benchmark_summary["tuned_models"] = list(config.tuning_models if config.enable_horizon_tuning else [])
+        benchmark_summary["tuning_trials"] = int(config.tuning_trials if config.enable_horizon_tuning else 0)
+        benchmark_summary["tuning_summary_path"] = "tuning_summary.csv" if config.enable_horizon_tuning else ""
+        benchmark_summary.update(_benchmark_metadata_fields(config, data_end=""))
         model_error_summary = pd.DataFrame(columns=MODEL_ERROR_COLUMNS)
-        return predictions, accuracy_summary, benchmark_summary, baseline_summary, model_error_summary
+        baseline_predictions = pd.DataFrame(columns=BASELINE_PREDICTION_COLUMNS)
+        tuning_summary = pd.DataFrame(columns=TUNING_SUMMARY_COLUMNS)
+        return predictions, accuracy_summary, benchmark_summary, baseline_summary, model_error_summary, baseline_predictions, tuning_summary
 
     prepared_raw = raw_df.copy()
     prepared_raw[time_column] = pd.to_datetime(prepared_raw[time_column], errors="coerce")
@@ -2216,9 +3153,30 @@ def run_frequency_benchmark(
         end=eval_end,
     )
 
+    feature_frames_by_ticker: dict[str, tuple[pd.DataFrame, list[str]]] = {}
     for ticker, ticker_raw in prepared_raw.groupby("ticker", sort=True):
         ticker = str(ticker).upper()
         feature_frame, feature_columns = build_feature_frame(ticker_raw, frequency)
+        if not feature_frame.empty:
+            if config.enable_regime_evaluation:
+                feature_frame = add_regime_labels(feature_frame, config)
+            else:
+                feature_frame["regime"] = "unknown"
+                feature_frame["volatility_regime"] = "unknown"
+        feature_frames_by_ticker[ticker] = (feature_frame, feature_columns)
+
+    tuning_summary, tuned_params = build_horizon_tuning_summary(
+        prepared_raw=prepared_raw,
+        frequency=frequency,
+        horizons=horizons,
+        models=models,
+        eval_start=eval_start,
+        target_mode=config.target_mode,
+        feature_frames_by_ticker=feature_frames_by_ticker,
+        config=config,
+    )
+
+    for ticker, (feature_frame, feature_columns) in feature_frames_by_ticker.items():
         if not feature_columns or feature_frame.empty:
             skipped.append({"ticker": ticker, "reason": "empty_feature_frame"})
             continue
@@ -2250,14 +3208,24 @@ def run_frequency_benchmark(
                     seed=seed,
                 )
             )
+            baseline_prediction_rows.extend(
+                _baseline_prediction_records(
+                    eval_frame,
+                    frequency=frequency,
+                    ticker=ticker,
+                    horizon=horizon,
+                    seed=seed,
+                )
+            )
             eval_frame["retrain_group"] = _retrain_group_key(eval_frame["timestamp"], retrain_frequency)
             for _, chunk in eval_frame.groupby("retrain_group", sort=True):
                 chunk = chunk.sort_values("timestamp").copy()
                 chunk_start = pd.Timestamp(chunk["timestamp"].min())
-                train_mask = (
-                    (labeled["timestamp"] >= _to_date(initial_train_start))
-                    & (pd.to_datetime(labeled["target_timestamp"], errors="coerce") < chunk_start)
-                    & labeled["actual_return"].notna()
+                train_mask = _training_label_mask(
+                    labeled,
+                    initial_train_start=initial_train_start,
+                    forecast_chunk_start=chunk_start,
+                    config=config,
                 )
                 train_frame = labeled.loc[train_mask].copy().sort_values("timestamp")
                 if train_frame.empty:
@@ -2265,7 +3233,33 @@ def run_frequency_benchmark(
                     continue
                 for model_name in models:
                     try:
-                        if model_name == "stacking":
+                        model_params = tuned_params.get((frequency, int(horizon), model_name))
+                        stacking_params = {
+                            base_name: tuned_params[(frequency, int(horizon), base_name)]
+                            for base_name in stacking_base_models
+                            if (frequency, int(horizon), base_name) in tuned_params
+                        }
+                        if config.target_mode == "classification":
+                            if model_name == "stacking":
+                                predicted_direction, confidence = fit_predict_stacking_classifier(
+                                    stacking_base_models,
+                                    train_frame,
+                                    chunk,
+                                    feature_columns,
+                                    seed,
+                                    stacking_params,
+                                )
+                            else:
+                                predicted_direction, confidence = fit_predict_classifier(
+                                    model_name,
+                                    train_frame,
+                                    chunk,
+                                    feature_columns,
+                                    seed,
+                                    model_params,
+                                )
+                            valid_rows = _valid_classification_prediction_rows(chunk, predicted_direction, confidence)
+                        elif model_name == "stacking":
                             predictions = fit_predict_stacking(
                                 stacking_base_models,
                                 train_frame,
@@ -2273,7 +3267,9 @@ def run_frequency_benchmark(
                                 feature_columns,
                                 "actual_return",
                                 seed,
+                                stacking_params,
                             )
+                            valid_rows = _valid_prediction_rows(chunk, predictions)
                         else:
                             predictions = fit_predict_model(
                                 model_name,
@@ -2282,8 +3278,9 @@ def run_frequency_benchmark(
                                 feature_columns,
                                 "actual_return",
                                 seed,
+                                model_params,
                             )
-                        valid_rows = _valid_prediction_rows(chunk, predictions)
+                            valid_rows = _valid_prediction_rows(chunk, predictions)
                         prediction_rows.extend(
                             _prediction_records(
                                 valid_rows,
@@ -2291,6 +3288,10 @@ def run_frequency_benchmark(
                                 frequency=frequency,
                                 horizon=horizon,
                                 model_name=model_name,
+                                target_mode=config.target_mode,
+                                enable_confidence_filter=config.enable_confidence_filter,
+                                confidence_threshold=config.confidence_threshold,
+                                no_trade_band=config.no_trade_band,
                             )
                         )
                     except Exception as exc:
@@ -2313,6 +3314,11 @@ def run_frequency_benchmark(
         pd.DataFrame(baseline_rows, columns=BASELINE_SUMMARY_COLUMNS)
         if baseline_rows
         else pd.DataFrame(columns=BASELINE_SUMMARY_COLUMNS)
+    )
+    baseline_predictions = (
+        pd.DataFrame(baseline_prediction_rows, columns=BASELINE_PREDICTION_COLUMNS)
+        if baseline_prediction_rows
+        else pd.DataFrame(columns=BASELINE_PREDICTION_COLUMNS)
     )
     benchmark_summary = _build_benchmark_summary(
         frequency=frequency,
@@ -2337,13 +3343,22 @@ def run_frequency_benchmark(
     benchmark_summary["skipped_count"] = int(len(skipped))
     benchmark_summary["skipped_examples"] = skipped[:20]
     benchmark_summary.update(_model_execution_summary(requested_models=models, predictions=predictions, skipped=skipped))
+    benchmark_summary["target_mode"] = str(config.target_mode)
+    benchmark_summary["regime_evaluation_enabled"] = bool(config.enable_regime_evaluation)
+    benchmark_summary["confidence_filter_enabled"] = bool(config.enable_confidence_filter)
+    benchmark_summary["confidence_sweep_enabled"] = bool(config.enable_confidence_threshold_sweep)
+    benchmark_summary["horizon_tuning_enabled"] = bool(config.enable_horizon_tuning)
+    benchmark_summary["tuned_models"] = list(config.tuning_models if config.enable_horizon_tuning else [])
+    benchmark_summary["tuning_trials"] = int(config.tuning_trials)
+    benchmark_summary["tuning_summary_path"] = "tuning_summary.csv" if config.enable_horizon_tuning else ""
+    benchmark_summary.update(_benchmark_metadata_fields(config, data_end=raw_data_end))
     model_error_summary = (
         pd.DataFrame(model_error_rows, columns=MODEL_ERROR_COLUMNS)
         if model_error_rows
         else pd.DataFrame(columns=MODEL_ERROR_COLUMNS)
     )
     benchmark_summary["model_error_count"] = int(len(model_error_summary))
-    return predictions, accuracy_summary, benchmark_summary, baseline_summary, model_error_summary
+    return predictions, accuracy_summary, benchmark_summary, baseline_summary, model_error_summary, baseline_predictions, tuning_summary
 
 
 def _build_accuracy_summary(predictions: pd.DataFrame, threshold: float, min_obs_per_group: int) -> pd.DataFrame:
@@ -2526,8 +3541,6 @@ def build_significance_summary(
                 "bootstrap_ci_high": ci_high,
                 "significant_at_5pct": bool(p_value is not None and p_value < 0.05),
                 "significant_at_10pct": bool(p_value is not None and p_value < 0.10),
-                "mcnemar_p_value": None,
-                "matched_n_obs": 0,
             }
         )
 
@@ -2536,6 +3549,524 @@ def build_significance_summary(
         .sort_values(["frequency", "model", "horizon"])
         .reset_index(drop=True)
     )
+
+
+def _mcnemar_p_value(model_correct_only: int, baseline_correct_only: int) -> float | None:
+    discordant = int(model_correct_only) + int(baseline_correct_only)
+    if discordant <= 0:
+        return None
+    try:
+        from scipy.stats import binomtest
+
+        return float(binomtest(int(model_correct_only), int(discordant), p=0.5, alternative="two-sided").pvalue)
+    except Exception:
+        return None
+
+
+def build_mcnemar_summary(predictions: pd.DataFrame, baseline_predictions: pd.DataFrame) -> pd.DataFrame:
+    if predictions.empty or baseline_predictions.empty:
+        return pd.DataFrame(columns=MCNEMAR_SUMMARY_COLUMNS)
+    model = predictions.copy()
+    baseline = baseline_predictions.copy()
+    join_cols = ["timestamp", "ticker", "frequency", "horizon"]
+    required_model = [*join_cols, "model", "is_correct"]
+    required_baseline = [*join_cols, "baseline", "is_correct"]
+    if any(column not in model.columns for column in required_model) or any(column not in baseline.columns for column in required_baseline):
+        return pd.DataFrame(columns=MCNEMAR_SUMMARY_COLUMNS)
+    merged = model[required_model].merge(
+        baseline[required_baseline],
+        on=join_cols,
+        how="inner",
+        suffixes=("_model", "_baseline"),
+    )
+    if merged.empty:
+        return pd.DataFrame(columns=MCNEMAR_SUMMARY_COLUMNS)
+    merged["is_correct_model"] = pd.to_numeric(merged["is_correct_model"], errors="coerce")
+    merged["is_correct_baseline"] = pd.to_numeric(merged["is_correct_baseline"], errors="coerce")
+    merged = merged[merged["is_correct_model"].isin([0, 1]) & merged["is_correct_baseline"].isin([0, 1])].copy()
+    if merged.empty:
+        return pd.DataFrame(columns=MCNEMAR_SUMMARY_COLUMNS)
+
+    rows: list[dict[str, Any]] = []
+    for keys, group in merged.groupby(["frequency", "model", "horizon", "baseline"], sort=True):
+        frequency, model_name, horizon, baseline_name = keys
+        model_correct = group["is_correct_model"].astype(int).eq(1)
+        baseline_correct = group["is_correct_baseline"].astype(int).eq(1)
+        model_only = int((model_correct & ~baseline_correct).sum())
+        baseline_only = int((~model_correct & baseline_correct).sum())
+        both_correct = int((model_correct & baseline_correct).sum())
+        both_wrong = int((~model_correct & ~baseline_correct).sum())
+        rows.append(
+            {
+                "frequency": str(frequency),
+                "model": str(model_name),
+                "horizon": int(horizon),
+                "baseline": str(baseline_name),
+                "matched_n_obs": int(len(group)),
+                "model_correct_only": model_only,
+                "baseline_correct_only": baseline_only,
+                "both_correct": both_correct,
+                "both_wrong": both_wrong,
+                "mcnemar_p_value": _mcnemar_p_value(model_only, baseline_only),
+            }
+        )
+    return pd.DataFrame(rows, columns=MCNEMAR_SUMMARY_COLUMNS).sort_values(["frequency", "model", "horizon", "baseline"]).reset_index(drop=True)
+
+
+def _expanded_regime_frame(frame: pd.DataFrame, *, entity_column: str) -> pd.DataFrame:
+    if frame.empty:
+        return pd.DataFrame()
+    rows: list[dict[str, Any]] = []
+    for row in frame.itertuples(index=False):
+        base = row._asdict()
+        for column in ("regime", "volatility_regime"):
+            regime = str(base.get(column, "unknown") or "unknown")
+            if regime == "unknown":
+                continue
+            expanded = dict(base)
+            expanded["regime_bucket"] = regime
+            rows.append(expanded)
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame(rows)
+
+
+def build_regime_accuracy_summary(predictions: pd.DataFrame, threshold: float, min_obs_per_group: int) -> pd.DataFrame:
+    expanded = _expanded_regime_frame(predictions, entity_column="model")
+    if expanded.empty:
+        return pd.DataFrame(columns=REGIME_ACCURACY_COLUMNS)
+    expanded["is_correct"] = pd.to_numeric(expanded["is_correct"], errors="coerce")
+    expanded = expanded[expanded["is_correct"].isin([0, 1])].copy()
+    rows: list[dict[str, Any]] = []
+    for keys, group in expanded.groupby(["frequency", "regime_bucket", "model", "horizon"], sort=True):
+        frequency, regime, model_name, horizon = keys
+        n_obs = int(len(group))
+        accuracy = float(group["is_correct"].mean()) if n_obs else float("nan")
+        reliable = n_obs >= int(min_obs_per_group)
+        rows.append(
+            {
+                "frequency": str(frequency),
+                "regime": str(regime),
+                "model": str(model_name),
+                "horizon": int(horizon),
+                "n_obs": n_obs,
+                "accuracy": accuracy,
+                "passed_60pct": bool(reliable and accuracy >= float(threshold)),
+                "reliable": bool(reliable),
+            }
+        )
+    return pd.DataFrame(rows, columns=REGIME_ACCURACY_COLUMNS).sort_values(["frequency", "regime", "model", "horizon"]).reset_index(drop=True)
+
+
+def build_regime_baseline_delta_summary(
+    predictions: pd.DataFrame,
+    baseline_predictions: pd.DataFrame,
+) -> pd.DataFrame:
+    model_expanded = _expanded_regime_frame(predictions, entity_column="model")
+    baseline_expanded = _expanded_regime_frame(baseline_predictions, entity_column="baseline")
+    if model_expanded.empty or baseline_expanded.empty:
+        return pd.DataFrame(columns=REGIME_BASELINE_DELTA_COLUMNS)
+    model_expanded["is_correct"] = pd.to_numeric(model_expanded["is_correct"], errors="coerce")
+    baseline_expanded["is_correct"] = pd.to_numeric(baseline_expanded["is_correct"], errors="coerce")
+    model_grouped = (
+        model_expanded[model_expanded["is_correct"].isin([0, 1])]
+        .groupby(["frequency", "regime_bucket", "model", "horizon"], sort=True)["is_correct"]
+        .agg(["mean", "count"])
+        .reset_index()
+    )
+    baseline_grouped = (
+        baseline_expanded[baseline_expanded["is_correct"].isin([0, 1])]
+        .groupby(["frequency", "regime_bucket", "baseline", "horizon"], sort=True)["is_correct"]
+        .agg(["mean", "count"])
+        .reset_index()
+    )
+    rows: list[dict[str, Any]] = []
+    for model_row in model_grouped.itertuples(index=False):
+        matching = baseline_grouped[
+            (baseline_grouped["frequency"].astype(str) == str(model_row.frequency))
+            & (baseline_grouped["regime_bucket"].astype(str) == str(model_row.regime_bucket))
+            & (pd.to_numeric(baseline_grouped["horizon"], errors="coerce") == int(model_row.horizon))
+        ]
+        for baseline_row in matching.itertuples(index=False):
+            model_accuracy = _finite_float_or_none(model_row.mean)
+            baseline_accuracy = _finite_float_or_none(baseline_row.mean)
+            delta = model_accuracy - baseline_accuracy if model_accuracy is not None and baseline_accuracy is not None else None
+            rows.append(
+                {
+                    "frequency": str(model_row.frequency),
+                    "regime": str(model_row.regime_bucket),
+                    "model": str(model_row.model),
+                    "horizon": int(model_row.horizon),
+                    "baseline": str(baseline_row.baseline),
+                    "model_accuracy": model_accuracy,
+                    "baseline_accuracy": baseline_accuracy,
+                    "accuracy_delta": delta,
+                    "model_better_than_baseline": bool(delta is not None and delta > 0.0),
+                }
+            )
+    return pd.DataFrame(rows, columns=REGIME_BASELINE_DELTA_COLUMNS).sort_values(["frequency", "regime", "model", "horizon", "baseline"]).reset_index(drop=True)
+
+
+def build_classification_accuracy_summary(
+    predictions: pd.DataFrame,
+    *,
+    threshold: float,
+    min_obs_per_group: int,
+) -> pd.DataFrame:
+    if predictions.empty or "target_mode" not in predictions.columns:
+        return pd.DataFrame(columns=CLASSIFICATION_ACCURACY_COLUMNS)
+    working = predictions[predictions["target_mode"].astype(str).str.lower().eq("classification")].copy()
+    if working.empty:
+        return pd.DataFrame(columns=CLASSIFICATION_ACCURACY_COLUMNS)
+    working["is_correct"] = pd.to_numeric(working["is_correct"], errors="coerce")
+    working = working[working["is_correct"].isin([0, 1])].copy()
+    rows: list[dict[str, Any]] = []
+    for keys, group in working.groupby(["frequency", "model", "horizon", "target_mode"], sort=True):
+        frequency, model_name, horizon, target_mode = keys
+        n_obs = int(len(group))
+        accuracy = float(group["is_correct"].mean()) if n_obs else float("nan")
+        reliable = n_obs >= int(min_obs_per_group)
+        rows.append(
+            {
+                "frequency": str(frequency),
+                "model": str(model_name),
+                "horizon": int(horizon),
+                "target_mode": str(target_mode),
+                "n_obs": n_obs,
+                "accuracy": accuracy,
+                "passed_60pct": bool(reliable and accuracy >= float(threshold)),
+                "reliable": bool(reliable),
+            }
+        )
+    return pd.DataFrame(rows, columns=CLASSIFICATION_ACCURACY_COLUMNS).sort_values(["frequency", "model", "horizon"]).reset_index(drop=True)
+
+
+def build_confidence_filter_summary(
+    predictions: pd.DataFrame,
+    *,
+    enabled: bool,
+    confidence_threshold: float,
+    min_coverage_after_filter: float,
+    threshold: float,
+) -> pd.DataFrame:
+    if not enabled or predictions.empty:
+        return pd.DataFrame(columns=CONFIDENCE_FILTER_COLUMNS)
+    working = predictions.copy()
+    working["is_correct"] = pd.to_numeric(working["is_correct"], errors="coerce")
+    working = working[working["is_correct"].isin([0, 1])].copy()
+    if working.empty:
+        return pd.DataFrame(columns=CONFIDENCE_FILTER_COLUMNS)
+    if "filtered_out" not in working.columns:
+        working["filtered_out"] = False
+    filtered = _bool_summary_column(working, "filtered_out")
+    rows: list[dict[str, Any]] = []
+    for keys, group in working.groupby(["frequency", "model", "horizon"], sort=True):
+        frequency, model_name, horizon = keys
+        group_filtered = filtered.loc[group.index]
+        total_rows = int(len(group))
+        evaluated = group.loc[~group_filtered].copy()
+        evaluated_rows = int(len(evaluated))
+        coverage_ratio = evaluated_rows / total_rows if total_rows else 0.0
+        unfiltered_accuracy = float(group["is_correct"].mean()) if total_rows else float("nan")
+        filtered_accuracy = float(evaluated["is_correct"].mean()) if evaluated_rows else float("nan")
+        coverage_ok = coverage_ratio >= float(min_coverage_after_filter)
+        rows.append(
+            {
+                "frequency": str(frequency),
+                "model": str(model_name),
+                "horizon": int(horizon),
+                "confidence_threshold": float(confidence_threshold),
+                "total_rows": total_rows,
+                "evaluated_rows": evaluated_rows,
+                "coverage_ratio": coverage_ratio,
+                "unfiltered_accuracy": unfiltered_accuracy,
+                "filtered_accuracy": filtered_accuracy,
+                "filtered_passed_60pct": bool(coverage_ok and evaluated_rows > 0 and filtered_accuracy >= float(threshold)),
+                "min_coverage_after_filter": float(min_coverage_after_filter),
+                "coverage_ok": bool(coverage_ok),
+            }
+        )
+    return pd.DataFrame(rows, columns=CONFIDENCE_FILTER_COLUMNS).sort_values(["frequency", "model", "horizon"]).reset_index(drop=True)
+
+
+def build_confidence_threshold_sweep_summary(
+    predictions: pd.DataFrame,
+    *,
+    enabled: bool,
+    thresholds: list[float],
+    min_sweep_coverage: float,
+    global_threshold: float,
+    frequency: str = "hourly",
+    model: str = "stacking",
+    horizon: int = 1,
+    target_mode: str = "classification",
+) -> pd.DataFrame:
+    if not enabled:
+        return pd.DataFrame(columns=CONFIDENCE_THRESHOLD_SWEEP_COLUMNS)
+    if predictions.empty:
+        return pd.DataFrame(columns=CONFIDENCE_THRESHOLD_SWEEP_COLUMNS)
+
+    working = predictions.copy()
+    required = {"frequency", "model", "horizon", "target_mode", "confidence", "is_correct"}
+    if not required <= set(working.columns):
+        return pd.DataFrame(columns=CONFIDENCE_THRESHOLD_SWEEP_COLUMNS)
+    working = working[
+        working["frequency"].astype(str).str.lower().eq(str(frequency).lower())
+        & working["model"].astype(str).str.lower().eq(str(model).lower())
+        & (pd.to_numeric(working["horizon"], errors="coerce") == int(horizon))
+        & working["target_mode"].astype(str).str.lower().eq(str(target_mode).lower())
+    ].copy()
+    if working.empty:
+        return pd.DataFrame(columns=CONFIDENCE_THRESHOLD_SWEEP_COLUMNS)
+
+    working["confidence"] = pd.to_numeric(working["confidence"], errors="coerce")
+    working["is_correct"] = pd.to_numeric(working["is_correct"], errors="coerce")
+    working = working[working["is_correct"].isin([0, 1])].copy()
+    total_rows = int(len(working))
+    rows: list[dict[str, Any]] = []
+    for threshold in thresholds:
+        evaluated = working[working["confidence"].notna() & (working["confidence"] >= float(threshold))].copy()
+        evaluated_rows = int(len(evaluated))
+        coverage_ratio = evaluated_rows / total_rows if total_rows else 0.0
+        filtered_accuracy = float(evaluated["is_correct"].mean()) if evaluated_rows else float("nan")
+        coverage_ok = bool(coverage_ratio >= float(min_sweep_coverage))
+        rows.append(
+            {
+                "frequency": str(frequency),
+                "model": str(model),
+                "horizon": int(horizon),
+                "threshold": float(threshold),
+                "total_rows": total_rows,
+                "evaluated_rows": evaluated_rows,
+                "coverage_ratio": coverage_ratio,
+                "filtered_accuracy": filtered_accuracy,
+                "passed_60pct": bool(coverage_ok and evaluated_rows > 0 and filtered_accuracy >= float(global_threshold)),
+                "coverage_ok": coverage_ok,
+                "selected_candidate": False,
+            }
+        )
+
+    result = pd.DataFrame(rows, columns=CONFIDENCE_THRESHOLD_SWEEP_COLUMNS)
+    eligible = result[result["coverage_ok"].astype(bool) & pd.to_numeric(result["filtered_accuracy"], errors="coerce").notna()].copy()
+    if not eligible.empty:
+        eligible = eligible.sort_values(
+            ["filtered_accuracy", "coverage_ratio", "threshold"],
+            ascending=[False, False, False],
+        )
+        selected_index = eligible.index[0]
+        result.loc[selected_index, "selected_candidate"] = True
+    return result.sort_values(["frequency", "model", "horizon", "threshold"]).reset_index(drop=True)
+
+
+def _strategy_candidate_row(
+    *,
+    frequency: str,
+    model: str,
+    horizon: int,
+    target_mode: str,
+    regime: str,
+    confidence_threshold: float | None,
+    candidate_type: str,
+    total_eligible_rows: int,
+    n_obs: int,
+    accuracy: float | None,
+    threshold_60: float,
+    selected_candidate: bool,
+    selection_reason: str,
+    min_obs_for_pass_63: int = 300,
+    threshold_63: float = 0.63,
+) -> dict[str, Any]:
+    coverage_ratio = float(n_obs) / float(total_eligible_rows) if int(total_eligible_rows) > 0 else 0.0
+    valid_accuracy = _finite_float_or_none(accuracy)
+    pass_60 = bool(n_obs >= int(min_obs_for_pass_63) and valid_accuracy is not None and valid_accuracy >= float(threshold_60))
+    pass_63 = bool(n_obs >= int(min_obs_for_pass_63) and valid_accuracy is not None and valid_accuracy >= float(threshold_63))
+    pass_level = ""
+    if pass_63:
+        if candidate_type == "regime":
+            pass_level = "regime_strategy_level"
+        elif candidate_type == "confidence":
+            pass_level = "confidence_strategy_level"
+        else:
+            pass_level = "strategy_level"
+    return {
+        "frequency": str(frequency),
+        "model": str(model),
+        "horizon": int(horizon),
+        "target_mode": str(target_mode),
+        "regime": str(regime),
+        "confidence_threshold": confidence_threshold,
+        "candidate_type": str(candidate_type),
+        "total_eligible_rows": int(total_eligible_rows),
+        "n_obs": int(n_obs),
+        "evaluated_rows": int(n_obs),
+        "coverage_ratio": coverage_ratio,
+        "accuracy": valid_accuracy,
+        "pass_60": pass_60,
+        "pass_63": pass_63,
+        "pass_level": pass_level,
+        "selected_candidate": bool(selected_candidate),
+        "selection_reason": str(selection_reason),
+    }
+
+
+def build_strategy_selection_summary(
+    predictions: pd.DataFrame,
+    confidence_sweep: pd.DataFrame,
+    *,
+    threshold: float,
+    min_obs_for_pass_63: int = 300,
+    threshold_63: float = 0.63,
+) -> pd.DataFrame:
+    if predictions.empty:
+        return pd.DataFrame(columns=STRATEGY_SELECTION_COLUMNS)
+    required = {"frequency", "model", "horizon", "target_mode", "is_correct"}
+    if not required <= set(predictions.columns):
+        return pd.DataFrame(columns=STRATEGY_SELECTION_COLUMNS)
+
+    working = predictions.copy()
+    working["is_correct"] = pd.to_numeric(working["is_correct"], errors="coerce")
+    working = working[working["is_correct"].isin([0, 1])].copy()
+    if working.empty:
+        return pd.DataFrame(columns=STRATEGY_SELECTION_COLUMNS)
+
+    group_columns = ["frequency", "model", "horizon", "target_mode"]
+    group_totals: dict[tuple[str, str, int, str], int] = {}
+    rows: list[dict[str, Any]] = []
+    for keys, group in working.groupby(group_columns, sort=True):
+        frequency, model_name, horizon, target_mode = keys
+        key = (str(frequency), str(model_name), int(horizon), str(target_mode))
+        total_rows = int(len(group))
+        group_totals[key] = total_rows
+        rows.append(
+            _strategy_candidate_row(
+                frequency=key[0],
+                model=key[1],
+                horizon=key[2],
+                target_mode=key[3],
+                regime="",
+                confidence_threshold=None,
+                candidate_type="unfiltered",
+                total_eligible_rows=total_rows,
+                n_obs=total_rows,
+                accuracy=float(group["is_correct"].mean()) if total_rows else None,
+                threshold_60=threshold,
+                selected_candidate=False,
+                selection_reason="unfiltered_model_horizon",
+                min_obs_for_pass_63=min_obs_for_pass_63,
+                threshold_63=threshold_63,
+            )
+        )
+
+    if not confidence_sweep.empty:
+        selected_sweep = confidence_sweep[_bool_summary_column(confidence_sweep, "selected_candidate")].copy()
+        for row in selected_sweep.itertuples(index=False):
+            row_dict = row._asdict()
+            frequency = str(row_dict.get("frequency", ""))
+            model_name = str(row_dict.get("model", ""))
+            horizon = int(row_dict.get("horizon", 0))
+            threshold_value = _finite_float_or_none(row_dict.get("threshold"))
+            matching = working[
+                working["frequency"].astype(str).eq(frequency)
+                & working["model"].astype(str).eq(model_name)
+                & (pd.to_numeric(working["horizon"], errors="coerce") == horizon)
+            ].copy()
+            if matching.empty or threshold_value is None or "confidence" not in matching.columns:
+                continue
+            target_modes = matching["target_mode"].astype(str).dropna().unique().tolist()
+            target_mode = str(target_modes[0]) if target_modes else ""
+            key = (frequency, model_name, horizon, target_mode)
+            total_rows = int(group_totals.get(key, len(matching)))
+            confidence = pd.to_numeric(matching["confidence"], errors="coerce")
+            evaluated = matching[confidence.notna() & (confidence >= float(threshold_value))].copy()
+            n_obs = int(len(evaluated))
+            rows.append(
+                _strategy_candidate_row(
+                    frequency=frequency,
+                    model=model_name,
+                    horizon=horizon,
+                    target_mode=target_mode,
+                    regime="",
+                    confidence_threshold=float(threshold_value),
+                    candidate_type="confidence",
+                    total_eligible_rows=total_rows,
+                    n_obs=n_obs,
+                    accuracy=float(evaluated["is_correct"].mean()) if n_obs else None,
+                    threshold_60=threshold,
+                    selected_candidate=True,
+                    selection_reason="selected_confidence_threshold_sweep_candidate",
+                    min_obs_for_pass_63=min_obs_for_pass_63,
+                    threshold_63=threshold_63,
+                )
+            )
+
+    regime_expanded = _expanded_regime_frame(working, entity_column="model")
+    if not regime_expanded.empty:
+        regime_expanded["is_correct"] = pd.to_numeric(regime_expanded["is_correct"], errors="coerce")
+        regime_expanded = regime_expanded[regime_expanded["is_correct"].isin([0, 1])].copy()
+        for keys, group in regime_expanded.groupby(["frequency", "model", "horizon", "target_mode", "regime_bucket"], sort=True):
+            frequency, model_name, horizon, target_mode, regime = keys
+            key = (str(frequency), str(model_name), int(horizon), str(target_mode))
+            total_rows = int(group_totals.get(key, 0))
+            n_obs = int(len(group))
+            accuracy = float(group["is_correct"].mean()) if n_obs else None
+            candidate = _strategy_candidate_row(
+                frequency=key[0],
+                model=key[1],
+                horizon=key[2],
+                target_mode=key[3],
+                regime=str(regime),
+                confidence_threshold=None,
+                candidate_type="regime",
+                total_eligible_rows=total_rows,
+                n_obs=n_obs,
+                accuracy=accuracy,
+                threshold_60=threshold,
+                selected_candidate=False,
+                selection_reason="regime_filtered_candidate",
+                min_obs_for_pass_63=min_obs_for_pass_63,
+                threshold_63=threshold_63,
+            )
+            if candidate["pass_63"]:
+                candidate["selected_candidate"] = True
+            rows.append(candidate)
+
+    result = pd.DataFrame(rows, columns=STRATEGY_SELECTION_COLUMNS)
+    if result.empty:
+        return pd.DataFrame(columns=STRATEGY_SELECTION_COLUMNS)
+    result["_sort_selected"] = _bool_summary_column(result, "selected_candidate").astype(int)
+    result["_sort_pass63"] = _bool_summary_column(result, "pass_63").astype(int)
+    result["_sort_accuracy"] = pd.to_numeric(result["accuracy"], errors="coerce").fillna(-1.0)
+    result["_sort_coverage"] = pd.to_numeric(result["coverage_ratio"], errors="coerce").fillna(-1.0)
+    result = result.sort_values(
+        ["_sort_selected", "_sort_pass63", "_sort_accuracy", "_sort_coverage", "frequency", "model", "horizon", "regime"],
+        ascending=[False, False, False, False, True, True, True, True],
+    )
+    return result[STRATEGY_SELECTION_COLUMNS].reset_index(drop=True)
+
+
+def _confidence_sweep_summary_fields(sweep_summary: pd.DataFrame, *, enabled: bool) -> dict[str, Any]:
+    fields: dict[str, Any] = {
+        "confidence_sweep_enabled": bool(enabled),
+        "best_confidence_threshold": None,
+        "best_confidence_sweep_accuracy": None,
+        "best_confidence_sweep_coverage": None,
+        "confidence_sweep_passed_60pct": False,
+    }
+    if not enabled or sweep_summary.empty:
+        return fields
+    selected = sweep_summary[_bool_summary_column(sweep_summary, "selected_candidate")].copy()
+    if selected.empty:
+        return fields
+    row = selected.iloc[0]
+    fields.update(
+        {
+            "best_confidence_threshold": _finite_float_or_none(row.get("threshold")),
+            "best_confidence_sweep_accuracy": _finite_float_or_none(row.get("filtered_accuracy")),
+            "best_confidence_sweep_coverage": _finite_float_or_none(row.get("coverage_ratio")),
+            "confidence_sweep_passed_60pct": bool(row.get("passed_60pct", False)),
+        }
+    )
+    return fields
 
 
 def _diagnostic_summary_fields(
@@ -2582,6 +4113,30 @@ def _diagnostic_summary_fields(
         fields["best_model_delta_vs_best_baseline"] = best_model_accuracy - best_baseline_accuracy
 
     return fields
+
+
+def _regime_summary_fields(regime_accuracy_summary: pd.DataFrame) -> dict[str, Any]:
+    fields: dict[str, Any] = {
+        "best_regime": None,
+        "best_regime_model": None,
+        "best_regime_horizon": None,
+        "best_regime_accuracy": None,
+    }
+    if regime_accuracy_summary.empty:
+        return fields
+    working = regime_accuracy_summary.copy()
+    working["accuracy"] = pd.to_numeric(working["accuracy"], errors="coerce")
+    working["n_obs"] = pd.to_numeric(working["n_obs"], errors="coerce").fillna(0).astype(int)
+    working = working[(working["n_obs"] > 0) & working["accuracy"].notna()].copy()
+    if working.empty:
+        return fields
+    best = working.sort_values(["accuracy", "n_obs"], ascending=[False, False]).iloc[0]
+    return {
+        "best_regime": str(best["regime"]),
+        "best_regime_model": str(best["model"]),
+        "best_regime_horizon": int(best["horizon"]),
+        "best_regime_accuracy": float(best["accuracy"]),
+    }
 
 
 def _reliability_counts(accuracy_summary: pd.DataFrame) -> tuple[int, int]:
@@ -2659,6 +4214,22 @@ def _build_benchmark_summary(
         "evaluated_tickers": sorted(predictions["ticker"].dropna().astype(str).unique().tolist()) if n_predictions else [],
         "evaluated_models": sorted(predictions["model"].dropna().astype(str).unique().tolist()) if n_predictions else [],
         "evaluated_horizons": sorted(int(value) for value in predictions["horizon"].dropna().unique().tolist()) if n_predictions else [],
+        "target_mode": "regression",
+        "regime_evaluation_enabled": False,
+        "best_regime": None,
+        "best_regime_model": None,
+        "best_regime_horizon": None,
+        "best_regime_accuracy": None,
+        "confidence_filter_enabled": False,
+        "confidence_sweep_enabled": False,
+        "best_confidence_threshold": None,
+        "best_confidence_sweep_accuracy": None,
+        "best_confidence_sweep_coverage": None,
+        "confidence_sweep_passed_60pct": False,
+        "horizon_tuning_enabled": False,
+        "tuned_models": [],
+        "tuning_trials": 0,
+        "tuning_summary_path": "",
         "evaluation_type": EVALUATION_TYPE,
     }
 
@@ -2745,6 +4316,11 @@ def _run_mode_metadata(config: BenchmarkConfig) -> dict[str, Any]:
         "provider_calls_allowed": bool(config.provider_calls_allowed),
         "checkpointing_enabled": bool(config.checkpointing_enabled),
         "partial_cache_allowed": bool(config.allow_partial_cache_for_benchmark),
+        "target_mode": config.target_mode,
+        "regime_evaluation_enabled": bool(config.enable_regime_evaluation),
+        "confidence_filter_enabled": bool(config.enable_confidence_filter),
+        "confidence_sweep_enabled": bool(config.enable_confidence_threshold_sweep),
+        "horizon_tuning_enabled": bool(config.enable_horizon_tuning),
         "provider_timeout_seconds": float(config.provider_timeout_seconds),
         "model_fit_timeout_seconds": float(config.model_fit_timeout_seconds),
     }
@@ -2754,8 +4330,8 @@ def write_outputs(
     *,
     output_dir: Path,
     config: BenchmarkConfig,
-    daily_outputs: tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], pd.DataFrame, pd.DataFrame],
-    hourly_outputs: tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], pd.DataFrame, pd.DataFrame],
+    daily_outputs: tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame],
+    hourly_outputs: tuple[pd.DataFrame, pd.DataFrame, dict[str, Any], pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame],
     fetch_summary: pd.DataFrame,
     source_health_summary: pd.DataFrame,
 ) -> None:
@@ -2765,13 +4341,21 @@ def write_outputs(
     daily_dir.mkdir(parents=True, exist_ok=True)
     hourly_dir.mkdir(parents=True, exist_ok=True)
 
-    daily_predictions, daily_accuracy, daily_summary, daily_baseline, daily_model_errors = daily_outputs
-    hourly_predictions, hourly_accuracy, hourly_summary, hourly_baseline, hourly_model_errors = hourly_outputs
+    daily_predictions, daily_accuracy, daily_summary, daily_baseline, daily_model_errors, daily_baseline_predictions, daily_tuning = daily_outputs
+    hourly_predictions, hourly_accuracy, hourly_summary, hourly_baseline, hourly_model_errors, hourly_baseline_predictions, hourly_tuning = hourly_outputs
     model_error_summary = pd.concat([daily_model_errors, hourly_model_errors], ignore_index=True)
     if model_error_summary.empty:
         model_error_summary = pd.DataFrame(columns=MODEL_ERROR_COLUMNS)
+    tuning_summary = pd.concat([daily_tuning, hourly_tuning], ignore_index=True)
+    if tuning_summary.empty:
+        tuning_summary = pd.DataFrame(columns=TUNING_SUMMARY_COLUMNS)
+    tuning_output_dir = Path(config.tuning_output_dir) if config.tuning_output_dir else output_dir
+    tuning_summary_path = tuning_output_dir / "tuning_summary.csv"
+    tuning_summary_label = str(tuning_summary_path.relative_to(output_dir)) if tuning_summary_path.is_relative_to(output_dir) else str(tuning_summary_path)
     daily_baseline_delta = build_baseline_delta_summary(daily_accuracy, daily_baseline)
     hourly_baseline_delta = build_baseline_delta_summary(hourly_accuracy, hourly_baseline)
+    daily_mcnemar = build_mcnemar_summary(daily_predictions, daily_baseline_predictions)
+    hourly_mcnemar = build_mcnemar_summary(hourly_predictions, hourly_baseline_predictions)
     daily_significance = build_significance_summary(
         daily_predictions,
         bootstrap_samples=config.bootstrap_samples,
@@ -2782,33 +4366,117 @@ def write_outputs(
         bootstrap_samples=config.bootstrap_samples,
         bootstrap_seed=config.bootstrap_seed + 100_000,
     )
+    daily_regime_accuracy = build_regime_accuracy_summary(daily_predictions, config.threshold, config.min_obs_per_group)
+    hourly_regime_accuracy = build_regime_accuracy_summary(hourly_predictions, config.threshold, config.min_obs_per_group)
+    daily_regime_baseline_delta = build_regime_baseline_delta_summary(daily_predictions, daily_baseline_predictions)
+    hourly_regime_baseline_delta = build_regime_baseline_delta_summary(hourly_predictions, hourly_baseline_predictions)
+    daily_classification_accuracy = build_classification_accuracy_summary(
+        daily_predictions,
+        threshold=config.threshold,
+        min_obs_per_group=config.min_obs_per_group,
+    )
+    hourly_classification_accuracy = build_classification_accuracy_summary(
+        hourly_predictions,
+        threshold=config.threshold,
+        min_obs_per_group=config.min_obs_per_group,
+    )
+    daily_confidence_filter = build_confidence_filter_summary(
+        daily_predictions,
+        enabled=config.enable_confidence_filter,
+        confidence_threshold=config.confidence_threshold,
+        min_coverage_after_filter=config.min_coverage_after_filter,
+        threshold=config.threshold,
+    )
+    hourly_confidence_filter = build_confidence_filter_summary(
+        hourly_predictions,
+        enabled=config.enable_confidence_filter,
+        confidence_threshold=config.confidence_threshold,
+        min_coverage_after_filter=config.min_coverage_after_filter,
+        threshold=config.threshold,
+    )
+    daily_confidence_sweep = build_confidence_threshold_sweep_summary(
+        daily_predictions,
+        enabled=config.enable_confidence_threshold_sweep,
+        thresholds=config.confidence_threshold_grid,
+        min_sweep_coverage=config.min_sweep_coverage,
+        global_threshold=config.threshold,
+    )
+    hourly_confidence_sweep = build_confidence_threshold_sweep_summary(
+        hourly_predictions,
+        enabled=config.enable_confidence_threshold_sweep,
+        thresholds=config.confidence_threshold_grid,
+        min_sweep_coverage=config.min_sweep_coverage,
+        global_threshold=config.threshold,
+    )
+    daily_strategy_selection = build_strategy_selection_summary(
+        daily_predictions,
+        daily_confidence_sweep,
+        threshold=config.threshold,
+    )
+    hourly_strategy_selection = build_strategy_selection_summary(
+        hourly_predictions,
+        hourly_confidence_sweep,
+        threshold=config.threshold,
+    )
     daily_summary.update(_fetch_status_counts(fetch_summary))
     daily_summary.update(_cache_pair_summary_fields(fetch_summary, config=config))
     daily_summary["fetch_scope"] = "daily_and_hourly_raw_inputs"
     daily_summary["model_error_count"] = int(len(daily_model_errors))
+    daily_summary["tuning_summary_path"] = tuning_summary_label if config.enable_horizon_tuning else ""
     daily_summary.update(_diagnostic_summary_fields(daily_significance, daily_baseline_delta))
+    daily_summary.update(_regime_summary_fields(daily_regime_accuracy if config.enable_regime_evaluation else pd.DataFrame()))
+    daily_summary.update(_confidence_sweep_summary_fields(daily_confidence_sweep, enabled=config.enable_confidence_threshold_sweep))
     hourly_summary.update(_fetch_status_counts(fetch_summary, frequency="hourly"))
     hourly_summary.update(_cache_pair_summary_fields(fetch_summary, config=config, frequency="hourly"))
     hourly_summary["fetch_scope"] = "hourly_raw_inputs"
     hourly_summary["model_error_count"] = int(len(hourly_model_errors))
+    hourly_summary["tuning_summary_path"] = tuning_summary_label if config.enable_horizon_tuning else ""
     hourly_summary.update(_diagnostic_summary_fields(hourly_significance, hourly_baseline_delta))
+    hourly_summary.update(_regime_summary_fields(hourly_regime_accuracy if config.enable_regime_evaluation else pd.DataFrame()))
+    hourly_summary.update(_confidence_sweep_summary_fields(hourly_confidence_sweep, enabled=config.enable_confidence_threshold_sweep))
     daily_predictions.to_csv(daily_dir / "predicted_vs_actual.csv", index=False)
     daily_accuracy.to_csv(daily_dir / "accuracy_summary.csv", index=False)
     daily_baseline.to_csv(daily_dir / "baseline_summary.csv", index=False)
     daily_baseline_delta.to_csv(daily_dir / "baseline_delta_summary.csv", index=False)
     daily_significance.to_csv(daily_dir / "significance_summary.csv", index=False)
+    daily_mcnemar.to_csv(daily_dir / "mcnemar_summary.csv", index=False)
+    daily_regime_accuracy.to_csv(daily_dir / "regime_accuracy_summary.csv", index=False)
+    daily_regime_baseline_delta.to_csv(daily_dir / "regime_baseline_delta_summary.csv", index=False)
+    daily_classification_accuracy.to_csv(daily_dir / "classification_accuracy_summary.csv", index=False)
+    daily_confidence_filter.to_csv(daily_dir / "confidence_filter_summary.csv", index=False)
+    daily_confidence_sweep.to_csv(daily_dir / "confidence_threshold_sweep_summary.csv", index=False)
+    daily_strategy_selection.to_csv(daily_dir / "strategy_selection_summary.csv", index=False)
     write_json(daily_dir / "benchmark_summary.json", daily_summary)
     hourly_predictions.to_csv(hourly_dir / "predicted_vs_actual.csv", index=False)
     hourly_accuracy.to_csv(hourly_dir / "accuracy_summary.csv", index=False)
     hourly_baseline.to_csv(hourly_dir / "baseline_summary.csv", index=False)
     hourly_baseline_delta.to_csv(hourly_dir / "baseline_delta_summary.csv", index=False)
     hourly_significance.to_csv(hourly_dir / "significance_summary.csv", index=False)
+    hourly_mcnemar.to_csv(hourly_dir / "mcnemar_summary.csv", index=False)
+    hourly_regime_accuracy.to_csv(hourly_dir / "regime_accuracy_summary.csv", index=False)
+    hourly_regime_baseline_delta.to_csv(hourly_dir / "regime_baseline_delta_summary.csv", index=False)
+    hourly_classification_accuracy.to_csv(hourly_dir / "classification_accuracy_summary.csv", index=False)
+    hourly_confidence_filter.to_csv(hourly_dir / "confidence_filter_summary.csv", index=False)
+    hourly_confidence_sweep.to_csv(hourly_dir / "confidence_threshold_sweep_summary.csv", index=False)
+    hourly_strategy_selection.to_csv(hourly_dir / "strategy_selection_summary.csv", index=False)
     write_json(hourly_dir / "benchmark_summary.json", hourly_summary)
     fetch_summary.to_csv(output_dir / "fetch_summary.csv", index=False)
     build_usable_cache_summary(fetch_summary).to_csv(output_dir / "usable_cache_summary.csv", index=False)
     source_health_summary.to_csv(output_dir / "source_health_summary.csv", index=False)
     model_error_summary.to_csv(output_dir / "model_error_summary.csv", index=False)
-    write_json(output_dir / "run_config.json", asdict(config))
+    sweep_parts = [frame for frame in (daily_confidence_sweep, hourly_confidence_sweep) if not frame.empty]
+    combined_confidence_sweep = pd.concat(sweep_parts, ignore_index=True) if sweep_parts else pd.DataFrame(columns=CONFIDENCE_THRESHOLD_SWEEP_COLUMNS)
+    if combined_confidence_sweep.empty:
+        combined_confidence_sweep = pd.DataFrame(columns=CONFIDENCE_THRESHOLD_SWEEP_COLUMNS)
+    combined_confidence_sweep.to_csv(output_dir / "confidence_threshold_sweep_summary.csv", index=False)
+    strategy_parts = [frame for frame in (daily_strategy_selection, hourly_strategy_selection) if not frame.empty]
+    combined_strategy_selection = pd.concat(strategy_parts, ignore_index=True) if strategy_parts else pd.DataFrame(columns=STRATEGY_SELECTION_COLUMNS)
+    if combined_strategy_selection.empty:
+        combined_strategy_selection = pd.DataFrame(columns=STRATEGY_SELECTION_COLUMNS)
+    combined_strategy_selection.to_csv(output_dir / "strategy_selection_summary.csv", index=False)
+    tuning_output_dir.mkdir(parents=True, exist_ok=True)
+    tuning_summary.to_csv(tuning_summary_path, index=False)
+    write_json(output_dir / "run_config.json", _run_config_payload(config))
 
     manifest = {
         **_run_mode_metadata(config),
@@ -2817,6 +4485,10 @@ def write_outputs(
         "raw_daily_range": {"start": config.daily_start, "end": config.daily_end},
         "raw_hourly_range": {"start": config.hourly_start, "end": config.hourly_end},
         "evaluation_range": {"start": config.eval_start, "end": config.eval_end},
+        "train_cutoff": config.train_cutoff or "",
+        "data_end": _config_data_end(config),
+        "training_label_cutoff_rule": _training_label_cutoff_rule(config),
+        "actual_rows_allowed_after_train_cutoff": True,
         "daily_benchmark_method": (
             "Daily OHLCV 2006-2015 plus hourly OHLCV 2016+ resampled to daily; "
             "expanding-window out-of-sample evaluation with scheduled retraining."
@@ -2850,6 +4522,26 @@ def write_outputs(
         "min_pre_eval_rows_hourly": int(config.min_pre_eval_rows_hourly),
         "min_eval_rows_daily": int(config.min_eval_rows_daily),
         "min_eval_rows_hourly": int(config.min_eval_rows_hourly),
+        "target_mode": config.target_mode,
+        "regime_evaluation_enabled": bool(config.enable_regime_evaluation),
+        "regime_return_window": int(config.regime_return_window),
+        "regime_vol_window": int(config.regime_vol_window),
+        "regime_bull_threshold": float(config.regime_bull_threshold),
+        "regime_bear_threshold": float(config.regime_bear_threshold),
+        "regime_vol_quantile": float(config.regime_vol_quantile),
+        "confidence_filter_enabled": bool(config.enable_confidence_filter),
+        "confidence_threshold": float(config.confidence_threshold),
+        "confidence_threshold_sweep_enabled": bool(config.enable_confidence_threshold_sweep),
+        "confidence_threshold_grid": list(config.confidence_threshold_grid),
+        "min_sweep_coverage": float(config.min_sweep_coverage),
+        "strategy_selection_summary_path": "strategy_selection_summary.csv",
+        "no_trade_band": float(config.no_trade_band),
+        "min_coverage_after_filter": float(config.min_coverage_after_filter),
+        "horizon_tuning_enabled": bool(config.enable_horizon_tuning),
+        "tuned_models": list(config.tuning_models),
+        "tuning_trials": int(config.tuning_trials),
+        "tuning_metric": config.tuning_metric,
+        "tuning_summary_path": tuning_summary_label,
         "effective_training_range": {
             "daily": {
                 "start": daily_summary.get("effective_train_start", ""),
@@ -2901,13 +4593,18 @@ def write_fetch_only_outputs(
     fetch_summary.to_csv(output_dir / "fetch_summary.csv", index=False)
     build_usable_cache_summary(fetch_summary).to_csv(output_dir / "usable_cache_summary.csv", index=False)
     source_health_summary.to_csv(output_dir / "source_health_summary.csv", index=False)
-    write_json(output_dir / "run_config.json", asdict(config))
+    write_json(output_dir / "run_config.json", _run_config_payload(config))
     manifest = {
         **_run_mode_metadata(config),
         "provider": config.provider,
         "universe": config.universe,
         "raw_daily_range": {"start": config.daily_start, "end": config.daily_end},
         "raw_hourly_range": {"start": config.hourly_start, "end": config.hourly_end},
+        "train_cutoff": config.train_cutoff or "",
+        "data_end": _config_data_end(config),
+        "evaluation_range": {"start": config.eval_start, "end": config.eval_end},
+        "training_label_cutoff_rule": _training_label_cutoff_rule(config),
+        "actual_rows_allowed_after_train_cutoff": True,
         "fetch_status_counts": _fetch_status_counts(fetch_summary),
         "daily_fetch_status_counts": _fetch_status_counts(fetch_summary, frequency="daily"),
         "hourly_fetch_status_counts": _fetch_status_counts(fetch_summary, frequency="hourly"),
@@ -2951,7 +4648,7 @@ def main() -> None:
 
     daily_raw = combine_daily_inputs(daily_frames, hourly_frames, config)
     hourly_raw = combine_hourly_inputs(hourly_frames, config)
-    initial_train_end = str((_to_date(config.eval_start) - pd.Timedelta(days=1)).date())
+    initial_train_end = config.train_cutoff or str((_to_date(config.eval_start) - pd.Timedelta(days=1)).date())
 
     daily_outputs = run_frequency_benchmark(
         raw_df=daily_raw,
@@ -2970,6 +4667,7 @@ def main() -> None:
         min_history_days=config.min_history_days,
         min_obs_per_group=config.min_obs_per_group,
         max_daily_gap_days=config.max_daily_gap_days,
+        config=config,
     )
     hourly_outputs = run_frequency_benchmark(
         raw_df=hourly_raw,
@@ -2988,6 +4686,7 @@ def main() -> None:
         min_history_days=config.min_history_days,
         min_obs_per_group=config.min_obs_per_group,
         max_daily_gap_days=config.max_daily_gap_days,
+        config=config,
     )
     write_outputs(
         output_dir=Path(config.output_dir),
