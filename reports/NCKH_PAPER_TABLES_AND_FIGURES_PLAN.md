@@ -28,3 +28,11 @@
 - `ready` means the needed source artifact fields exist for the current official run.
 - `partial` means the source evidence exists only for part of the desired comparison, or the table/figure still needs manual rendering from available rows.
 - `missing` would mean the current artifacts cannot support the table or figure without a new experiment.
+
+## Generated Artifact Pack
+
+- Tables 1-8 are generated as CSV and Markdown under `reports/generated/paper_tables/`.
+- Figures 1-2 are generated as Markdown schematics under `reports/generated/paper_figures/`.
+- Figures 3-5 are generated as PNG charts under `reports/generated/paper_figures/`.
+- Artifact-pack status notes are generated under `reports/generated/paper_notes/`.
+- Generator: `scripts/research/build_vn100_paper_artifact_pack.py`.

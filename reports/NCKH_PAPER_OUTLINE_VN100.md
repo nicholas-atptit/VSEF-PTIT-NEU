@@ -120,6 +120,8 @@ Supporting artifacts:
 - `manifest.json`.
 - `usable_cache_summary.csv`.
 - Official benchmark research report evidence map.
+- `reports/generated/paper_tables/table1_dataset_evaluation_scope.md`.
+- `reports/generated/paper_figures/figure2_walk_forward_design.md`.
 
 ### 3.2 Data Coverage and Cache Usability
 
@@ -162,6 +164,8 @@ Supporting artifacts:
 - `confidence_threshold_sweep_summary.csv`.
 - `regime_accuracy_summary.csv`.
 - `significance_summary.csv`.
+- `reports/generated/paper_tables/`.
+- `reports/generated/paper_figures/`.
 
 ## Chapter 4: Empirical Results and Discussion
 
@@ -252,6 +256,8 @@ Supporting artifacts:
 - `reports/generated/vn100_ticker_concentration_summary.md`.
 - `reports/generated/vn100_confidence_coverage_review.md`.
 - `reports/generated/vn100_cost_slippage_readiness_review.md`.
+- `reports/generated/paper_tables/table8_robustness_limitation_matrix.md`.
+- `reports/NCKH_RESULTS_CLAIM_REGISTER.md`.
 
 ## Chapter 5: Conclusion and Recommendations
 
