@@ -85,6 +85,9 @@ These output directories exist locally and should be treated as generated artifa
 | `reports/NCKH_CHAPTER3_METHODOLOGY_DRAFT.md` | Evidence-backed Chapter 3 methodology draft. |
 | `reports/NCKH_CHAPTER4_EMPIRICAL_RESULTS_DRAFT.md` | Evidence-backed Chapter 4 empirical results draft. |
 | `reports/NCKH_RESULTS_CLAIM_REGISTER.md` | Claim register separating safe, conditional, and unsafe result claims. |
+| `reports/NCKH_FULL_PAPER_DRAFT_VN100.md` | Full paper draft assembled from the design, outline, artifact pack, Chapter 3 draft, Chapter 4 draft, and claim register. |
+| `reports/NCKH_ABSTRACT_AND_KEYWORDS.md` | Vietnamese and English titles, abstracts, and keywords. |
+| `reports/NCKH_DEFENSE_SUMMARY.md` | Defense-ready 1-minute, 3-minute, and 5-minute summaries with safe committee answers. |
 
 ## Existing Tests Related to the Research
 

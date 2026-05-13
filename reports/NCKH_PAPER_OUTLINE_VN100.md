@@ -1,5 +1,10 @@
 # NCKH Paper Outline - VN100 Walk-Forward Benchmark
 
+Generated full-draft artifacts:
+- `reports/NCKH_FULL_PAPER_DRAFT_VN100.md`
+- `reports/NCKH_ABSTRACT_AND_KEYWORDS.md`
+- `reports/NCKH_DEFENSE_SUMMARY.md`
+
 ## Chapter 1: Introduction
 
 ### 1.1 Research Context
