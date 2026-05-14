@@ -1,0 +1,31 @@
+ticker,cache_path,file_exists,row_count,first_datetime,last_datetime,training_rows_before_2025,evaluation_rows_from_2025,sorted_datetime,duplicate_datetime_count,frequency_1h,ohlcv_numeric,positive_prices,volume_nonnegative,ohlc_consistent,usable,missing_reason
+ACB,data/market_cache/vnstock_data/vn30/hourly_gateway/ACB.csv,true,1376,2023-12-27 13:00:00,2026-05-14 00:00:00,709,667,true,0,true,true,true,true,true,false,training_rows_below_1000
+BID,data/market_cache/vnstock_data/vn30/hourly_gateway/BID.csv,true,1443,2023-12-27 13:00:00,2026-05-14 00:00:00,709,734,true,0,true,true,true,true,true,false,training_rows_below_1000
+CTG,data/market_cache/vnstock_data/vn30/hourly_gateway/CTG.csv,true,1282,2023-12-27 13:00:00,2025-10-16 14:00:00,709,573,true,0,true,true,true,true,true,false,training_rows_below_1000
+DGC,data/market_cache/vnstock_data/vn30/hourly_gateway/DGC.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+FPT,data/market_cache/vnstock_data/vn30/hourly_gateway/FPT.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+GAS,data/market_cache/vnstock_data/vn30/hourly_gateway/GAS.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+GVR,data/market_cache/vnstock_data/vn30/hourly_gateway/GVR.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+HDB,data/market_cache/vnstock_data/vn30/hourly_gateway/HDB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+HPG,data/market_cache/vnstock_data/vn30/hourly_gateway/HPG.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+LPB,data/market_cache/vnstock_data/vn30/hourly_gateway/LPB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+MBB,data/market_cache/vnstock_data/vn30/hourly_gateway/MBB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+MSN,data/market_cache/vnstock_data/vn30/hourly_gateway/MSN.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+MWG,data/market_cache/vnstock_data/vn30/hourly_gateway/MWG.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+PLX,data/market_cache/vnstock_data/vn30/hourly_gateway/PLX.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+SAB,data/market_cache/vnstock_data/vn30/hourly_gateway/SAB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+SHB,data/market_cache/vnstock_data/vn30/hourly_gateway/SHB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+SSB,data/market_cache/vnstock_data/vn30/hourly_gateway/SSB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+SSI,data/market_cache/vnstock_data/vn30/hourly_gateway/SSI.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+STB,data/market_cache/vnstock_data/vn30/hourly_gateway/STB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+TCB,data/market_cache/vnstock_data/vn30/hourly_gateway/TCB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+TPB,data/market_cache/vnstock_data/vn30/hourly_gateway/TPB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+VCB,data/market_cache/vnstock_data/vn30/hourly_gateway/VCB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+VHM,data/market_cache/vnstock_data/vn30/hourly_gateway/VHM.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+VIB,data/market_cache/vnstock_data/vn30/hourly_gateway/VIB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+VIC,data/market_cache/vnstock_data/vn30/hourly_gateway/VIC.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+VJC,data/market_cache/vnstock_data/vn30/hourly_gateway/VJC.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+VNM,data/market_cache/vnstock_data/vn30/hourly_gateway/VNM.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+VPB,data/market_cache/vnstock_data/vn30/hourly_gateway/VPB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+VPL,data/market_cache/vnstock_data/vn30/hourly_gateway/VPL.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+VRE,data/market_cache/vnstock_data/vn30/hourly_gateway/VRE.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing

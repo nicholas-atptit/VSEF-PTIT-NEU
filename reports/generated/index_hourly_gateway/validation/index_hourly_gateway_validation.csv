@@ -1,0 +1,7 @@
+index_code,cache_path,file_exists,row_count,first_datetime,last_datetime,sorted_datetime,duplicate_datetime_count,frequency_1h,ohlcv_numeric,positive_prices,volume_nonnegative,ohlc_consistent,usable,missing_reason
+VNINDEX,data/market_cache/vnstock_data/indices/hourly/VNINDEX.csv,true,0,,,false,,false,false,false,false,false,false,missing_columns: ['frequency']
+HNXINDEX,data/market_cache/vnstock_data/indices/hourly/HNXINDEX.csv,true,0,,,false,,false,false,false,false,false,false,missing_columns: ['frequency']
+UPCOMINDEX,data/market_cache/vnstock_data/indices/hourly/UPCOMINDEX.csv,true,0,,,false,,false,false,false,false,false,false,missing_columns: ['frequency']
+VN30,data/market_cache/vnstock_data/indices/hourly/VN30.csv,true,0,,,false,,false,false,false,false,false,false,missing_columns: ['frequency']
+HNX30,data/market_cache/vnstock_data/indices/hourly/HNX30.csv,true,0,,,false,,false,false,false,false,false,false,missing_columns: ['frequency']
+VN100,data/market_cache/vnstock_data/indices/hourly/VN100.csv,true,0,,,false,,false,false,false,false,false,false,missing_columns: ['frequency']
