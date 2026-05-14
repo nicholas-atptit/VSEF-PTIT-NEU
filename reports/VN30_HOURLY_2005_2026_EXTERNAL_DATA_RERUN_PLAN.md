@@ -1,5 +1,7 @@
 # VN30 Hourly 2005-2026 External Data Rerun Plan
 
+> Superseded: do not use this 2005/2006 rerun design for the active VN30 hourly readiness track. The active design starts at `2015-01-01`, uses hourly gateway-fetched data only, and ends at provider-current/latest available timestamps. See `reports/VN30_HOURLY_2015_DATA_READINESS_PLAN.md`.
+
 ## Place External Data
 
 Place the vendor-provided hourly dataset in a new external-data directory, for example:

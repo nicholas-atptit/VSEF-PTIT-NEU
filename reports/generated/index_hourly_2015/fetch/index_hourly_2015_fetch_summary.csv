@@ -1,0 +1,7 @@
+index_code,fetched,rows,first_timestamp,last_timestamp,provider,source,frequency,cache_path,stopped_by_runtime_cap,stopped_reason,resume_command
+VNINDEX,false,0,,,,,,data/market_cache/vnstock_data/indices/hourly_2015/VNINDEX.csv,true,max_runtime_seconds=7200,<repo-approved-venv-python> scripts\research\fetch_supported_indices_hourly_gateway_2015.py --index-code VNINDEX --start 2015-01-01 --end auto --chunk-days 5 --resume --max-runtime-seconds 7200
+HNXINDEX,false,0,,,,,,data/market_cache/vnstock_data/indices/hourly_2015/HNXINDEX.csv,false,not_started_runtime_cap,
+UPCOMINDEX,false,0,,,,,,data/market_cache/vnstock_data/indices/hourly_2015/UPCOMINDEX.csv,false,not_started_runtime_cap,
+VN30,false,0,,,,,,data/market_cache/vnstock_data/indices/hourly_2015/VN30.csv,false,not_started_runtime_cap,
+HNX30,false,0,,,,,,data/market_cache/vnstock_data/indices/hourly_2015/HNX30.csv,false,not_started_runtime_cap,
+VN100,false,0,,,,,,data/market_cache/vnstock_data/indices/hourly_2015/VN100.csv,false,not_started_runtime_cap,

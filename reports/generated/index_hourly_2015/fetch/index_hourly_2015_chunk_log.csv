@@ -1,0 +1,1081 @@
+index_code,chunk_start,chunk_end,chunk_days,provider,source,success,rows,exception_type,exception_message
+VNINDEX,2015-01-01,2015-01-05,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-01,2015-01-05,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-01,2015-01-05,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6b77d10 state=finished raised ValueError>]
+VNINDEX,2015-01-01,2015-01-05,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c92200 state=finished raised ValueError>]
+VNINDEX,2015-01-01,2015-01-05,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc0f80 state=finished raised ValueError>]
+VNINDEX,2015-01-01,2015-01-05,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-01,2015-01-05,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-01,2015-01-05,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e7d0 state=finished raised ValueError>]
+VNINDEX,2015-01-01,2015-01-05,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc8d50 state=finished raised ValueError>]
+VNINDEX,2015-01-01,2015-01-05,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc98d0 state=finished raised ValueError>]
+VNINDEX,2015-01-01,2015-01-05,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-01,2015-01-05,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-01,2015-01-05,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced350 state=finished raised ValueError>]
+VNINDEX,2015-01-01,2015-01-05,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cefc50 state=finished raised ValueError>]
+VNINDEX,2015-01-01,2015-01-05,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cede50 state=finished raised ValueError>]
+VNINDEX,2015-01-06,2015-01-10,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-06,2015-01-10,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-06,2015-01-10,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cedf50 state=finished raised ValueError>]
+VNINDEX,2015-01-06,2015-01-10,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cec2d0 state=finished raised ValueError>]
+VNINDEX,2015-01-06,2015-01-10,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e950 state=finished raised ValueError>]
+VNINDEX,2015-01-06,2015-01-10,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-06,2015-01-10,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-06,2015-01-10,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced3d0 state=finished raised ValueError>]
+VNINDEX,2015-01-06,2015-01-10,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cca9d0 state=finished raised ValueError>]
+VNINDEX,2015-01-06,2015-01-10,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9350 state=finished raised ValueError>]
+VNINDEX,2015-01-06,2015-01-10,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-06,2015-01-10,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-06,2015-01-10,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6050 state=finished raised ValueError>]
+VNINDEX,2015-01-06,2015-01-10,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf5cd0 state=finished raised ValueError>]
+VNINDEX,2015-01-06,2015-01-10,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5ed0 state=finished raised ValueError>]
+VNINDEX,2015-01-11,2015-01-15,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-11,2015-01-15,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-11,2015-01-15,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca150 state=finished raised ConnectionError>]
+VNINDEX,2015-01-11,2015-01-15,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cec2d0 state=finished raised ValueError>]
+VNINDEX,2015-01-11,2015-01-15,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cecd50 state=finished raised ValueError>]
+VNINDEX,2015-01-11,2015-01-15,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-11,2015-01-15,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-11,2015-01-15,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8cd0 state=finished raised ConnectionError>]
+VNINDEX,2015-01-11,2015-01-15,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc9ad0 state=finished raised ValueError>]
+VNINDEX,2015-01-11,2015-01-15,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca350 state=finished raised ValueError>]
+VNINDEX,2015-01-11,2015-01-15,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-11,2015-01-15,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-11,2015-01-15,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2bcd0 state=finished raised ConnectionError>]
+VNINDEX,2015-01-11,2015-01-15,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ccbb50 state=finished raised ValueError>]
+VNINDEX,2015-01-11,2015-01-15,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb8d0 state=finished raised ValueError>]
+VNINDEX,2015-01-16,2015-01-20,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-16,2015-01-20,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-16,2015-01-20,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9f50 state=finished raised ValueError>]
+VNINDEX,2015-01-16,2015-01-20,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf70d0 state=finished raised ValueError>]
+VNINDEX,2015-01-16,2015-01-20,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5350 state=finished raised ValueError>]
+VNINDEX,2015-01-16,2015-01-20,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-16,2015-01-20,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-16,2015-01-20,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6ed0 state=finished raised ValueError>]
+VNINDEX,2015-01-16,2015-01-20,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7950 state=finished raised ValueError>]
+VNINDEX,2015-01-16,2015-01-20,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf4150 state=finished raised ValueError>]
+VNINDEX,2015-01-16,2015-01-20,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-16,2015-01-20,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-16,2015-01-20,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb4d0 state=finished raised ConnectionError>]
+VNINDEX,2015-01-16,2015-01-20,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cca350 state=finished raised ValueError>]
+VNINDEX,2015-01-16,2015-01-20,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8fd0 state=finished raised ValueError>]
+VNINDEX,2015-01-21,2015-01-25,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-21,2015-01-25,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-21,2015-01-25,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5ee50 state=finished raised ValueError>]
+VNINDEX,2015-01-21,2015-01-25,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc8e50 state=finished raised ValueError>]
+VNINDEX,2015-01-21,2015-01-25,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8fd0 state=finished raised ValueError>]
+VNINDEX,2015-01-21,2015-01-25,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-21,2015-01-25,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-21,2015-01-25,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6450 state=finished raised ConnectionError>]
+VNINDEX,2015-01-21,2015-01-25,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cecd50 state=finished raised ValueError>]
+VNINDEX,2015-01-21,2015-01-25,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc93d0 state=finished raised ValueError>]
+VNINDEX,2015-01-21,2015-01-25,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-21,2015-01-25,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-21,2015-01-25,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5dbd0 state=finished raised ValueError>]
+VNINDEX,2015-01-21,2015-01-25,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cefdd0 state=finished raised ValueError>]
+VNINDEX,2015-01-21,2015-01-25,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced850 state=finished raised ValueError>]
+VNINDEX,2015-01-26,2015-01-30,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-26,2015-01-30,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-26,2015-01-30,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef650 state=finished raised ConnectionError>]
+VNINDEX,2015-01-26,2015-01-30,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cee850 state=finished raised ValueError>]
+VNINDEX,2015-01-26,2015-01-30,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e050 state=finished raised ValueError>]
+VNINDEX,2015-01-26,2015-01-30,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-26,2015-01-30,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-26,2015-01-30,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca850 state=finished raised ValueError>]
+VNINDEX,2015-01-26,2015-01-30,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf5ad0 state=finished raised ValueError>]
+VNINDEX,2015-01-26,2015-01-30,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf40d0 state=finished raised ValueError>]
+VNINDEX,2015-01-26,2015-01-30,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-26,2015-01-30,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-26,2015-01-30,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5250 state=finished raised ValueError>]
+VNINDEX,2015-01-26,2015-01-30,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7050 state=finished raised ValueError>]
+VNINDEX,2015-01-26,2015-01-30,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf44d0 state=finished raised ValueError>]
+VNINDEX,2015-01-31,2015-02-04,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-31,2015-02-04,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-31,2015-02-04,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9950 state=finished raised ValueError>]
+VNINDEX,2015-01-31,2015-02-04,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc91d0 state=finished raised ValueError>]
+VNINDEX,2015-01-31,2015-02-04,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf50d0 state=finished raised ValueError>]
+VNINDEX,2015-01-31,2015-02-04,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-31,2015-02-04,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-31,2015-02-04,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef550 state=finished raised ValueError>]
+VNINDEX,2015-01-31,2015-02-04,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5ce50 state=finished raised ValueError>]
+VNINDEX,2015-01-31,2015-02-04,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5d0d0 state=finished raised ValueError>]
+VNINDEX,2015-01-31,2015-02-04,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-01-31,2015-02-04,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-01-31,2015-02-04,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8c50 state=finished raised ValueError>]
+VNINDEX,2015-01-31,2015-02-04,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf63d0 state=finished raised ValueError>]
+VNINDEX,2015-01-31,2015-02-04,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf41d0 state=finished raised ValueError>]
+VNINDEX,2015-02-05,2015-02-09,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-05,2015-02-09,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-05,2015-02-09,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f750 state=finished raised ValueError>]
+VNINDEX,2015-02-05,2015-02-09,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d1d0 state=finished raised ValueError>]
+VNINDEX,2015-02-05,2015-02-09,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e7d0 state=finished raised ValueError>]
+VNINDEX,2015-02-05,2015-02-09,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-05,2015-02-09,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-05,2015-02-09,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9850 state=finished raised ValueError>]
+VNINDEX,2015-02-05,2015-02-09,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6950 state=finished raised ValueError>]
+VNINDEX,2015-02-05,2015-02-09,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf46d0 state=finished raised ValueError>]
+VNINDEX,2015-02-05,2015-02-09,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-05,2015-02-09,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-05,2015-02-09,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccbf50 state=finished raised ValueError>]
+VNINDEX,2015-02-05,2015-02-09,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cee750 state=finished raised ValueError>]
+VNINDEX,2015-02-05,2015-02-09,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceeed0 state=finished raised ValueError>]
+VNINDEX,2015-02-10,2015-02-14,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-10,2015-02-14,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-10,2015-02-14,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2efd0 state=finished raised ValueError>]
+VNINDEX,2015-02-10,2015-02-14,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2ca50 state=finished raised ValueError>]
+VNINDEX,2015-02-10,2015-02-14,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2fad0 state=finished raised ValueError>]
+VNINDEX,2015-02-10,2015-02-14,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-10,2015-02-14,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-10,2015-02-14,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7450 state=finished raised ValueError>]
+VNINDEX,2015-02-10,2015-02-14,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf42d0 state=finished raised ValueError>]
+VNINDEX,2015-02-10,2015-02-14,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5350 state=finished raised ValueError>]
+VNINDEX,2015-02-10,2015-02-14,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-10,2015-02-14,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-10,2015-02-14,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc99d0 state=finished raised ValueError>]
+VNINDEX,2015-02-10,2015-02-14,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cca9d0 state=finished raised ValueError>]
+VNINDEX,2015-02-10,2015-02-14,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9ed0 state=finished raised ValueError>]
+VNINDEX,2015-02-15,2015-02-19,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-15,2015-02-19,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-15,2015-02-19,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cecad0 state=finished raised ConnectionError>]
+VNINDEX,2015-02-15,2015-02-19,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2fbd0 state=finished raised ValueError>]
+VNINDEX,2015-02-15,2015-02-19,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5f750 state=finished raised ValueError>]
+VNINDEX,2015-02-15,2015-02-19,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-15,2015-02-19,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-15,2015-02-19,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ea50 state=finished raised ConnectionError>]
+VNINDEX,2015-02-15,2015-02-19,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2c5d0 state=finished raised ValueError>]
+VNINDEX,2015-02-15,2015-02-19,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef550 state=finished raised ValueError>]
+VNINDEX,2015-02-15,2015-02-19,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-15,2015-02-19,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-15,2015-02-19,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c88050 state=finished raised ConnectionError>]
+VNINDEX,2015-02-15,2015-02-19,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf62d0 state=finished raised ValueError>]
+VNINDEX,2015-02-15,2015-02-19,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5e50 state=finished raised ValueError>]
+VNINDEX,2015-02-20,2015-02-24,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-20,2015-02-24,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-20,2015-02-24,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf66d0 state=finished raised ValueError>]
+VNINDEX,2015-02-20,2015-02-24,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2e3d0 state=finished raised ValueError>]
+VNINDEX,2015-02-20,2015-02-24,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c750 state=finished raised ValueError>]
+VNINDEX,2015-02-20,2015-02-24,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-20,2015-02-24,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-20,2015-02-24,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f9d0 state=finished raised ValueError>]
+VNINDEX,2015-02-20,2015-02-24,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d4d0 state=finished raised ValueError>]
+VNINDEX,2015-02-20,2015-02-24,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e350 state=finished raised ValueError>]
+VNINDEX,2015-02-20,2015-02-24,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-20,2015-02-24,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-20,2015-02-24,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251f3a6c950 state=finished raised ConnectionError>]
+VNINDEX,2015-02-20,2015-02-24,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2c2d0 state=finished raised ValueError>]
+VNINDEX,2015-02-20,2015-02-24,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ccd0 state=finished raised ValueError>]
+VNINDEX,2015-02-25,2015-03-01,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-25,2015-03-01,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-25,2015-03-01,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e6d0 state=finished raised ValueError>]
+VNINDEX,2015-02-25,2015-03-01,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7350 state=finished raised ValueError>]
+VNINDEX,2015-02-25,2015-03-01,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5c50 state=finished raised ValueError>]
+VNINDEX,2015-02-25,2015-03-01,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-25,2015-03-01,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-25,2015-03-01,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf50d0 state=finished raised ConnectionError>]
+VNINDEX,2015-02-25,2015-03-01,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c8be50 state=finished raised ValueError>]
+VNINDEX,2015-02-25,2015-03-01,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf4cd0 state=finished raised ValueError>]
+VNINDEX,2015-02-25,2015-03-01,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-02-25,2015-03-01,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-02-25,2015-03-01,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c350 state=finished raised ValueError>]
+VNINDEX,2015-02-25,2015-03-01,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cca650 state=finished raised ValueError>]
+VNINDEX,2015-02-25,2015-03-01,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9e50 state=finished raised ValueError>]
+VNINDEX,2015-03-02,2015-03-06,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-02,2015-03-06,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-02,2015-03-06,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e350 state=finished raised ConnectionError>]
+VNINDEX,2015-03-02,2015-03-06,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2f350 state=finished raised ValueError>]
+VNINDEX,2015-03-02,2015-03-06,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6dd0 state=finished raised ValueError>]
+VNINDEX,2015-03-02,2015-03-06,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-02,2015-03-06,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-02,2015-03-06,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccbe50 state=finished raised ValueError>]
+VNINDEX,2015-03-02,2015-03-06,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc93d0 state=finished raised ValueError>]
+VNINDEX,2015-03-02,2015-03-06,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7650 state=finished raised ValueError>]
+VNINDEX,2015-03-02,2015-03-06,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-02,2015-03-06,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-02,2015-03-06,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e5d0 state=finished raised ValueError>]
+VNINDEX,2015-03-02,2015-03-06,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2dbd0 state=finished raised ValueError>]
+VNINDEX,2015-03-02,2015-03-06,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee050 state=finished raised ValueError>]
+VNINDEX,2015-03-07,2015-03-11,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-07,2015-03-11,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-07,2015-03-11,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceeb50 state=finished raised ValueError>]
+VNINDEX,2015-03-07,2015-03-11,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cefdd0 state=finished raised ValueError>]
+VNINDEX,2015-03-07,2015-03-11,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceff50 state=finished raised ValueError>]
+VNINDEX,2015-03-07,2015-03-11,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-07,2015-03-11,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-07,2015-03-11,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf70d0 state=finished raised ValueError>]
+VNINDEX,2015-03-07,2015-03-11,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7a50 state=finished raised ValueError>]
+VNINDEX,2015-03-07,2015-03-11,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c150 state=finished raised ValueError>]
+VNINDEX,2015-03-07,2015-03-11,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-07,2015-03-11,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-07,2015-03-11,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca450 state=finished raised ValueError>]
+VNINDEX,2015-03-07,2015-03-11,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf4450 state=finished raised ValueError>]
+VNINDEX,2015-03-07,2015-03-11,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6a50 state=finished raised ValueError>]
+VNINDEX,2015-03-12,2015-03-16,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-12,2015-03-16,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-12,2015-03-16,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d750 state=finished raised ValueError>]
+VNINDEX,2015-03-12,2015-03-16,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2f050 state=finished raised ValueError>]
+VNINDEX,2015-03-12,2015-03-16,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c150 state=finished raised ValueError>]
+VNINDEX,2015-03-12,2015-03-16,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-12,2015-03-16,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-12,2015-03-16,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e450 state=finished raised ValueError>]
+VNINDEX,2015-03-12,2015-03-16,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e7d0 state=finished raised ValueError>]
+VNINDEX,2015-03-12,2015-03-16,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced2d0 state=finished raised ValueError>]
+VNINDEX,2015-03-12,2015-03-16,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-12,2015-03-16,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-12,2015-03-16,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee450 state=finished raised ValueError>]
+VNINDEX,2015-03-12,2015-03-16,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2e350 state=finished raised ValueError>]
+VNINDEX,2015-03-12,2015-03-16,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2eb50 state=finished raised ValueError>]
+VNINDEX,2015-03-17,2015-03-21,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-17,2015-03-21,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-17,2015-03-21,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccaf50 state=finished raised ValueError>]
+VNINDEX,2015-03-17,2015-03-21,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7f50 state=finished raised ValueError>]
+VNINDEX,2015-03-17,2015-03-21,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf44d0 state=finished raised ValueError>]
+VNINDEX,2015-03-17,2015-03-21,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-17,2015-03-21,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-17,2015-03-21,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d950 state=finished raised ValueError>]
+VNINDEX,2015-03-17,2015-03-21,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf5bd0 state=finished raised ValueError>]
+VNINDEX,2015-03-17,2015-03-21,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cefa50 state=finished raised ValueError>]
+VNINDEX,2015-03-17,2015-03-21,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-17,2015-03-21,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-17,2015-03-21,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5ced0 state=finished raised ValueError>]
+VNINDEX,2015-03-17,2015-03-21,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5ec50 state=finished raised ValueError>]
+VNINDEX,2015-03-17,2015-03-21,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceced0 state=finished raised ValueError>]
+VNINDEX,2015-03-22,2015-03-26,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-22,2015-03-26,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-22,2015-03-26,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e5d0 state=finished raised ConnectionError>]
+VNINDEX,2015-03-22,2015-03-26,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf5c50 state=finished raised ValueError>]
+VNINDEX,2015-03-22,2015-03-26,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf41d0 state=finished raised ValueError>]
+VNINDEX,2015-03-22,2015-03-26,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-22,2015-03-26,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-22,2015-03-26,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9250 state=finished raised ConnectionError>]
+VNINDEX,2015-03-22,2015-03-26,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e050 state=finished raised ValueError>]
+VNINDEX,2015-03-22,2015-03-26,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5ea50 state=finished raised ValueError>]
+VNINDEX,2015-03-22,2015-03-26,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-22,2015-03-26,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-22,2015-03-26,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5550 state=finished raised ConnectionError>]
+VNINDEX,2015-03-22,2015-03-26,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cecd50 state=finished raised ValueError>]
+VNINDEX,2015-03-22,2015-03-26,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cefed0 state=finished raised ValueError>]
+VNINDEX,2015-03-27,2015-03-31,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-27,2015-03-31,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-27,2015-03-31,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e950 state=finished raised ValueError>]
+VNINDEX,2015-03-27,2015-03-31,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ced950 state=finished raised ValueError>]
+VNINDEX,2015-03-27,2015-03-31,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceeed0 state=finished raised ValueError>]
+VNINDEX,2015-03-27,2015-03-31,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-27,2015-03-31,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-27,2015-03-31,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9a50 state=finished raised ValueError>]
+VNINDEX,2015-03-27,2015-03-31,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ccb7d0 state=finished raised ValueError>]
+VNINDEX,2015-03-27,2015-03-31,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9dd0 state=finished raised ValueError>]
+VNINDEX,2015-03-27,2015-03-31,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-03-27,2015-03-31,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-03-27,2015-03-31,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee9d0 state=finished raised ConnectionError>]
+VNINDEX,2015-03-27,2015-03-31,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251f3a6c950 state=finished raised ValueError>]
+VNINDEX,2015-03-27,2015-03-31,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2bbd0 state=finished raised ValueError>]
+VNINDEX,2015-04-01,2015-04-05,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-01,2015-04-05,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-01,2015-04-05,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2bad0 state=finished raised ValueError>]
+VNINDEX,2015-04-01,2015-04-05,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5ec50 state=finished raised ValueError>]
+VNINDEX,2015-04-01,2015-04-05,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cefcd0 state=finished raised ValueError>]
+VNINDEX,2015-04-01,2015-04-05,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-01,2015-04-05,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-01,2015-04-05,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb350 state=finished raised ConnectionError>]
+VNINDEX,2015-04-01,2015-04-05,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7250 state=finished raised ValueError>]
+VNINDEX,2015-04-01,2015-04-05,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c88250 state=finished raised ValueError>]
+VNINDEX,2015-04-01,2015-04-05,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-01,2015-04-05,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-01,2015-04-05,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccaed0 state=finished raised ValueError>]
+VNINDEX,2015-04-01,2015-04-05,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc8850 state=finished raised ValueError>]
+VNINDEX,2015-04-01,2015-04-05,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef450 state=finished raised ValueError>]
+VNINDEX,2015-04-06,2015-04-10,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-06,2015-04-10,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-06,2015-04-10,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccad50 state=finished raised ConnectionError>]
+VNINDEX,2015-04-06,2015-04-10,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e050 state=finished raised ValueError>]
+VNINDEX,2015-04-06,2015-04-10,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced150 state=finished raised ValueError>]
+VNINDEX,2015-04-06,2015-04-10,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-06,2015-04-10,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-06,2015-04-10,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceecd0 state=finished raised ValueError>]
+VNINDEX,2015-04-06,2015-04-10,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7550 state=finished raised ValueError>]
+VNINDEX,2015-04-06,2015-04-10,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee1d0 state=finished raised ValueError>]
+VNINDEX,2015-04-06,2015-04-10,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-06,2015-04-10,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-06,2015-04-10,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf4450 state=finished raised ValueError>]
+VNINDEX,2015-04-06,2015-04-10,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf4b50 state=finished raised ValueError>]
+VNINDEX,2015-04-06,2015-04-10,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7ed0 state=finished raised ValueError>]
+VNINDEX,2015-04-11,2015-04-15,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-11,2015-04-15,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-11,2015-04-15,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf65d0 state=finished raised ValueError>]
+VNINDEX,2015-04-11,2015-04-15,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cef450 state=finished raised ValueError>]
+VNINDEX,2015-04-11,2015-04-15,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceebd0 state=finished raised ValueError>]
+VNINDEX,2015-04-11,2015-04-15,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-11,2015-04-15,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-11,2015-04-15,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca450 state=finished raised ValueError>]
+VNINDEX,2015-04-11,2015-04-15,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ccad50 state=finished raised ValueError>]
+VNINDEX,2015-04-11,2015-04-15,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9550 state=finished raised ValueError>]
+VNINDEX,2015-04-11,2015-04-15,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-11,2015-04-15,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-11,2015-04-15,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccbbd0 state=finished raised ValueError>]
+VNINDEX,2015-04-11,2015-04-15,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cedc50 state=finished raised ValueError>]
+VNINDEX,2015-04-11,2015-04-15,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cefad0 state=finished raised ValueError>]
+VNINDEX,2015-04-16,2015-04-20,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-16,2015-04-20,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-16,2015-04-20,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cedd50 state=finished raised ValueError>]
+VNINDEX,2015-04-16,2015-04-20,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ccb1d0 state=finished raised ValueError>]
+VNINDEX,2015-04-16,2015-04-20,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7250 state=finished raised ValueError>]
+VNINDEX,2015-04-16,2015-04-20,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-16,2015-04-20,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-16,2015-04-20,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6fd0 state=finished raised ValueError>]
+VNINDEX,2015-04-16,2015-04-20,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7750 state=finished raised ValueError>]
+VNINDEX,2015-04-16,2015-04-20,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf4750 state=finished raised ValueError>]
+VNINDEX,2015-04-16,2015-04-20,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-16,2015-04-20,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-16,2015-04-20,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5ee50 state=finished raised ValueError>]
+VNINDEX,2015-04-16,2015-04-20,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cef6d0 state=finished raised ValueError>]
+VNINDEX,2015-04-16,2015-04-20,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cec5d0 state=finished raised ValueError>]
+VNINDEX,2015-04-21,2015-04-25,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-21,2015-04-25,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-21,2015-04-25,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef0d0 state=finished raised ValueError>]
+VNINDEX,2015-04-21,2015-04-25,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ceebd0 state=finished raised ValueError>]
+VNINDEX,2015-04-21,2015-04-25,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced750 state=finished raised ValueError>]
+VNINDEX,2015-04-21,2015-04-25,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-21,2015-04-25,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-21,2015-04-25,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e050 state=finished raised ValueError>]
+VNINDEX,2015-04-21,2015-04-25,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ced050 state=finished raised ValueError>]
+VNINDEX,2015-04-21,2015-04-25,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7950 state=finished raised ValueError>]
+VNINDEX,2015-04-21,2015-04-25,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-21,2015-04-25,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-21,2015-04-25,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb1d0 state=finished raised ValueError>]
+VNINDEX,2015-04-21,2015-04-25,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ccb250 state=finished raised ValueError>]
+VNINDEX,2015-04-21,2015-04-25,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8e50 state=finished raised ValueError>]
+VNINDEX,2015-04-26,2015-04-30,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-26,2015-04-30,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-26,2015-04-30,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5fd0 state=finished raised ConnectionError>]
+VNINDEX,2015-04-26,2015-04-30,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf55d0 state=finished raised ValueError>]
+VNINDEX,2015-04-26,2015-04-30,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5250 state=finished raised ValueError>]
+VNINDEX,2015-04-26,2015-04-30,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-26,2015-04-30,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-26,2015-04-30,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef8d0 state=finished raised ConnectionError>]
+VNINDEX,2015-04-26,2015-04-30,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e3d0 state=finished raised ValueError>]
+VNINDEX,2015-04-26,2015-04-30,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e7d0 state=finished raised ValueError>]
+VNINDEX,2015-04-26,2015-04-30,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-04-26,2015-04-30,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-04-26,2015-04-30,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced650 state=finished raised ConnectionError>]
+VNINDEX,2015-04-26,2015-04-30,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cedb50 state=finished raised ValueError>]
+VNINDEX,2015-04-26,2015-04-30,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef850 state=finished raised ValueError>]
+VNINDEX,2015-05-01,2015-05-05,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-01,2015-05-05,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-01,2015-05-05,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2ba50 state=finished raised ValueError>]
+VNINDEX,2015-05-01,2015-05-05,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cca3d0 state=finished raised ValueError>]
+VNINDEX,2015-05-01,2015-05-05,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb7d0 state=finished raised ValueError>]
+VNINDEX,2015-05-01,2015-05-05,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-01,2015-05-05,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-01,2015-05-05,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6450 state=finished raised ValueError>]
+VNINDEX,2015-05-01,2015-05-05,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf4a50 state=finished raised ValueError>]
+VNINDEX,2015-05-01,2015-05-05,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf51d0 state=finished raised ValueError>]
+VNINDEX,2015-05-01,2015-05-05,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-01,2015-05-05,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-01,2015-05-05,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2b550 state=finished raised ConnectionError>]
+VNINDEX,2015-05-01,2015-05-05,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251f3a6c950 state=finished raised ValueError>]
+VNINDEX,2015-05-01,2015-05-05,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e6d0 state=finished raised ValueError>]
+VNINDEX,2015-05-06,2015-05-10,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-06,2015-05-10,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-06,2015-05-10,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf69d0 state=finished raised ValueError>]
+VNINDEX,2015-05-06,2015-05-10,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc9ad0 state=finished raised ValueError>]
+VNINDEX,2015-05-06,2015-05-10,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb7d0 state=finished raised ValueError>]
+VNINDEX,2015-05-06,2015-05-10,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-06,2015-05-10,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-06,2015-05-10,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8cd0 state=finished raised ConnectionError>]
+VNINDEX,2015-05-06,2015-05-10,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7dd0 state=finished raised ValueError>]
+VNINDEX,2015-05-06,2015-05-10,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf62d0 state=finished raised ValueError>]
+VNINDEX,2015-05-06,2015-05-10,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-06,2015-05-10,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-06,2015-05-10,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceefd0 state=finished raised ValueError>]
+VNINDEX,2015-05-06,2015-05-10,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5dcd0 state=finished raised ValueError>]
+VNINDEX,2015-05-06,2015-05-10,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5f750 state=finished raised ValueError>]
+VNINDEX,2015-05-11,2015-05-15,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-11,2015-05-15,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-11,2015-05-15,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf51d0 state=finished raised ConnectionError>]
+VNINDEX,2015-05-11,2015-05-15,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf63d0 state=finished raised ValueError>]
+VNINDEX,2015-05-11,2015-05-15,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb4d0 state=finished raised ValueError>]
+VNINDEX,2015-05-11,2015-05-15,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-11,2015-05-15,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-11,2015-05-15,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee450 state=finished raised ValueError>]
+VNINDEX,2015-05-11,2015-05-15,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e4d0 state=finished raised ValueError>]
+VNINDEX,2015-05-11,2015-05-15,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cefa50 state=finished raised ValueError>]
+VNINDEX,2015-05-11,2015-05-15,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-11,2015-05-15,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-11,2015-05-15,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb350 state=finished raised ValueError>]
+VNINDEX,2015-05-11,2015-05-15,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6dd0 state=finished raised ValueError>]
+VNINDEX,2015-05-11,2015-05-15,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c88050 state=finished raised ValueError>]
+VNINDEX,2015-05-16,2015-05-20,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-16,2015-05-20,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-16,2015-05-20,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e650 state=finished raised ValueError>]
+VNINDEX,2015-05-16,2015-05-20,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf5d50 state=finished raised ValueError>]
+VNINDEX,2015-05-16,2015-05-20,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6d50 state=finished raised ValueError>]
+VNINDEX,2015-05-16,2015-05-20,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-16,2015-05-20,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-16,2015-05-20,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7c50 state=finished raised ValueError>]
+VNINDEX,2015-05-16,2015-05-20,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc97d0 state=finished raised ValueError>]
+VNINDEX,2015-05-16,2015-05-20,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e850 state=finished raised ValueError>]
+VNINDEX,2015-05-16,2015-05-20,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-16,2015-05-20,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-16,2015-05-20,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef150 state=finished raised ValueError>]
+VNINDEX,2015-05-16,2015-05-20,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ceeb50 state=finished raised ValueError>]
+VNINDEX,2015-05-16,2015-05-20,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceead0 state=finished raised ValueError>]
+VNINDEX,2015-05-21,2015-05-25,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-21,2015-05-25,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-21,2015-05-25,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced3d0 state=finished raised ValueError>]
+VNINDEX,2015-05-21,2015-05-25,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ceeb50 state=finished raised ValueError>]
+VNINDEX,2015-05-21,2015-05-25,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb450 state=finished raised ValueError>]
+VNINDEX,2015-05-21,2015-05-25,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-21,2015-05-25,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-21,2015-05-25,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c8be50 state=finished raised ValueError>]
+VNINDEX,2015-05-21,2015-05-25,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5dbd0 state=finished raised ValueError>]
+VNINDEX,2015-05-21,2015-05-25,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6850 state=finished raised ValueError>]
+VNINDEX,2015-05-21,2015-05-25,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-21,2015-05-25,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-21,2015-05-25,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5150 state=finished raised ValueError>]
+VNINDEX,2015-05-21,2015-05-25,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc9350 state=finished raised ValueError>]
+VNINDEX,2015-05-21,2015-05-25,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8fd0 state=finished raised ValueError>]
+VNINDEX,2015-05-26,2015-05-30,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-26,2015-05-30,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-26,2015-05-30,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef750 state=finished raised ValueError>]
+VNINDEX,2015-05-26,2015-05-30,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2cdd0 state=finished raised ValueError>]
+VNINDEX,2015-05-26,2015-05-30,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ebd0 state=finished raised ValueError>]
+VNINDEX,2015-05-26,2015-05-30,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-26,2015-05-30,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-26,2015-05-30,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2cdd0 state=finished raised ValueError>]
+VNINDEX,2015-05-26,2015-05-30,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ccafd0 state=finished raised ValueError>]
+VNINDEX,2015-05-26,2015-05-30,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2fad0 state=finished raised ValueError>]
+VNINDEX,2015-05-26,2015-05-30,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-26,2015-05-30,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-26,2015-05-30,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9ad0 state=finished raised ValueError>]
+VNINDEX,2015-05-26,2015-05-30,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cee2d0 state=finished raised ValueError>]
+VNINDEX,2015-05-26,2015-05-30,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8c50 state=finished raised ValueError>]
+VNINDEX,2015-05-31,2015-06-04,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-31,2015-06-04,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-31,2015-06-04,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced450 state=finished raised ConnectionError>]
+VNINDEX,2015-05-31,2015-06-04,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ccb1d0 state=finished raised ValueError>]
+VNINDEX,2015-05-31,2015-06-04,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb650 state=finished raised ValueError>]
+VNINDEX,2015-05-31,2015-06-04,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-31,2015-06-04,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-31,2015-06-04,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2dbd0 state=finished raised ConnectionError>]
+VNINDEX,2015-05-31,2015-06-04,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e350 state=finished raised ValueError>]
+VNINDEX,2015-05-31,2015-06-04,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf50d0 state=finished raised ValueError>]
+VNINDEX,2015-05-31,2015-06-04,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-05-31,2015-06-04,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-05-31,2015-06-04,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e850 state=finished raised ConnectionError>]
+VNINDEX,2015-05-31,2015-06-04,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2ecd0 state=finished raised ValueError>]
+VNINDEX,2015-05-31,2015-06-04,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc92d0 state=finished raised ValueError>]
+VNINDEX,2015-06-05,2015-06-09,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-05,2015-06-09,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-05,2015-06-09,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca8d0 state=finished raised ValueError>]
+VNINDEX,2015-06-05,2015-06-09,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cca150 state=finished raised ValueError>]
+VNINDEX,2015-06-05,2015-06-09,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb3d0 state=finished raised ValueError>]
+VNINDEX,2015-06-05,2015-06-09,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-05,2015-06-09,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-05,2015-06-09,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f0d0 state=finished raised ValueError>]
+VNINDEX,2015-06-05,2015-06-09,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2dcd0 state=finished raised ValueError>]
+VNINDEX,2015-06-05,2015-06-09,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c7d0 state=finished raised ValueError>]
+VNINDEX,2015-06-05,2015-06-09,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-05,2015-06-09,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-05,2015-06-09,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c450 state=finished raised ConnectionError>]
+VNINDEX,2015-06-05,2015-06-09,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2c5d0 state=finished raised ValueError>]
+VNINDEX,2015-06-05,2015-06-09,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f2d0 state=finished raised ValueError>]
+VNINDEX,2015-06-10,2015-06-14,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-10,2015-06-14,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-10,2015-06-14,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced950 state=finished raised ValueError>]
+VNINDEX,2015-06-10,2015-06-14,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2cfd0 state=finished raised ValueError>]
+VNINDEX,2015-06-10,2015-06-14,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f650 state=finished raised ValueError>]
+VNINDEX,2015-06-10,2015-06-14,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-10,2015-06-14,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-10,2015-06-14,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c8bbd0 state=finished raised ConnectionError>]
+VNINDEX,2015-06-10,2015-06-14,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5dcd0 state=finished raised ValueError>]
+VNINDEX,2015-06-10,2015-06-14,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e4d0 state=finished raised ValueError>]
+VNINDEX,2015-06-10,2015-06-14,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-10,2015-06-14,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-10,2015-06-14,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee4d0 state=finished raised ValueError>]
+VNINDEX,2015-06-10,2015-06-14,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cee6d0 state=finished raised ValueError>]
+VNINDEX,2015-06-10,2015-06-14,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cefed0 state=finished raised ValueError>]
+VNINDEX,2015-06-15,2015-06-19,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-15,2015-06-19,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-15,2015-06-19,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee1d0 state=finished raised ConnectionError>]
+VNINDEX,2015-06-15,2015-06-19,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cee850 state=finished raised ValueError>]
+VNINDEX,2015-06-15,2015-06-19,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c8bbd0 state=finished raised ValueError>]
+VNINDEX,2015-06-15,2015-06-19,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-15,2015-06-19,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-15,2015-06-19,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca3d0 state=finished raised ValueError>]
+VNINDEX,2015-06-15,2015-06-19,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc9c50 state=finished raised ValueError>]
+VNINDEX,2015-06-15,2015-06-19,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cec650 state=finished raised ValueError>]
+VNINDEX,2015-06-15,2015-06-19,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-15,2015-06-19,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-15,2015-06-19,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccae50 state=finished raised ValueError>]
+VNINDEX,2015-06-15,2015-06-19,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc8ed0 state=finished raised ValueError>]
+VNINDEX,2015-06-15,2015-06-19,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca3d0 state=finished raised ValueError>]
+VNINDEX,2015-06-20,2015-06-24,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-20,2015-06-24,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-20,2015-06-24,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251f3a6c950 state=finished raised ValueError>]
+VNINDEX,2015-06-20,2015-06-24,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c2bcd0 state=finished raised ValueError>]
+VNINDEX,2015-06-20,2015-06-24,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7b50 state=finished raised ValueError>]
+VNINDEX,2015-06-20,2015-06-24,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-20,2015-06-24,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-20,2015-06-24,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceecd0 state=finished raised ValueError>]
+VNINDEX,2015-06-20,2015-06-24,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ced650 state=finished raised ValueError>]
+VNINDEX,2015-06-20,2015-06-24,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced650 state=finished raised ValueError>]
+VNINDEX,2015-06-20,2015-06-24,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-20,2015-06-24,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-20,2015-06-24,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c8bbd0 state=finished raised ValueError>]
+VNINDEX,2015-06-20,2015-06-24,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cefc50 state=finished raised ValueError>]
+VNINDEX,2015-06-20,2015-06-24,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced3d0 state=finished raised ValueError>]
+VNINDEX,2015-06-25,2015-06-29,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-25,2015-06-29,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-25,2015-06-29,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5bd0 state=finished raised ValueError>]
+VNINDEX,2015-06-25,2015-06-29,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc9dd0 state=finished raised ValueError>]
+VNINDEX,2015-06-25,2015-06-29,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9c50 state=finished raised ValueError>]
+VNINDEX,2015-06-25,2015-06-29,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-25,2015-06-29,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-25,2015-06-29,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9d50 state=finished raised ValueError>]
+VNINDEX,2015-06-25,2015-06-29,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf4e50 state=finished raised ValueError>]
+VNINDEX,2015-06-25,2015-06-29,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251f42ef5d0 state=finished raised ValueError>]
+VNINDEX,2015-06-25,2015-06-29,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-25,2015-06-29,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-25,2015-06-29,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee950 state=finished raised ValueError>]
+VNINDEX,2015-06-25,2015-06-29,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6b50 state=finished raised ValueError>]
+VNINDEX,2015-06-25,2015-06-29,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced750 state=finished raised ValueError>]
+VNINDEX,2015-06-30,2015-07-04,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-30,2015-07-04,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-30,2015-07-04,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e150 state=finished raised ValueError>]
+VNINDEX,2015-06-30,2015-07-04,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7450 state=finished raised ValueError>]
+VNINDEX,2015-06-30,2015-07-04,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2ba50 state=finished raised ValueError>]
+VNINDEX,2015-06-30,2015-07-04,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-30,2015-07-04,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-30,2015-07-04,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca850 state=finished raised ValueError>]
+VNINDEX,2015-06-30,2015-07-04,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc97d0 state=finished raised ValueError>]
+VNINDEX,2015-06-30,2015-07-04,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb4d0 state=finished raised ValueError>]
+VNINDEX,2015-06-30,2015-07-04,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-06-30,2015-07-04,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-06-30,2015-07-04,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5df50 state=finished raised ValueError>]
+VNINDEX,2015-06-30,2015-07-04,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e8d0 state=finished raised ValueError>]
+VNINDEX,2015-06-30,2015-07-04,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf71d0 state=finished raised ValueError>]
+VNINDEX,2015-07-05,2015-07-09,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-05,2015-07-09,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-05,2015-07-09,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7250 state=finished raised ConnectionError>]
+VNINDEX,2015-07-05,2015-07-09,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7c50 state=finished raised ValueError>]
+VNINDEX,2015-07-05,2015-07-09,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5e50 state=finished raised ValueError>]
+VNINDEX,2015-07-05,2015-07-09,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-05,2015-07-09,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-05,2015-07-09,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9050 state=finished raised ConnectionError>]
+VNINDEX,2015-07-05,2015-07-09,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ccbdd0 state=finished raised ValueError>]
+VNINDEX,2015-07-05,2015-07-09,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8cd0 state=finished raised ValueError>]
+VNINDEX,2015-07-05,2015-07-09,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-05,2015-07-09,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-05,2015-07-09,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5fa50 state=finished raised ConnectionError>]
+VNINDEX,2015-07-05,2015-07-09,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d1d0 state=finished raised ValueError>]
+VNINDEX,2015-07-05,2015-07-09,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c750 state=finished raised ValueError>]
+VNINDEX,2015-07-10,2015-07-14,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-10,2015-07-14,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-10,2015-07-14,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cefed0 state=finished raised ValueError>]
+VNINDEX,2015-07-10,2015-07-14,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc9bd0 state=finished raised ValueError>]
+VNINDEX,2015-07-10,2015-07-14,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2cb50 state=finished raised ValueError>]
+VNINDEX,2015-07-10,2015-07-14,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-10,2015-07-14,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-10,2015-07-14,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d828d0 state=finished raised ValueError>]
+VNINDEX,2015-07-10,2015-07-14,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251f42efa50 state=finished raised ValueError>]
+VNINDEX,2015-07-10,2015-07-14,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef4d0 state=finished raised ValueError>]
+VNINDEX,2015-07-10,2015-07-14,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-10,2015-07-14,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-10,2015-07-14,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e9d0 state=finished raised ConnectionError>]
+VNINDEX,2015-07-10,2015-07-14,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2e5d0 state=finished raised ValueError>]
+VNINDEX,2015-07-10,2015-07-14,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e850 state=finished raised ValueError>]
+VNINDEX,2015-07-15,2015-07-19,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-15,2015-07-19,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-15,2015-07-19,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee550 state=finished raised ValueError>]
+VNINDEX,2015-07-15,2015-07-19,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf76d0 state=finished raised ValueError>]
+VNINDEX,2015-07-15,2015-07-19,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7250 state=finished raised ValueError>]
+VNINDEX,2015-07-15,2015-07-19,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-15,2015-07-19,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-15,2015-07-19,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5ced0 state=finished raised ConnectionError>]
+VNINDEX,2015-07-15,2015-07-19,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5ded0 state=finished raised ValueError>]
+VNINDEX,2015-07-15,2015-07-19,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef650 state=finished raised ValueError>]
+VNINDEX,2015-07-15,2015-07-19,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-15,2015-07-19,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-15,2015-07-19,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc93d0 state=finished raised ValueError>]
+VNINDEX,2015-07-15,2015-07-19,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2db50 state=finished raised ValueError>]
+VNINDEX,2015-07-15,2015-07-19,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f5d0 state=finished raised ValueError>]
+VNINDEX,2015-07-20,2015-07-24,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-20,2015-07-24,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-20,2015-07-24,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f3d0 state=finished raised ConnectionError>]
+VNINDEX,2015-07-20,2015-07-24,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d5d0 state=finished raised ValueError>]
+VNINDEX,2015-07-20,2015-07-24,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d550 state=finished raised ValueError>]
+VNINDEX,2015-07-20,2015-07-24,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-20,2015-07-24,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-20,2015-07-24,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5750 state=finished raised ValueError>]
+VNINDEX,2015-07-20,2015-07-24,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6450 state=finished raised ValueError>]
+VNINDEX,2015-07-20,2015-07-24,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6c50 state=finished raised ValueError>]
+VNINDEX,2015-07-20,2015-07-24,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-20,2015-07-24,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-20,2015-07-24,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6dd0 state=finished raised ValueError>]
+VNINDEX,2015-07-20,2015-07-24,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf48d0 state=finished raised ValueError>]
+VNINDEX,2015-07-20,2015-07-24,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf63d0 state=finished raised ValueError>]
+VNINDEX,2015-07-25,2015-07-29,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-25,2015-07-29,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-25,2015-07-29,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5ad0 state=finished raised ValueError>]
+VNINDEX,2015-07-25,2015-07-29,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf5cd0 state=finished raised ValueError>]
+VNINDEX,2015-07-25,2015-07-29,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ed50 state=finished raised ValueError>]
+VNINDEX,2015-07-25,2015-07-29,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-25,2015-07-29,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-25,2015-07-29,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb8d0 state=finished raised ValueError>]
+VNINDEX,2015-07-25,2015-07-29,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc91d0 state=finished raised ValueError>]
+VNINDEX,2015-07-25,2015-07-29,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9550 state=finished raised ValueError>]
+VNINDEX,2015-07-25,2015-07-29,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-25,2015-07-29,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-25,2015-07-29,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e950 state=finished raised ValueError>]
+VNINDEX,2015-07-25,2015-07-29,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251f42efa50 state=finished raised ValueError>]
+VNINDEX,2015-07-25,2015-07-29,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251f42ef5d0 state=finished raised ValueError>]
+VNINDEX,2015-07-30,2015-08-03,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-30,2015-08-03,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-30,2015-08-03,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5950 state=finished raised ValueError>]
+VNINDEX,2015-07-30,2015-08-03,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e3d0 state=finished raised ValueError>]
+VNINDEX,2015-07-30,2015-08-03,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5fa50 state=finished raised ValueError>]
+VNINDEX,2015-07-30,2015-08-03,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-30,2015-08-03,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-30,2015-08-03,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5c50 state=finished raised ValueError>]
+VNINDEX,2015-07-30,2015-08-03,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251f42ef850 state=finished raised ValueError>]
+VNINDEX,2015-07-30,2015-08-03,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ca50 state=finished raised ValueError>]
+VNINDEX,2015-07-30,2015-08-03,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-07-30,2015-08-03,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-07-30,2015-08-03,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2dad0 state=finished raised ValueError>]
+VNINDEX,2015-07-30,2015-08-03,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cca7d0 state=finished raised ValueError>]
+VNINDEX,2015-07-30,2015-08-03,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cca350 state=finished raised ValueError>]
+VNINDEX,2015-08-04,2015-08-08,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-04,2015-08-08,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-04,2015-08-08,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f050 state=finished raised ValueError>]
+VNINDEX,2015-08-04,2015-08-08,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2e9d0 state=finished raised ValueError>]
+VNINDEX,2015-08-04,2015-08-08,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251f42ef2d0 state=finished raised ValueError>]
+VNINDEX,2015-08-04,2015-08-08,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-04,2015-08-08,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-04,2015-08-08,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf62d0 state=finished raised ValueError>]
+VNINDEX,2015-08-04,2015-08-08,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf60d0 state=finished raised ValueError>]
+VNINDEX,2015-08-04,2015-08-08,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb3d0 state=finished raised ValueError>]
+VNINDEX,2015-08-04,2015-08-08,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-04,2015-08-08,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-04,2015-08-08,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e8d0 state=finished raised ValueError>]
+VNINDEX,2015-08-04,2015-08-08,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc9050 state=finished raised ValueError>]
+VNINDEX,2015-08-04,2015-08-08,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9550 state=finished raised ValueError>]
+VNINDEX,2015-08-09,2015-08-13,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-09,2015-08-13,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-09,2015-08-13,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c7d0 state=finished raised ConnectionError>]
+VNINDEX,2015-08-09,2015-08-13,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2fed0 state=finished raised ValueError>]
+VNINDEX,2015-08-09,2015-08-13,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d050 state=finished raised ValueError>]
+VNINDEX,2015-08-09,2015-08-13,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-09,2015-08-13,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-09,2015-08-13,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d9d0 state=finished raised ConnectionError>]
+VNINDEX,2015-08-09,2015-08-13,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2f0d0 state=finished raised ValueError>]
+VNINDEX,2015-08-09,2015-08-13,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d850 state=finished raised ValueError>]
+VNINDEX,2015-08-09,2015-08-13,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-09,2015-08-13,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-09,2015-08-13,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc91d0 state=finished raised ConnectionError>]
+VNINDEX,2015-08-09,2015-08-13,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc8850 state=finished raised ValueError>]
+VNINDEX,2015-08-09,2015-08-13,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc9cd0 state=finished raised ValueError>]
+VNINDEX,2015-08-14,2015-08-18,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-14,2015-08-18,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-14,2015-08-18,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf4f50 state=finished raised ValueError>]
+VNINDEX,2015-08-14,2015-08-18,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6250 state=finished raised ValueError>]
+VNINDEX,2015-08-14,2015-08-18,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5950 state=finished raised ValueError>]
+VNINDEX,2015-08-14,2015-08-18,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-14,2015-08-18,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-14,2015-08-18,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c5d0 state=finished raised ValueError>]
+VNINDEX,2015-08-14,2015-08-18,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2ccd0 state=finished raised ValueError>]
+VNINDEX,2015-08-14,2015-08-18,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2fad0 state=finished raised ValueError>]
+VNINDEX,2015-08-14,2015-08-18,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-14,2015-08-18,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-14,2015-08-18,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceddd0 state=finished raised ConnectionError>]
+VNINDEX,2015-08-14,2015-08-18,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2ecd0 state=finished raised ValueError>]
+VNINDEX,2015-08-14,2015-08-18,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f1d0 state=finished raised ValueError>]
+VNINDEX,2015-08-19,2015-08-23,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-19,2015-08-23,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-19,2015-08-23,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccaad0 state=finished raised ValueError>]
+VNINDEX,2015-08-19,2015-08-23,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2f3d0 state=finished raised ValueError>]
+VNINDEX,2015-08-19,2015-08-23,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced650 state=finished raised ValueError>]
+VNINDEX,2015-08-19,2015-08-23,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-19,2015-08-23,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-19,2015-08-23,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cecd50 state=finished raised ConnectionError>]
+VNINDEX,2015-08-19,2015-08-23,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ccb0d0 state=finished raised ValueError>]
+VNINDEX,2015-08-19,2015-08-23,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef8d0 state=finished raised ValueError>]
+VNINDEX,2015-08-19,2015-08-23,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-19,2015-08-23,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-19,2015-08-23,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6650 state=finished raised ValueError>]
+VNINDEX,2015-08-19,2015-08-23,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6d50 state=finished raised ValueError>]
+VNINDEX,2015-08-19,2015-08-23,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d81fd0 state=finished raised ValueError>]
+VNINDEX,2015-08-24,2015-08-28,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-24,2015-08-28,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-24,2015-08-28,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6650 state=finished raised ConnectionError>]
+VNINDEX,2015-08-24,2015-08-28,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d9d0 state=finished raised ValueError>]
+VNINDEX,2015-08-24,2015-08-28,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f850 state=finished raised ValueError>]
+VNINDEX,2015-08-24,2015-08-28,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-24,2015-08-28,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-24,2015-08-28,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced6d0 state=finished raised ValueError>]
+VNINDEX,2015-08-24,2015-08-28,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cef8d0 state=finished raised ValueError>]
+VNINDEX,2015-08-24,2015-08-28,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251f42ef5d0 state=finished raised ValueError>]
+VNINDEX,2015-08-24,2015-08-28,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-24,2015-08-28,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-24,2015-08-28,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2dcd0 state=finished raised ValueError>]
+VNINDEX,2015-08-24,2015-08-28,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d5d0 state=finished raised ValueError>]
+VNINDEX,2015-08-24,2015-08-28,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d550 state=finished raised ValueError>]
+VNINDEX,2015-08-29,2015-09-02,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-29,2015-09-02,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-29,2015-09-02,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6c50 state=finished raised ValueError>]
+VNINDEX,2015-08-29,2015-09-02,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf55d0 state=finished raised ValueError>]
+VNINDEX,2015-08-29,2015-09-02,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf72d0 state=finished raised ValueError>]
+VNINDEX,2015-08-29,2015-09-02,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-29,2015-09-02,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-29,2015-09-02,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf45d0 state=finished raised ValueError>]
+VNINDEX,2015-08-29,2015-09-02,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6650 state=finished raised ValueError>]
+VNINDEX,2015-08-29,2015-09-02,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5b50 state=finished raised ValueError>]
+VNINDEX,2015-08-29,2015-09-02,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-08-29,2015-09-02,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-08-29,2015-09-02,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f650 state=finished raised ValueError>]
+VNINDEX,2015-08-29,2015-09-02,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d6d0 state=finished raised ValueError>]
+VNINDEX,2015-08-29,2015-09-02,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d7d0 state=finished raised ValueError>]
+VNINDEX,2015-09-03,2015-09-07,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-03,2015-09-07,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-03,2015-09-07,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2fdd0 state=finished raised ValueError>]
+VNINDEX,2015-09-03,2015-09-07,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2e450 state=finished raised ValueError>]
+VNINDEX,2015-09-03,2015-09-07,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2edd0 state=finished raised ValueError>]
+VNINDEX,2015-09-03,2015-09-07,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-03,2015-09-07,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-03,2015-09-07,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7650 state=finished raised ValueError>]
+VNINDEX,2015-09-03,2015-09-07,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf5a50 state=finished raised ValueError>]
+VNINDEX,2015-09-03,2015-09-07,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5850 state=finished raised ValueError>]
+VNINDEX,2015-09-03,2015-09-07,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-03,2015-09-07,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-03,2015-09-07,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceeed0 state=finished raised ValueError>]
+VNINDEX,2015-09-03,2015-09-07,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cee550 state=finished raised ValueError>]
+VNINDEX,2015-09-03,2015-09-07,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced9d0 state=finished raised ValueError>]
+VNINDEX,2015-09-08,2015-09-12,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-08,2015-09-12,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-08,2015-09-12,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7a50 state=finished raised ValueError>]
+VNINDEX,2015-09-08,2015-09-12,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6dd0 state=finished raised ValueError>]
+VNINDEX,2015-09-08,2015-09-12,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf71d0 state=finished raised ValueError>]
+VNINDEX,2015-09-08,2015-09-12,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-08,2015-09-12,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-08,2015-09-12,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e6d0 state=finished raised ValueError>]
+VNINDEX,2015-09-08,2015-09-12,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5f750 state=finished raised ValueError>]
+VNINDEX,2015-09-08,2015-09-12,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e8d0 state=finished raised ValueError>]
+VNINDEX,2015-09-08,2015-09-12,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-08,2015-09-12,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-08,2015-09-12,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c450 state=finished raised ValueError>]
+VNINDEX,2015-09-08,2015-09-12,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ced350 state=finished raised ValueError>]
+VNINDEX,2015-09-08,2015-09-12,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cedcd0 state=finished raised ValueError>]
+VNINDEX,2015-09-13,2015-09-17,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-13,2015-09-17,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-13,2015-09-17,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6f50 state=finished raised ConnectionError>]
+VNINDEX,2015-09-13,2015-09-17,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf4c50 state=finished raised ValueError>]
+VNINDEX,2015-09-13,2015-09-17,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccafd0 state=finished raised ValueError>]
+VNINDEX,2015-09-13,2015-09-17,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-13,2015-09-17,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-13,2015-09-17,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e750 state=finished raised ConnectionError>]
+VNINDEX,2015-09-13,2015-09-17,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf5950 state=finished raised ValueError>]
+VNINDEX,2015-09-13,2015-09-17,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf43d0 state=finished raised ValueError>]
+VNINDEX,2015-09-13,2015-09-17,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-13,2015-09-17,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-13,2015-09-17,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf42d0 state=finished raised ConnectionError>]
+VNINDEX,2015-09-13,2015-09-17,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf4850 state=finished raised ValueError>]
+VNINDEX,2015-09-13,2015-09-17,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ca50 state=finished raised ValueError>]
+VNINDEX,2015-09-18,2015-09-22,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-18,2015-09-22,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-18,2015-09-22,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb950 state=finished raised ValueError>]
+VNINDEX,2015-09-18,2015-09-22,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc9dd0 state=finished raised ValueError>]
+VNINDEX,2015-09-18,2015-09-22,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb4d0 state=finished raised ValueError>]
+VNINDEX,2015-09-18,2015-09-22,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-18,2015-09-22,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-18,2015-09-22,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e5d0 state=finished raised ValueError>]
+VNINDEX,2015-09-18,2015-09-22,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7150 state=finished raised ValueError>]
+VNINDEX,2015-09-18,2015-09-22,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6850 state=finished raised ValueError>]
+VNINDEX,2015-09-18,2015-09-22,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-18,2015-09-22,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-18,2015-09-22,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cedd50 state=finished raised ConnectionError>]
+VNINDEX,2015-09-18,2015-09-22,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7c50 state=finished raised ValueError>]
+VNINDEX,2015-09-18,2015-09-22,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6250 state=finished raised ValueError>]
+VNINDEX,2015-09-23,2015-09-27,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-23,2015-09-27,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-23,2015-09-27,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ccb3d0 state=finished raised ValueError>]
+VNINDEX,2015-09-23,2015-09-27,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc99d0 state=finished raised ValueError>]
+VNINDEX,2015-09-23,2015-09-27,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8d50 state=finished raised ValueError>]
+VNINDEX,2015-09-23,2015-09-27,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-23,2015-09-27,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-23,2015-09-27,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d1d0 state=finished raised ConnectionError>]
+VNINDEX,2015-09-23,2015-09-27,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ceefd0 state=finished raised ValueError>]
+VNINDEX,2015-09-23,2015-09-27,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceced0 state=finished raised ValueError>]
+VNINDEX,2015-09-23,2015-09-27,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-23,2015-09-27,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-23,2015-09-27,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee850 state=finished raised ValueError>]
+VNINDEX,2015-09-23,2015-09-27,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cedcd0 state=finished raised ValueError>]
+VNINDEX,2015-09-23,2015-09-27,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced6d0 state=finished raised ValueError>]
+VNINDEX,2015-09-28,2015-10-02,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-28,2015-10-02,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-28,2015-10-02,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c6d0 state=finished raised ConnectionError>]
+VNINDEX,2015-09-28,2015-10-02,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cc8950 state=finished raised ValueError>]
+VNINDEX,2015-09-28,2015-10-02,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cc8050 state=finished raised ValueError>]
+VNINDEX,2015-09-28,2015-10-02,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-28,2015-10-02,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-28,2015-10-02,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c2d0 state=finished raised ValueError>]
+VNINDEX,2015-09-28,2015-10-02,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ced4d0 state=finished raised ValueError>]
+VNINDEX,2015-09-28,2015-10-02,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f8d0 state=finished raised ValueError>]
+VNINDEX,2015-09-28,2015-10-02,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-09-28,2015-10-02,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-09-28,2015-10-02,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d83550 state=finished raised ValueError>]
+VNINDEX,2015-09-28,2015-10-02,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d83bd0 state=finished raised ValueError>]
+VNINDEX,2015-09-28,2015-10-02,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d818d0 state=finished raised ValueError>]
+VNINDEX,2015-10-03,2015-10-07,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-03,2015-10-07,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-03,2015-10-07,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c650 state=finished raised ValueError>]
+VNINDEX,2015-10-03,2015-10-07,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2fed0 state=finished raised ValueError>]
+VNINDEX,2015-10-03,2015-10-07,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef8d0 state=finished raised ValueError>]
+VNINDEX,2015-10-03,2015-10-07,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-03,2015-10-07,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-03,2015-10-07,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f5d0 state=finished raised ValueError>]
+VNINDEX,2015-10-03,2015-10-07,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d5d0 state=finished raised ValueError>]
+VNINDEX,2015-10-03,2015-10-07,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ecd0 state=finished raised ValueError>]
+VNINDEX,2015-10-03,2015-10-07,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-03,2015-10-07,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-03,2015-10-07,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2bcd0 state=finished raised ValueError>]
+VNINDEX,2015-10-03,2015-10-07,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2c8d0 state=finished raised ValueError>]
+VNINDEX,2015-10-03,2015-10-07,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2cb50 state=finished raised ValueError>]
+VNINDEX,2015-10-08,2015-10-12,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-08,2015-10-12,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-08,2015-10-12,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5dc50 state=finished raised ValueError>]
+VNINDEX,2015-10-08,2015-10-12,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d82e50 state=finished raised ValueError>]
+VNINDEX,2015-10-08,2015-10-12,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d80150 state=finished raised ValueError>]
+VNINDEX,2015-10-08,2015-10-12,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-08,2015-10-12,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-08,2015-10-12,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d82cd0 state=finished raised ValueError>]
+VNINDEX,2015-10-08,2015-10-12,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2f5d0 state=finished raised ValueError>]
+VNINDEX,2015-10-08,2015-10-12,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2dfd0 state=finished raised ValueError>]
+VNINDEX,2015-10-08,2015-10-12,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-08,2015-10-12,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-08,2015-10-12,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e4d0 state=finished raised ValueError>]
+VNINDEX,2015-10-08,2015-10-12,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2ca50 state=finished raised ValueError>]
+VNINDEX,2015-10-08,2015-10-12,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d650 state=finished raised ValueError>]
+VNINDEX,2015-10-13,2015-10-17,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-13,2015-10-17,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-13,2015-10-17,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d83650 state=finished raised ValueError>]
+VNINDEX,2015-10-13,2015-10-17,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d81f50 state=finished raised ValueError>]
+VNINDEX,2015-10-13,2015-10-17,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d81450 state=finished raised ValueError>]
+VNINDEX,2015-10-13,2015-10-17,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-13,2015-10-17,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-13,2015-10-17,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e550 state=finished raised ValueError>]
+VNINDEX,2015-10-13,2015-10-17,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d834d0 state=finished raised ValueError>]
+VNINDEX,2015-10-13,2015-10-17,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d821d0 state=finished raised ValueError>]
+VNINDEX,2015-10-13,2015-10-17,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-13,2015-10-17,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-13,2015-10-17,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c8be50 state=finished raised ValueError>]
+VNINDEX,2015-10-13,2015-10-17,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2dfd0 state=finished raised ValueError>]
+VNINDEX,2015-10-13,2015-10-17,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e250 state=finished raised ValueError>]
+VNINDEX,2015-10-18,2015-10-22,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-18,2015-10-22,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-18,2015-10-22,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d82d50 state=finished raised ConnectionError>]
+VNINDEX,2015-10-18,2015-10-22,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d81dd0 state=finished raised ValueError>]
+VNINDEX,2015-10-18,2015-10-22,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d81a50 state=finished raised ValueError>]
+VNINDEX,2015-10-18,2015-10-22,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-18,2015-10-22,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-18,2015-10-22,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e7d0 state=finished raised ConnectionError>]
+VNINDEX,2015-10-18,2015-10-22,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c2bd50 state=finished raised ValueError>]
+VNINDEX,2015-10-18,2015-10-22,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251f42ef850 state=finished raised ValueError>]
+VNINDEX,2015-10-18,2015-10-22,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-18,2015-10-22,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-18,2015-10-22,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e5d0 state=finished raised ConnectionError>]
+VNINDEX,2015-10-18,2015-10-22,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d82550 state=finished raised ValueError>]
+VNINDEX,2015-10-18,2015-10-22,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c8bbd0 state=finished raised ValueError>]
+VNINDEX,2015-10-23,2015-10-27,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-23,2015-10-27,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-23,2015-10-27,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d80450 state=finished raised ValueError>]
+VNINDEX,2015-10-23,2015-10-27,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d83050 state=finished raised ValueError>]
+VNINDEX,2015-10-23,2015-10-27,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d80f50 state=finished raised ValueError>]
+VNINDEX,2015-10-23,2015-10-27,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-23,2015-10-27,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-23,2015-10-27,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c350 state=finished raised ValueError>]
+VNINDEX,2015-10-23,2015-10-27,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2e050 state=finished raised ValueError>]
+VNINDEX,2015-10-23,2015-10-27,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f450 state=finished raised ValueError>]
+VNINDEX,2015-10-23,2015-10-27,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-23,2015-10-27,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-23,2015-10-27,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d830d0 state=finished raised ConnectionError>]
+VNINDEX,2015-10-23,2015-10-27,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6ced9d0 state=finished raised ValueError>]
+VNINDEX,2015-10-23,2015-10-27,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef150 state=finished raised ValueError>]
+VNINDEX,2015-10-28,2015-11-01,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-28,2015-11-01,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-28,2015-11-01,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d9d0 state=finished raised ValueError>]
+VNINDEX,2015-10-28,2015-11-01,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d81750 state=finished raised ValueError>]
+VNINDEX,2015-10-28,2015-11-01,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d83550 state=finished raised ValueError>]
+VNINDEX,2015-10-28,2015-11-01,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-28,2015-11-01,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-28,2015-11-01,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d828d0 state=finished raised ConnectionError>]
+VNINDEX,2015-10-28,2015-11-01,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d83d50 state=finished raised ValueError>]
+VNINDEX,2015-10-28,2015-11-01,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d811d0 state=finished raised ValueError>]
+VNINDEX,2015-10-28,2015-11-01,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-10-28,2015-11-01,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-10-28,2015-11-01,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2cad0 state=finished raised ValueError>]
+VNINDEX,2015-10-28,2015-11-01,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cee750 state=finished raised ValueError>]
+VNINDEX,2015-10-28,2015-11-01,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceead0 state=finished raised ValueError>]
+VNINDEX,2015-11-02,2015-11-06,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-02,2015-11-06,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-02,2015-11-06,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee150 state=finished raised ConnectionError>]
+VNINDEX,2015-11-02,2015-11-06,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2df50 state=finished raised ValueError>]
+VNINDEX,2015-11-02,2015-11-06,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e950 state=finished raised ValueError>]
+VNINDEX,2015-11-02,2015-11-06,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-02,2015-11-06,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-02,2015-11-06,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5e950 state=finished raised ValueError>]
+VNINDEX,2015-11-02,2015-11-06,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e3d0 state=finished raised ValueError>]
+VNINDEX,2015-11-02,2015-11-06,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5ddd0 state=finished raised ValueError>]
+VNINDEX,2015-11-02,2015-11-06,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-02,2015-11-06,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-02,2015-11-06,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d80ed0 state=finished raised ValueError>]
+VNINDEX,2015-11-02,2015-11-06,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2f150 state=finished raised ValueError>]
+VNINDEX,2015-11-02,2015-11-06,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ca50 state=finished raised ValueError>]
+VNINDEX,2015-11-07,2015-11-11,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-07,2015-11-11,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-07,2015-11-11,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ced4d0 state=finished raised ValueError>]
+VNINDEX,2015-11-07,2015-11-11,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6650 state=finished raised ValueError>]
+VNINDEX,2015-11-07,2015-11-11,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf4cd0 state=finished raised ValueError>]
+VNINDEX,2015-11-07,2015-11-11,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-07,2015-11-11,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-07,2015-11-11,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf59d0 state=finished raised ValueError>]
+VNINDEX,2015-11-07,2015-11-11,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5ced0 state=finished raised ValueError>]
+VNINDEX,2015-11-07,2015-11-11,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2bcd0 state=finished raised ValueError>]
+VNINDEX,2015-11-07,2015-11-11,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-07,2015-11-11,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-07,2015-11-11,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e8d0 state=finished raised ValueError>]
+VNINDEX,2015-11-07,2015-11-11,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2c050 state=finished raised ValueError>]
+VNINDEX,2015-11-07,2015-11-11,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ea50 state=finished raised ValueError>]
+VNINDEX,2015-11-12,2015-11-16,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-12,2015-11-16,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-12,2015-11-16,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251f42ef2d0 state=finished raised ValueError>]
+VNINDEX,2015-11-12,2015-11-16,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5d050 state=finished raised ValueError>]
+VNINDEX,2015-11-12,2015-11-16,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ce50 state=finished raised ValueError>]
+VNINDEX,2015-11-12,2015-11-16,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-12,2015-11-16,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-12,2015-11-16,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf4ad0 state=finished raised ValueError>]
+VNINDEX,2015-11-12,2015-11-16,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6250 state=finished raised ValueError>]
+VNINDEX,2015-11-12,2015-11-16,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c88050 state=finished raised ValueError>]
+VNINDEX,2015-11-12,2015-11-16,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-12,2015-11-16,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-12,2015-11-16,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf62d0 state=finished raised ValueError>]
+VNINDEX,2015-11-12,2015-11-16,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6350 state=finished raised ValueError>]
+VNINDEX,2015-11-12,2015-11-16,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf4f50 state=finished raised ValueError>]
+VNINDEX,2015-11-17,2015-11-21,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-17,2015-11-21,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-17,2015-11-21,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c2d0 state=finished raised ValueError>]
+VNINDEX,2015-11-17,2015-11-21,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5f750 state=finished raised ValueError>]
+VNINDEX,2015-11-17,2015-11-21,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5f950 state=finished raised ValueError>]
+VNINDEX,2015-11-17,2015-11-21,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-17,2015-11-21,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-17,2015-11-21,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5f750 state=finished raised ValueError>]
+VNINDEX,2015-11-17,2015-11-21,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2cf50 state=finished raised ValueError>]
+VNINDEX,2015-11-17,2015-11-21,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d6d0 state=finished raised ValueError>]
+VNINDEX,2015-11-17,2015-11-21,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-17,2015-11-21,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-17,2015-11-21,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2da50 state=finished raised ValueError>]
+VNINDEX,2015-11-17,2015-11-21,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6450 state=finished raised ValueError>]
+VNINDEX,2015-11-17,2015-11-21,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf46d0 state=finished raised ValueError>]
+VNINDEX,2015-11-22,2015-11-26,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-22,2015-11-26,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-22,2015-11-26,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251f42ef350 state=finished raised ConnectionError>]
+VNINDEX,2015-11-22,2015-11-26,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2c750 state=finished raised ValueError>]
+VNINDEX,2015-11-22,2015-11-26,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e7d0 state=finished raised ValueError>]
+VNINDEX,2015-11-22,2015-11-26,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-22,2015-11-26,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-22,2015-11-26,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7450 state=finished raised ConnectionError>]
+VNINDEX,2015-11-22,2015-11-26,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e450 state=finished raised ValueError>]
+VNINDEX,2015-11-22,2015-11-26,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5dbd0 state=finished raised ValueError>]
+VNINDEX,2015-11-22,2015-11-26,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-22,2015-11-26,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-22,2015-11-26,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf50d0 state=finished raised ConnectionError>]
+VNINDEX,2015-11-22,2015-11-26,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6a50 state=finished raised ValueError>]
+VNINDEX,2015-11-22,2015-11-26,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf71d0 state=finished raised ValueError>]
+VNINDEX,2015-11-27,2015-12-01,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-27,2015-12-01,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-27,2015-12-01,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2fd50 state=finished raised ValueError>]
+VNINDEX,2015-11-27,2015-12-01,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d950 state=finished raised ValueError>]
+VNINDEX,2015-11-27,2015-12-01,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2ddd0 state=finished raised ValueError>]
+VNINDEX,2015-11-27,2015-12-01,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-27,2015-12-01,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-27,2015-12-01,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2d1d0 state=finished raised ValueError>]
+VNINDEX,2015-11-27,2015-12-01,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c2bbd0 state=finished raised ValueError>]
+VNINDEX,2015-11-27,2015-12-01,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf5950 state=finished raised ValueError>]
+VNINDEX,2015-11-27,2015-12-01,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-11-27,2015-12-01,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-11-27,2015-12-01,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d835d0 state=finished raised ConnectionError>]
+VNINDEX,2015-11-27,2015-12-01,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d81a50 state=finished raised ValueError>]
+VNINDEX,2015-11-27,2015-12-01,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6ad0 state=finished raised ValueError>]
+VNINDEX,2015-12-02,2015-12-06,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-02,2015-12-06,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-02,2015-12-06,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7b50 state=finished raised ValueError>]
+VNINDEX,2015-12-02,2015-12-06,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2c350 state=finished raised ValueError>]
+VNINDEX,2015-12-02,2015-12-06,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251f3a6cf50 state=finished raised ValueError>]
+VNINDEX,2015-12-02,2015-12-06,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-02,2015-12-06,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-02,2015-12-06,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c9d0 state=finished raised ConnectionError>]
+VNINDEX,2015-12-02,2015-12-06,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf45d0 state=finished raised ValueError>]
+VNINDEX,2015-12-02,2015-12-06,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2dfd0 state=finished raised ValueError>]
+VNINDEX,2015-12-02,2015-12-06,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-02,2015-12-06,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-02,2015-12-06,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c5ee50 state=finished raised ValueError>]
+VNINDEX,2015-12-02,2015-12-06,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c2ba50 state=finished raised ValueError>]
+VNINDEX,2015-12-02,2015-12-06,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d82150 state=finished raised ValueError>]
+VNINDEX,2015-12-07,2015-12-11,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-07,2015-12-11,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-07,2015-12-11,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7ed0 state=finished raised ConnectionError>]
+VNINDEX,2015-12-07,2015-12-11,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2d550 state=finished raised ValueError>]
+VNINDEX,2015-12-07,2015-12-11,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2cc50 state=finished raised ValueError>]
+VNINDEX,2015-12-07,2015-12-11,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-07,2015-12-11,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-07,2015-12-11,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d81350 state=finished raised ValueError>]
+VNINDEX,2015-12-07,2015-12-11,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e3d0 state=finished raised ValueError>]
+VNINDEX,2015-12-07,2015-12-11,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf7250 state=finished raised ValueError>]
+VNINDEX,2015-12-07,2015-12-11,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-07,2015-12-11,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-07,2015-12-11,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6ceddd0 state=finished raised ValueError>]
+VNINDEX,2015-12-07,2015-12-11,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6cee1d0 state=finished raised ValueError>]
+VNINDEX,2015-12-07,2015-12-11,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cecdd0 state=finished raised ValueError>]
+VNINDEX,2015-12-12,2015-12-16,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-12,2015-12-16,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-12,2015-12-16,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c350 state=finished raised ValueError>]
+VNINDEX,2015-12-12,2015-12-16,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2f4d0 state=finished raised ValueError>]
+VNINDEX,2015-12-12,2015-12-16,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c0d0 state=finished raised ValueError>]
+VNINDEX,2015-12-12,2015-12-16,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-12,2015-12-16,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-12,2015-12-16,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d82250 state=finished raised ValueError>]
+VNINDEX,2015-12-12,2015-12-16,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e4d0 state=finished raised ValueError>]
+VNINDEX,2015-12-12,2015-12-16,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf6850 state=finished raised ValueError>]
+VNINDEX,2015-12-12,2015-12-16,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-12,2015-12-16,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-12,2015-12-16,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2b550 state=finished raised ValueError>]
+VNINDEX,2015-12-12,2015-12-16,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251f42ef5d0 state=finished raised ValueError>]
+VNINDEX,2015-12-12,2015-12-16,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cee6d0 state=finished raised ValueError>]
+VNINDEX,2015-12-17,2015-12-21,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-17,2015-12-21,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-17,2015-12-21,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2e550 state=finished raised ValueError>]
+VNINDEX,2015-12-17,2015-12-21,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2f050 state=finished raised ValueError>]
+VNINDEX,2015-12-17,2015-12-21,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f0d0 state=finished raised ValueError>]
+VNINDEX,2015-12-17,2015-12-21,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-17,2015-12-21,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-17,2015-12-21,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2f6d0 state=finished raised ValueError>]
+VNINDEX,2015-12-17,2015-12-21,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2e950 state=finished raised ValueError>]
+VNINDEX,2015-12-17,2015-12-21,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2bcd0 state=finished raised ValueError>]
+VNINDEX,2015-12-17,2015-12-21,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-17,2015-12-21,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-17,2015-12-21,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cedad0 state=finished raised ValueError>]
+VNINDEX,2015-12-17,2015-12-21,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7d2f350 state=finished raised ValueError>]
+VNINDEX,2015-12-17,2015-12-21,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7d2c250 state=finished raised ValueError>]
+VNINDEX,2015-12-22,2015-12-26,5,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-22,2015-12-26,5,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-22,2015-12-26,5,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf75d0 state=finished raised ValueError>]
+VNINDEX,2015-12-22,2015-12-26,5,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf6250 state=finished raised ValueError>]
+VNINDEX,2015-12-22,2015-12-26,5,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf4fd0 state=finished raised ValueError>]
+VNINDEX,2015-12-22,2015-12-26,3,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-22,2015-12-26,3,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-22,2015-12-26,3,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a7cf60d0 state=finished raised ValueError>]
+VNINDEX,2015-12-22,2015-12-26,3,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a7cf7550 state=finished raised ValueError>]
+VNINDEX,2015-12-22,2015-12-26,3,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251a6cef250 state=finished raised ValueError>]
+VNINDEX,2015-12-22,2015-12-26,1,repo_adapter,KBS,false,0,,
+VNINDEX,2015-12-22,2015-12-26,1,vnstock_data,KBS,false,0,,
+VNINDEX,2015-12-22,2015-12-26,1,vnstock_data,VCI,false,0,RetryError,RetryError[<Future at 0x251a6c2bcd0 state=finished raised ValueError>]
+VNINDEX,2015-12-22,2015-12-26,1,legacy_vnstock,KBS,false,0,RetryError,RetryError[<Future at 0x251a6c5e0d0 state=finished raised ValueError>]
+VNINDEX,2015-12-22,2015-12-26,1,legacy_vnstock,VCI,false,0,RetryError,RetryError[<Future at 0x251f42ef2d0 state=finished raised ValueError>]

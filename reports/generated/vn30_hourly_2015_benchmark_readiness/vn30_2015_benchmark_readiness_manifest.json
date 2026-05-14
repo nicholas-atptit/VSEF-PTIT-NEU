@@ -1,0 +1,256 @@
+{
+  "all_30_tickers_fetched": false,
+  "all_30_tickers_usable": false,
+  "usable_ticker_count": 0,
+  "fetched_ticker_count": 0,
+  "missing_tickers": [
+    "ACB",
+    "BID",
+    "CTG",
+    "DGC",
+    "FPT",
+    "GAS",
+    "GVR",
+    "HDB",
+    "HPG",
+    "LPB",
+    "MBB",
+    "MSN",
+    "MWG",
+    "PLX",
+    "SAB",
+    "SHB",
+    "SSB",
+    "SSI",
+    "STB",
+    "TCB",
+    "TPB",
+    "VCB",
+    "VHM",
+    "VIB",
+    "VIC",
+    "VJC",
+    "VNM",
+    "VPB",
+    "VPL",
+    "VRE"
+  ],
+  "vnindex_usable": false,
+  "vn30_index_usable": false,
+  "other_indices_usable": {
+    "HNXINDEX": false,
+    "UPCOMINDEX": false,
+    "HNX30": false,
+    "VN100": false
+  },
+  "actual_first_timestamp_by_ticker": {
+    "ACB": "",
+    "BID": "",
+    "CTG": "",
+    "DGC": "",
+    "FPT": "",
+    "GAS": "",
+    "GVR": "",
+    "HDB": "",
+    "HPG": "",
+    "LPB": "",
+    "MBB": "",
+    "MSN": "",
+    "MWG": "",
+    "PLX": "",
+    "SAB": "",
+    "SHB": "",
+    "SSB": "",
+    "SSI": "",
+    "STB": "",
+    "TCB": "",
+    "TPB": "",
+    "VCB": "",
+    "VHM": "",
+    "VIB": "",
+    "VIC": "",
+    "VJC": "",
+    "VNM": "",
+    "VPB": "",
+    "VPL": "",
+    "VRE": ""
+  },
+  "actual_last_timestamp_by_ticker": {
+    "ACB": "",
+    "BID": "",
+    "CTG": "",
+    "DGC": "",
+    "FPT": "",
+    "GAS": "",
+    "GVR": "",
+    "HDB": "",
+    "HPG": "",
+    "LPB": "",
+    "MBB": "",
+    "MSN": "",
+    "MWG": "",
+    "PLX": "",
+    "SAB": "",
+    "SHB": "",
+    "SSB": "",
+    "SSI": "",
+    "STB": "",
+    "TCB": "",
+    "TPB": "",
+    "VCB": "",
+    "VHM": "",
+    "VIB": "",
+    "VIC": "",
+    "VJC": "",
+    "VNM": "",
+    "VPB": "",
+    "VPL": "",
+    "VRE": ""
+  },
+  "training_period": "2015-01-01 to 2024-12-31",
+  "evaluation_period": "2025-01-01 to provider-current unavailable",
+  "actual_eval_start": "2025-01-01",
+  "actual_data_start_any": "",
+  "actual_latest_data_timestamp": "",
+  "common_latest_usable_data_timestamp": "",
+  "benchmark_can_proceed": false,
+  "benchmark_command_later": "",
+  "benchmark_not_ready_reasons": [
+    "usable_tickers=0/30",
+    "VNINDEX_not_usable",
+    "VN30_index_not_usable"
+  ],
+  "benchmark_run": false,
+  "model_training_run": false,
+  "paper_or_docx_generated": false,
+  "daily_data_used": false,
+  "resampling_used": false,
+  "reset_manifest": {
+    "timestamp": "20260514_150845",
+    "archive_directory": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845",
+    "raw_data_touched": false,
+    "old_cache_removed": true,
+    "old_generated_artifacts_removed": false,
+    "items": [
+      {
+        "source_path": "reports/generated/vn30_hourly_2005_2026",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_2005_2026",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "reports/generated/vn30_hourly_available_window",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_available_window",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "reports/generated/vn30_hourly_listing_aware",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_listing_aware",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "reports/generated/vn30_hourly_vnstock_fetch",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_vnstock_fetch",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "reports/generated/vn30_hourly_vnstock_full",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_vnstock_full",
+        "action": "skipped_missing",
+        "reason": "superseded generated report/output artifact from pre-2015 design",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "reports/generated/vn30_hourly_gateway",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_gateway",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "reports/generated/index_hourly_fetch",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/index_hourly_fetch",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "reports/generated/index_hourly_gateway",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/index_hourly_gateway",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "reports/generated/vn30_gateway_benchmark_readiness",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_gateway_benchmark_readiness",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_official_2005_2026_traincutoff",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_official_2005_2026_traincutoff",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_available_window_benchmark",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_available_window_benchmark",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_listing_aware_traincutoff",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_listing_aware_traincutoff",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_vnstock_full_2005_2026_traincutoff",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_vnstock_full_2005_2026_traincutoff",
+        "action": "kept",
+        "reason": "superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_provider_available_traincutoff",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_provider_available_traincutoff",
+        "action": "skipped_missing",
+        "reason": "superseded generated report/output artifact from pre-2015 design",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "data/market_cache/vnstock_data/vn30/hourly_listing_aware",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/data/market_cache/vnstock_data/vn30/hourly_listing_aware",
+        "action": "kept",
+        "reason": "superseded normalized cache from pre-2015 VN30/index hourly design; archived copy created but removal denied by filesystem ACL: PermissionError",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "data/market_cache/vnstock_data/vn30/hourly_gateway",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/data/market_cache/vnstock_data/vn30/hourly_gateway",
+        "action": "archived_removed",
+        "reason": "superseded normalized cache from pre-2015 VN30/index hourly design",
+        "timestamp": "20260514_150845"
+      },
+      {
+        "source_path": "data/market_cache/vnstock_data/indices/hourly",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/data/market_cache/vnstock_data/indices/hourly",
+        "action": "archived_removed",
+        "reason": "superseded normalized cache from pre-2015 VN30/index hourly design",
+        "timestamp": "20260514_150845"
+      }
+    ]
+  }
+}
