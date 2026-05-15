@@ -1,14 +1,14 @@
 # VN30 Hourly 2015 Benchmark Readiness
 
 - Benchmark can proceed: false.
-- Fetched tickers: 2/30.
-- Usable tickers: 2/30.
-- Usable indices: 5/6.
-- Missing tickers: ACB, DGC, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
+- Fetched tickers: 3/30.
+- Usable tickers: 3/30.
+- Usable indices: 6/6.
+- Missing tickers: DGC, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
 - Confirmed listing-date tickers: ACB, BID, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB.
 - Tickers needing listing-date verification: DGC, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
 - Extra user-provided symbols outside frozen universe: BSR.
-- VNINDEX usable: false.
+- VNINDEX usable: true.
 - VN30 index usable: true.
 - Training period: `2015-01-01 to 2024-12-31`.
 - Evaluation period: `2025-01-01 to 2026-05-15 00:00:00`.
@@ -23,13 +23,13 @@
 
 ## Decision
 
-Benchmark must not proceed yet: usable_tickers=2/30; VNINDEX_not_usable.
+Benchmark must not proceed yet: usable_tickers=3/30.
 
 ## Per-Ticker Actual Timestamps
 
 | ticker | first datetime | last datetime |
 |---|---|---|
-| `ACB` |  |  |
+| `ACB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `BID` | 2023-09-11 10:00:00 | 2026-05-14 00:00:00 |
 | `CTG` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `DGC` |  |  |
@@ -99,7 +99,7 @@ Benchmark must not proceed yet: usable_tickers=2/30; VNINDEX_not_usable.
 
 | index | usable | rows | first | last |
 |---|---:|---:|---|---|
-| `VNINDEX` | false | 0 |  |  |
+| `VNINDEX` | true | 995 | 2022-05-19 00:00:00 | 2026-05-15 00:00:00 |
 | `HNXINDEX` | true | 994 | 2022-05-19 00:00:00 | 2026-05-14 00:00:00 |
 | `UPCOMINDEX` | true | 994 | 2022-05-19 00:00:00 | 2026-05-15 00:00:00 |
 | `VN30` | true | 995 | 2022-05-19 00:00:00 | 2026-05-15 00:00:00 |

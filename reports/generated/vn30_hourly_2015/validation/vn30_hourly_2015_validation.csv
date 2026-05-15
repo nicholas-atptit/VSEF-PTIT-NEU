@@ -1,5 +1,5 @@
 ticker,cache_path,file_exists,row_count,first_datetime,last_datetime,training_rows_before_2025,evaluation_rows_from_2025,sorted_datetime,duplicate_datetime_count,frequency_1h,ohlcv_numeric,positive_prices,volume_nonnegative,ohlc_consistent,usable,missing_reason
-ACB,data/market_cache/vnstock_data/vn30/hourly_2015/ACB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+ACB,data/market_cache/vnstock_data/vn30/hourly_2015/ACB.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,
 BID,data/market_cache/vnstock_data/vn30/hourly_2015/BID.csv,true,1455,2023-09-11 10:00:00,2026-05-14 00:00:00,1321,134,true,0,true,true,true,true,true,true,
 CTG,data/market_cache/vnstock_data/vn30/hourly_2015/CTG.csv,true,1440,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,119,true,0,true,true,true,true,true,true,
 DGC,data/market_cache/vnstock_data/vn30/hourly_2015/DGC.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing

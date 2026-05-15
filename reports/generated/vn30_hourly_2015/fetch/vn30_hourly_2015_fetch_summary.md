@@ -9,8 +9,8 @@
 
 | ticker | effective_start | fetched | rows | first | last | stopped_by_runtime_cap | stopped_reason |
 |---|---|---:|---:|---|---|---:|---|
-| `CTG` | 2015-01-01 | true | 1440 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | true | `max_runtime_seconds=14400` |
+| `ACB` | 2015-01-01 | true | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | true | `max_runtime_seconds=14400` |
 
 ## Resume Commands
 
-- `CTG`: `<repo-approved-venv-python> scripts\research\fetch_vn30_stocks_hourly_gateway_2015.py --ticker CTG --direction reverse --start 2015-01-01 --end auto --year-first --monthly-fallback --daily-fallback --resume --max-runtime-seconds 14400`
+- `ACB`: `<repo-approved-venv-python> scripts\research\fetch_vn30_stocks_hourly_gateway_2015.py --ticker ACB --direction reverse --start 2015-01-01 --end auto --year-first --monthly-fallback --daily-fallback --resume --max-runtime-seconds 14400`

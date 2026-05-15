@@ -1,10 +1,9 @@
 {
   "all_30_tickers_fetched": false,
   "all_30_tickers_usable": false,
-  "usable_ticker_count": 2,
-  "fetched_ticker_count": 2,
+  "usable_ticker_count": 3,
+  "fetched_ticker_count": 3,
   "missing_tickers": [
-    "ACB",
     "DGC",
     "FPT",
     "GAS",
@@ -102,9 +101,9 @@
     "VPL": "2015-01-01",
     "VRE": "2015-01-01"
   },
-  "vnindex_usable": false,
+  "vnindex_usable": true,
   "vn30_index_usable": true,
-  "usable_index_count": 5,
+  "usable_index_count": 6,
   "other_indices_usable": {
     "HNXINDEX": true,
     "UPCOMINDEX": true,
@@ -112,7 +111,7 @@
     "VN100": true
   },
   "actual_first_timestamp_by_ticker": {
-    "ACB": "",
+    "ACB": "2023-09-11 10:00:00",
     "BID": "2023-09-11 10:00:00",
     "CTG": "2023-09-11 10:00:00",
     "DGC": "",
@@ -144,7 +143,7 @@
     "VRE": ""
   },
   "actual_last_timestamp_by_ticker": {
-    "ACB": "",
+    "ACB": "2026-05-15 00:00:00",
     "BID": "2026-05-14 00:00:00",
     "CTG": "2026-05-15 00:00:00",
     "DGC": "",
@@ -184,8 +183,7 @@
   "benchmark_can_proceed": false,
   "benchmark_command_later": "",
   "benchmark_not_ready_reasons": [
-    "usable_tickers=2/30",
-    "VNINDEX_not_usable"
+    "usable_tickers=3/30"
   ],
   "benchmark_run": false,
   "model_training_run": false,
