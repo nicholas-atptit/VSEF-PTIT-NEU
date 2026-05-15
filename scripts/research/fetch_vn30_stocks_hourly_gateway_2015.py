@@ -61,6 +61,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--daily-fallback", action="store_true")
     parser.add_argument("--chunk-days", type=int, default=5)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--skip-usable", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--max-runtime-seconds", type=int, default=14400)
     return parser.parse_args()
@@ -139,6 +140,41 @@ def read_frame(path: Path) -> pd.DataFrame:
         return pd.DataFrame(columns=COLUMNS)
     frame["datetime"] = pd.to_datetime(frame["datetime"], errors="coerce")
     return frame.dropna(subset=["datetime"])[COLUMNS]
+
+
+def ohlcv_valid(frame: pd.DataFrame) -> bool:
+    if frame.empty:
+        return False
+    frame = frame.copy()
+    for column in ["open", "high", "low", "close", "volume"]:
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    if frame[["open", "high", "low", "close", "volume"]].isna().any().any():
+        return False
+    prices_ok = bool((frame[["open", "high", "low", "close"]] > 0).all().all())
+    volume_ok = bool((frame["volume"] >= 0).all())
+    ohlc_ok = bool(
+        (frame["high"] >= frame["low"]).all()
+        and (frame["high"] >= frame[["open", "close"]].max(axis=1)).all()
+        and (frame["low"] <= frame[["open", "close"]].min(axis=1)).all()
+    )
+    return prices_ok and volume_ok and ohlc_ok
+
+
+def cache_is_usable(ticker: str) -> bool:
+    cache_path = CACHE_ROOT / f"{ticker}.csv"
+    if not cache_path.exists():
+        return False
+    frame = read_frame(cache_path)
+    if frame.empty:
+        return False
+    frame = frame[frame["ticker"].astype(str).str.upper().eq(ticker)].copy()
+    if frame.empty:
+        return False
+    frequency_ok = bool(frame["frequency"].astype(str).eq("1H").all())
+    training_rows = int((frame["datetime"] <= pd.Timestamp("2024-12-31 23:59:59")).sum())
+    evaluation_rows = int((frame["datetime"] >= pd.Timestamp("2025-01-01")).sum())
+    enough_rows = training_rows >= 1000 and evaluation_rows >= 100
+    return frequency_ok and enough_rows and ohlcv_valid(frame)
 
 
 def write_frame(path: Path, frame: pd.DataFrame) -> None:
@@ -352,6 +388,10 @@ def main() -> int:
     logs: list[dict[str, Any]] = []
     for ticker in tickers:
         effective_start = max(requested_base_start, effective_starts.get(ticker, requested_base_start))
+        if args.skip_usable and not args.force and cache_is_usable(ticker):
+            summaries.append(summarize(ticker, [], "skipped_usable_cache", effective_start, requested_end, args))
+            write_reports(summaries, failures, logs)
+            continue
         if runtime_exceeded(started, args):
             summaries.append(summarize(ticker, [], "not_started_runtime_cap", effective_start, requested_end, args))
             write_reports(summaries, failures, logs)

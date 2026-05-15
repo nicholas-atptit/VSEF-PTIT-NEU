@@ -1,11 +1,10 @@
 {
   "all_30_tickers_fetched": false,
   "all_30_tickers_usable": false,
-  "usable_ticker_count": 1,
-  "fetched_ticker_count": 1,
+  "usable_ticker_count": 2,
+  "fetched_ticker_count": 2,
   "missing_tickers": [
-    "BID",
-    "CTG",
+    "ACB",
     "DGC",
     "FPT",
     "GAS",
@@ -103,19 +102,19 @@
     "VPL": "2015-01-01",
     "VRE": "2015-01-01"
   },
-  "vnindex_usable": true,
-  "vn30_index_usable": false,
-  "usable_index_count": 1,
+  "vnindex_usable": false,
+  "vn30_index_usable": true,
+  "usable_index_count": 5,
   "other_indices_usable": {
-    "HNXINDEX": false,
-    "UPCOMINDEX": false,
-    "HNX30": false,
-    "VN100": false
+    "HNXINDEX": true,
+    "UPCOMINDEX": true,
+    "HNX30": true,
+    "VN100": true
   },
   "actual_first_timestamp_by_ticker": {
-    "ACB": "2023-09-11 10:00:00",
-    "BID": "",
-    "CTG": "",
+    "ACB": "",
+    "BID": "2023-09-11 10:00:00",
+    "CTG": "2023-09-11 10:00:00",
     "DGC": "",
     "FPT": "",
     "GAS": "",
@@ -145,9 +144,9 @@
     "VRE": ""
   },
   "actual_last_timestamp_by_ticker": {
-    "ACB": "2026-05-14 00:00:00",
-    "BID": "",
-    "CTG": "",
+    "ACB": "",
+    "BID": "2026-05-14 00:00:00",
+    "CTG": "2026-05-15 00:00:00",
     "DGC": "",
     "FPT": "",
     "GAS": "",
@@ -177,16 +176,16 @@
     "VRE": ""
   },
   "training_period": "2015-01-01 to 2024-12-31",
-  "evaluation_period": "2025-01-01 to 2026-05-14 00:00:00",
+  "evaluation_period": "2025-01-01 to 2026-05-15 00:00:00",
   "actual_eval_start": "2025-01-01",
   "actual_data_start_any": "2023-09-11 10:00:00",
-  "actual_latest_data_timestamp": "2026-05-14 00:00:00",
+  "actual_latest_data_timestamp": "2026-05-15 00:00:00",
   "common_latest_usable_data_timestamp": "2026-05-14 00:00:00",
   "benchmark_can_proceed": false,
   "benchmark_command_later": "",
   "benchmark_not_ready_reasons": [
-    "usable_tickers=1/30",
-    "VN30_index_not_usable"
+    "usable_tickers=2/30",
+    "VNINDEX_not_usable"
   ],
   "benchmark_run": false,
   "model_training_run": false,
