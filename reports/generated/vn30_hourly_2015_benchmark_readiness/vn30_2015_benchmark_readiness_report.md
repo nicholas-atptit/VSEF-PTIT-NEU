@@ -1,10 +1,10 @@
 # VN30 Hourly 2015 Benchmark Readiness
 
 - Benchmark can proceed: false.
-- Fetched tickers: 3/30.
-- Usable tickers: 3/30.
+- Fetched tickers: 4/30.
+- Usable tickers: 4/30.
 - Usable indices: 6/6.
-- Missing tickers: DGC, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
+- Missing tickers: FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
 - Confirmed listing-date tickers: ACB, BID, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB.
 - Tickers needing listing-date verification: DGC, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
 - Extra user-provided symbols outside frozen universe: BSR.
@@ -23,7 +23,7 @@
 
 ## Decision
 
-Benchmark must not proceed yet: usable_tickers=3/30.
+Benchmark must not proceed yet: usable_tickers=4/30.
 
 ## Per-Ticker Actual Timestamps
 
@@ -32,7 +32,7 @@ Benchmark must not proceed yet: usable_tickers=3/30.
 | `ACB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `BID` | 2023-09-11 10:00:00 | 2026-05-14 00:00:00 |
 | `CTG` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
-| `DGC` |  |  |
+| `DGC` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `FPT` |  |  |
 | `GAS` |  |  |
 | `GVR` |  |  |
