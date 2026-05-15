@@ -14,6 +14,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 INDEX_VALIDATION = REPO_ROOT / "reports" / "generated" / "index_hourly_2015" / "validation" / "index_hourly_2015_validation.csv"
 STOCK_VALIDATION = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015" / "validation" / "vn30_hourly_2015_validation.csv"
 RESET_MANIFEST = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015_reset" / "reset_manifest.json"
+EFFECTIVE_START = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015" / "effective_start" / "vn30_effective_start.csv"
+RECONCILIATION = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015" / "reconciliation" / "vn30_listing_date_reconciliation.csv"
 REPORT_ROOT = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015_benchmark_readiness"
 JSON_PATH = REPORT_ROOT / "vn30_2015_benchmark_readiness_manifest.json"
 MD_PATH = REPORT_ROOT / "vn30_2015_benchmark_readiness_report.md"
@@ -41,6 +43,8 @@ def timestamp_max(values: list[str]) -> str:
 def main() -> int:
     stocks = read_csv_rows(STOCK_VALIDATION)
     indices = read_csv_rows(INDEX_VALIDATION)
+    effective_rows = read_csv_rows(EFFECTIVE_START)
+    reconciliation_rows = read_csv_rows(RECONCILIATION)
     usable_stocks = [row for row in stocks if row.get("usable") == "true"]
     missing_tickers = [row.get("ticker", "") for row in stocks if row.get("usable") != "true"]
     index_by_code = {row.get("index_code", ""): row for row in indices}
@@ -60,6 +64,11 @@ def main() -> int:
         reset_payload = json.loads(RESET_MANIFEST.read_text(encoding="utf-8"))
     first_by_ticker = {row.get("ticker", ""): row.get("first_datetime", "") for row in stocks}
     last_by_ticker = {row.get("ticker", ""): row.get("last_datetime", "") for row in stocks}
+    effective_by_ticker = {row.get("ticker", ""): row.get("effective_start", "") for row in effective_rows}
+    confirmed_listing_tickers = [row.get("ticker", "") for row in effective_rows if row.get("needs_listing_date_verification") == "no"]
+    needs_listing_verification = [row.get("ticker", "") for row in effective_rows if row.get("needs_listing_date_verification") == "yes"]
+    extra_user_symbols = [row.get("ticker", "") for row in reconciliation_rows if row.get("status") == "extra_user_provided_symbol"]
+    usable_index_count = sum(1 for row in indices if row.get("usable") == "true")
     actual_start_any = timestamp_min([row.get("first_datetime", "") for row in stocks if row.get("first_datetime")])
     actual_latest_any = timestamp_max([row.get("last_datetime", "") for row in stocks if row.get("last_datetime")])
     common_latest_usable = timestamp_min([row.get("last_datetime", "") for row in usable_stocks])
@@ -69,8 +78,13 @@ def main() -> int:
         "usable_ticker_count": len(usable_stocks),
         "fetched_ticker_count": len(fetched_stocks),
         "missing_tickers": missing_tickers,
+        "confirmed_listing_date_tickers": confirmed_listing_tickers,
+        "needs_listing_date_verification_tickers": needs_listing_verification,
+        "extra_user_provided_symbols": extra_user_symbols,
+        "effective_start_by_ticker": effective_by_ticker,
         "vnindex_usable": vnindex_usable,
         "vn30_index_usable": vn30_usable,
+        "usable_index_count": usable_index_count,
         "other_indices_usable": {code: row.get("usable") == "true" for code, row in index_by_code.items() if code not in {"VNINDEX", "VN30"}},
         "actual_first_timestamp_by_ticker": first_by_ticker,
         "actual_last_timestamp_by_ticker": last_by_ticker,
@@ -102,7 +116,11 @@ def main() -> int:
         f"- Benchmark can proceed: {str(benchmark_ready).lower()}.",
         f"- Fetched tickers: {len(fetched_stocks)}/30.",
         f"- Usable tickers: {len(usable_stocks)}/30.",
+        f"- Usable indices: {usable_index_count}/{len(indices)}.",
         f"- Missing tickers: {', '.join(missing_tickers) if missing_tickers else 'none'}.",
+        f"- Confirmed listing-date tickers: {', '.join(confirmed_listing_tickers) if confirmed_listing_tickers else 'none'}.",
+        f"- Tickers needing listing-date verification: {', '.join(needs_listing_verification) if needs_listing_verification else 'none'}.",
+        f"- Extra user-provided symbols outside frozen universe: {', '.join(extra_user_symbols) if extra_user_symbols else 'none'}.",
         f"- VNINDEX usable: {str(vnindex_usable).lower()}.",
         f"- VN30 index usable: {str(vn30_usable).lower()}.",
         "- Training period: `2015-01-01 to 2024-12-31`.",
@@ -127,6 +145,9 @@ def main() -> int:
     ]
     for ticker, first in sorted(first_by_ticker.items()):
         lines.append(f"| `{ticker}` | {first} | {last_by_ticker.get(ticker, '')} |")
+    lines.extend(["", "## Effective Starts", "", "| ticker | effective_start |", "|---|---|"])
+    for ticker, effective_start in sorted(effective_by_ticker.items()):
+        lines.append(f"| `{ticker}` | {effective_start} |")
     lines.extend(["", "## Index Usability", "", "| index | usable | rows | first | last |", "|---|---:|---:|---|---|"])
     for row in indices:
         lines.append(f"| `{row.get('index_code', '')}` | {row.get('usable', '')} | {row.get('row_count', '')} | {row.get('first_datetime', '')} | {row.get('last_datetime', '')} |")

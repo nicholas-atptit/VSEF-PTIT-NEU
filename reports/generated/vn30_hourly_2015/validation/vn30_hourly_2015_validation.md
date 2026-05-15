@@ -1,6 +1,6 @@
 # VN30 Stock Hourly 2015 Gateway Validation
 
-- Usable tickers: 0/30.
+- Usable tickers: 1/30.
 - Minimum training rows: 1000.
 - Minimum evaluation rows: 100.
 - Daily data used: no.
@@ -8,7 +8,7 @@
 
 | ticker | usable | rows | training_rows | evaluation_rows | first | last | missing_reason |
 |---|---:|---:|---:|---:|---|---|---|
-| `ACB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
+| `ACB` | true | 1496 | 1321 | 175 | 2023-09-11 10:00:00 | 2026-05-14 00:00:00 |  |
 | `BID` | false | 0 | 0 | 0 |  |  | cache_file_missing |
 | `CTG` | false | 0 | 0 | 0 |  |  | cache_file_missing |
 | `DGC` | false | 0 | 0 | 0 |  |  | cache_file_missing |
