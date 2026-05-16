@@ -3,7 +3,7 @@
 - Previous active universe count: 30.
 - New active universe count: 30.
 - Added tickers: BCM, BVH.
-- Removed tickers: DGC, VPL.
+- Removed tickers: BSR, DGC, VPL.
 - Removed/excluded tickers from prior working universe: BSR, DGC, VPL.
 - Retained tickers: ACB, BID, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE.
 - Active universe changed: yes.

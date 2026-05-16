@@ -2,7 +2,7 @@ metric,value
 previous_active_universe_count,30
 new_active_universe_count,30
 added_tickers,"BCM, BVH"
-removed_tickers,"DGC, VPL"
+removed_tickers,"BSR, DGC, VPL"
 removed_or_excluded_tickers,"BSR, DGC, VPL"
 retained_tickers,"ACB, BID, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE"
 active_universe_changed,yes
