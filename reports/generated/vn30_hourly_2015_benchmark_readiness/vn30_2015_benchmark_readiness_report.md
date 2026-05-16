@@ -3,24 +3,26 @@
 - Active universe: VN30 January 2025 review universe.
 - Active universe source: HOSE January 2025 VN30 review.
 - Active universe effective period: 03/02/2025 to 01/08/2025.
-- Active universe count: 30.
+- Active universe count: 30/30.
+- Active universe tickers: ACB, BCM, BID, BVH, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE.
 - Active universe includes: BCM, BVH.
 - Active universe excludes: BSR, DGC, VPL.
-- Benchmark can proceed: true.
-- Fetched tickers: 30/30.
-- Usable tickers: 30/30.
-- Usable indices: 6/6.
-- Missing tickers: none.
+- Benchmark can proceed: false.
+- Benchmark command path exists: false (`scripts\research\run_vn30_hourly_benchmark_2015_from_gateway.py`).
+- Fetched required tickers: 30/30.
+- Usable required tickers: 30/30.
+- Usable required indices: 6/6.
+- Missing/unusable tickers: none.
+- Validation extras outside active universe: none.
 - Confirmed listing-date tickers: ACB, BID, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB.
 - Tickers needing listing-date verification: BCM, BVH, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE.
-- Extra user-provided symbols outside frozen universe: BSR, DGC, VPL.
 - VNINDEX usable: true.
 - VN30 index usable: true.
-- Training period: `2015-01-01 to 2024-12-31`.
-- Evaluation period: `2025-01-01 to 2026-05-15 00:00:00`.
-- Actual data start, any fetched ticker: `2023-09-11 10:00:00`.
-- Actual latest data timestamp, any fetched ticker: `2026-05-15 00:00:00`.
-- Common latest usable data timestamp: `2026-05-14 00:00:00`.
+- Training period claim: `2015-01-01 to 2024-12-31`.
+- Training period actual available: `2023-09-11 10:00:00 to 2024-12-31`.
+- Evaluation period claim: `2025-01-01 to provider-current/latest available timestamp`.
+- Evaluation period actual available: `2025-01-01 to 2026-05-14 00:00:00`.
+- Data availability disclosure: 2015 design window with provider-available hourly data beginning on 2023-09-11 10:00:00.
 - Benchmark was run: no.
 - Model training was run: no.
 - Paper/DOCX generated: no.
@@ -29,7 +31,15 @@
 
 ## Decision
 
-Benchmark may proceed later.
+Benchmark must not proceed yet.
+
+## Blocking Reasons
+
+- benchmark_command_missing=scripts\research\run_vn30_hourly_benchmark_2015_from_gateway.py
+
+## Warnings
+
+- benchmark design requested from 2015, but actual hourly availability begins at provider first timestamp
 
 ## Per-Ticker Actual Timestamps
 

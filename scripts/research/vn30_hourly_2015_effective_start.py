@@ -1,4 +1,4 @@
-"""Build listing-date reconciliation and 2015 effective starts for frozen VN30."""
+"""Build listing-date reconciliation and 2015 effective starts for active VN30."""
 
 from __future__ import annotations
 
@@ -50,26 +50,32 @@ def read_listing() -> dict[str, dict[str, str]]:
 
 
 def build_reconciliation(universe: list[str], listing: dict[str, dict[str, str]]) -> list[dict[str, Any]]:
-    frozen = set(universe)
+    active = set(universe)
     rows: list[dict[str, Any]] = []
     for ticker in sorted(set(universe) | set(listing)):
         meta = listing.get(ticker, {})
-        in_frozen = ticker in frozen
+        in_active = ticker in active
         first = str(meta.get("first_trading_date", "")).strip()
         source_note = str(meta.get("source_note", "")).strip()
-        if in_frozen and first:
+        metadata_active = str(meta.get("active_in_jan2025_universe", "")).strip().lower()
+        needs_verification = str(meta.get("needs_verification", "")).strip().lower()
+        if in_active and first:
             status = "confirmed_listing_date"
-        elif in_frozen:
+        elif in_active:
             status = "needs_verification"
+        elif metadata_active == "true":
+            status = "metadata_active_mismatch"
         else:
-            status = "extra_user_provided_symbol"
+            status = "excluded_reference_symbol"
         rows.append(
             {
                 "ticker": ticker,
-                "in_frozen_universe": str(in_frozen).lower(),
+                "in_active_universe": str(in_active).lower(),
                 "in_listing_metadata": str(ticker in listing).lower(),
+                "active_in_jan2025_universe_metadata": metadata_active,
                 "first_trading_date": first,
                 "source_note": source_note,
+                "needs_verification": needs_verification,
                 "status": status,
                 "active_universe_changed": "false",
             }
@@ -111,25 +117,28 @@ def build_effective_starts(universe: list[str], listing: dict[str, dict[str, str
 def write_reconciliation_report(rows: list[dict[str, Any]], universe: list[str], listing: dict[str, dict[str, str]]) -> None:
     confirmed = [row["ticker"] for row in rows if row["status"] == "confirmed_listing_date"]
     needs = [row["ticker"] for row in rows if row["status"] == "needs_verification"]
-    extras = [row["ticker"] for row in rows if row["status"] == "extra_user_provided_symbol"]
+    excluded = [row["ticker"] for row in rows if row["status"] == "excluded_reference_symbol"]
+    mismatches = [row["ticker"] for row in rows if row["status"] == "metadata_active_mismatch"]
     missing_from_user = [ticker for ticker in universe if listing.get(ticker, {}).get("source_note") != "user_provided"]
     lines = [
         "# VN30 Listing-Date Reconciliation",
         "",
-        f"- Frozen universe ticker count: {len(universe)}.",
+        "- Active universe: VN30 January 2025 review universe.",
+        f"- Active universe ticker count: {len(universe)}.",
         f"- Listing metadata ticker count: {len(listing)}.",
         f"- Tickers with confirmed listing dates: {len(confirmed)}.",
         f"- Tickers needing verification: {len(needs)}.",
-        f"- User-provided tickers not in frozen universe: {', '.join(extras) if extras else 'none'}.",
-        f"- Frozen-universe tickers missing from user-provided table: {', '.join(missing_from_user) if missing_from_user else 'none'}.",
+        f"- Reference symbols outside active universe: {', '.join(excluded) if excluded else 'none'}.",
+        f"- Metadata active mismatches: {', '.join(mismatches) if mismatches else 'none'}.",
+        f"- Active-universe tickers missing from user-provided table: {', '.join(missing_from_user) if missing_from_user else 'none'}.",
         "- Active universe changed: no.",
         "",
-        "| ticker | status | first_trading_date | source_note | in_frozen_universe |",
-        "|---|---|---|---|---:|",
+        "| ticker | status | first_trading_date | source_note | in_active_universe | metadata_active | needs_verification |",
+        "|---|---|---|---|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
-            f"| `{row['ticker']}` | `{row['status']}` | {row['first_trading_date']} | `{row['source_note']}` | {row['in_frozen_universe']} |"
+            f"| `{row['ticker']}` | `{row['status']}` | {row['first_trading_date']} | `{row['source_note']}` | {row['in_active_universe']} | {row['active_in_jan2025_universe_metadata']} | {row['needs_verification']} |"
         )
     RECON_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -139,8 +148,9 @@ def write_effective_report(rows: list[dict[str, Any]]) -> None:
     lines = [
         "# VN30 2015 Effective Starts",
         "",
+        "- Active universe: VN30 January 2025 review universe.",
         "- Rule: `effective_start(ticker) = max(2015-01-01, first_trading_date)`.",
-        f"- Frozen tickers needing listing-date verification: {', '.join(needs) if needs else 'none'}.",
+        f"- Active tickers needing listing-date verification: {', '.join(needs) if needs else 'none'}.",
         "",
         "| ticker | first_trading_date | effective_start | reason | needs_verification |",
         "|---|---|---|---|---:|",
@@ -160,7 +170,17 @@ def main() -> int:
     write_csv(
         RECON_CSV,
         reconciliation,
-        ["ticker", "in_frozen_universe", "in_listing_metadata", "first_trading_date", "source_note", "status", "active_universe_changed"],
+        [
+            "ticker",
+            "in_active_universe",
+            "in_listing_metadata",
+            "active_in_jan2025_universe_metadata",
+            "first_trading_date",
+            "source_note",
+            "needs_verification",
+            "status",
+            "active_universe_changed",
+        ],
     )
     write_csv(
         EFFECTIVE_CSV,
@@ -169,7 +189,7 @@ def main() -> int:
     )
     write_reconciliation_report(reconciliation, universe, listing)
     write_effective_report(effective)
-    print(f"frozen_universe_count={len(universe)}")
+    print(f"active_universe_count={len(universe)}")
     print(f"listing_metadata_count={len(listing)}")
     print("active_universe_changed=false")
     return 0

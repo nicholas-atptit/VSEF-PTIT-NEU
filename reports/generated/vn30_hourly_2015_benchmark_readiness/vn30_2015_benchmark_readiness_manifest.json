@@ -2,6 +2,8 @@
   "active_universe_name": "VN30 January 2025 review universe",
   "active_universe_source": "HOSE January 2025 VN30 review",
   "active_universe_effective_period": "03/02/2025 to 01/08/2025",
+  "active_universe_expected_count": 30,
+  "active_universe_actual_count": 30,
   "active_universe_count": 30,
   "active_universe_tickers": [
     "ACB",
@@ -35,6 +37,17 @@
     "VPB",
     "VRE"
   ],
+  "active_universe_duplicate_tickers": [],
+  "active_universe_set_matches_jan2025": true,
+  "required_inclusions": [
+    "BCM",
+    "BVH"
+  ],
+  "required_exclusions": [
+    "BSR",
+    "DGC",
+    "VPL"
+  ],
   "active_universe_includes": [
     "BCM",
     "BVH"
@@ -44,6 +57,23 @@
     "DGC",
     "VPL"
   ],
+  "excluded_reference_tickers": [
+    "BSR",
+    "DGC",
+    "VPL"
+  ],
+  "reconciliation_reference_tickers": [
+    "BSR",
+    "DGC",
+    "VPL"
+  ],
+  "validation_ticker_count": 30,
+  "stock_validation_duplicate_tickers": [],
+  "required_tickers_missing_from_validation": [],
+  "validation_extra_tickers_outside_active_universe": [],
+  "ignored_validation_extra_tickers": [],
+  "unclassified_validation_extra_tickers": [],
+  "unusable_required_tickers": [],
   "all_30_tickers_fetched": true,
   "all_30_tickers_usable": true,
   "usable_ticker_count": 30,
@@ -83,11 +113,6 @@
     "VPB",
     "VRE"
   ],
-  "extra_user_provided_symbols": [
-    "BSR",
-    "DGC",
-    "VPL"
-  ],
   "effective_start_by_ticker": {
     "ACB": "2015-01-01",
     "BCM": "2015-01-01",
@@ -120,9 +145,21 @@
     "VPB": "2015-01-01",
     "VRE": "2015-01-01"
   },
+  "required_index_codes": [
+    "VNINDEX",
+    "HNXINDEX",
+    "UPCOMINDEX",
+    "VN30",
+    "HNX30",
+    "VN100"
+  ],
+  "missing_required_indices": [],
+  "unusable_required_indices": [],
   "vnindex_usable": true,
   "vn30_index_usable": true,
   "usable_index_count": 6,
+  "usable_required_index_count": 6,
+  "index_usable_policy_met": true,
   "other_indices_usable": {
     "HNXINDEX": true,
     "UPCOMINDEX": true,
@@ -193,15 +230,35 @@
     "VPB": "2026-05-15 00:00:00",
     "VRE": "2026-05-15 00:00:00"
   },
-  "training_period": "2015-01-01 to 2024-12-31",
-  "evaluation_period": "2025-01-01 to 2026-05-15 00:00:00",
-  "actual_eval_start": "2025-01-01",
+  "design_start_date": "2015-01-01",
+  "actual_hourly_data_start_any": "2023-09-11 10:00:00",
+  "actual_hourly_data_start_common": "2023-09-11 10:00:00",
+  "actual_hourly_data_latest_any": "2026-05-15 00:00:00",
+  "actual_hourly_data_latest_common": "2026-05-14 00:00:00",
   "actual_data_start_any": "2023-09-11 10:00:00",
   "actual_latest_data_timestamp": "2026-05-15 00:00:00",
   "common_latest_usable_data_timestamp": "2026-05-14 00:00:00",
-  "benchmark_can_proceed": true,
-  "benchmark_command_later": "<repo-approved-venv-python> scripts\\research\\run_vn30_hourly_benchmark_2015_from_gateway.py",
-  "benchmark_not_ready_reasons": [],
+  "training_period_claim": "2015-01-01 to 2024-12-31",
+  "training_period_actual_available": "2023-09-11 10:00:00 to 2024-12-31",
+  "training_period": "2015-01-01 to 2024-12-31",
+  "evaluation_period_claim": "2025-01-01 to provider-current/latest available timestamp",
+  "evaluation_period_actual_available": "2025-01-01 to 2026-05-14 00:00:00",
+  "evaluation_period": "2025-01-01 to 2026-05-14 00:00:00",
+  "actual_eval_start": "2025-01-01",
+  "data_availability_disclosure": "2015 design window with provider-available hourly data beginning on 2023-09-11 10:00:00",
+  "benchmark_command_exists": false,
+  "benchmark_command_path": "scripts\\research\\run_vn30_hourly_benchmark_2015_from_gateway.py",
+  "benchmark_can_proceed": false,
+  "benchmark_command_later": "",
+  "benchmark_not_ready_reasons": [
+    "benchmark_command_missing=scripts\\research\\run_vn30_hourly_benchmark_2015_from_gateway.py"
+  ],
+  "warnings": [
+    "benchmark design requested from 2015, but actual hourly availability begins at provider first timestamp"
+  ],
+  "blocking_reasons": [
+    "benchmark_command_missing=scripts\\research\\run_vn30_hourly_benchmark_2015_from_gateway.py"
+  ],
   "benchmark_run": false,
   "model_training_run": false,
   "paper_or_docx_generated": false,

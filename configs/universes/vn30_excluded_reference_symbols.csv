@@ -1,0 +1,4 @@
+ticker,reason,active_in_jan2025_universe,note
+BSR,later_or_reference_symbol,false,Excluded from the active VN30 January 2025 benchmark universe to avoid look-ahead universe bias.
+DGC,not_in_january_2025_review_universe,false,Excluded from the active VN30 January 2025 benchmark universe to avoid look-ahead universe bias.
+VPL,later_or_reference_symbol,false,Excluded from the active VN30 January 2025 benchmark universe to avoid look-ahead universe bias.

@@ -1,7 +1,8 @@
 # VN30 2015 Effective Starts
 
+- Active universe: VN30 January 2025 review universe.
 - Rule: `effective_start(ticker) = max(2015-01-01, first_trading_date)`.
-- Frozen tickers needing listing-date verification: BCM, BVH, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE.
+- Active tickers needing listing-date verification: BCM, BVH, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE.
 
 | ticker | first_trading_date | effective_start | reason | needs_verification |
 |---|---|---|---|---:|

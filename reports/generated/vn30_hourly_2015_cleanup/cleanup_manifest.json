@@ -1,0 +1,162 @@
+﻿{
+    "timestamp":  "20260516_164954",
+    "branch":  "research/vn30-jan2025-readiness-audit-refactor-v1",
+    "archive_directory":  "archive/generated_data_snapshots/vn30_jan2025_readiness_audit_refactor_20260516_164954",
+    "raw_data_touched":  false,
+    "active_universe":  "VN30 January 2025 review universe",
+    "items":  [
+                  {
+                      "source_path":  "reports/generated/vn30_hourly_2005_2026",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\vn30_hourly_2005_2026",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027vn30_hourly_coverage_audit.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "reports/generated/vn30_hourly_available_window",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\vn30_hourly_available_window",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027vn30_hourly_available_window_audit.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "reports/generated/vn30_hourly_listing_aware",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\vn30_hourly_listing_aware",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027vn30_listing_aware_fetch_failures.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "reports/generated/vn30_hourly_vnstock_fetch",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\vn30_hourly_vnstock_fetch",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027vn30_hourly_fetch_failures.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "reports/generated/vn30_hourly_vnstock_full",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\vn30_hourly_vnstock_full",
+                      "action":  "skipped_missing",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  ""
+                  },
+                  {
+                      "source_path":  "reports/generated/vn30_hourly_gateway",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\vn30_hourly_gateway",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027vn30_hourly_gateway_validation.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "reports/generated/vn30_gateway_benchmark_readiness",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\vn30_gateway_benchmark_readiness",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027vn30_gateway_benchmark_readiness_manifest.json\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "reports/generated/index_hourly_fetch",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\index_hourly_fetch",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027index_hourly_validation.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "reports/generated/index_hourly_gateway",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\index_hourly_gateway",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027index_hourly_gateway_validation.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "reports/generated/vn30_hourly_2015_audit",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\reports\\generated\\vn30_hourly_2015_audit",
+                      "action":  "archived_removed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  ""
+                  },
+                  {
+                      "source_path":  "outputs/vn30_hourly_official_2005_2026_traincutoff",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\outputs\\vn30_hourly_official_2005_2026_traincutoff",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027accuracy_summary.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "outputs/vn30_hourly_available_window_benchmark",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\outputs\\vn30_hourly_available_window_benchmark",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027accuracy_summary.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "outputs/vn30_hourly_listing_aware_traincutoff",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\outputs\\vn30_hourly_listing_aware_traincutoff",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027manifest.json\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "outputs/vn30_hourly_vnstock_full_2005_2026_traincutoff",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\outputs\\vn30_hourly_vnstock_full_2005_2026_traincutoff",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027manifest.json\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "data/market_cache/vnstock_data/vn30/hourly_listing_aware",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\data\\market_cache\\vnstock_data\\vn30\\hourly_listing_aware",
+                      "action":  "archive_or_remove_failed",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  "System.UnauthorizedAccessException: Access to the path \u0027ACB.csv\u0027 is denied."
+                  },
+                  {
+                      "source_path":  "data/market_cache/vnstock_data/vn30/hourly_gateway",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\data\\market_cache\\vnstock_data\\vn30\\hourly_gateway",
+                      "action":  "skipped_missing",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  ""
+                  },
+                  {
+                      "source_path":  "data/market_cache/vnstock_data/indices/hourly",
+                      "archive_path":  "archive\\generated_data_snapshots\\vn30_jan2025_readiness_audit_refactor_20260516_164954\\data\\market_cache\\vnstock_data\\indices\\hourly",
+                      "action":  "skipped_missing",
+                      "reason":  "superseded VN30 hourly design artifact; active governance path is VN30 January 2025 hourly 2015 readiness",
+                      "raw_data_touched":  false,
+                      "timestamp":  "20260516_164954",
+                      "error":  ""
+                  }
+              ]
+}
