@@ -1,13 +1,19 @@
 # VN30 Hourly 2015 Benchmark Readiness
 
-- Benchmark can proceed: false.
+- Active universe: VN30 January 2025 review universe.
+- Active universe source: HOSE January 2025 VN30 review.
+- Active universe effective period: 03/02/2025 to 01/08/2025.
+- Active universe count: 30.
+- Active universe includes: BCM, BVH.
+- Active universe excludes: BSR, DGC, VPL.
+- Benchmark can proceed: true.
 - Fetched tickers: 30/30.
-- Usable tickers: 29/30.
+- Usable tickers: 30/30.
 - Usable indices: 6/6.
-- Missing tickers: VPL.
+- Missing tickers: none.
 - Confirmed listing-date tickers: ACB, BID, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB.
-- Tickers needing listing-date verification: DGC, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
-- Extra user-provided symbols outside frozen universe: BSR.
+- Tickers needing listing-date verification: BCM, BVH, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE.
+- Extra user-provided symbols outside frozen universe: BSR, DGC, VPL.
 - VNINDEX usable: true.
 - VN30 index usable: true.
 - Training period: `2015-01-01 to 2024-12-31`.
@@ -23,16 +29,17 @@
 
 ## Decision
 
-Benchmark must not proceed yet: usable_tickers=29/30.
+Benchmark may proceed later.
 
 ## Per-Ticker Actual Timestamps
 
 | ticker | first datetime | last datetime |
 |---|---|---|
 | `ACB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `BCM` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `BID` | 2023-09-11 10:00:00 | 2026-05-14 00:00:00 |
+| `BVH` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `CTG` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
-| `DGC` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `FPT` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `GAS` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `GVR` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
@@ -57,7 +64,6 @@ Benchmark must not proceed yet: usable_tickers=29/30.
 | `VJC` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `VNM` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `VPB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
-| `VPL` | 2025-08-27 00:00:00 | 2026-05-15 00:00:00 |
 | `VRE` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 
 ## Effective Starts
@@ -65,9 +71,10 @@ Benchmark must not proceed yet: usable_tickers=29/30.
 | ticker | effective_start |
 |---|---|
 | `ACB` | 2015-01-01 |
+| `BCM` | 2015-01-01 |
 | `BID` | 2015-01-01 |
+| `BVH` | 2015-01-01 |
 | `CTG` | 2015-01-01 |
-| `DGC` | 2015-01-01 |
 | `FPT` | 2015-01-01 |
 | `GAS` | 2015-01-01 |
 | `GVR` | 2018-03-21 |
@@ -92,7 +99,6 @@ Benchmark must not proceed yet: usable_tickers=29/30.
 | `VJC` | 2015-01-01 |
 | `VNM` | 2015-01-01 |
 | `VPB` | 2015-01-01 |
-| `VPL` | 2015-01-01 |
 | `VRE` | 2015-01-01 |
 
 ## Index Usability

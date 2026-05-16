@@ -16,6 +16,7 @@ STOCK_VALIDATION = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015" / "v
 RESET_MANIFEST = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015_reset" / "reset_manifest.json"
 EFFECTIVE_START = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015" / "effective_start" / "vn30_effective_start.csv"
 RECONCILIATION = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015" / "reconciliation" / "vn30_listing_date_reconciliation.csv"
+UNIVERSE_PATH = REPO_ROOT / "configs" / "universes" / "vn30_constituents_frozen.csv"
 REPORT_ROOT = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015_benchmark_readiness"
 JSON_PATH = REPORT_ROOT / "vn30_2015_benchmark_readiness_manifest.json"
 MD_PATH = REPORT_ROOT / "vn30_2015_benchmark_readiness_report.md"
@@ -45,6 +46,8 @@ def main() -> int:
     indices = read_csv_rows(INDEX_VALIDATION)
     effective_rows = read_csv_rows(EFFECTIVE_START)
     reconciliation_rows = read_csv_rows(RECONCILIATION)
+    universe_rows = read_csv_rows(UNIVERSE_PATH)
+    active_tickers = [row.get("ticker", "") for row in universe_rows if row.get("ticker")]
     usable_stocks = [row for row in stocks if row.get("usable") == "true"]
     missing_tickers = [row.get("ticker", "") for row in stocks if row.get("usable") != "true"]
     index_by_code = {row.get("index_code", ""): row for row in indices}
@@ -73,6 +76,13 @@ def main() -> int:
     actual_latest_any = timestamp_max([row.get("last_datetime", "") for row in stocks if row.get("last_datetime")])
     common_latest_usable = timestamp_min([row.get("last_datetime", "") for row in usable_stocks])
     payload: dict[str, Any] = {
+        "active_universe_name": "VN30 January 2025 review universe",
+        "active_universe_source": "HOSE January 2025 VN30 review",
+        "active_universe_effective_period": "03/02/2025 to 01/08/2025",
+        "active_universe_count": len(active_tickers),
+        "active_universe_tickers": active_tickers,
+        "active_universe_includes": ["BCM", "BVH"],
+        "active_universe_excludes": ["BSR", "DGC", "VPL"],
         "all_30_tickers_fetched": len(fetched_stocks) == 30,
         "all_30_tickers_usable": len(usable_stocks) == 30,
         "usable_ticker_count": len(usable_stocks),
@@ -113,6 +123,12 @@ def main() -> int:
     lines = [
         "# VN30 Hourly 2015 Benchmark Readiness",
         "",
+        "- Active universe: VN30 January 2025 review universe.",
+        "- Active universe source: HOSE January 2025 VN30 review.",
+        "- Active universe effective period: 03/02/2025 to 01/08/2025.",
+        f"- Active universe count: {len(active_tickers)}.",
+        "- Active universe includes: BCM, BVH.",
+        "- Active universe excludes: BSR, DGC, VPL.",
         f"- Benchmark can proceed: {str(benchmark_ready).lower()}.",
         f"- Fetched tickers: {len(fetched_stocks)}/30.",
         f"- Usable tickers: {len(usable_stocks)}/30.",

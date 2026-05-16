@@ -1,14 +1,15 @@
 # VN30 2015 Effective Starts
 
 - Rule: `effective_start(ticker) = max(2015-01-01, first_trading_date)`.
-- Frozen tickers needing listing-date verification: DGC, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
+- Frozen tickers needing listing-date verification: BCM, BVH, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE.
 
 | ticker | first_trading_date | effective_start | reason | needs_verification |
 |---|---|---|---|---:|
 | `ACB` | 2006-11-21 | 2015-01-01 | `listed_before_2015_use_2015_start` | no |
+| `BCM` |  | 2015-01-01 | `missing_first_trading_date_fallback_to_2015_or_provider_first_timestamp` | yes |
 | `BID` | 2014-01-24 | 2015-01-01 | `listed_before_2015_use_2015_start` | no |
+| `BVH` |  | 2015-01-01 | `missing_first_trading_date_fallback_to_2015_or_provider_first_timestamp` | yes |
 | `CTG` | 2009-07-16 | 2015-01-01 | `listed_before_2015_use_2015_start` | no |
-| `DGC` |  | 2015-01-01 | `missing_first_trading_date_fallback_to_2015_or_provider_first_timestamp` | yes |
 | `FPT` | 2006-12-13 | 2015-01-01 | `listed_before_2015_use_2015_start` | no |
 | `GAS` | 2012-05-21 | 2015-01-01 | `listed_before_2015_use_2015_start` | no |
 | `GVR` | 2018-03-21 | 2018-03-21 | `listed_after_2015_use_first_trading_date` | no |
@@ -33,5 +34,4 @@
 | `VJC` |  | 2015-01-01 | `missing_first_trading_date_fallback_to_2015_or_provider_first_timestamp` | yes |
 | `VNM` |  | 2015-01-01 | `missing_first_trading_date_fallback_to_2015_or_provider_first_timestamp` | yes |
 | `VPB` |  | 2015-01-01 | `missing_first_trading_date_fallback_to_2015_or_provider_first_timestamp` | yes |
-| `VPL` |  | 2015-01-01 | `missing_first_trading_date_fallback_to_2015_or_provider_first_timestamp` | yes |
 | `VRE` |  | 2015-01-01 | `missing_first_trading_date_fallback_to_2015_or_provider_first_timestamp` | yes |

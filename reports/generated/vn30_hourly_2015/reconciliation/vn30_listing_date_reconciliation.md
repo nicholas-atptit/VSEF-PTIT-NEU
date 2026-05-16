@@ -1,20 +1,22 @@
 # VN30 Listing-Date Reconciliation
 
 - Frozen universe ticker count: 30.
-- Listing metadata ticker count: 31.
+- Listing metadata ticker count: 33.
 - Tickers with confirmed listing dates: 18.
 - Tickers needing verification: 12.
-- User-provided tickers not in frozen universe: BSR.
-- Frozen-universe tickers missing from user-provided table: DGC, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
+- User-provided tickers not in frozen universe: BSR, DGC, VPL.
+- Frozen-universe tickers missing from user-provided table: BCM, BVH, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE.
 - Active universe changed: no.
 
 | ticker | status | first_trading_date | source_note | in_frozen_universe |
 |---|---|---|---|---:|
 | `ACB` | `confirmed_listing_date` | 2006-11-21 | `user_provided` | true |
+| `BCM` | `needs_verification` |  | `needs_verification` | true |
 | `BID` | `confirmed_listing_date` | 2014-01-24 | `user_provided` | true |
 | `BSR` | `extra_user_provided_symbol` | 2018-03-01 | `user_provided` | false |
+| `BVH` | `needs_verification` |  | `needs_verification` | true |
 | `CTG` | `confirmed_listing_date` | 2009-07-16 | `user_provided` | true |
-| `DGC` | `needs_verification` |  | `needs_verification` | true |
+| `DGC` | `extra_user_provided_symbol` |  | `needs_verification` | false |
 | `FPT` | `confirmed_listing_date` | 2006-12-13 | `user_provided` | true |
 | `GAS` | `confirmed_listing_date` | 2012-05-21 | `user_provided` | true |
 | `GVR` | `confirmed_listing_date` | 2018-03-21 | `user_provided` | true |
@@ -39,5 +41,5 @@
 | `VJC` | `needs_verification` |  | `needs_verification` | true |
 | `VNM` | `needs_verification` |  | `needs_verification` | true |
 | `VPB` | `needs_verification` |  | `needs_verification` | true |
-| `VPL` | `needs_verification` |  | `needs_verification` | true |
+| `VPL` | `extra_user_provided_symbol` |  | `needs_verification` | false |
 | `VRE` | `needs_verification` |  | `needs_verification` | true |

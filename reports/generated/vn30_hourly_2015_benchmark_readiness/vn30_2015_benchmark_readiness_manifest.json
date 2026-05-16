@@ -1,11 +1,54 @@
 {
-  "all_30_tickers_fetched": true,
-  "all_30_tickers_usable": false,
-  "usable_ticker_count": 29,
-  "fetched_ticker_count": 30,
-  "missing_tickers": [
+  "active_universe_name": "VN30 January 2025 review universe",
+  "active_universe_source": "HOSE January 2025 VN30 review",
+  "active_universe_effective_period": "03/02/2025 to 01/08/2025",
+  "active_universe_count": 30,
+  "active_universe_tickers": [
+    "ACB",
+    "BCM",
+    "BID",
+    "BVH",
+    "CTG",
+    "FPT",
+    "GAS",
+    "GVR",
+    "HDB",
+    "HPG",
+    "LPB",
+    "MBB",
+    "MSN",
+    "MWG",
+    "PLX",
+    "SAB",
+    "SHB",
+    "SSB",
+    "SSI",
+    "STB",
+    "TCB",
+    "TPB",
+    "VCB",
+    "VHM",
+    "VIB",
+    "VIC",
+    "VJC",
+    "VNM",
+    "VPB",
+    "VRE"
+  ],
+  "active_universe_includes": [
+    "BCM",
+    "BVH"
+  ],
+  "active_universe_excludes": [
+    "BSR",
+    "DGC",
     "VPL"
   ],
+  "all_30_tickers_fetched": true,
+  "all_30_tickers_usable": true,
+  "usable_ticker_count": 30,
+  "fetched_ticker_count": 30,
+  "missing_tickers": [],
   "confirmed_listing_date_tickers": [
     "ACB",
     "BID",
@@ -27,7 +70,8 @@
     "STB"
   ],
   "needs_listing_date_verification_tickers": [
-    "DGC",
+    "BCM",
+    "BVH",
     "TCB",
     "TPB",
     "VCB",
@@ -37,17 +81,19 @@
     "VJC",
     "VNM",
     "VPB",
-    "VPL",
     "VRE"
   ],
   "extra_user_provided_symbols": [
-    "BSR"
+    "BSR",
+    "DGC",
+    "VPL"
   ],
   "effective_start_by_ticker": {
     "ACB": "2015-01-01",
+    "BCM": "2015-01-01",
     "BID": "2015-01-01",
+    "BVH": "2015-01-01",
     "CTG": "2015-01-01",
-    "DGC": "2015-01-01",
     "FPT": "2015-01-01",
     "GAS": "2015-01-01",
     "GVR": "2018-03-21",
@@ -72,7 +118,6 @@
     "VJC": "2015-01-01",
     "VNM": "2015-01-01",
     "VPB": "2015-01-01",
-    "VPL": "2015-01-01",
     "VRE": "2015-01-01"
   },
   "vnindex_usable": true,
@@ -86,9 +131,10 @@
   },
   "actual_first_timestamp_by_ticker": {
     "ACB": "2023-09-11 10:00:00",
+    "BCM": "2023-09-11 10:00:00",
     "BID": "2023-09-11 10:00:00",
+    "BVH": "2023-09-11 10:00:00",
     "CTG": "2023-09-11 10:00:00",
-    "DGC": "2023-09-11 10:00:00",
     "FPT": "2023-09-11 10:00:00",
     "GAS": "2023-09-11 10:00:00",
     "GVR": "2023-09-11 10:00:00",
@@ -113,14 +159,14 @@
     "VJC": "2023-09-11 10:00:00",
     "VNM": "2023-09-11 10:00:00",
     "VPB": "2023-09-11 10:00:00",
-    "VPL": "2025-08-27 00:00:00",
     "VRE": "2023-09-11 10:00:00"
   },
   "actual_last_timestamp_by_ticker": {
     "ACB": "2026-05-15 00:00:00",
+    "BCM": "2026-05-15 00:00:00",
     "BID": "2026-05-14 00:00:00",
+    "BVH": "2026-05-15 00:00:00",
     "CTG": "2026-05-15 00:00:00",
-    "DGC": "2026-05-15 00:00:00",
     "FPT": "2026-05-15 00:00:00",
     "GAS": "2026-05-15 00:00:00",
     "GVR": "2026-05-15 00:00:00",
@@ -145,7 +191,6 @@
     "VJC": "2026-05-15 00:00:00",
     "VNM": "2026-05-15 00:00:00",
     "VPB": "2026-05-15 00:00:00",
-    "VPL": "2026-05-15 00:00:00",
     "VRE": "2026-05-15 00:00:00"
   },
   "training_period": "2015-01-01 to 2024-12-31",
@@ -154,11 +199,9 @@
   "actual_data_start_any": "2023-09-11 10:00:00",
   "actual_latest_data_timestamp": "2026-05-15 00:00:00",
   "common_latest_usable_data_timestamp": "2026-05-14 00:00:00",
-  "benchmark_can_proceed": false,
-  "benchmark_command_later": "",
-  "benchmark_not_ready_reasons": [
-    "usable_tickers=29/30"
-  ],
+  "benchmark_can_proceed": true,
+  "benchmark_command_later": "<repo-approved-venv-python> scripts\\research\\run_vn30_hourly_benchmark_2015_from_gateway.py",
+  "benchmark_not_ready_reasons": [],
   "benchmark_run": false,
   "model_training_run": false,
   "paper_or_docx_generated": false,
