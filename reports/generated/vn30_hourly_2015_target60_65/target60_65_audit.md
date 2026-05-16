@@ -1,0 +1,34 @@
+# VN30 Hourly 2015 - Target 60/65 Audit
+
+- Generated: `2026-05-16T21:31:54+00:00`.
+- Audit: 11 pass, 3 warn, 0 fail.
+
+## Audit Results
+
+| check | status | severity | details |
+| --- | --- | --- | --- |
+| baseline_dir_exists | PASS | info | outputs/vn30_hourly_2015_target60_baseline_v2 |
+| final_dir_exists | PASS | info | outputs/vn30_hourly_2015_target65_final_v2 |
+| baseline_manifest_exists | PASS | info | manifest present |
+| final_manifest_exists | PASS | info | manifest present |
+| no_daily_data | PASS | info | hourly only by design |
+| no_resampling | PASS | info | no resampling by design |
+| all_30_tickers_baseline | PASS | info | all 30 tickers included by design |
+| universe_unchanged | PASS | info | VN30 Jan 2025 unchanged |
+| thresholds_on_validation | PASS | info | thresholds selected on 2024 validation only |
+| final_eval_scoring_only | PASS | info | final eval used only for scoring |
+| baseline_60_pass | WARN | warn | Best global: 55.20%, Best threshold: 56.76% |
+| final_65_global_pass | WARN | warn | Best global: 56.76% |
+| final_65_coverage_qualified_pass | WARN | warn | Coverage-qualified candidates: 0 |
+| claim_level | PASS | info | exploratory |
+
+## Summary
+
+- Baseline >=60: FAIL (best global: 55.20%)
+- Final >=65 global: FAIL (best: 56.76%)
+- Final >=65 coverage-qualified: FAIL
+- Claim level: exploratory
+
+## Boundary
+
+- No trading-readiness, profitability, or live deployment claim.
