@@ -3,29 +3,29 @@ ACB,data/market_cache/vnstock_data/vn30/hourly_2015/ACB.csv,true,1497,2023-09-11
 BID,data/market_cache/vnstock_data/vn30/hourly_2015/BID.csv,true,1455,2023-09-11 10:00:00,2026-05-14 00:00:00,1321,134,true,0,true,true,true,true,true,true,
 CTG,data/market_cache/vnstock_data/vn30/hourly_2015/CTG.csv,true,1440,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,119,true,0,true,true,true,true,true,true,
 DGC,data/market_cache/vnstock_data/vn30/hourly_2015/DGC.csv,true,1435,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,114,true,0,true,true,true,true,true,true,
-FPT,data/market_cache/vnstock_data/vn30/hourly_2015/FPT.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-GAS,data/market_cache/vnstock_data/vn30/hourly_2015/GAS.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-GVR,data/market_cache/vnstock_data/vn30/hourly_2015/GVR.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-HDB,data/market_cache/vnstock_data/vn30/hourly_2015/HDB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-HPG,data/market_cache/vnstock_data/vn30/hourly_2015/HPG.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-LPB,data/market_cache/vnstock_data/vn30/hourly_2015/LPB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-MBB,data/market_cache/vnstock_data/vn30/hourly_2015/MBB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-MSN,data/market_cache/vnstock_data/vn30/hourly_2015/MSN.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-MWG,data/market_cache/vnstock_data/vn30/hourly_2015/MWG.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-PLX,data/market_cache/vnstock_data/vn30/hourly_2015/PLX.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-SAB,data/market_cache/vnstock_data/vn30/hourly_2015/SAB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-SHB,data/market_cache/vnstock_data/vn30/hourly_2015/SHB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-SSB,data/market_cache/vnstock_data/vn30/hourly_2015/SSB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-SSI,data/market_cache/vnstock_data/vn30/hourly_2015/SSI.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-STB,data/market_cache/vnstock_data/vn30/hourly_2015/STB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-TCB,data/market_cache/vnstock_data/vn30/hourly_2015/TCB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-TPB,data/market_cache/vnstock_data/vn30/hourly_2015/TPB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-VCB,data/market_cache/vnstock_data/vn30/hourly_2015/VCB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-VHM,data/market_cache/vnstock_data/vn30/hourly_2015/VHM.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-VIB,data/market_cache/vnstock_data/vn30/hourly_2015/VIB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-VIC,data/market_cache/vnstock_data/vn30/hourly_2015/VIC.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-VJC,data/market_cache/vnstock_data/vn30/hourly_2015/VJC.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-VNM,data/market_cache/vnstock_data/vn30/hourly_2015/VNM.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-VPB,data/market_cache/vnstock_data/vn30/hourly_2015/VPB.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-VPL,data/market_cache/vnstock_data/vn30/hourly_2015/VPL.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
-VRE,data/market_cache/vnstock_data/vn30/hourly_2015/VRE.csv,false,0,,,0,0,false,,false,false,false,false,false,false,cache_file_missing
+FPT,data/market_cache/vnstock_data/vn30/hourly_2015/FPT.csv,true,1449,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,128,true,0,true,true,true,true,true,true,
+GAS,data/market_cache/vnstock_data/vn30/hourly_2015/GAS.csv,true,1456,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,135,true,0,true,true,true,true,true,true,
+GVR,data/market_cache/vnstock_data/vn30/hourly_2015/GVR.csv,true,1456,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,135,true,0,true,true,true,true,true,true,
+HDB,data/market_cache/vnstock_data/vn30/hourly_2015/HDB.csv,true,1439,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,118,true,0,true,true,true,true,true,true,
+HPG,data/market_cache/vnstock_data/vn30/hourly_2015/HPG.csv,true,1592,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,271,true,0,true,true,true,true,true,true,
+LPB,data/market_cache/vnstock_data/vn30/hourly_2015/LPB.csv,true,1590,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,269,true,0,true,true,true,true,true,true,
+MBB,data/market_cache/vnstock_data/vn30/hourly_2015/MBB.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,
+MSN,data/market_cache/vnstock_data/vn30/hourly_2015/MSN.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,
+MWG,data/market_cache/vnstock_data/vn30/hourly_2015/MWG.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,
+PLX,data/market_cache/vnstock_data/vn30/hourly_2015/PLX.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,
+SAB,data/market_cache/vnstock_data/vn30/hourly_2015/SAB.csv,true,1421,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,100,true,0,true,true,true,true,true,true,
+SHB,data/market_cache/vnstock_data/vn30/hourly_2015/SHB.csv,true,1620,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,299,true,0,true,true,true,true,true,true,
+SSB,data/market_cache/vnstock_data/vn30/hourly_2015/SSB.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,
+SSI,data/market_cache/vnstock_data/vn30/hourly_2015/SSI.csv,true,1446,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,125,true,0,true,true,true,true,true,true,
+STB,data/market_cache/vnstock_data/vn30/hourly_2015/STB.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,
+TCB,data/market_cache/vnstock_data/vn30/hourly_2015/TCB.csv,true,1456,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,135,true,0,true,true,true,true,true,true,
+TPB,data/market_cache/vnstock_data/vn30/hourly_2015/TPB.csv,true,1456,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,135,true,0,true,true,true,true,true,true,
+VCB,data/market_cache/vnstock_data/vn30/hourly_2015/VCB.csv,true,1456,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,135,true,0,true,true,true,true,true,true,
+VHM,data/market_cache/vnstock_data/vn30/hourly_2015/VHM.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,
+VIB,data/market_cache/vnstock_data/vn30/hourly_2015/VIB.csv,true,1602,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,281,true,0,true,true,true,true,true,true,
+VIC,data/market_cache/vnstock_data/vn30/hourly_2015/VIC.csv,true,1448,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,127,true,0,true,true,true,true,true,true,
+VJC,data/market_cache/vnstock_data/vn30/hourly_2015/VJC.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,
+VNM,data/market_cache/vnstock_data/vn30/hourly_2015/VNM.csv,true,1456,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,135,true,0,true,true,true,true,true,true,
+VPB,data/market_cache/vnstock_data/vn30/hourly_2015/VPB.csv,true,1589,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,268,true,0,true,true,true,true,true,true,
+VPL,data/market_cache/vnstock_data/vn30/hourly_2015/VPL.csv,true,176,2025-08-27 00:00:00,2026-05-15 00:00:00,0,176,true,0,true,true,true,true,true,false,training_rows_below_1000
+VRE,data/market_cache/vnstock_data/vn30/hourly_2015/VRE.csv,true,1497,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,176,true,0,true,true,true,true,true,true,

@@ -1,16 +1,42 @@
-# VN30 Stock Hourly 2015 Listing-Aware Reverse Gateway Fetch Summary
+# VN30 Stock Hourly 2015 Adaptive Reverse Gateway Fetch Summary
 
 - Provider path: `src.data.providers.vn_price_gateway.fetch_price_history`.
+- Direction: reverse from provider-current/latest available timestamp to effective start.
 - Effective start rule: `max(2015-01-01, first_trading_date)`.
-- Direction: reverse, provider-current/latest available timestamp back to effective start.
+- Chunk strategy: yearly first, then quarterly/monthly/5-day/1-day only when broader chunks fail.
 - Frequency: `1H` only.
 - Daily data used: no.
 - Resampling used: no.
 
-| ticker | effective_start | fetched | rows | first | last | stopped_by_runtime_cap | stopped_reason |
-|---|---|---:|---:|---|---|---:|---|
-| `ACB` | 2015-01-01 | true | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | true | `max_runtime_seconds=14400` |
-
-## Resume Commands
-
-- `ACB`: `<repo-approved-venv-python> scripts\research\fetch_vn30_stocks_hourly_gateway_2015.py --ticker ACB --direction reverse --start 2015-01-01 --end auto --year-first --monthly-fallback --daily-fallback --resume --max-runtime-seconds 14400`
+| ticker | effective_start | rows | first | last | train_rows | eval_rows | usable_candidate | skipped | chunks_attempted | stopped_by_runtime_cap |
+|---|---|---:|---|---|---:|---:|---:|---:|---:|---:|
+| `ACB` | 2015-01-01 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | true | 0 | false |
+| `BID` | 2015-01-01 | 1455 | 2023-09-11 10:00:00 | 2026-05-14 00:00:00 | 1321 | 134 | true | true | 0 | false |
+| `CTG` | 2015-01-01 | 1440 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 119 | true | true | 0 | false |
+| `DGC` | 2015-01-01 | 1435 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 114 | true | true | 0 | false |
+| `FPT` | 2015-01-01 | 1449 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 128 | true | true | 0 | false |
+| `GAS` | 2015-01-01 | 1456 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 135 | true | true | 0 | false |
+| `GVR` | 2018-03-21 | 1456 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 135 | true | false | 9 | false |
+| `HDB` | 2018-01-05 | 1439 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 118 | true | false | 9 | false |
+| `HPG` | 2015-01-01 | 1592 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 271 | true | false | 12 | false |
+| `LPB` | 2017-10-05 | 1590 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 269 | true | false | 10 | false |
+| `MBB` | 2015-01-01 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | false | 12 | false |
+| `MSN` | 2015-01-01 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | false | 12 | false |
+| `MWG` | 2015-01-01 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | false | 12 | false |
+| `PLX` | 2017-04-21 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | false | 10 | false |
+| `SAB` | 2016-12-06 | 1421 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 100 | true | false | 11 | false |
+| `SHB` | 2015-01-01 | 1620 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 299 | true | false | 12 | false |
+| `SSB` | 2021-03-24 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | false | 6 | false |
+| `SSI` | 2015-01-01 | 1446 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 125 | true | false | 12 | false |
+| `STB` | 2015-01-01 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | false | 12 | false |
+| `TCB` | 2015-01-01 | 1456 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 135 | true | false | 12 | false |
+| `TPB` | 2015-01-01 | 1456 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 135 | true | false | 12 | false |
+| `VCB` | 2015-01-01 | 1456 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 135 | true | false | 12 | false |
+| `VHM` | 2015-01-01 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | false | 12 | false |
+| `VIB` | 2015-01-01 | 1602 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 281 | true | false | 12 | false |
+| `VIC` | 2015-01-01 | 1448 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 127 | true | false | 12 | false |
+| `VJC` | 2015-01-01 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | false | 12 | false |
+| `VNM` | 2015-01-01 | 1456 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 135 | true | false | 12 | false |
+| `VPB` | 2015-01-01 | 1589 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 268 | true | false | 12 | false |
+| `VPL` | 2015-01-01 | 176 | 2025-08-27 00:00:00 | 2026-05-15 00:00:00 | 0 | 176 | false | false | 12 | false |
+| `VRE` | 2015-01-01 | 1497 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 | 1321 | 176 | true | false | 12 | false |

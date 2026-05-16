@@ -43,3 +43,11 @@ Do not use `VN30INDEX`; use `VN30`. Do not use `VNXALL` under the current provid
 7. Build readiness only with `scripts/research/build_vn30_2015_benchmark_readiness_manifest.py`.
 
 Benchmarking can proceed only after the readiness manifest says yes. This plan does not run benchmark, model training, confidence sweeps, regime diagnostics, cost/slippage diagnostics, paper generation, or DOCX generation.
+
+## Efficient Reverse Fetch Strategy
+
+The active fetch implementation uses provider-current/latest available date as the upper bound and walks backward to each symbol's effective start. For stocks, `effective_start(ticker) = max(2015-01-01, first_trading_date)`, so pre-2015 listings start at `2015-01-01` and later listings start at their first trading date.
+
+Fetchers attempt large chunks first. The default chunk is yearly; if a yearly chunk fails, it is split into quarterly chunks, then monthly chunks, then 5-day chunks, with 1-day chunks only as the final fallback. Empty large chunks are recorded as completed instead of expanding into tiny scans.
+
+Already usable symbols are skipped unless `--force` is passed. Resume state is checkpointed per symbol under `reports/generated/vn30_hourly_2015/fetch_state/`, so reruns continue from the next unfinished chunk rather than restarting the symbol. Benchmarking remains blocked until the readiness manifest reports benchmark readiness `yes`.

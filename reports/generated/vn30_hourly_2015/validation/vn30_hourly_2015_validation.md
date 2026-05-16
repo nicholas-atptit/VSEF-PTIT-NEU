@@ -1,6 +1,6 @@
 # VN30 Stock Hourly 2015 Gateway Validation
 
-- Usable tickers: 4/30.
+- Usable tickers: 29/30.
 - Minimum training rows: 1000.
 - Minimum evaluation rows: 100.
 - Daily data used: no.
@@ -12,29 +12,29 @@
 | `BID` | true | 1455 | 1321 | 134 | 2023-09-11 10:00:00 | 2026-05-14 00:00:00 |  |
 | `CTG` | true | 1440 | 1321 | 119 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
 | `DGC` | true | 1435 | 1321 | 114 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
-| `FPT` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `GAS` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `GVR` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `HDB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `HPG` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `LPB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `MBB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `MSN` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `MWG` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `PLX` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `SAB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `SHB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `SSB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `SSI` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `STB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `TCB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `TPB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `VCB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `VHM` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `VIB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `VIC` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `VJC` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `VNM` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `VPB` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `VPL` | false | 0 | 0 | 0 |  |  | cache_file_missing |
-| `VRE` | false | 0 | 0 | 0 |  |  | cache_file_missing |
+| `FPT` | true | 1449 | 1321 | 128 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `GAS` | true | 1456 | 1321 | 135 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `GVR` | true | 1456 | 1321 | 135 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `HDB` | true | 1439 | 1321 | 118 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `HPG` | true | 1592 | 1321 | 271 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `LPB` | true | 1590 | 1321 | 269 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `MBB` | true | 1497 | 1321 | 176 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `MSN` | true | 1497 | 1321 | 176 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `MWG` | true | 1497 | 1321 | 176 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `PLX` | true | 1497 | 1321 | 176 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `SAB` | true | 1421 | 1321 | 100 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `SHB` | true | 1620 | 1321 | 299 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `SSB` | true | 1497 | 1321 | 176 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `SSI` | true | 1446 | 1321 | 125 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `STB` | true | 1497 | 1321 | 176 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `TCB` | true | 1456 | 1321 | 135 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `TPB` | true | 1456 | 1321 | 135 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `VCB` | true | 1456 | 1321 | 135 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `VHM` | true | 1497 | 1321 | 176 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `VIB` | true | 1602 | 1321 | 281 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `VIC` | true | 1448 | 1321 | 127 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `VJC` | true | 1497 | 1321 | 176 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `VNM` | true | 1456 | 1321 | 135 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `VPB` | true | 1589 | 1321 | 268 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+| `VPL` | false | 176 | 0 | 176 | 2025-08-27 00:00:00 | 2026-05-15 00:00:00 | training_rows_below_1000 |
+| `VRE` | true | 1497 | 1321 | 176 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |

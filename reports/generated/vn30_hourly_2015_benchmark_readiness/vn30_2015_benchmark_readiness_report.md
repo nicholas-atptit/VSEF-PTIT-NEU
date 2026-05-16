@@ -1,10 +1,10 @@
 # VN30 Hourly 2015 Benchmark Readiness
 
 - Benchmark can proceed: false.
-- Fetched tickers: 4/30.
-- Usable tickers: 4/30.
+- Fetched tickers: 30/30.
+- Usable tickers: 29/30.
 - Usable indices: 6/6.
-- Missing tickers: FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
+- Missing tickers: VPL.
 - Confirmed listing-date tickers: ACB, BID, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB.
 - Tickers needing listing-date verification: DGC, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VPL, VRE.
 - Extra user-provided symbols outside frozen universe: BSR.
@@ -23,7 +23,7 @@
 
 ## Decision
 
-Benchmark must not proceed yet: usable_tickers=4/30.
+Benchmark must not proceed yet: usable_tickers=29/30.
 
 ## Per-Ticker Actual Timestamps
 
@@ -33,32 +33,32 @@ Benchmark must not proceed yet: usable_tickers=4/30.
 | `BID` | 2023-09-11 10:00:00 | 2026-05-14 00:00:00 |
 | `CTG` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 | `DGC` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
-| `FPT` |  |  |
-| `GAS` |  |  |
-| `GVR` |  |  |
-| `HDB` |  |  |
-| `HPG` |  |  |
-| `LPB` |  |  |
-| `MBB` |  |  |
-| `MSN` |  |  |
-| `MWG` |  |  |
-| `PLX` |  |  |
-| `SAB` |  |  |
-| `SHB` |  |  |
-| `SSB` |  |  |
-| `SSI` |  |  |
-| `STB` |  |  |
-| `TCB` |  |  |
-| `TPB` |  |  |
-| `VCB` |  |  |
-| `VHM` |  |  |
-| `VIB` |  |  |
-| `VIC` |  |  |
-| `VJC` |  |  |
-| `VNM` |  |  |
-| `VPB` |  |  |
-| `VPL` |  |  |
-| `VRE` |  |  |
+| `FPT` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `GAS` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `GVR` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `HDB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `HPG` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `LPB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `MBB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `MSN` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `MWG` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `PLX` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `SAB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `SHB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `SSB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `SSI` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `STB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `TCB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `TPB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `VCB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `VHM` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `VIB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `VIC` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `VJC` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `VNM` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `VPB` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
+| `VPL` | 2025-08-27 00:00:00 | 2026-05-15 00:00:00 |
+| `VRE` | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |
 
 ## Effective Starts
 
