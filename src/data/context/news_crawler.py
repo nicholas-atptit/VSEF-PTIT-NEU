@@ -22,11 +22,6 @@ from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-try:  # pragma: no cover - optional legacy provider
-    from vnstock import Vnstock as Vnstock
-except ImportError:  # pragma: no cover - environment dependent
-    Vnstock = None  # type: ignore[assignment]
-
 class CrawledDocument:
     """A single crawled document with metadata."""
     def __init__(
@@ -99,7 +94,7 @@ class NewsCrawler:
         provider_factory: Callable[[], Any] | None = None,
     ) -> None:
         self._semaphore = asyncio.Semaphore(concurrency)
-        self._provider_factory = provider_factory if provider_factory is not None else Vnstock
+        self._provider_factory = provider_factory
 
     async def crawl_ticker(self, ticker: str, count: int = 10, **kwargs) -> list[CrawledDocument]:
         """Crawl news for a specific ticker with strict timeout."""

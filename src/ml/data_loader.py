@@ -1588,7 +1588,7 @@ def build_macro_context_incremental(
     
     If incremental_update=True and output_path exists:
       - Preserve historical prefix (before 400 days ago)
-      - Recompute only last 400 days from vnstock API
+      - Recompute only last 400 days from vnstock_data API
       - Cost: O(400 days) vs O(6 years)
     
     Otherwise:
@@ -1691,7 +1691,7 @@ def build_foreign_flow_incremental(
     If incremental_update=True and output_path exists:
       - Load existing CSV
       - Preserve historical prefix (before 400 days ago)
-      - Recompute only last 400 days from vnstock API
+      - Recompute only last 400 days from vnstock_data API
       - Cost: O(400 days) vs O(6 years)
     
     Otherwise:

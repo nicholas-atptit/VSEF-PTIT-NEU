@@ -1,17 +1,17 @@
-from vnstock import Vnstock
+from vnstock_data import Listing
+
 
 def explore():
-    v = Vnstock()
-    s = v.stock(symbol='HPG')
-    print(f"🚀 Exploring v.stock('HPG'):\n{dir(s)}")
-    print(f"\n🚀 Exploring v.stock('HPG').listing:\n{dir(s.listing)}")
-    
+    listing = Listing(source="VCI")
+    print(f"Exploring vnstock_data Listing:\n{dir(listing)}")
+
     try:
-        info = s.listing.info()
-        print(f"\n🚀 s.listing.info() type: {type(info)}")
+        info = listing.all_symbols()
+        print(f"\nListing.all_symbols() type: {type(info)}")
         print(info)
     except Exception as e:
-        print(f"\n❌ s.listing.info() failed: {e}")
+        print(f"\nListing.all_symbols() failed: {e}")
+
 
 if __name__ == "__main__":
     explore()

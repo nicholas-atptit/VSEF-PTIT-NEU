@@ -1,27 +1,19 @@
-from vnstock import Vnstock
+from vnstock_data import Listing
 import pandas as pd
 
 try:
-    vn = Vnstock()
-    print("Vnstock initialized")
+    listing = Listing(source="VCI")
+    print("vnstock_data Listing initialized")
     
-    # List all attributes to find market/listing related ones
-    attrs = [a for a in dir(vn) if not a.startswith('_')]
-    print(f"Attributes: {attrs}")
+    attrs = [a for a in dir(listing) if not a.startswith('_')]
+    print(f"Listing attributes: {attrs}")
     
-    # Try stock-based listing
     try:
-        s = vn.stock(symbol="VN100", source="VCI")
-        print("Stock VN100 initialized")
-        s_attrs = [a for a in dir(s) if not a.startswith('_')]
-        print(f"Stock Attributes: {s_attrs}")
-        
-        if 'listing' in s_attrs:
-            print("Listing attribute found in Stock")
-            l_attrs = [a for a in dir(s.listing) if not a.startswith('_')]
-            print(f"Listing Attributes: {l_attrs}")
+        df = listing.symbols_by_group("VN100")
+        print("Listing.symbols_by_group('VN100') succeeded")
+        print(df.head())
     except Exception as e:
-        print(f"Stock VN100 failed: {e}")
+        print(f"Listing VN100 failed: {e}")
 
 except Exception as e:
-    print(f"Vnstock init failed: {e}")
+    print(f"vnstock_data Listing init failed: {e}")

@@ -147,3 +147,6 @@ The deterministic decision-diagnostic chain is implemented. Documentation invent
 - Update docs when schemas change.
 - Do not commit generated artifacts.
 - Archive stale docs instead of deleting them blindly.
+
+Dữ liệu được kết nối và truy xuất thông qua Vnstock - gói phần mềm Python phân tích thị trường chứng khoán Việt Nam. 
+(thinh-vu @ Github, Copyright (c) 2022-2026).
