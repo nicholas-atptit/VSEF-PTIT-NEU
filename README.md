@@ -1,152 +1,73 @@
-# VSEF - Vietnam Stock Evaluation and Forecasting Framework
+# VN Market Directional Benchmark Lab
 
-VSEF is a deterministic decision-diagnostic framework for Vietnamese stock market research. It produces forecast, scenario, risk, decision-lane, allocation, and routing diagnostics. It does not produce BUY or SELL recommendations.
+This repository preserves a VN market directional-benchmark research workspace. It focuses on reproducible evidence for directional classification and validation tracks, with explicit provider governance and archived generated artifacts.
 
-## Current Diagnostic Chain
+It does not make a trading, profitability, execution, or investment-recommendation claim.
 
-```text
-Quant Core
--> Scenario Evaluation Engine v1
--> Risk Governance Layer v1
--> Decision Lane v2
--> Portfolio Allocator v1
--> Phase 3 Router v1
-```
+## Current Structure
 
-- Quant Core: forecasts, consensus, model health, risk/regime/strategy diagnostics, and analysis packets.
-- Scenario Evaluation Engine v1: probability, dominance, uncertainty, and calibration diagnostics.
-- Risk Governance Layer v1: `risk_score`, `risk_level`, `risk_action`, confidence adjustment, and block/force-hold flags.
-- Decision Lane v2: enriched diagnostic candidates.
-- Portfolio Allocator v1: `allocation_candidate` or `no_allocation` with exposure and cash rules.
-- Phase 3 Router v1: `route_allocation_candidate`, `hold`, `reject`, or `no_candidate`.
+- `src/data/providers/` - canonical provider/API gateway and request contract.
+- `src/data/adapters/` - repository adapters around provider behavior and provenance.
+- `scripts/research/` - active benchmark, validation, audit, and provider-diagnostic scripts.
+- `scripts/legacy/` - preserved superseded scripts and older research utilities.
+- `tests/data/` - provider-policy and provider-contract checks.
+- `tests/ml/` - metric and benchmark helper checks.
+- `reports/` - active evidence indexes, cleanup reports, claim registers, and audit summaries.
+- `reports/generated/` - generated evidence outputs preserved after backup.
+- `data/`, `outputs/`, and `archive/generated_data_snapshots/` - tracked backup data/artifact paths managed with Git LFS where applicable.
 
-## Authority Boundary
+## Active Evidence Tracks
 
-Allowed outputs:
+- Supported-index directional benchmark.
+- VN30 daily 2015 benchmark and target-60 audit trail.
+- VN30 hourly available-window benchmark and data forensics.
+- VN30 hourly 2015 top-k ranking as a separate metric family.
+- Provider standardization and provider/API adapter enforcement.
 
-- forecast diagnostics
-- scenario diagnostics
-- risk diagnostics
-- diagnostic candidates
-- `allocation_candidate` / `no_allocation`
-- `route_allocation_candidate` / `hold` / `reject` / `no_candidate`
+Start with:
 
-Not allowed:
+- `reports/ACTIVE_EVIDENCE_INDEX.md`
+- `reports/ACTIVE_CODE_MAP.md`
+- `reports/RESEARCH_SCRIPT_STATUS.md`
+- `reports/REPO_CLEANUP_INVENTORY.md`
 
-- BUY recommendation
-- SELL recommendation
-- live execution
-- production trading authority
-- learned meta-model authority
+## Provider/API Boundary
 
-## Quick Start
+Normal fetch and benchmark code should use:
 
-Run from the repository root in PowerShell:
+- `src.data.providers.vn_price_gateway.fetch_price_history`
+- `src.data.providers.vn_provider_contract`
+
+Raw `vnstock` or `vnstock_data` imports are allowed only in approved adapter, probe, diagnostic, or test locations. The policy check is:
 
 ```powershell
+python scripts/check_provider_usage_policy.py
+```
+
+## Validation
+
+Quick repository checks:
+
+```powershell
+python scripts/check_repo_hygiene.py
 python scripts/check_runtime_preflight.py
+.venv\Scripts\python.exe scripts\check_runtime_preflight.py
+.venv\Scripts\python.exe scripts\check_provider_usage_policy.py
 ```
+
+Targeted tests:
 
 ```powershell
-python scripts/run_quant_core.py --preset smoke --run-mode research_core --enable-scenario-engine --enable-risk-governance --enable-portfolio-allocator --enable-phase3-router --output-dir artifacts/quant_core_router_smoke
+.venv\Scripts\python.exe -m pytest tests\data\test_provider_usage_policy.py -q
+.venv\Scripts\python.exe -m pytest tests\data\test_vn_price_gateway_contract.py -q
+.venv\Scripts\python.exe -m pytest tests\ml\test_directional_accuracy_metrics.py -q
 ```
 
-Generated artifacts under `artifacts/` must not be committed.
+These commands are validation only. They do not run benchmarks, fetch market data, train models, or generate paper/DOCX artifacts.
 
-## Validation Commands
+## Git Notes
 
-```powershell
-python -m compileall src/phase3_router
-pytest tests/phase3_router -q
-pytest tests/portfolio_allocator -q
-pytest tests/decision_lane -q
-pytest tests/risk_governance -q
-pytest tests/scenario -q
-pytest tests/quant_core -q
-```
-
-## Main Artifact Groups
-
-Base Quant Core:
-
-- `run_manifest.json`
-- `full_model_predictions.csv`
-- `forecast_summary.csv`
-- `model_consensus_summary.csv`
-- `model_health_summary.csv`
-- `analysis_packets.jsonl`
-- `decision_lane_candidates.csv`
-
-Scenario:
-
-- `scenario_probability.csv`
-- `scenario_dominance_summary.csv`
-- `scenario_uncertainty_summary.csv`
-- `scenario_calibration_summary.csv`
-
-Risk Governance:
-
-- `risk_governance_summary.csv`
-- `risk_adjusted_candidates.csv`
-- `risk_override_log.csv`
-
-Decision Lane:
-
-- `decision_lane_enriched_candidates.csv`
-
-Portfolio Allocator:
-
-- `portfolio_allocation.csv`
-- `portfolio_summary.csv`
-- `portfolio_risk_summary.csv`
-
-Router:
-
-- `router_decisions.csv`
-- `router_summary.csv`
-- `router_manifest.json`
-
-## Documentation Map
-
-- [docs/SYSTEM_OVERVIEW.md](docs/SYSTEM_OVERVIEW.md)
-- [docs/DECISION_DIAGNOSTIC_CHAIN.md](docs/DECISION_DIAGNOSTIC_CHAIN.md)
-- [docs/AUTHORITY_BOUNDARY.md](docs/AUTHORITY_BOUNDARY.md)
-- [docs/governance/PIPELINE_CONTRACTS.md](docs/governance/PIPELINE_CONTRACTS.md)
-- [docs/governance/QUANT_CORE_OUTPUT_SCHEMA.md](docs/governance/QUANT_CORE_OUTPUT_SCHEMA.md)
-- [docs/governance/RISK_GOVERNANCE_OUTPUT_SCHEMA.md](docs/governance/RISK_GOVERNANCE_OUTPUT_SCHEMA.md)
-- [docs/governance/PORTFOLIO_ALLOCATOR_OUTPUT_SCHEMA.md](docs/governance/PORTFOLIO_ALLOCATOR_OUTPUT_SCHEMA.md)
-- [docs/governance/PHASE3_ROUTER_OUTPUT_SCHEMA.md](docs/governance/PHASE3_ROUTER_OUTPUT_SCHEMA.md)
-- [docs/runbooks/RUN_FULL_DECISION_CHAIN_SMOKE.md](docs/runbooks/RUN_FULL_DECISION_CHAIN_SMOKE.md)
-- [docs/runbooks/TROUBLESHOOTING.md](docs/runbooks/TROUBLESHOOTING.md)
-- [docs/DOCS_INVENTORY.md](docs/DOCS_INVENTORY.md)
-- [docs/COMMAND_REGISTRY.md](docs/COMMAND_REGISTRY.md)
-- [docs/REPORTS_GOVERNANCE.md](docs/REPORTS_GOVERNANCE.md)
-- [docs/README.md](docs/README.md)
-
-## Repository Structure
-
-```text
-src/        Core framework packages and diagnostic layers
-scripts/    CLI entry points and local workflow runners
-tests/      Unit and smoke-style validation suites
-docs/       Active source of truth for architecture, schemas, runbooks, and roadmap
-reports/    Historical snapshots plus controlled remediation evidence
-artifacts/  Generated workflow outputs; do not commit
-```
-
-`docs/` contains the active source of truth. Most `reports/` content is historical snapshot material; controlled audit-remediation evidence under `reports/` is canonical only for remediation status and verification. See `docs/REPORTS_GOVERNANCE.md`.
-
-## Current Status
-
-The deterministic decision-diagnostic chain is implemented. Documentation inventory and legacy governance archive are normalized. Full smoke validation should be run locally before claiming end-to-end runtime readiness.
-
-## Development Rules
-
-- Keep diagnostics separate from recommendations.
-- Keep canonical artifacts stable.
-- Update docs when schemas change.
-- Do not commit generated artifacts.
-- Archive stale docs instead of deleting them blindly.
-
-Dữ liệu được kết nối và truy xuất thông qua Vnstock - gói phần mềm Python phân tích thị trường chứng khoán Việt Nam. 
-(thinh-vu @ Github, Copyright (c) 2022-2026).
+- Branch work should stay on the active research branch unless explicitly directed otherwise.
+- Tags are not created by default.
+- Do not use `git push --mirror` for normal branch publication.
+- Preserve `data/`, `outputs/`, `reports/generated/`, and `archive/generated_data_snapshots/`.
