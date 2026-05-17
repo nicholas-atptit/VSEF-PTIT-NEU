@@ -39,6 +39,7 @@ CONTENT_ALLOWLIST_PREFIXES = {
 }
 
 CONTENT_ALLOWLIST_FILES = {
+    "docs/USAGE.md": "documents exact approved local interpreter requested for repository usage.",
     "reports/VNSTOCK_AGENT_DATA_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
     "reports/VNSTOCK_AGENT_DATA_GUIDE_SUMMARY.md": "documents exact approved local provider interpreter for future agents.",
     "reports/VNSTOCK_PROVIDER_STANDARDIZATION_GUIDE.md": "documents exact approved local provider interpreter for future agents.",

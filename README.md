@@ -1,73 +1,100 @@
 # VN Market Directional Benchmark Lab
 
-This repository preserves a VN market directional-benchmark research workspace. It focuses on reproducible evidence for directional classification and validation tracks, with explicit provider governance and archived generated artifacts.
+A research repository for Vietnamese market directional forecasting benchmarks, provider-standardized OHLCV data access, evidence tracking, and claim governance.
 
-It does not make a trading, profitability, execution, or investment-recommendation claim.
+## What This Repo Is
 
-## Current Structure
+- A benchmark lab for stock and index directional forecasting experiments.
+- A provider gateway/API adapter layer for governed VN OHLCV access.
+- A data forensics and reproducibility workspace.
+- A stock/index directional research workspace with preserved evidence artifacts.
 
-- `src/data/providers/` - canonical provider/API gateway and request contract.
-- `src/data/adapters/` - repository adapters around provider behavior and provenance.
-- `scripts/research/` - active benchmark, validation, audit, and provider-diagnostic scripts.
-- `scripts/legacy/` - preserved superseded scripts and older research utilities.
-- `tests/data/` - provider-policy and provider-contract checks.
-- `tests/ml/` - metric and benchmark helper checks.
-- `reports/` - active evidence indexes, cleanup reports, claim registers, and audit summaries.
-- `reports/generated/` - generated evidence outputs preserved after backup.
-- `data/`, `outputs/`, and `archive/generated_data_snapshots/` - tracked backup data/artifact paths managed with Git LFS where applicable.
+## What This Repo Is Not
 
-## Active Evidence Tracks
+- Not a live trading system.
+- Not an investment recommendation engine.
+- Not a profitability guarantee.
+- Not a full 2015-start hourly stock benchmark.
+- Not the old VSEF project identity anymore.
 
-- Supported-index directional benchmark.
-- VN30 daily 2015 benchmark and target-60 audit trail.
-- VN30 hourly available-window benchmark and data forensics.
-- VN30 hourly 2015 top-k ranking as a separate metric family.
-- Provider standardization and provider/API adapter enforcement.
+## Active Tracks
+
+- Stock hourly available-window benchmark.
+- Stock daily 2015 benchmark.
+- Index directional benchmark.
+- Data forensics and provider diagnostics.
+- Top-k ranking as a separate metric family.
 
 Start with:
 
 - `reports/ACTIVE_EVIDENCE_INDEX.md`
 - `reports/ACTIVE_CODE_MAP.md`
-- `reports/RESEARCH_SCRIPT_STATUS.md`
 - `reports/REPO_CLEANUP_INVENTORY.md`
+- `reports/CODE_CLEANUP_CHANGES.md`
 
-## Provider/API Boundary
+## Claim Boundary
 
-Normal fetch and benchmark code should use:
+- Stock hourly available-window has baseline60 evidence, but final65 is not established.
+- Stock daily 2015 is 30/30 usable but below 60.
+- Index benchmark has exact pass60 results, separate from stock.
+- Top-k ranking is not overall directional accuracy.
+- No trading, profitability, live-deployment, or investment-recommendation claim is made.
 
-- `src.data.providers.vn_price_gateway.fetch_price_history`
-- `src.data.providers.vn_provider_contract`
+## Provider/API Adapter
 
-Raw `vnstock` or `vnstock_data` imports are allowed only in approved adapter, probe, diagnostic, or test locations. The policy check is:
+Normal fetch and benchmark code should go through:
 
-```powershell
-python scripts/check_provider_usage_policy.py
-```
+- `src/data/providers/vn_price_gateway.py`
+- `src/data/providers/vn_provider_contract.py`
+- `src/data/adapters/vnstock_adapter.py`
+- `scripts/check_provider_usage_policy.py`
+
+Raw `vnstock` or `vnstock_data` imports are allowed only in approved adapter, probe, diagnostic, or test locations.
+
+## Data And Artifact Policy
+
+- `data/`, `outputs/`, `reports/generated/`, and `archive/generated_data_snapshots/` are preserved.
+- Data and generated artifacts are tracked with Git LFS where applicable after the repository backup.
+- Do not delete data, output artifacts, market cache, raw fetch data, or archive snapshots.
+- Do not force-add secrets, raw `.env` files, credentials, tokens, virtual environments, or local caches.
 
 ## Validation
 
-Quick repository checks:
+Preferred task runner:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/dev_tasks.ps1 -Task validate-all
+```
+
+If `make` is available:
+
+```powershell
+make validate-all
+```
+
+Raw commands:
 
 ```powershell
 python scripts/check_repo_hygiene.py
 python scripts/check_runtime_preflight.py
-.venv\Scripts\python.exe scripts\check_runtime_preflight.py
-.venv\Scripts\python.exe scripts\check_provider_usage_policy.py
-```
-
-Targeted tests:
-
-```powershell
-.venv\Scripts\python.exe -m pytest tests\data\test_provider_usage_policy.py -q
-.venv\Scripts\python.exe -m pytest tests\data\test_vn_price_gateway_contract.py -q
-.venv\Scripts\python.exe -m pytest tests\ml\test_directional_accuracy_metrics.py -q
+<repo-approved-venv>\Scripts\python.exe scripts\check_runtime_preflight.py
+<repo-approved-venv>\Scripts\python.exe scripts\check_provider_usage_policy.py
+<repo-approved-venv>\Scripts\python.exe -m pytest tests\data\test_provider_usage_policy.py -q
+<repo-approved-venv>\Scripts\python.exe -m pytest tests\data\test_vn_price_gateway_contract.py -q
+<repo-approved-venv>\Scripts\python.exe -m pytest tests\ml\test_directional_accuracy_metrics.py -q
 ```
 
 These commands are validation only. They do not run benchmarks, fetch market data, train models, or generate paper/DOCX artifacts.
 
-## Git Notes
+## Development Rules
 
-- Branch work should stay on the active research branch unless explicitly directed otherwise.
-- Tags are not created by default.
-- Do not use `git push --mirror` for normal branch publication.
-- Preserve `data/`, `outputs/`, `reports/generated/`, and `archive/generated_data_snapshots/`.
+- No tags by default.
+- No `git push --mirror` for normal branch work.
+- No benchmark rerun without a written protocol.
+- No data fetch without a written protocol.
+- No final-label tuning.
+- No paper/DOCX generation unless explicitly requested.
+- No claim without artifact support.
+- Keep active research work on the current research branch unless explicitly directed otherwise.
+
+See `docs/USAGE.md` and `docs/RESEARCH_WORKFLOW.md` for operating details.
