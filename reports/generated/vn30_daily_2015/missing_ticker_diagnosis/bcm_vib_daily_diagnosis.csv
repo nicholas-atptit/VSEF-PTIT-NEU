@@ -1,3 +1,3 @@
-ticker,cache_file_exists,row_count,first_date,last_date,columns,provider_source,training_rows,validation_rows,final_eval_rows,reason_unusable,issue_type
-BCM,yes (after recovery),2026,2018-02-21,2026-05-15,"datetime,ticker,open,high,low,close,volume,provider,source,frequency",vnstock_data/KBS,1440,249,336,Gateway normalization rejected 7 rows with OHLCV consistency violations (high < max(open/close) or low > min(open/close)); fallback fetch with row filtering applied,provider data quality issue - 7 of 2033 rows had invalid OHLCV geometry
-VIB,yes (after recovery),2322,2017-01-09,2026-05-15,"datetime,ticker,open,high,low,close,volume,provider,source,frequency",vnstock_data/KBS,1736,249,336,Gateway normalization rejected 2 rows with OHLCV consistency violations (low > min(open/close)); fallback fetch with row filtering applied,provider data quality issue - 2 of 2324 rows had invalid OHLCV geometry
+version https://git-lfs.github.com/spec/v1
+oid sha256:3ee854236d4b2bad2d7910d3210720ffe04148bdfcde9728e9ac0afdf757c8e0
+size 907

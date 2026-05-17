@@ -1,2 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2026-01-07 11:00:00,5.3,5.3,5.3,5.3,236000,MDA,"At 2026-01-07 11:00:00, the stock MDA opened at 5.30 VND, reached a high of 5.30 VND, a low of 5.30 VND, and closed the hour at 5.30 VND with a trading volume of 236,000 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:0323038dd62c5364b715a01692796373f0b2a4064f454d280a7e6de854320b0b
+size 280

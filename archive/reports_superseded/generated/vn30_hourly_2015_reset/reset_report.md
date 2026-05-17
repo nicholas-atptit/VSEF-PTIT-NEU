@@ -1,26 +1,3 @@
-# VN30 Hourly 2015 Workspace Reset
-
-- Archive directory: `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845`
-- Raw data touched: false
-- Old cache removed: true
-- Old 2005/2006 generated artifacts removed: false
-
-| source | action | archive path | reason |
-|---|---|---|---|
-| `reports/generated/vn30_hourly_2005_2026` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_2005_2026` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `reports/generated/vn30_hourly_available_window` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_available_window` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `reports/generated/vn30_hourly_listing_aware` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_listing_aware` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `reports/generated/vn30_hourly_vnstock_fetch` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_vnstock_fetch` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `reports/generated/vn30_hourly_vnstock_full` | `skipped_missing` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_vnstock_full` | superseded generated report/output artifact from pre-2015 design |
-| `reports/generated/vn30_hourly_gateway` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_hourly_gateway` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `reports/generated/index_hourly_fetch` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/index_hourly_fetch` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `reports/generated/index_hourly_gateway` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/index_hourly_gateway` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `reports/generated/vn30_gateway_benchmark_readiness` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/reports/generated/vn30_gateway_benchmark_readiness` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `outputs/vn30_hourly_official_2005_2026_traincutoff` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_official_2005_2026_traincutoff` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `outputs/vn30_hourly_available_window_benchmark` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_available_window_benchmark` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `outputs/vn30_hourly_listing_aware_traincutoff` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_listing_aware_traincutoff` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `outputs/vn30_hourly_vnstock_full_2005_2026_traincutoff` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_vnstock_full_2005_2026_traincutoff` | superseded generated report/output artifact from pre-2015 design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `outputs/vn30_hourly_provider_available_traincutoff` | `skipped_missing` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/outputs/vn30_hourly_provider_available_traincutoff` | superseded generated report/output artifact from pre-2015 design |
-| `data/market_cache/vnstock_data/vn30/hourly_listing_aware` | `kept` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/data/market_cache/vnstock_data/vn30/hourly_listing_aware` | superseded normalized cache from pre-2015 VN30/index hourly design; archived copy created but removal denied by filesystem ACL: PermissionError |
-| `data/market_cache/vnstock_data/vn30/hourly_gateway` | `archived_removed` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/data/market_cache/vnstock_data/vn30/hourly_gateway` | superseded normalized cache from pre-2015 VN30/index hourly design |
-| `data/market_cache/vnstock_data/indices/hourly` | `archived_removed` | `archive/generated_data_snapshots/vn30_hourly_pre_2015_reset_20260514_150845/data/market_cache/vnstock_data/indices/hourly` | superseded normalized cache from pre-2015 VN30/index hourly design |
+version https://git-lfs.github.com/spec/v1
+oid sha256:bb0e919830fde355d5256b73cc3f87e9a5e47cc1e387de5ef14fcccaef9c601a
+size 5708

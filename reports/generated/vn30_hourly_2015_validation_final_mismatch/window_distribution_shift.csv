@@ -1,5 +1,3 @@
-window,rows,tickers,vnindex_trend,vn30_trend,start,end,horizon,mean_return,std_return,class_balance
-window_A_val,0,0,-0.1889,-0.2169,,,,,,
-window_B_val,9600,30,0.0824,0.0804,2023-01-01,2023-12-31,60.0,-0.000266,0.01004,0.3147
-window_C_val,30030,30,0.1193,0.1883,2024-01-01,2024-12-31,60.0,0.000185,0.007719,0.4809
-final_eval,5245,30,0.5165,0.5401,2025-01-01,2026-05-14,60.0,0.001071,0.025007,0.2984
+version https://git-lfs.github.com/spec/v1
+oid sha256:2247b2f66b8441876e338a225b5e067eac02322dd60fca949477603b62c032f7
+size 404

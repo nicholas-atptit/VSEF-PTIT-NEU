@@ -1,2 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-09-26 14:00:00,4.8,4.8,4.8,4.8,10000,VBG,"At 2023-09-26 14:00:00, the stock VBG opened at 4.80 VND, reached a high of 4.80 VND, a low of 4.80 VND, and closed the hour at 4.80 VND with a trading volume of 10,000 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:773e0fb13b5f4e3203be872a8501a336f8433fb1592e1cafbc4f00ac266558e8
+size 278

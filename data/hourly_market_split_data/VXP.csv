@@ -1,2 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-10-24 09:00:00,30.6,30.6,30.6,30.6,100,VXP,"At 2023-10-24 09:00:00, the stock VXP opened at 30.60 VND, reached a high of 30.60 VND, a low of 30.60 VND, and closed the hour at 30.60 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:5cd41140c585d77d27dfe681287cd40b61086923b37b95451b698d45edb66f66
+size 281

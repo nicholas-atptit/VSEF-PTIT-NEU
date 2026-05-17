@@ -1,14 +1,3 @@
-check,status,severity,details
-output_directory_exists,PASS,info,outputs/vn30_daily_2015_benchmark
-run_config_exists,PASS,info,outputs/vn30_daily_2015_benchmark/run_config.json
-manifest_exists,PASS,info,outputs/vn30_daily_2015_benchmark/manifest.json
-predicted_vs_actual_exists_non_empty,PASS,info,outputs/vn30_daily_2015_benchmark/daily/predicted_vs_actual.csv
-accuracy_summary_exists_non_empty,PASS,info,outputs/vn30_daily_2015_benchmark/daily/accuracy_summary.csv
-all_usable_tickers_represented,PASS,info,missing=[]; usable=28
-frequency_daily_only,PASS,info,daily data track; no hourly mixing
-train_end_matches,PASS,info,2023-12-31 23:59:59
-eval_start_matches,PASS,info,2025-01-01 00:00:00
-no_hourly_resampling,PASS,info,daily track does not resample to hourly
-no_trading_claims,PASS,info,"no trading-readiness, profitability, or live-deployment claims"
-baseline_comparison_exists,PASS,info,baseline files must exist
-predicted_vs_actual_required_columns,PASS,info,"columns=['datetime', 'ticker', 'y_true', 'y_pred']"
+version https://git-lfs.github.com/spec/v1
+oid sha256:5ad46d31e926480338cfd69eb58c3f76cf1b5cd875a502c63f9abf0fab153a7a
+size 1033

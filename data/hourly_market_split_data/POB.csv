@@ -1,4 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2024-05-30 09:00:00,50.44,50.44,50.44,50.44,60500,POB,"At 2024-05-30 09:00:00, the stock POB opened at 50.44 VND, reached a high of 50.44 VND, a low of 50.44 VND, and closed the hour at 50.44 VND with a trading volume of 60,500 shares."
-2024-12-04 09:00:00,50.8,50.8,50.8,50.8,100,POB,"At 2024-12-04 09:00:00, the stock POB opened at 50.80 VND, reached a high of 50.80 VND, a low of 50.80 VND, and closed the hour at 50.80 VND with a trading volume of 100 shares."
-2025-03-28 09:00:00,50.8,50.8,50.8,50.8,100,POB,"At 2025-03-28 09:00:00, the stock POB opened at 50.80 VND, reached a high of 50.80 VND, a low of 50.80 VND, and closed the hour at 50.80 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:d64b2702a14bc3f3a87e71d8b25be1114aa23f7353858696b3df3fd6eb97209d
+size 748

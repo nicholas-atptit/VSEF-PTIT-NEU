@@ -1,11 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-10-04 09:00:00,25.42,25.42,25.42,25.42,34100,EMG,"At 2023-10-04 09:00:00, the stock EMG opened at 25.42 VND, reached a high of 25.42 VND, a low of 25.42 VND, and closed the hour at 25.42 VND with a trading volume of 34,100 shares."
-2023-11-21 10:00:00,15.32,15.32,15.32,15.32,100,EMG,"At 2023-11-21 10:00:00, the stock EMG opened at 15.32 VND, reached a high of 15.32 VND, a low of 15.32 VND, and closed the hour at 15.32 VND with a trading volume of 100 shares."
-2024-07-24 13:00:00,21.4,21.4,21.4,21.4,100,EMG,"At 2024-07-24 13:00:00, the stock EMG opened at 21.40 VND, reached a high of 21.40 VND, a low of 21.40 VND, and closed the hour at 21.40 VND with a trading volume of 100 shares."
-2024-09-05 10:00:00,21.77,21.77,21.77,21.77,100,EMG,"At 2024-09-05 10:00:00, the stock EMG opened at 21.77 VND, reached a high of 21.77 VND, a low of 21.77 VND, and closed the hour at 21.77 VND with a trading volume of 100 shares."
-2024-09-13 10:00:00,18.67,18.67,18.67,18.67,3000,EMG,"At 2024-09-13 10:00:00, the stock EMG opened at 18.67 VND, reached a high of 18.67 VND, a low of 18.67 VND, and closed the hour at 18.67 VND with a trading volume of 3,000 shares."
-2024-09-16 14:00:00,21.4,21.4,21.4,21.4,100,EMG,"At 2024-09-16 14:00:00, the stock EMG opened at 21.40 VND, reached a high of 21.40 VND, a low of 21.40 VND, and closed the hour at 21.40 VND with a trading volume of 100 shares."
-2024-11-28 10:00:00,29.96,29.96,29.96,29.96,100,EMG,"At 2024-11-28 10:00:00, the stock EMG opened at 29.96 VND, reached a high of 29.96 VND, a low of 29.96 VND, and closed the hour at 29.96 VND with a trading volume of 100 shares."
-2024-12-03 09:00:00,25.5,25.5,25.5,25.5,100,EMG,"At 2024-12-03 09:00:00, the stock EMG opened at 25.50 VND, reached a high of 25.50 VND, a low of 25.50 VND, and closed the hour at 25.50 VND with a trading volume of 100 shares."
-2025-04-08 13:00:00,15.3,15.3,15.3,15.3,38700,EMG,"At 2025-04-08 13:00:00, the stock EMG opened at 15.30 VND, reached a high of 15.30 VND, a low of 15.30 VND, and closed the hour at 15.30 VND with a trading volume of 38,700 shares."
-2025-10-03 10:00:00,9.2,9.2,9.2,9.2,100,EMG,"At 2025-10-03 10:00:00, the stock EMG opened at 9.20 VND, reached a high of 9.20 VND, a low of 9.20 VND, and closed the hour at 9.20 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:2943fe7b90287b5bd3bacd0b43996cc6483cebf76fe57158bf355650435e48c8
+size 2367

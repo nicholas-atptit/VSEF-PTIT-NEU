@@ -1,19 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-09-26 09:00:00,23.55,23.55,23.55,23.55,100,X26,"At 2023-09-26 09:00:00, the stock X26 opened at 23.55 VND, reached a high of 23.55 VND, a low of 23.55 VND, and closed the hour at 23.55 VND with a trading volume of 100 shares."
-2023-09-28 14:00:00,27.03,27.03,27.03,27.03,100,X26,"At 2023-09-28 14:00:00, the stock X26 opened at 27.03 VND, reached a high of 27.03 VND, a low of 27.03 VND, and closed the hour at 27.03 VND with a trading volume of 100 shares."
-2023-09-29 09:00:00,23.2,23.2,23.2,23.2,100,X26,"At 2023-09-29 09:00:00, the stock X26 opened at 23.20 VND, reached a high of 23.20 VND, a low of 23.20 VND, and closed the hour at 23.20 VND with a trading volume of 100 shares."
-2023-12-21 09:00:00,20.01,20.01,20.01,20.01,100,X26,"At 2023-12-21 09:00:00, the stock X26 opened at 20.01 VND, reached a high of 20.01 VND, a low of 20.01 VND, and closed the hour at 20.01 VND with a trading volume of 100 shares."
-2024-05-09 09:00:00,24.2,24.2,24.2,24.2,2500,X26,"At 2024-05-09 09:00:00, the stock X26 opened at 24.20 VND, reached a high of 24.20 VND, a low of 24.20 VND, and closed the hour at 24.20 VND with a trading volume of 2,500 shares."
-2024-07-30 10:00:00,14.89,14.89,14.89,14.89,300,X26,"At 2024-07-30 10:00:00, the stock X26 opened at 14.89 VND, reached a high of 14.89 VND, a low of 14.89 VND, and closed the hour at 14.89 VND with a trading volume of 300 shares."
-2024-09-18 09:00:00,20.85,20.85,20.85,20.85,100,X26,"At 2024-09-18 09:00:00, the stock X26 opened at 20.85 VND, reached a high of 20.85 VND, a low of 20.85 VND, and closed the hour at 20.85 VND with a trading volume of 100 shares."
-2024-11-05 09:00:00,29.13,29.13,24.2,24.2,600,X26,"At 2024-11-05 09:00:00, the stock X26 opened at 29.13 VND, reached a high of 29.13 VND, a low of 24.20 VND, and closed the hour at 24.20 VND with a trading volume of 600 shares."
-2024-11-27 13:00:00,25.13,25.13,25.13,25.13,2400,X26,"At 2024-11-27 13:00:00, the stock X26 opened at 25.13 VND, reached a high of 25.13 VND, a low of 25.13 VND, and closed the hour at 25.13 VND with a trading volume of 2,400 shares."
-2024-12-02 10:00:00,28.85,28.85,28.85,28.85,100,X26,"At 2024-12-02 10:00:00, the stock X26 opened at 28.85 VND, reached a high of 28.85 VND, a low of 28.85 VND, and closed the hour at 28.85 VND with a trading volume of 100 shares."
-2024-12-03 09:00:00,33.14,33.14,33.14,33.14,100,X26,"At 2024-12-03 09:00:00, the stock X26 opened at 33.14 VND, reached a high of 33.14 VND, a low of 33.14 VND, and closed the hour at 33.14 VND with a trading volume of 100 shares."
-2024-12-17 09:00:00,28.3,28.3,28.3,28.3,300,X26,"At 2024-12-17 09:00:00, the stock X26 opened at 28.30 VND, reached a high of 28.30 VND, a low of 28.30 VND, and closed the hour at 28.30 VND with a trading volume of 300 shares."
-2025-03-07 11:00:00,25.13,25.13,25.13,25.13,200,X26,"At 2025-03-07 11:00:00, the stock X26 opened at 25.13 VND, reached a high of 25.13 VND, a low of 25.13 VND, and closed the hour at 25.13 VND with a trading volume of 200 shares."
-2025-04-10 10:00:00,22.43,22.43,22.43,22.43,100,X26,"At 2025-04-10 10:00:00, the stock X26 opened at 22.43 VND, reached a high of 22.43 VND, a low of 22.43 VND, and closed the hour at 22.43 VND with a trading volume of 100 shares."
-2025-10-16 10:00:00,24.2,24.2,24.2,24.2,100,X26,"At 2025-10-16 10:00:00, the stock X26 opened at 24.20 VND, reached a high of 24.20 VND, a low of 24.20 VND, and closed the hour at 24.20 VND with a trading volume of 100 shares."
-2025-10-20 10:00:00,24.2,24.2,24.2,24.2,2000,X26,"At 2025-10-20 10:00:00, the stock X26 opened at 24.20 VND, reached a high of 24.20 VND, a low of 24.20 VND, and closed the hour at 24.20 VND with a trading volume of 2,000 shares."
-2025-11-11 09:00:00,24.2,24.2,24.2,24.2,3500,X26,"At 2025-11-11 09:00:00, the stock X26 opened at 24.20 VND, reached a high of 24.20 VND, a low of 24.20 VND, and closed the hour at 24.20 VND with a trading volume of 3,500 shares."
-2025-12-26 09:00:00,15.0,15.0,15.0,15.0,100,X26,"At 2025-12-26 09:00:00, the stock X26 opened at 15.00 VND, reached a high of 15.00 VND, a low of 15.00 VND, and closed the hour at 15.00 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:9f356e3543305a21f615628803ec953fe3475cb85d9e2674121da67c0d46889a
+size 4228

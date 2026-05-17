@@ -1,2 +1,3 @@
-horizon,model_precision_at_k,random_mean,random_std,random_p5,random_p95,prev_return_precision,momentum_precision,model_lift_over_random,model_delta_over_momentum,significantly_above_random
-120,0.7482142857142858,0.7736410714285714,0.009496219541835303,0.7589285714285714,0.7892857142857143,0.7767857142857143,0.7446428571428572,-0.025426785714285582,0.0035714285714286698,False
+version https://git-lfs.github.com/spec/v1
+oid sha256:22191858a450405624f115a215a35087b7f0e8425abc88caab892fefb2784f5e
+size 381

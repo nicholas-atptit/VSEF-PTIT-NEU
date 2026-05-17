@@ -1,10 +1,3 @@
-type,name,frequency,target
-model,xgboost,hourly,direction
-model,lightgbm,hourly,direction
-model,random_forest,hourly,direction
-model,stacking,hourly,direction
-baseline,buy_and_hold,hourly,direction
-baseline,flat_no_trade,hourly,direction
-baseline,always_up,hourly,direction
-baseline,moving_average_signal,hourly,direction
-baseline,previous_direction_signal,hourly,direction
+version https://git-lfs.github.com/spec/v1
+oid sha256:15bed835dbf45d000fec6050f9a5a3dae1201722998779c9836906d2dd9d8a14
+size 384

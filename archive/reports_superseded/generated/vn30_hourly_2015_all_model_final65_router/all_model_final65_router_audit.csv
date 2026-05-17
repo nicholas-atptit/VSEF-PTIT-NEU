@@ -1,13 +1,3 @@
-check,status,severity,details
-output_dir_exists,PASS,info,outputs/vn30_hourly_2015_all_model_final65_router
-manifest_exists,PASS,info,manifest present
-no_daily_data,PASS,info,hourly only by design
-no_resampling,PASS,info,no resampling by design
-no_data_fetch,PASS,info,no data fetch by design
-universe_unchanged,PASS,info,VN30 Jan 2025 unchanged
-baseline60_retained,PASS,info,RF h=60 60.22% baseline retained
-validation_only_selection,PASS,info,all policy selection on 2024 validation
-final_eval_scoring_only,PASS,info,final eval used only for scoring
-no_final_label_tuning,PASS,info,no threshold/ticker/model selection on final labels
-no_leakage,PASS,info,no leakage indicators
-final65_pass,WARN,warn,Best final65: 59.64%
+version https://git-lfs.github.com/spec/v1
+oid sha256:7aed4e315cf6cd6798a0e7ef0e587a06d97fc27017bbaf51799639c375ae0c84
+size 736

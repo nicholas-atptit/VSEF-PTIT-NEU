@@ -1,5 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-12-07 13:00:00,0.04,0.04,0.04,0.04,100,DKC,"At 2023-12-07 13:00:00, the stock DKC opened at 0.04 VND, reached a high of 0.04 VND, a low of 0.04 VND, and closed the hour at 0.04 VND with a trading volume of 100 shares."
-2024-08-02 09:00:00,0.06,0.06,0.06,0.06,100,DKC,"At 2024-08-02 09:00:00, the stock DKC opened at 0.06 VND, reached a high of 0.06 VND, a low of 0.06 VND, and closed the hour at 0.06 VND with a trading volume of 100 shares."
-2024-11-26 09:00:00,0.07,0.07,0.07,0.07,400,DKC,"At 2024-11-26 09:00:00, the stock DKC opened at 0.07 VND, reached a high of 0.07 VND, a low of 0.07 VND, and closed the hour at 0.07 VND with a trading volume of 400 shares."
-2025-05-22 09:00:00,0.1,0.1,0.1,0.1,100,DKC,"At 2025-05-22 09:00:00, the stock DKC opened at 0.10 VND, reached a high of 0.10 VND, a low of 0.10 VND, and closed the hour at 0.10 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:7b3834bce8489e76ea0f407a7344c91755cca2688ad674e6208a65115ae964b4
+size 948

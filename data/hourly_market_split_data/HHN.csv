@@ -1,5 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-10-05 13:00:00,0.6,0.6,0.6,0.6,500,HHN,"At 2023-10-05 13:00:00, the stock HHN opened at 0.60 VND, reached a high of 0.60 VND, a low of 0.60 VND, and closed the hour at 0.60 VND with a trading volume of 500 shares."
-2023-10-06 11:00:00,0.52,0.52,0.52,0.52,500,HHN,"At 2023-10-06 11:00:00, the stock HHN opened at 0.52 VND, reached a high of 0.52 VND, a low of 0.52 VND, and closed the hour at 0.52 VND with a trading volume of 500 shares."
-2023-11-23 10:00:00,0.32,0.32,0.32,0.32,100,HHN,"At 2023-11-23 10:00:00, the stock HHN opened at 0.32 VND, reached a high of 0.32 VND, a low of 0.32 VND, and closed the hour at 0.32 VND with a trading volume of 100 shares."
-2024-01-10 10:00:00,0.2,0.2,0.2,0.2,100,HHN,"At 2024-01-10 10:00:00, the stock HHN opened at 0.20 VND, reached a high of 0.20 VND, a low of 0.20 VND, and closed the hour at 0.20 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:84158a1e51d9e5a6316caacc6e77f05a3559876b208a79c2c7f7e665ddd15bb5
+size 944
