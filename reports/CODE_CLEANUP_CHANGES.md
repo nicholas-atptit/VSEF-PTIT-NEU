@@ -7,6 +7,7 @@
 - Moved 37 superseded scripts from `scripts/research` into `scripts/legacy/research` subfolders.
 - Rewrote the top-level README to the current VN Market Directional Benchmark Lab identity.
 - Added cleanup scope, active code map, reorganization plan, and reorganization result reports.
+- Added a follow-up validation hygiene fix for the full-data-backup repository policy and local path redaction.
 - Did not change provider behavior, benchmark metrics, label logic, model logic, empirical results, data files, outputs, generated snapshots, or research claims.
 
 ## Files Added or Updated
@@ -20,6 +21,13 @@
 - `reports/CODE_CLEANUP_CHANGES.md` - this change log.
 - `reports/generated/code_cleanup/codebase_structure_inventory.csv` - generated inventory table.
 - `reports/generated/code_cleanup/codebase_structure_inventory.md` - generated inventory summary.
+- `scripts/check_repo_hygiene.py` - narrowed hygiene policy so approved full-data-backup paths are allowed only when covered by Git LFS attributes, while local path, bytecode/cache, dependency junk, malformed filename, and unapproved generated-root checks remain active.
+- `reports/CODE_CLEANUP_VALIDATION_FIX_PLAN.md` - documented validation failures, classification, guardrails, and intended fixes.
+- `reports/CODE_CLEANUP_VALIDATION_FIX_RESULT.md` - recorded final hygiene, preflight, provider policy, targeted test, and py_compile results.
+- `reports/full_data_push_inventory.csv` - redacted machine-local repository prefixes to `<repo>` while preserving row count, sizes, timestamps, and relative filenames.
+- `reports/full_data_push_largest_files.csv` - redacted machine-local repository prefixes to `<repo>` while preserving row count, sizes, timestamps, and relative filenames.
+- `outputs/experiments/*` metadata files - redacted machine-local repository prefixes in logs, manifests, and one summary report without changing benchmark metrics.
+- `outputs/walkforward_governance_audit*` internal model manifests - redacted machine-local repository prefixes without changing model metrics or result values.
 
 ## Files Moved to `scripts/legacy/research/failed_experiments/`
 
