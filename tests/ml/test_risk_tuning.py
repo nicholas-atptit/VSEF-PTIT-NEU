@@ -39,6 +39,7 @@ def test_risk_tuning_runner_outputs_best_params_and_manifests(tmp_path) -> None:
     assert result["csv_path"].exists()
     assert result["json_path"].exists()
     assert result["markdown_path"].exists()
+    assert result["markdown_path"] == tmp_path / "reports" / "risk_tuning_report.md"
     assert not result["trials"].empty
 
     manifest_path = result["best_model_root"] / "TUNE" / "manifest.json"

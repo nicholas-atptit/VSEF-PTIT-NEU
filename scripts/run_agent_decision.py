@@ -1,3 +1,7 @@
+"""Demo module.
+Non-authoritative and not part of canonical governed runtime.
+"""
+
 import asyncio
 import json
 import sys

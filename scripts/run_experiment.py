@@ -16,8 +16,7 @@ from src.engine.experiment_orchestrator import ExperimentOrchestrator
 
 
 PROJECT_VENV_EXAMPLE = (
-    "C:\\Users\\luong\\.venv\\Scripts\\python.exe "
-    "scripts\\run_experiment.py --config configs\\experiments\\EXP-SMOKE-001.yaml"
+    "python scripts/run_experiment.py --config configs/experiments/EXP-SMOKE-001.yaml"
 )
 
 

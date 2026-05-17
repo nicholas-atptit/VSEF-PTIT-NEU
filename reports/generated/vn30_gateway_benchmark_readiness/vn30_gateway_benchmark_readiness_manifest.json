@@ -1,0 +1,192 @@
+{
+  "all_30_tickers_usable": false,
+  "usable_ticker_count": 0,
+  "missing_tickers": [
+    "ACB",
+    "BID",
+    "CTG",
+    "DGC",
+    "FPT",
+    "GAS",
+    "GVR",
+    "HDB",
+    "HPG",
+    "LPB",
+    "MBB",
+    "MSN",
+    "MWG",
+    "PLX",
+    "SAB",
+    "SHB",
+    "SSB",
+    "SSI",
+    "STB",
+    "TCB",
+    "TPB",
+    "VCB",
+    "VHM",
+    "VIB",
+    "VIC",
+    "VJC",
+    "VNM",
+    "VPB",
+    "VPL",
+    "VRE"
+  ],
+  "vnindex_usable": false,
+  "vn30_index_usable": false,
+  "other_indices_usable": {
+    "HNXINDEX": false,
+    "UPCOMINDEX": false,
+    "HNX30": false,
+    "VN100": false
+  },
+  "actual_train_start_per_ticker": {
+    "ACB": "2023-12-27 13:00:00",
+    "BID": "2023-12-27 13:00:00",
+    "CTG": "2023-12-27 13:00:00",
+    "DGC": "",
+    "FPT": "",
+    "GAS": "",
+    "GVR": "",
+    "HDB": "",
+    "HPG": "",
+    "LPB": "",
+    "MBB": "",
+    "MSN": "",
+    "MWG": "",
+    "PLX": "",
+    "SAB": "",
+    "SHB": "",
+    "SSB": "",
+    "SSI": "",
+    "STB": "",
+    "TCB": "",
+    "TPB": "",
+    "VCB": "",
+    "VHM": "",
+    "VIB": "",
+    "VIC": "",
+    "VJC": "",
+    "VNM": "",
+    "VPB": "",
+    "VPL": "",
+    "VRE": ""
+  },
+  "actual_eval_start": "2025-01-01",
+  "actual_data_start_any": "2023-12-27 13:00:00",
+  "actual_latest_data_timestamp": "2026-05-14 00:00:00",
+  "common_latest_usable_data_timestamp": "",
+  "benchmark_can_proceed": false,
+  "benchmark_command_later": "",
+  "benchmark_not_ready_reasons": [
+    "usable_tickers=0/30",
+    "VNINDEX_not_usable",
+    "VN30_index_not_usable"
+  ],
+  "benchmark_run": false,
+  "model_training_run": false,
+  "paper_or_docx_generated": false,
+  "daily_data_used": false,
+  "resampling_used": false,
+  "clean_workspace_manifest": {
+    "timestamp": "20260514_062528",
+    "archive_directory": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528",
+    "mode": "copy",
+    "cache_archived": true,
+    "raw_data_touched": false,
+    "items": [
+      {
+        "source_path": "reports/generated/vn30_hourly_2005_2026",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/reports/generated/vn30_hourly_2005_2026",
+        "action": "copied",
+        "reason": "old generated report/output artifact archived before gateway refetch",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "reports/generated/vn30_hourly_available_window",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/reports/generated/vn30_hourly_available_window",
+        "action": "copied",
+        "reason": "old generated report/output artifact archived before gateway refetch",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "reports/generated/vn30_hourly_listing_aware",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/reports/generated/vn30_hourly_listing_aware",
+        "action": "copied",
+        "reason": "old generated report/output artifact archived before gateway refetch",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "reports/generated/vn30_hourly_vnstock_fetch",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/reports/generated/vn30_hourly_vnstock_fetch",
+        "action": "copied",
+        "reason": "old generated report/output artifact archived before gateway refetch",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "reports/generated/vn30_hourly_vnstock_full",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/reports/generated/vn30_hourly_vnstock_full",
+        "action": "skipped",
+        "reason": "source path does not exist",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "reports/generated/index_hourly_fetch",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/reports/generated/index_hourly_fetch",
+        "action": "copied",
+        "reason": "old generated report/output artifact archived before gateway refetch",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_official_2005_2026_traincutoff",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/outputs/vn30_hourly_official_2005_2026_traincutoff",
+        "action": "copied",
+        "reason": "old generated report/output artifact archived before gateway refetch",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_available_window_benchmark",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/outputs/vn30_hourly_available_window_benchmark",
+        "action": "copied",
+        "reason": "old generated report/output artifact archived before gateway refetch",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_listing_aware_traincutoff",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/outputs/vn30_hourly_listing_aware_traincutoff",
+        "action": "copied",
+        "reason": "old generated report/output artifact archived before gateway refetch",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_vnstock_full_2005_2026_traincutoff",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/outputs/vn30_hourly_vnstock_full_2005_2026_traincutoff",
+        "action": "copied",
+        "reason": "old generated report/output artifact archived before gateway refetch",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "outputs/vn30_hourly_provider_available_traincutoff",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/outputs/vn30_hourly_provider_available_traincutoff",
+        "action": "skipped",
+        "reason": "source path does not exist",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "data/market_cache/vnstock_data/vn30/hourly_listing_aware",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/data/market_cache/vnstock_data/vn30/hourly_listing_aware",
+        "action": "copied",
+        "reason": "generated normalized cache archived because --archive-cache was passed",
+        "timestamp": "20260514_062528"
+      },
+      {
+        "source_path": "data/market_cache/vnstock_data/indices/hourly",
+        "archive_path": "archive/generated_data_snapshots/vn30_hourly_pre_benchmark_20260514_062528/data/market_cache/vnstock_data/indices/hourly",
+        "action": "copied",
+        "reason": "generated normalized cache archived because --archive-cache was passed",
+        "timestamp": "20260514_062528"
+      }
+    ]
+  }
+}

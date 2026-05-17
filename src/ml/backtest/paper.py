@@ -11,11 +11,18 @@ from typing import Any
 
 from config.settings import get_settings
 from src.api.schemas import QualitativeAnalysis, QuantitativeSignals
+from src.core.runtime_mode import RuntimeMode, build_data_provenance, ensure_mock_allowed, normalize_runtime_mode
 from src.ml.backtest.event_driven import get_safe_rag_context, simulate_execution_cost
 from src.engine.matrix import evaluate_decision_matrix
 from src.engine.risk import apply_risk_constraints
 from src.ml.llm.pipeline import run_qualitative_analysis
-from src.ml.data_loader import generate_mock_data, load_ohlcv_from_db, load_ohlcv_from_vnstock
+from src.ml.data_loader import (
+    attach_runtime_data_provenance,
+    frame_data_provenance,
+    generate_mock_data,
+    load_ohlcv_from_db,
+    load_ohlcv_from_vnstock,
+)
 from src.ml.signal_generator import SignalGenerator
 from src.ml.trainer import DualModelTrainer
 from src.utils.logging import get_logger
@@ -85,16 +92,22 @@ class PaperTradingEngine:
         risk_tolerance: float | None = None,
         allowed_zones: list[str] | None = None,
         use_mock: bool = False,
+        runtime_mode: str | RuntimeMode | None = RuntimeMode.RESEARCH,
     ) -> dict[str, Any]:
         """Run one full event-driven cycle for a ticker."""
         normalized_ticker = ticker.upper().strip()
+        mode = normalize_runtime_mode(runtime_mode)
         zones = allowed_zones or ["zone_1", "zone_2", "zone_3"]
         applied_risk = min(float(risk_tolerance or self._max_risk_pct), self._settings.max_risk_tolerance)
         total_started_at = time.perf_counter()
         latency = LatencyProfile()
 
         fetch_started_at = time.perf_counter()
-        market_snapshot = self._fetch_market_snapshot(normalized_ticker, use_mock=use_mock)
+        market_snapshot = self._fetch_market_snapshot(
+            normalized_ticker,
+            use_mock=use_mock,
+            runtime_mode=mode,
+        )
         current_price = market_snapshot["price"]
         as_of = market_snapshot["timestamp"]
         latency.websocket_ms = (time.perf_counter() - fetch_started_at) * 1000
@@ -106,6 +119,7 @@ class PaperTradingEngine:
             current_price=current_price,
             risk_tolerance=applied_risk,
             use_mock=use_mock,
+            runtime_mode=mode,
         )
         latency.ml_compute_ms = (time.perf_counter() - ml_started_at) * 1000
 
@@ -202,6 +216,7 @@ class PaperTradingEngine:
                 "within_sla": latency.total_latency_seconds <= self._settings.latency_sla_seconds,
             },
             "portfolio": self.get_portfolio_summary(),
+            "data_provenance": market_snapshot.get("data_provenance", {}),
         }
         self._cycle_log.append(cycle_result)
         return cycle_result
@@ -212,6 +227,7 @@ class PaperTradingEngine:
         risk_tolerance: float | None = None,
         allowed_zones: list[str] | None = None,
         use_mock: bool = False,
+        runtime_mode: str | RuntimeMode | None = RuntimeMode.RESEARCH,
     ) -> dict[str, Any]:
         """Run the full event-driven cycle for a watchlist."""
         results = []
@@ -222,6 +238,7 @@ class PaperTradingEngine:
                     risk_tolerance=risk_tolerance,
                     allowed_zones=allowed_zones,
                     use_mock=use_mock,
+                    runtime_mode=runtime_mode,
                 )
             )
             await asyncio.sleep(0)
@@ -276,9 +293,10 @@ class PaperTradingEngine:
         current_price: float,
         risk_tolerance: float,
         use_mock: bool,
+        runtime_mode: str | RuntimeMode | None,
     ) -> tuple[Any, Any]:
         """Run the quant stack and auto-train the model if needed."""
-        raw_df = self._load_ohlcv(ticker, use_mock=use_mock)
+        raw_df = self._load_ohlcv(ticker, use_mock=use_mock, runtime_mode=runtime_mode)
         if len(raw_df) < 100:
             raise ValueError(f"Insufficient data for {ticker}: {len(raw_df)} rows")
 
@@ -301,29 +319,52 @@ class PaperTradingEngine:
         return quant_payload, features
 
     @staticmethod
-    def _load_ohlcv(ticker: str, use_mock: bool = False) -> Any:
+    def _load_ohlcv(
+        ticker: str,
+        use_mock: bool = False,
+        runtime_mode: str | RuntimeMode | None = RuntimeMode.RESEARCH,
+    ) -> Any:
         """Load OHLCV data with DB -> vnstock -> mock fallback."""
+        mode = normalize_runtime_mode(runtime_mode)
         if use_mock:
-            return generate_mock_data(ticker=ticker)
+            ensure_mock_allowed(mode, explicit_mock=True)
+            return generate_mock_data(ticker=ticker, runtime_mode=mode)
 
         try:
-            return load_ohlcv_from_db(ticker)
+            return attach_runtime_data_provenance(load_ohlcv_from_db(ticker), runtime_mode=mode)
         except Exception:
             try:
-                return load_ohlcv_from_vnstock(ticker)
-            except Exception:
-                logger.warning("paper_trade_mock_fallback", ticker=ticker)
-                return generate_mock_data(ticker=ticker)
+                return attach_runtime_data_provenance(load_ohlcv_from_vnstock(ticker), runtime_mode=mode)
+            except Exception as exc:
+                if mode is RuntimeMode.DEMO:
+                    logger.warning("paper_trade_mock_fallback", ticker=ticker, error=str(exc))
+                    return generate_mock_data(
+                        ticker=ticker,
+                        runtime_mode=mode,
+                        fallback_triggered=True,
+                        fallback_reason="DB and vnstock_data unavailable in paper trading demo mode.",
+                    )
+                ensure_mock_allowed(mode, fallback_triggered=True)
+                raise
 
-    def _fetch_market_snapshot(self, ticker: str, use_mock: bool = False) -> dict[str, Any]:
+    def _fetch_market_snapshot(
+        self,
+        ticker: str,
+        use_mock: bool = False,
+        runtime_mode: str | RuntimeMode | None = RuntimeMode.RESEARCH,
+    ) -> dict[str, Any]:
         """Fetch the latest trade price for a ticker using vnstock_data."""
+        mode = normalize_runtime_mode(runtime_mode)
         if use_mock:
-            df = generate_mock_data(ticker=ticker)
+            ensure_mock_allowed(mode, explicit_mock=True)
+            df = generate_mock_data(ticker=ticker, runtime_mode=mode)
             return {
                 "price": float(df["close"].iloc[-1]),
                 "timestamp": dt.datetime.now(dt.UTC),
+                "data_provenance": frame_data_provenance(df, runtime_mode=mode),
             }
 
+        live_error: Exception | None = None
         try:
             import datetime as _dt
             from src.data.adapters.vnstock_adapter import VnstockAdapter
@@ -341,14 +382,37 @@ class PaperTradingEngine:
                 price = float(latest["close"])
                 timestamp = self._normalize_timestamp(latest.get("date", None))
                 if price > 0:
-                    return {"price": price, "timestamp": timestamp}
+                    attach_runtime_data_provenance(
+                        df,
+                        runtime_mode=mode,
+                        source=df.attrs.get("source_name", "vnstock_data"),
+                    )
+                    return {
+                        "price": price,
+                        "timestamp": timestamp,
+                        "data_provenance": frame_data_provenance(df, runtime_mode=mode),
+                    }
         except Exception as exc:
+            live_error = exc
             logger.warning("paper_trade_price_fetch_failed", ticker=ticker, error=str(exc))
 
-        fallback_df = self._load_ohlcv(ticker, use_mock=True)
+        if mode is not RuntimeMode.DEMO:
+            ensure_mock_allowed(mode, fallback_triggered=True)
+
+        fallback_df = generate_mock_data(
+            ticker=ticker,
+            runtime_mode=mode,
+            fallback_triggered=True,
+            fallback_reason=(
+                f"Live price unavailable: {live_error}"
+                if live_error is not None
+                else "Live price unavailable."
+            ),
+        )
         return {
             "price": float(fallback_df["close"].iloc[-1]),
             "timestamp": dt.datetime.now(dt.UTC),
+            "data_provenance": frame_data_provenance(fallback_df, runtime_mode=mode),
         }
 
     def _fetch_news_context(self, ticker: str) -> str:

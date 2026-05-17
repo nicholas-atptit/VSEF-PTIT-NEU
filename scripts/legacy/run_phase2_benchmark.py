@@ -1,4 +1,7 @@
-"""Validation benchmark for the Phase 2 forecasting, risk, and regime stack."""
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
+"""
 
 from __future__ import annotations
 

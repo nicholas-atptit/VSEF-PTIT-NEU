@@ -24,6 +24,7 @@ from src.ml.artifacts import (
 from src.ml.benchmark.evaluator import MetricsEvaluator
 from src.ml.data_loader import (
     apply_context_features,
+    frame_data_provenance,
     load_foreign_flow,
     load_macro_context,
     load_market_breadth,
@@ -111,6 +112,7 @@ class PreparedTickerData:
     risk_summary: dict[str, Any] | None = None
     regime_distribution: dict[str, float] | None = None
     advanced_config: dict[str, Any] | None = None
+    data_provenance: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -676,9 +678,6 @@ class DualModelTrainer:
             ):
                 if column in prepared.feature_frame.columns and column not in selected:
                     selected.append(column)
-        for column in RISK_FEATURE_COLUMNS + REGIME_FEATURE_COLUMNS:
-            if column in prepared.feature_frame.columns and column not in selected:
-                selected.append(column)
         return selected
 
     def prepare_ticker_data(
@@ -793,6 +792,7 @@ class DualModelTrainer:
 
         data_start = str(raw_scope["date"].min().date())
         data_end = str(raw_scope["date"].max().date())
+        input_data_provenance = frame_data_provenance(df)
         stats = {
             "data_start": data_start,
             "data_end": data_end,
@@ -800,6 +800,7 @@ class DualModelTrainer:
             "indicator_warmup_rows": int(indicator_rows_lost),
             "feature_rows": int(len(feature_scope)),
             "warmup_buffer_start": str(buffer_scope["date"].min().date()),
+            "data_provenance": input_data_provenance,
             "sentiment": {
                 "enabled": bool(include_sentiment),
                 "source_provenance": (
@@ -850,6 +851,7 @@ class DualModelTrainer:
             risk_summary=risk_summary,
             regime_distribution=regime_distribution,
             advanced_config=advanced_config,
+            data_provenance=input_data_provenance,
         )
 
     def compute_features_for_ticker(
@@ -1374,6 +1376,7 @@ class DualModelTrainer:
                 "end": prepared.data_end,
             },
             "raw_stats": prepared.raw_stats,
+            "data_provenance": prepared.data_provenance or {},
             "advanced_risk": prepared.advanced_config,
             "risk_summary": prepared.risk_summary or {},
             "regime_distribution": prepared.regime_distribution or {},
@@ -1796,6 +1799,7 @@ class DualModelTrainer:
             "data_end": prepared.data_end,
             "feature_count": len(prepared.feature_columns),
             "report_rows": report_rows,
+            "data_provenance": prepared.data_provenance or {},
         }
 
     @staticmethod
@@ -1946,6 +1950,7 @@ class DualModelTrainer:
                 "end": prepared.data_end,
             },
             "raw_stats": prepared.raw_stats,
+            "data_provenance": prepared.data_provenance or {},
             "advanced_risk": prepared.advanced_config,
             "risk_summary": prepared.risk_summary or {},
             "regime_distribution": prepared.regime_distribution or {},
@@ -2410,6 +2415,7 @@ class DualModelTrainer:
             "horizon_name": horizon_key,
             "horizon_days": resolved_horizons[horizon_key],
             "split_config": manifest["split_config"],
+            "data_provenance": prepared.data_provenance or {},
         }
 
     # ------------------------------------------------------------------

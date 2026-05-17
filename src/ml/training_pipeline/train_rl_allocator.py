@@ -1,3 +1,7 @@
+"""Experimental placeholder module.
+Not part of canonical governed runtime.
+"""
+
 import os
 import sys
 # Add project root to sys.path so 'src' can be resolved

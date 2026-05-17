@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import hashlib
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -86,9 +86,15 @@ class BatchCrawler:
         return {t: await self.crawler.get_news(t) for t in tickers}
 
 class NewsCrawler:
-    """Async news crawler — returns empty results; news API not in vnstock_data."""
-    def __init__(self, concurrency: int = 5) -> None:
+    """Async news crawler with optional public provider injection."""
+
+    def __init__(
+        self,
+        concurrency: int = 5,
+        provider_factory: Callable[[], Any] | None = None,
+    ) -> None:
         self._semaphore = asyncio.Semaphore(concurrency)
+        self._provider_factory = provider_factory
 
     async def crawl_ticker(self, ticker: str, count: int = 10, **kwargs) -> list[CrawledDocument]:
         """Crawl news for a specific ticker with strict timeout."""
@@ -103,9 +109,43 @@ class NewsCrawler:
             return []
 
     async def _crawl_ticker_internal(self, ticker: str, count: int = 10, **kwargs) -> list[CrawledDocument]:
-        """Returns empty list — news API is not available in vnstock_data."""
-        logger.warning("news_crawl_skipped_no_api", ticker=ticker)
-        return []
+        """Fetch ticker news through an injected provider when available."""
+        if self._provider_factory is None:
+            logger.warning("news_crawl_skipped_no_provider", ticker=ticker)
+            return []
+
+        async with self._semaphore:
+            provider = self._provider_factory()
+            stock = provider.stock(symbol=ticker)
+            news = stock.news()
+            if not isinstance(news, pd.DataFrame) or news.empty:
+                return []
+            docs: list[CrawledDocument] = []
+            for _, row in news.head(count).iterrows():
+                docs.append(self._document_from_row(ticker, row))
+            return docs
+
+    @staticmethod
+    def _document_from_row(ticker: str, row: pd.Series) -> CrawledDocument:
+        title = str(row.get("title") or row.get("headline") or "")
+        content = str(row.get("description") or row.get("summary") or row.get("content") or "")
+        url = str(
+            row.get("link")
+            or row.get("url")
+            or f"provider://news/{ticker}/{hashlib.sha256(title.encode()).hexdigest()[:12]}"
+        )
+        source = str(row.get("source") or row.get("publisher") or "provider")
+        published_raw = row.get("published_at") or row.get("published") or row.get("date")
+        published_at = pd.to_datetime(published_raw, errors="coerce")
+        published_dt = published_at.to_pydatetime() if pd.notna(published_at) else dt.datetime.now()
+        return CrawledDocument(
+            url=url,
+            title=title,
+            content=content,
+            source=source,
+            published_at=published_dt,
+            tickers=[ticker],
+        )
 
     async def crawl_watchlist(self, tickers: list[str], **kwargs) -> list[CrawledDocument]:
         """Backward compatibility for bulk crawling."""

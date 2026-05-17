@@ -1,4 +1,6 @@
-"""Database models for the Agentic Architecture.
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
 
 Stores:
 - AgentRun: Audit trace for a fusion decision

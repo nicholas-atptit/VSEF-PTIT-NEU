@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.ml.benchmark.acceptance import evaluate_benchmark_acceptance
 from src.ml.benchmark.evaluator import MetricsEvaluator
 from src.ml.benchmark.system_benchmark import BenchmarkModeSpec, SystemBenchmarkRunner, default_benchmark_modes
 from src.ml.regime.regime_detector import REGIME_TO_CODE, RegimeDetector
@@ -246,7 +247,7 @@ class StressTestRunner:
     def _summary(detail_df: pd.DataFrame) -> pd.DataFrame:
         if detail_df.empty:
             return pd.DataFrame()
-        return (
+        summary = (
             detail_df.groupby(["stress_scenario", "benchmark_mode"], dropna=False)[
                 [
                     "stressed_sharpe",
@@ -264,6 +265,39 @@ class StressTestRunner:
             .mean(numeric_only=True)
             .reset_index()
         )
+        return StressTestRunner._append_acceptance_status(summary)
+
+    @staticmethod
+    def _append_acceptance_status(summary_df: pd.DataFrame) -> pd.DataFrame:
+        if summary_df.empty:
+            return summary_df
+        acceptance_rows: list[dict[str, Any]] = []
+        comparison_count = int(len(summary_df))
+        for _ in summary_df.itertuples(index=False):
+            acceptance = evaluate_benchmark_acceptance(
+                prediction_metric_delta=None,
+                economic_metric_delta=None,
+                bootstrap_ci=None,
+                dm_p_value=None,
+                sample_size=None,
+                comparison_count=comparison_count,
+            ).to_dict()
+            acceptance_rows.append(
+                {
+                    "accepted": acceptance["accepted"],
+                    "status": acceptance["status"],
+                    "effect_size": acceptance["effect_size"],
+                    "bootstrap_ci": acceptance["bootstrap_ci"],
+                    "dm_p_value": acceptance["dm_p_value"],
+                    "warnings": acceptance["warnings"],
+                    "policy_version": acceptance["policy_version"],
+                    "decision_reasons": acceptance["decision_reasons"],
+                    "acceptance_interpretation": (
+                        "Stress scenarios are exploratory_only diagnostics and do not promote benchmark claims."
+                    ),
+                }
+            )
+        return pd.concat([summary_df.reset_index(drop=True), pd.DataFrame(acceptance_rows)], axis=1)
 
     @staticmethod
     def _markdown_table(df: pd.DataFrame) -> str:
@@ -349,7 +383,7 @@ class StressTestRunner:
         detail_csv = report_path if report_path.suffix.lower() == ".csv" else report_path.with_suffix(".csv")
         summary_csv = detail_csv.with_name(f"{detail_csv.stem}_summary.csv")
         json_path = detail_csv.with_suffix(".json")
-        markdown_path = Path("reports") / "stress_test_report.md"
+        markdown_path = detail_csv.parent / "stress_test_report.md"
 
         detail_csv.parent.mkdir(parents=True, exist_ok=True)
         detail_df.to_csv(detail_csv, index=False)
@@ -364,6 +398,22 @@ class StressTestRunner:
             ),
             encoding="utf-8",
         )
+        acceptance_columns = [
+            "stress_scenario",
+            "benchmark_mode",
+            "accepted",
+            "status",
+            "effect_size",
+            "bootstrap_ci",
+            "dm_p_value",
+            "warnings",
+            "acceptance_interpretation",
+        ]
+        acceptance_df = (
+            summary_df[[column for column in acceptance_columns if column in summary_df.columns]]
+            if not summary_df.empty
+            else pd.DataFrame()
+        )
         markdown_path.parent.mkdir(parents=True, exist_ok=True)
         markdown_path.write_text(
             "\n".join(
@@ -375,6 +425,10 @@ class StressTestRunner:
                     "",
                     "## Summary",
                     self._markdown_table(summary_df.round(6)),
+                    "",
+                    "## Acceptance Governance",
+                    "Stress-test outputs are scenario diagnostics, not benchmark promotion claims.",
+                    self._markdown_table(acceptance_df),
                     "",
                     "## Output Files",
                     f"- Detail CSV: `{detail_csv}`",

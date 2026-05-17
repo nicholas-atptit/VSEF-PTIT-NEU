@@ -1,0 +1,2 @@
+ticker,effective_start,provider_current_end,rows,first_datetime,last_datetime,rows_before_train_cutoff,rows_after_eval_start,chunks_attempted,chunks_with_rows,chunks_empty,chunks_failed,usable_candidate,skipped_already_usable,stopped_by_runtime_cap,resume_command
+BVH,2015-01-01,2026-05-16,1456,2023-09-11 10:00:00,2026-05-15 00:00:00,1321,135,0,0,0,0,true,true,false,

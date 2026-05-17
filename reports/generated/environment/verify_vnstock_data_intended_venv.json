@@ -1,0 +1,28 @@
+{
+  "intended_venv_executable": "<repo-approved-venv-python>",
+  "intended_venv_exists": true,
+  "sys_executable": "<repo-approved-venv-python>",
+  "sys_version": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+  "pip_version": "pip 26.0.1 from <repo-approved-venv>/Lib/site-packages/pip (python 3.13)",
+  "pip_show_vnstock_data": {
+    "success": false,
+    "note": "pip show failed while parsing package metadata, but importlib spec and import both succeeded",
+    "error": "ValueError: invalid literal for int() with base 10: ''"
+  },
+  "pip_show_vnstock": {
+    "success": true,
+    "name": "vnstock",
+    "version": "3.5.1",
+    "location": "<repo-approved-venv>/Lib/site-packages"
+  },
+  "vnstock_data_installed": true,
+  "vnstock_data_spec_found": true,
+  "vnstock_data_spec_origin": "<repo-approved-venv>/Lib/site-packages/vnstock_data/__init__.py",
+  "vnstock_data_import_success": true,
+  "vnstock_data_version": "3.0.0",
+  "vnstock_data_import_traceback": null,
+  "vnstock_installed": true,
+  "vnstock_spec_found": true,
+  "vnstock_import_success": true,
+  "vnstock_version": "3.5.1"
+}

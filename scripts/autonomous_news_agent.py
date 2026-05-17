@@ -1,5 +1,6 @@
-"""
-Autonomous News Agent (Phase 3).
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
 
 Periodically crawls financial news, embeds into ChromaDB, 
 and generates multi-horizon sentiment reports.

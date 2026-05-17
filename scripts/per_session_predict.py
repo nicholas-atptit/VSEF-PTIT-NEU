@@ -1,3 +1,8 @@
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
+"""
+
 import asyncio
 import json
 import os
@@ -88,7 +93,7 @@ async def predict_ticker(trainer, sg, ticker, semaphore):
                 return ticker, None
             
             # --- Unified Agent Payload (Phase 3 Evolution) ---
-            # We use the 'short' horizon as the primary view for the dashboard root
+            # Use the short horizon as the primary serialized payload view.
             final_payload = multi_signals.get("1w", {}).copy()
             final_payload["multi_horizon"] = multi_signals # Preserve for TUI 'Forecast Radar'
             

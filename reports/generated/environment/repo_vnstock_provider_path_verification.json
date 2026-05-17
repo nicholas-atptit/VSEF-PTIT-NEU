@@ -1,0 +1,209 @@
+{
+  "cwd": "<repo>",
+  "local_shadow_paths": [],
+  "recommended_provider_path": [
+    "repo adapter first",
+    "vnstock_data direct second",
+    "legacy vnstock fallback third"
+  ],
+  "repo_adapter": {
+    "exists": true,
+    "import_success": true,
+    "module_file": "<repo>/src/data/adapters/vnstock_adapter.py",
+    "path": "src/data/adapters/vnstock_adapter.py",
+    "traceback": null
+  },
+  "sys_executable": "<repo-approved-venv-python>",
+  "sys_path_first_10": [
+    "<repo>/scripts/research",
+    "[local path redacted]/python313.zip",
+    "[local path redacted]/DLLs",
+    "[local path redacted]/Lib",
+    "[local path redacted]",
+    "<repo-approved-venv>",
+    "<repo-approved-venv>/Lib/site-packages"
+  ],
+  "vn30_scripts": {
+    "bypass_detected": true,
+    "scripts": [
+      {
+        "path": "scripts/research/audit_vn30_hourly_available_window.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/audit_vn30_hourly_coverage_2005_2026.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/build_vn30_hourly_available_window_paper_artifact_pack.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/build_vn30_hourly_listing_aware_paper_artifact_pack.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/build_vn30_hourly_paper_artifact_pack_2005_2026.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/build_vn30_hourly_vnstock_paper_artifact_pack.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/diagnose_vn30_vnstock_hourly_fetch_failures.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/fetch_vn30_hourly_from_vnstock_2005_2026.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/fetch_vn30_hourly_listing_aware_from_vnstock.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_available_window_benchmark.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_available_window_confidence_sweep.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_available_window_cost_slippage_validation.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_available_window_exante_regime_validation.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_benchmark_2005_2026.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_benchmark_2005_2026_from_fetched.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_confidence_sweep_2005_2026.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_cost_slippage_validation_2005_2026.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_exante_regime_validation_2005_2026.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_listing_aware_benchmark.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_listing_aware_confidence_sweep.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_listing_aware_cost_slippage_validation.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_listing_aware_exante_regime_validation.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_vnstock_confidence_sweep.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_vnstock_cost_slippage_validation.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/run_vn30_hourly_vnstock_exante_regime_validation.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/validate_external_vn30_hourly_dataset.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/validate_fetched_vn30_hourly_2005_2026.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/validate_vn30_hourly_listing_aware_dataset.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/vn30_hourly_available_window_common.py",
+        "uses_direct_vnstock_provider": false,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/vn30_hourly_common.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/vn30_hourly_listing_aware_common.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      },
+      {
+        "path": "scripts/research/vn30_hourly_vnstock_common.py",
+        "uses_direct_vnstock_provider": true,
+        "uses_repo_adapter": false
+      }
+    ]
+  },
+  "vnstock": {
+    "import_success": true,
+    "module": "vnstock",
+    "module_file": "<repo-approved-venv>/Lib/site-packages/vnstock/__init__.py",
+    "spec_found": true,
+    "spec_origin": "<repo-approved-venv>/Lib/site-packages/vnstock/__init__.py",
+    "traceback": null,
+    "version": null
+  },
+  "vnstock_data": {
+    "import_success": true,
+    "module": "vnstock_data",
+    "module_file": "<repo-approved-venv>/Lib/site-packages/vnstock_data/__init__.py",
+    "spec_found": true,
+    "spec_origin": "<repo-approved-venv>/Lib/site-packages/vnstock_data/__init__.py",
+    "traceback": null,
+    "version": "3.0.0"
+  }
+}

@@ -1,0 +1,6 @@
+signal,2022_status,2022_accuracy,2023_status,2023_accuracy,2024_status,2024_accuracy,2025_status,2025_accuracy,2025_passed_60pct,stable_across_windows,interpretation
+global_daily,unavailable,,unavailable,,unavailable,,available,0.5318725099601593,False,not_established,Only 2025 has official artifacts in this phase.
+global_hourly,unavailable,,unavailable,,unavailable,,available,0.5128571875195398,False,not_established,Only 2025 has official artifacts in this phase.
+hourly_stacking_h1_confidence_0.57,unavailable,,unavailable,,unavailable,,available,0.6003482803656944,True,not_established,Only 2025 has official artifacts in this phase.
+daily_lightgbm_h20_posthoc_bear,unavailable,,unavailable,,unavailable,,available,0.6959459459459459,True,not_established,Only 2025 has official artifacts in this phase.
+daily_xgboost_h20_posthoc_bear,unavailable,,unavailable,,unavailable,,available,0.6914414414414415,True,not_established,Only 2025 has official artifacts in this phase.

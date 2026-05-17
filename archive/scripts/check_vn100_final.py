@@ -1,17 +1,15 @@
-from vnstock import Vnstock
+from vnstock_data import Listing
 import pandas as pd
 
 try:
-    vn = Vnstock()
-    # Try getting VN100 components
+    listing = Listing(source="VCI")
     try:
-        s = vn.stock(symbol="VN100", source="VCI")
-        df = s.listing.components()
-        print("VN100 components found via s.listing.components()")
+        df = listing.symbols_by_group("VN100")
+        print("VN100 components found via Listing.symbols_by_group()")
         print(df.head())
         print(f"Total tickers: {len(df)}")
     except Exception as e:
         print(f"VN100 components failed: {e}")
 
 except Exception as e:
-    print(f"Vnstock init failed: {e}")
+    print(f"vnstock_data Listing init failed: {e}")

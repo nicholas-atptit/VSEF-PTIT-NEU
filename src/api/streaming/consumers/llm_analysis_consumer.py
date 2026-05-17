@@ -89,11 +89,13 @@ class LLMAnalysisConsumer:
                     else:
                         # Fallback to basic headlines if no AI analysis yet
                         logger.info("llm_consumer_news_fallback", ticker=ticker)
-                        from vnstock3 import Vnstock
-                        stock = Vnstock().stock(symbol=ticker, source="VCI")
-                        news_df = stock.company.news()
+                        from src.data.adapters.vnstock_adapter import VnstockAdapter
+                        news_df = VnstockAdapter().get_news(ticker, count=5)
                         if news_df is not None and not news_df.empty:
-                            headlines = news_df["news_title"].head(5).tolist()
+                            title_col = "news_title" if "news_title" in news_df.columns else "title"
+                            if title_col not in news_df.columns:
+                                title_col = news_df.columns[0]
+                            headlines = news_df[title_col].head(5).astype(str).tolist()
                             news_text = "Latest Headlines:\n" + "\n".join([f"- {h}" for h in headlines])
             except Exception as news_e:
                 logger.debug("llm_consumer_news_error", ticker=ticker, err=str(news_e))

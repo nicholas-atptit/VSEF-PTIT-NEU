@@ -44,6 +44,10 @@ Not allowed:
 Run from the repository root in PowerShell:
 
 ```powershell
+python scripts/check_runtime_preflight.py
+```
+
+```powershell
 python scripts/run_quant_core.py --preset smoke --run-mode research_core --enable-scenario-engine --enable-risk-governance --enable-portfolio-allocator --enable-phase3-router --output-dir artifacts/quant_core_router_smoke
 ```
 
@@ -115,6 +119,8 @@ Router:
 - [docs/runbooks/RUN_FULL_DECISION_CHAIN_SMOKE.md](docs/runbooks/RUN_FULL_DECISION_CHAIN_SMOKE.md)
 - [docs/runbooks/TROUBLESHOOTING.md](docs/runbooks/TROUBLESHOOTING.md)
 - [docs/DOCS_INVENTORY.md](docs/DOCS_INVENTORY.md)
+- [docs/COMMAND_REGISTRY.md](docs/COMMAND_REGISTRY.md)
+- [docs/REPORTS_GOVERNANCE.md](docs/REPORTS_GOVERNANCE.md)
 - [docs/README.md](docs/README.md)
 
 ## Repository Structure
@@ -124,11 +130,11 @@ src/        Core framework packages and diagnostic layers
 scripts/    CLI entry points and local workflow runners
 tests/      Unit and smoke-style validation suites
 docs/       Active source of truth for architecture, schemas, runbooks, and roadmap
-reports/    Historical snapshots, not canonical governance docs
+reports/    Historical snapshots plus controlled remediation evidence
 artifacts/  Generated workflow outputs; do not commit
 ```
 
-`docs/` contains the active source of truth. `reports/` are historical snapshots and are not canonical governance docs.
+`docs/` contains the active source of truth. Most `reports/` content is historical snapshot material; controlled audit-remediation evidence under `reports/` is canonical only for remediation status and verification. See `docs/REPORTS_GOVERNANCE.md`.
 
 ## Current Status
 
@@ -141,3 +147,6 @@ The deterministic decision-diagnostic chain is implemented. Documentation invent
 - Update docs when schemas change.
 - Do not commit generated artifacts.
 - Archive stale docs instead of deleting them blindly.
+
+Dữ liệu được kết nối và truy xuất thông qua Vnstock - gói phần mềm Python phân tích thị trường chứng khoán Việt Nam. 
+(thinh-vu @ Github, Copyright (c) 2022-2026).

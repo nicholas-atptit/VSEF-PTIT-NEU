@@ -1,0 +1,12 @@
+check,status,severity,details
+output_dir_exists,PASS,info,outputs/vn30_hourly_2015_rf_h60_final65_focus
+manifest_exists,PASS,info,manifest present
+no_daily_data,PASS,info,hourly only by design
+no_resampling,PASS,info,no resampling by design
+no_data_fetch,PASS,info,no data fetch by design
+universe_unchanged,PASS,info,VN30 Jan 2025 unchanged
+validation_only_selection,PASS,info,all threshold/policy selection on 2024 validation
+final_eval_scoring_only,PASS,info,final eval used only for scoring
+no_final_label_tuning,PASS,info,no threshold tuning on final labels
+no_leakage,PASS,info,no leakage indicators
+final65_pass,WARN,warn,Best final65: 59.70%

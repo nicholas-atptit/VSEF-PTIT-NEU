@@ -78,10 +78,15 @@ def test_trainer_boosters_receive_optional_risk_and_regime_features(tmp_path) ->
     short_algos = manifest["horizons"]["short"]["algorithms"]
     cart_cols = short_algos["cart"]["feature_columns"]
     xgb_cols = short_algos["xgboost"]["feature_columns"]
+    cart_task_cols = short_algos["cart"]["feature_columns_by_task"]
+    xgb_task_cols = short_algos["xgboost"]["feature_columns_by_task"]
 
     for column in ("var_q", "cvar_q", "covar_q", "delta_covar", "rolling_drawdown", "regime_label", "regime_probability"):
         assert column not in cart_cols
         assert column in xgb_cols
+        assert column not in cart_task_cols["trend"]
+        assert column not in cart_task_cols["return"]
+        assert column in xgb_task_cols["trend"] or column in xgb_task_cols["return"]
 
     assert manifest["risk_summary"]
     assert manifest["regime_distribution"]

@@ -20,7 +20,7 @@ The use of `simulate_execution_cost(entry_price, volume, action)` is a high-qual
 The `PaperTradingEngine` uses a `run_single_cycle` method that loads current market snapshots. 
 - **Time Safety**: It loads `ticker` OHLCV at runtime. 
 - **Leakage Risk**: If `load_ohlcv_from_db` includes the current day's close *before* the day has ended, there is leakage. 
-- **Check**: `_fetch_market_snapshot` (Line 321) uses `vnstock.stock().quote.intraday()`. This is correct for active paper trading.
+- **Check**: `_fetch_market_snapshot` uses the canonical `VnstockAdapter`/`vnstock_data` OHLCV path for runtime snapshots.
 
 ---
 

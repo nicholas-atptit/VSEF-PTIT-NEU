@@ -1,0 +1,4 @@
+index_code,exact_code_local_file_found,first_available_hourly_timestamp,last_available_hourly_timestamp,hourly_rows,selected_window_start,selected_window_end,selected_window_rows,selected_train_rows,selected_eval_rows,overlaps_selected_window,covers_selected_window,available_window_context_ready,limitation,raw_hourly_sources,raw_hourly_files
+VNINDEX,False,,,0,2025-12-15 09:00:00,2026-05-11 14:00:00,0,0,0,False,False,False,exact_code_local_hourly_index_data_missing; context_not_fabricated,,
+VN30INDEX,False,,,0,2025-12-15 09:00:00,2026-05-11 14:00:00,0,0,0,False,False,False,exact_code_local_hourly_index_data_missing; context_not_fabricated,,
+VNXALL,False,,,0,2025-12-15 09:00:00,2026-05-11 14:00:00,0,0,0,False,False,False,exact_code_local_hourly_index_data_missing; context_not_fabricated,,

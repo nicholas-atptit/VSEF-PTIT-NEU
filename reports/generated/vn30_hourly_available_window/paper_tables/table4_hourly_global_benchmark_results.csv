@@ -1,0 +1,2 @@
+frequency,status,benchmark_run,n_predictions,overall_accuracy,passed_60pct,selected_ticker_count,full_vn30_representativeness
+hourly,completed,True,75756,0.5118670468345742,False,27,False

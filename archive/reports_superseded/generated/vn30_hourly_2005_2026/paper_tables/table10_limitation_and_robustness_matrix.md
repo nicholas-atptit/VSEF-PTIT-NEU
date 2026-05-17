@@ -1,0 +1,13 @@
+# Table 10: Limitation and robustness matrix
+
+| area | status | evidence | claim_boundary |
+| --- | --- | --- | --- |
+| Hourly data coverage | blocking | 0/30 VN30 tickers benchmark-usable | No full VN30 evidence claim unless 30/30 are usable. |
+| Period design | fixed | 2005-01-01 00:00:00 to 2026-05-31 23:59:59 | The requested period is not silently shortened. |
+| Frequency | fixed | hourly only | Daily data and daily-to-hourly resampling are excluded. |
+| Leakage | declared | target_timestamp <= train_cutoff | Evaluation labels after 2025-01-01 do not enter training labels. |
+| Trading readiness | proxy_only | Cost/slippage diagnostics lack real fills and liquidity filters. | No live trading readiness claim. |
+
+## Note
+
+Claim boundaries for the VN30 hourly rerun.

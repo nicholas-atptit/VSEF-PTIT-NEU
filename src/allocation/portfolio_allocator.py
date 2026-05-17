@@ -1,4 +1,6 @@
-"""Deterministic Portfolio Allocator v1 for Quant Core diagnostic outputs.
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
 
 This allocator emits allocation candidates only. It does not emit final trading
 recommendations and does not train or select models.

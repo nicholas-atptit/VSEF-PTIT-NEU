@@ -1,0 +1,2 @@
+horizon,model_precision_at_k,random_mean,random_std,random_p5,random_p95,prev_return_precision,momentum_precision,model_lift_over_random,model_delta_over_momentum,significantly_above_random
+40,0.38014705882352945,0.45966911764705876,0.009973296417734015,0.4426470588235294,0.475,0.4426470588235294,0.43529411764705883,-0.0795220588235293,-0.05514705882352938,False

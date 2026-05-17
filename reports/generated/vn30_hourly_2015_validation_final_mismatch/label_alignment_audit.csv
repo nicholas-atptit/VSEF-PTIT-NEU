@@ -1,0 +1,5 @@
+horizon,total_labels,class_0_count,class_1_count,class_balance,nan_count,label_construction
+40,44904,23262,21642,0.482,0,close[t+h] > close[t]
+60,44904,23065,21839,0.4863,0,close[t+h] > close[t]
+80,44904,22185,22719,0.5059,0,close[t+h] > close[t]
+120,44904,21798,23106,0.5146,0,close[t+h] > close[t]

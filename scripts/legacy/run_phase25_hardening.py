@@ -1,4 +1,7 @@
-"""Bounded hardening sweep for the Phase 2 conditioning stack."""
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
+"""
 
 from __future__ import annotations
 

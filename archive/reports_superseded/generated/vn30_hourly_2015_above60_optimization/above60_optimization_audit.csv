@@ -1,0 +1,14 @@
+check,status,severity,details
+output_directory_exists,PASS,info,outputs/vn30_hourly_2015_above60_optimization
+manifest_exists,PASS,info,experiment_manifest.json present
+run_config_exists,PASS,info,run_config.json present
+experiments_completed,PASS,info,48/48 experiments completed
+global_above_60,WARN,warn,Best global eval accuracy: 56.25%
+model_horizon_above_60,WARN,warn,Best model/horizon eval accuracy: 56.25%
+coverage_qualified_above_60,PASS,info,Coverage-qualified candidates above 60%: 2
+threshold_selected_on_validation,PASS,info,All thresholds selected using 2024 validation period only (by design of optimizer)
+final_evaluation_untouched,PASS,info,Final evaluation (2025-2026) untouched until final scoring (by design of optimizer)
+all_30_tickers_included,PASS,info,All 30 VN30 tickers included in experiments (by design of optimizer)
+no_leakage_evidence,PASS,info,No evidence of label leakage: train/val/eval splits enforced by timestamp
+no_daily_resampled_data,PASS,info,"No daily or resampled data used (hourly only, by design of optimizer)"
+no_invalid_claims,PASS,info,All claims classified as global/conditional/exploratory per protocol

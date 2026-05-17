@@ -351,7 +351,7 @@ class WalkForwardAllModelsStackingRunner:
                 )
                 source = "csv_fallback"
         if history.empty:
-            raise ValueError(f"No OHLCV data returned for {ticker} from vnstock or local CSV fallback")
+            raise ValueError(f"No OHLCV data returned for {ticker} from vnstock_data or local CSV fallback")
         trainer = DualModelTrainer(model_dir=self.models_dir / "_scratch")
         standardized = trainer._normalize_ohlcv(history, ticker=ticker)[STANDARD_COLUMNS]
         DataQualityValidator(ticker=ticker).validate_ohlcv(standardized)

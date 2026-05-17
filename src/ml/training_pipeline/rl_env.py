@@ -1,4 +1,5 @@
-"""OpenAI Gym Environment for Stock Portfolio Optimization (RL).
+"""Experimental placeholder module.
+Not part of canonical governed runtime.
 
 Implements the VN stock market simulation with a Sortino Ratio 
 reward function and a hard-capped Action Space (0.70).

@@ -27,7 +27,6 @@ class MarketDataProducer:
         """Fetch daily data for all active tickers and publish to Kafka."""
         try:
             from vnstock_data import Listing
-            from vnstock3 import Vnstock
             
             # 1. Get List of Tickers
             df_listing = Listing(source="vnd").all_symbols()
@@ -78,11 +77,10 @@ class MarketDataProducer:
             await self.publisher.stop()
 
     def _fetch_single_ticker(self, ticker: str, today_str: str):
-        """Synchronous fetch of a single ticker from VNStock."""
-        from vnstock3 import Vnstock
+        """Synchronous fetch of a single ticker from vnstock_data."""
+        from vnstock_data import Quote
         try:
-            stock = Vnstock().stock(symbol=ticker, source="VCI")
-            df = stock.quote.history(start=today_str, end=today_str, interval="1D")
+            df = Quote(source="VCI", symbol=ticker).history(start=today_str, end=today_str, interval="1D")
             return df
         except Exception:
             return None

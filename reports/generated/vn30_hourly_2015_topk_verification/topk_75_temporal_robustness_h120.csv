@@ -1,0 +1,8 @@
+period_type,period,events,mean_precision_at_k,median_precision_at_k,hit_rate_at_k,selected_stock_events,precision_ge_65
+month,2025-08,3,0.7666666666666666,0.8,1.0,30,True
+month,2025-09,20,0.8300000000000001,0.8,1.0,200,True
+month,2025-10,23,0.8043478260869563,0.9,1.0,230,True
+month,2025-11,10,0.45,0.45,1.0,100,False
+quarter,2025Q3,23,0.8217391304347825,0.8,1.0,230,True
+quarter,2025Q4,33,0.696969696969697,0.9,1.0,330,True
+year,2025,56,0.7482142857142858,0.8,1.0,560,True

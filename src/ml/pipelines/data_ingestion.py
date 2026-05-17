@@ -10,7 +10,7 @@ from src.utils.logging import get_logger
 logger = get_logger(__name__)
 
 class IngestionPipeline:
-    """Manages the daily flow of data from vnstock to storage."""
+    """Manages the daily flow of data from vnstock_data to storage."""
 
     def __init__(self, symbols: List[str]) -> None:
         self.adapter = VnstockAdapter(symbols)

@@ -1,0 +1,6 @@
+source,accuracy,rows,coverage,details
+canonical_evaluator,0.603051,3474,1.0,Pooled accuracy: 2095/3474
+horizon_relative_target_v1,0.6022,3474,1.0,"RF h=60 absolute, feature set C, from horizon-relative-target experiment"
+all_model_router_v1,0.5964,3474,1.0,"RF h=60 absolute, per-ticker whitelist, from all-model router experiment"
+rf_h60_final65_focus_v1,0.597,3474,1.0,"RF h=60 absolute, Platt calibration, from RF-only focus experiment"
+rf_h60_router_v2,0.5987,3474,1.0,"RF h=60 absolute, per-ticker whitelist, from router v2 experiment"

@@ -1,3 +1,8 @@
+"""Legacy module.
+Retained for historical compatibility or migration reference.
+Not part of canonical governed runtime.
+"""
+
 from importlib import import_module
 import sys
 

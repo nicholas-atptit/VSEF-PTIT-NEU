@@ -1,5 +1,6 @@
 # ── Python ──
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 *.egg-info/
@@ -12,6 +13,7 @@ venv/
 
 # ── Secrets ──
 .env
+.env.local
 *.pem
 
 # ── IDE ──
@@ -33,6 +35,8 @@ data/sector_proxies.csv
 data/fundamentals_latest.csv
 data/market_proxy.csv
 data/latest_predictions.json
+data/market_cache/
+data/raw/
 
 # ── OS ──
 Thumbs.db
@@ -46,15 +50,22 @@ scripts/_patch_settings.py
 .gemini/
 .pytest_cache/
 pytest-cache-files-*/
+*.log
 *.bak
 *.tmp
 *.broken
-tmp/
-tmp*/
-artifacts/
-outputs/*
-!outputs/experiments/
-outputs/experiments/*
-!outputs/experiments/.gitkeep
+/tmp/
+/artifacts/
+/outputs/
+archive/generated_data_snapshots/
+reports/generated/**/fetch/*.csv
+reports/generated/**/fetch/*chunk_log*.csv
+reports/generated/**/fetch/*failures*.csv
+reports/generated/**/validation/*.csv
+reports/generated/**/debug/cache_roundtrip/
+reports/generated/index_hourly_2015/
+reports/generated/vn30_hourly_2015/
 logs/
-models/
+/models/
+node_modules/
+*.db

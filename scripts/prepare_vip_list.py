@@ -1,13 +1,15 @@
 
-import pandas as pd
 import json
-import os
+from pathlib import Path
+
+import pandas as pd
 
 def main():
-    csv_path = 'H:/AI-ML-LLM in Stock_march26_PTIT_NEU/data/listing/danh_sach_VIP_14_cot.csv'
-    output_path = 'H:/AI-ML-LLM in Stock_march26_PTIT_NEU/data/listing/danh_sach_VIP_LLM_ready.jsonl'
+    repo_root = Path(__file__).resolve().parents[1]
+    csv_path = repo_root / "data" / "listing" / "danh_sach_VIP_14_cot.csv"
+    output_path = repo_root / "data" / "listing" / "danh_sach_VIP_LLM_ready.jsonl"
     
-    if not os.path.exists(csv_path):
+    if not csv_path.exists():
         print(f"Error: {csv_path} not found")
         return
 
@@ -18,7 +20,7 @@ def main():
     # Include ALL listed stocks
     symbols = listed['symbol'].tolist()
     
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with output_path.open('w', encoding='utf-8') as f:
         for s in symbols:
             f.write(json.dumps({'symbol': s}) + '\n')
             

@@ -15,8 +15,13 @@ from src.utils.logging import get_logger
 logger = get_logger(__name__)
 
 # ═══════════════════════════ LEGACY STATIC LIST ═══════════════════════════
-# This list is used as a fallback if the live API retrieval fails.
-# It matches the list currently hardcoded in scripts/sync_all_data.py.
+# This list is used as a fallback if live VN100 retrieval fails or returns an
+# undersized universe. It matches the list currently hardcoded in
+# scripts/sync_all_data.py.
+VN100_MIN_EXPECTED_COUNT = 100
+VN100_BACKUP_SOURCE = "src.data.universe.VN100_BACKUP_TICKERS"
+VN100_BACKUP_AS_OF = "current static fallback; historical constituents unavailable"
+VN100_BACKUP_ACTIVATION = "live provider error, empty live universe, or live universe count below 100"
 VN100_BACKUP_TICKERS = [
     "AAA", "ACB", "ANV", "ASM", "BAF", "BCG", "BCM", "BID", "BMI", "BMP",
     "BVH", "BWE", "CII", "CMG", "CTD", "CTG", "CTR", "DBC", "DCM", "DGC",
@@ -32,6 +37,20 @@ VN100_BACKUP_TICKERS = [
 ]
 
 VIETTEL_TICKERS = ["VTP", "VGI", "CTR", "FOX"]
+
+
+def _static_vn100_fallback(reason: str, *, live_count: int | None = None) -> List[str]:
+    logger.warning(
+        "vn100_static_fallback_used",
+        reason=reason,
+        live_count=live_count,
+        minimum_expected_count=VN100_MIN_EXPECTED_COUNT,
+        fallback_source=VN100_BACKUP_SOURCE,
+        fallback_expected_count=len(VN100_BACKUP_TICKERS),
+        fallback_as_of=VN100_BACKUP_AS_OF,
+        fallback_activation=VN100_BACKUP_ACTIVATION,
+    )
+    return VN100_BACKUP_TICKERS.copy()
 
 
 def get_vn100_universe(
@@ -62,20 +81,24 @@ def get_vn100_universe(
 
     tickers: List[str] = []
 
-    # 1. Attempt to fetch current VN100 from Adapter (vnstock 3.0)
+    # 1. Attempt to fetch current VN100 from the canonical adapter.
     try:
         adapter = VnstockAdapter()
         tickers = adapter.get_vn100_tickers()
         
         if not tickers:
-            logger.warning("vnstock_returned_empty_vn100", action="falling_back_to_static")
-            tickers = VN100_BACKUP_TICKERS.copy()
+            tickers = _static_vn100_fallback("live_provider_returned_empty", live_count=0)
+        elif len(set(tickers)) < VN100_MIN_EXPECTED_COUNT:
+            tickers = _static_vn100_fallback(
+                "live_provider_returned_undersized_universe",
+                live_count=len(set(tickers)),
+            )
         else:
-            logger.info("vn100_resolved_via_adapter", count=len(tickers))
+            logger.info("vn100_resolved_via_adapter", count=len(set(tickers)))
             
     except Exception as e:
         logger.error("vn100_resolution_error", error=str(e), action="falling_back_to_static")
-        tickers = VN100_BACKUP_TICKERS.copy()
+        tickers = _static_vn100_fallback("live_provider_error")
 
     # 2. Handle Universe Extensions
     if mode == "current_plus_viettel":

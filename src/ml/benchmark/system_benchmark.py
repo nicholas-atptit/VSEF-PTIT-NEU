@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.ml.benchmark.acceptance import evaluate_benchmark_acceptance
 from src.ml.benchmark.evaluator import MetricsEvaluator
 from src.ml.portfolio.allocation import RiskAwareAllocator
 from src.ml.regime.regime_detector import REGIME_TO_CODE
@@ -271,7 +272,65 @@ class SystemBenchmarkRunner:
             summary["delta_sharpe_vs_legacy"] = summary["sharpe"] - float(legacy["sharpe"])
             summary["delta_cagr_vs_legacy"] = summary["cagr"] - float(legacy["cagr"])
             summary["delta_mdd_vs_legacy"] = summary["max_drawdown"] - float(legacy["max_drawdown"])
-        return summary
+        return SystemBenchmarkRunner._append_acceptance_status(summary)
+
+    @staticmethod
+    def _append_acceptance_status(summary_df: pd.DataFrame) -> pd.DataFrame:
+        if summary_df.empty:
+            return summary_df
+        result = summary_df.copy().reset_index(drop=True)
+        legacy_rows = result[result["benchmark_mode"] == "legacy_forecast_only"]
+        legacy = legacy_rows.iloc[0] if not legacy_rows.empty else None
+        comparison_count = max(int(len(result) - (0 if legacy is None else 1)), 0)
+        acceptance_rows: list[dict[str, Any]] = []
+        for _, row in result.iterrows():
+            benchmark_mode = str(row.get("benchmark_mode") or "")
+            if legacy is None or benchmark_mode == "legacy_forecast_only":
+                acceptance = evaluate_benchmark_acceptance(
+                    prediction_metric_delta=None,
+                    economic_metric_delta=None,
+                    bootstrap_ci=None,
+                    dm_p_value=None,
+                    turnover_delta=None,
+                    cost_adjusted_delta=None,
+                    sample_size=_safe_int(row.get("test_rows")),
+                    comparison_count=comparison_count,
+                )
+            else:
+                prediction_delta = _safe_float(row.get("directional_accuracy")) - _safe_float(legacy.get("directional_accuracy"))
+                economic_delta = _safe_float(row.get("delta_sharpe_vs_legacy"))
+                cost_adjusted_delta = _safe_float(row.get("delta_cagr_vs_legacy"))
+                turnover_delta = _safe_float(row.get("turnover")) - _safe_float(legacy.get("turnover"))
+                acceptance = evaluate_benchmark_acceptance(
+                    prediction_metric_delta=prediction_delta,
+                    economic_metric_delta=economic_delta,
+                    bootstrap_ci=None,
+                    dm_p_value=None,
+                    turnover_delta=turnover_delta,
+                    cost_adjusted_delta=cost_adjusted_delta,
+                    sample_size=_safe_int(row.get("test_rows")),
+                    comparison_count=comparison_count,
+                )
+            payload = acceptance.to_dict()
+            acceptance_rows.append(
+                {
+                    "accepted": payload["accepted"],
+                    "status": payload["status"],
+                    "effect_size": payload["effect_size"],
+                    "bootstrap_ci": payload["bootstrap_ci"],
+                    "dm_p_value": payload["dm_p_value"],
+                    "warnings": payload["warnings"],
+                    "economic_metric_delta": payload["economic_metric_delta"],
+                    "turnover_penalty": payload["turnover_penalty"],
+                    "cost_adjusted_delta": payload["cost_adjusted_delta"],
+                    "sample_size": payload["sample_size"],
+                    "comparison_count": payload["comparison_count"],
+                    "policy_version": payload["policy_version"],
+                    "decision_reasons": payload["decision_reasons"],
+                    "acceptance_interpretation": payload["interpretation"],
+                }
+            )
+        return pd.concat([result, pd.DataFrame(acceptance_rows)], axis=1)
 
     @staticmethod
     def _markdown_table(df: pd.DataFrame) -> str:
@@ -315,6 +374,21 @@ class SystemBenchmarkRunner:
             .head(1)
             .reset_index(drop=True)
         )
+        acceptance_columns = [
+            "benchmark_mode",
+            "accepted",
+            "status",
+            "effect_size",
+            "bootstrap_ci",
+            "dm_p_value",
+            "warnings",
+            "acceptance_interpretation",
+        ]
+        acceptance_df = (
+            summary_df[[column for column in acceptance_columns if column in summary_df.columns]]
+            if not summary_df.empty
+            else pd.DataFrame()
+        )
         markdown = "\n".join(
             [
                 "# System Benchmark",
@@ -322,7 +396,11 @@ class SystemBenchmarkRunner:
                 "## Summary",
                 self._markdown_table(summary_df.round(6)),
                 "",
-                "## Best Rows By Mode",
+                "## Acceptance Governance",
+                "Leaderboard position alone is not benchmark promotion. Rows without bootstrap CI and DM evidence remain `exploratory_only` or lower.",
+                self._markdown_table(acceptance_df),
+                "",
+                "## Best Rows By Mode (Exploratory Ranking)",
                 self._markdown_table(best_rows.round(6)),
                 "",
                 "## Output Files",
@@ -405,7 +483,7 @@ class SystemBenchmarkRunner:
         detail_csv = report_path if report_path.suffix.lower() == ".csv" else report_path.with_suffix(".csv")
         summary_csv = detail_csv.with_name(f"{detail_csv.stem}_summary.csv")
         json_path = detail_csv.with_suffix(".json")
-        markdown_path = Path("reports") / "system_benchmark.md"
+        markdown_path = detail_csv.parent / "system_benchmark.md"
         self._write_outputs(
             detail_df=detail_df,
             summary_df=summary_df,
@@ -422,3 +500,21 @@ class SystemBenchmarkRunner:
             "json_path": json_path,
             "markdown_path": markdown_path,
         }
+
+
+def _safe_float(value: Any) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    if not np.isfinite(result):
+        return 0.0
+    return result
+
+
+def _safe_int(value: Any) -> int | None:
+    try:
+        result = int(float(value))
+    except (TypeError, ValueError):
+        return None
+    return result if result >= 0 else None

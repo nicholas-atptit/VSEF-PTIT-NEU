@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.ml.benchmark.acceptance import evaluate_benchmark_acceptance
 from src.ml.benchmark.evaluator import MetricsEvaluator
 from src.ml.benchmark.system_benchmark import BenchmarkModeSpec, SystemBenchmarkRunner
 from src.ml.trainer import DualModelTrainer, HORIZON_DAYS, SEQUENCE_ALGORITHMS
@@ -327,10 +328,11 @@ class RiskTuningRunner:
             )
 
         trials_df = pd.DataFrame(trial_rows).sort_values("score", ascending=False).reset_index(drop=True)
+        trials_df = _append_tuning_acceptance_status(trials_df)
         report_path.parent.mkdir(parents=True, exist_ok=True)
         csv_path = report_path if report_path.suffix.lower() == ".csv" else report_path.with_suffix(".csv")
         json_path = csv_path.with_suffix(".json")
-        markdown_path = Path("reports") / "risk_tuning_report.md"
+        markdown_path = csv_path.parent / "risk_tuning_report.md"
         trials_df.to_csv(csv_path, index=False)
         json_path.write_text(
             json.dumps(
@@ -355,6 +357,7 @@ class RiskTuningRunner:
                     *[f"- `{key}`: `{value}`" for key, value in best_params.items()],
                     "",
                     "## Trial Leaderboard",
+                    "Trial rankings are `exploratory_only` until benchmark acceptance evidence is supplied.",
                     trials_df.head(10).to_string(index=False) if not trials_df.empty else "_No trials executed._",
                 ]
             ),
@@ -370,3 +373,34 @@ class RiskTuningRunner:
             "markdown_path": markdown_path,
             "best_model_root": best_model_root,
         }
+
+
+def _append_tuning_acceptance_status(trials_df: pd.DataFrame) -> pd.DataFrame:
+    if trials_df.empty:
+        return trials_df
+    acceptance_rows: list[dict[str, Any]] = []
+    for _ in trials_df.itertuples(index=False):
+        acceptance = evaluate_benchmark_acceptance(
+            prediction_metric_delta=None,
+            economic_metric_delta=None,
+            bootstrap_ci=None,
+            dm_p_value=None,
+            sample_size=None,
+            comparison_count=len(trials_df),
+        ).to_dict()
+        acceptance_rows.append(
+            {
+                "accepted": acceptance["accepted"],
+                "status": acceptance["status"],
+                "effect_size": acceptance["effect_size"],
+                "bootstrap_ci": acceptance["bootstrap_ci"],
+                "dm_p_value": acceptance["dm_p_value"],
+                "warnings": acceptance["warnings"],
+                "policy_version": acceptance["policy_version"],
+                "decision_reasons": acceptance["decision_reasons"],
+                "acceptance_interpretation": (
+                    "Risk-tuning leaderboard rows are exploratory_only validation-search outputs."
+                ),
+            }
+        )
+    return pd.concat([trials_df, pd.DataFrame(acceptance_rows)], axis=1)

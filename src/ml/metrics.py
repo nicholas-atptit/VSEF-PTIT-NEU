@@ -98,6 +98,31 @@ def compute_prediction_error_metrics(
     return metrics
 
 
+def compute_directional_accuracy_from_returns(
+    actual_return: pd.Series | np.ndarray | list[float],
+    predicted_return: pd.Series | np.ndarray | list[float],
+) -> dict[str, float | int]:
+    """Compute directional accuracy after applying benchmark validity rules.
+
+    Rows are ignored when either return is missing/non-finite or the actual
+    return is exactly zero. Predicted direction follows the benchmark rule:
+    positive predicted return maps to 1, otherwise 0.
+    """
+
+    actual = pd.to_numeric(pd.Series(actual_return), errors="coerce").replace([np.inf, -np.inf], np.nan)
+    predicted = pd.to_numeric(pd.Series(predicted_return), errors="coerce").replace([np.inf, -np.inf], np.nan)
+    mask = actual.notna() & predicted.notna() & (actual != 0.0)
+    if not mask.any():
+        return {"n_obs": 0, "accuracy": np.nan}
+
+    actual_direction = (actual.loc[mask] > 0.0).astype(int)
+    predicted_direction = (predicted.loc[mask] > 0.0).astype(int)
+    return {
+        "n_obs": int(mask.sum()),
+        "accuracy": float((actual_direction == predicted_direction).mean()),
+    }
+
+
 def compare_prediction_metric_sets(
     model_metrics: dict[str, Any],
     baseline_metrics: dict[str, Any],

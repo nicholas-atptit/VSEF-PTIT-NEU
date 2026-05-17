@@ -3,22 +3,31 @@
 import asyncio
 import datetime as dt
 import pandas as pd
-from vnstock_data import Quote
+from src.data.providers.vn_price_gateway import fetch_price_history
+from src.data.providers.vn_provider_contract import AssetType, FetchRequest, Frequency, SourceName
 from src.utils.logging import get_logger
 
 logger = get_logger("hourly_service")
 
 async def fetch_hourly_data(ticker: str, days: int = 30) -> pd.DataFrame | None:
-    """Fetch hourly history for a ticker using vnstock_data (canonical provider)."""
+    """Fetch hourly history for a ticker using the canonical provider gateway."""
     try:
         end_date = dt.date.today()
         start_date = end_date - dt.timedelta(days=days)
-
-        df = Quote(source="VCI", symbol=ticker.upper()).history(
-            start=start_date.strftime("%Y-%m-%d"),
-            end=end_date.strftime("%Y-%m-%d"),
-            interval="1H",
+        response = fetch_price_history(
+            FetchRequest(
+                symbol=ticker.upper(),
+                asset_type=AssetType.STOCK,
+                start=start_date.strftime("%Y-%m-%d"),
+                end=end_date.strftime("%Y-%m-%d"),
+                frequency=Frequency.HOURLY,
+                preferred_sources=(SourceName.KBS, SourceName.VCI),
+                allow_legacy_fallback=True,
+                allow_daily=False,
+                allow_resample=False,
+            )
         )
+        df = response.data.rename(columns={"datetime": "time"}).drop(columns=["frequency"], errors="ignore")
         return df
     except Exception as e:
         logger.debug("fetch_error", ticker=ticker, error=str(e))
