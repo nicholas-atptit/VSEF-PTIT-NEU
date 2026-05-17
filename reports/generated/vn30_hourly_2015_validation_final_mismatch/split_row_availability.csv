@@ -1,0 +1,8 @@
+split,start,end,horizon,total_rows,valid_labels,unique_tickers,rows_lost_to_horizon
+window_A_train,2015-01-01,2021-12-31,60,0,0,0,0
+window_A_val,2022-01-01,2022-12-31,60,0,0,0,0
+window_B_train,2015-01-01,2022-12-31,60,0,0,0,0
+window_B_val,2023-01-01,2023-12-31,60,9600,7800,30,1800
+window_C_train,2015-01-01,2023-12-31,60,9600,7800,30,1800
+window_C_val,2024-01-01,2024-12-31,60,30030,28230,30,1800
+final_eval,2025-01-01,2026-05-14,60,5245,3445,30,1800
