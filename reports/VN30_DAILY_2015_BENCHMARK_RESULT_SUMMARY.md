@@ -1,9 +1,9 @@
 # VN30 Daily 2015 Benchmark Result Summary
 
 - Active universe source: VN30 January 2025 review.
-- Usable ticker count: 28.
-- Usable ticker list: ACB, BID, BVH, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIC, VJC, VNM, VPB, VRE.
-- Excluded tickers (no data): BCM, VIB.
+- Usable ticker count: 30.
+- Usable ticker list: ACB, BCM, BID, BVH, CTG, FPT, GAS, GVR, HDB, HPG, LPB, MBB, MSN, MWG, PLX, SAB, SHB, SSB, SSI, STB, TCB, TPB, VCB, VHM, VIB, VIC, VJC, VNM, VPB, VRE.
+- Excluded tickers: none (BCM and VIB recovered).
 - Train period: 2015-01-01 to 2023-12-31 23:59:59.
 - Validation period: 2024-01-01 00:00:00 to 2024-12-31 23:59:59.
 - Evaluation period: 2025-01-01 00:00:00 to latest available.
@@ -16,36 +16,36 @@
 
 | model | horizon | val_accuracy | final_accuracy | final_rows | claim_level |
 | --- | --- | --- | --- | --- | --- |
-| random_forest | 1 | 53.77% | 53.82% | 9380 | failed |
-| xgboost | 1 | 55.73% | 55.81% | 9380 | failed |
-| lightgbm | 1 | 55.16% | 55.39% | 9380 | failed |
-| random_forest | 5 | 48.59% | 51.35% | 9268 | failed |
-| xgboost | 5 | 51.10% | 52.51% | 9268 | failed |
-| lightgbm | 5 | 51.41% | 53.14% | 9268 | failed |
-| random_forest | 10 | 47.34% | 52.02% | 9128 | failed |
-| xgboost | 10 | 49.76% | 52.88% | 9128 | failed |
-| lightgbm | 10 | 49.17% | 52.51% | 9128 | failed |
-| random_forest | 20 | 50.39% | 50.42% | 8848 | failed |
-| xgboost | 20 | 51.23% | 52.98% | 8848 | failed |
-| lightgbm | 20 | 49.13% | 51.21% | 8848 | failed |
-| random_forest | 60 | 51.46% | 52.69% | 7728 | failed |
-| xgboost | 60 | 54.41% | 55.14% | 7728 | failed |
-| lightgbm | 60 | 53.79% | 54.45% | 7728 | failed |
+| random_forest | 1 | 53.52% | 54.15% | 10050 | failed |
+| xgboost | 1 | 55.51% | 55.84% | 10050 | failed |
+| lightgbm | 1 | 55.59% | 55.41% | 10050 | failed |
+| random_forest | 5 | 49.29% | 51.73% | 9930 | failed |
+| xgboost | 5 | 52.09% | 53.93% | 9930 | failed |
+| lightgbm | 5 | 51.69% | 53.20% | 9930 | failed |
+| random_forest | 10 | 47.83% | 51.54% | 9780 | failed |
+| xgboost | 10 | 49.69% | 53.49% | 9780 | failed |
+| lightgbm | 10 | 48.59% | 52.59% | 9780 | failed |
+| random_forest | 20 | 49.27% | 51.14% | 9480 | failed |
+| xgboost | 20 | 50.45% | 53.11% | 9480 | failed |
+| lightgbm | 20 | 50.45% | 53.44% | 9480 | failed |
+| random_forest | 60 | 52.04% | 53.25% | 8280 | failed |
+| xgboost | 60 | 55.09% | 54.83% | 8280 | failed |
+| lightgbm | 60 | 53.47% | 53.38% | 8280 | failed |
 
 ## Best Model/Horizon
 
 - Model: xgboost.
 - Horizon: 1 trading days.
-- Validation accuracy: 55.73%.
-- Final accuracy: 55.81%.
-- Final rows: 9380.
+- Validation accuracy: 55.51%.
+- Final accuracy: 55.84%.
+- Final rows: 10050.
 - Claim level: failed.
 
 ## Baseline Delta
 
 | model | horizon | model_accuracy | baseline_accuracy | delta |
 | --- | --- | --- | --- | --- |
-| xgboost | 1 | 55.81% | 50.00% | 5.81% |
+| xgboost | 1 | 55.84% | 50.00% | 5.84% |
 
 ## Limitations
 

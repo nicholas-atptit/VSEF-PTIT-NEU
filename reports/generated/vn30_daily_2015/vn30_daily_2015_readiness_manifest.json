@@ -3,13 +3,13 @@
   "universe": "VN30 January 2025 review",
   "frequency": "daily",
   "tickers_total": 30,
-  "tickers_usable": 28,
-  "all_ready": false,
+  "tickers_usable": 30,
+  "all_ready": true,
   "train_end": "2023-12-31 00:00:00",
   "val_start": "2024-01-01 00:00:00",
   "val_end": "2024-12-31 00:00:00",
   "eval_start": "2025-01-01 00:00:00",
-  "built_at": "2026-05-17T06:39:34+00:00",
+  "built_at": "2026-05-17T09:18:22+00:00",
   "tickers": [
     {
       "ticker": "ACB",
@@ -24,14 +24,14 @@
     },
     {
       "ticker": "BCM",
-      "exists": false,
-      "rows": 0,
-      "first_date": "",
-      "last_date": "",
-      "train_rows": 0,
-      "val_rows": 0,
-      "eval_rows": 0,
-      "usable": false
+      "exists": true,
+      "rows": 2026,
+      "first_date": "2018-02-21 07:00:00",
+      "last_date": "2026-05-15 07:00:00",
+      "train_rows": 1440,
+      "val_rows": 249,
+      "eval_rows": 336,
+      "usable": true
     },
     {
       "ticker": "BID",
@@ -277,14 +277,14 @@
     },
     {
       "ticker": "VIB",
-      "exists": false,
-      "rows": 0,
-      "first_date": "",
-      "last_date": "",
-      "train_rows": 0,
-      "val_rows": 0,
-      "eval_rows": 0,
-      "usable": false
+      "exists": true,
+      "rows": 2322,
+      "first_date": "2017-01-09 07:00:00",
+      "last_date": "2026-05-15 07:00:00",
+      "train_rows": 1736,
+      "val_rows": 249,
+      "eval_rows": 336,
+      "usable": true
     },
     {
       "ticker": "VIC",

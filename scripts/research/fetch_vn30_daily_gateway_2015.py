@@ -9,8 +9,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.data.providers.vn_price_gateway import fetch_price_history
-from src.data.providers.vn_provider_contract import AssetType, FetchRequest, Frequency, SourceName
+from src.data.providers.vn_price_gateway import fetch_price_history, _quote_history
+from src.data.providers.vn_provider_contract import AssetType, FetchRequest, Frequency, SourceName, ProviderName
 
 CACHE_ROOT = REPO_ROOT / "data" / "market_cache" / "vnstock_data" / "vn30" / "daily_2015"
 UNIVERSE_PATH = REPO_ROOT / "configs" / "universes" / "vn30_constituents_frozen.csv"
@@ -27,6 +27,54 @@ def read_universe() -> list[str]:
 
 def cache_path(ticker: str) -> Path:
     return CACHE_ROOT / f"{ticker}.csv"
+
+def _filter_ohlcv_bad_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop rows that fail OHLCV consistency checks, keeping the rest."""
+    for col in ["open", "high", "low", "close", "volume"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    bad = (
+        (df["open"] <= 0) | (df["high"] <= 0) | (df["low"] <= 0) | (df["close"] <= 0) |
+        (df["volume"] < 0) | (df["high"] < df["low"]) |
+        (df["high"] < df[["open", "close"]].max(axis=1)) |
+        (df["low"] > df[["open", "close"]].min(axis=1))
+    )
+    return df[~bad].copy()
+
+def _fetch_raw_and_save(ticker: str, start: str, end: str) -> dict:
+    """Fallback: fetch raw data directly, filter bad rows, save to cache."""
+    result = {"ticker": ticker, "rows": 0, "first_datetime": "", "last_datetime": "", "status": "failed", "error": ""}
+    for source in [SourceName.KBS, SourceName.VCI]:
+        try:
+            raw = _quote_history("vnstock_data", ticker, source, start, end, Frequency.DAILY)
+            if raw is None or raw.empty:
+                continue
+            if "time" in raw.columns and "datetime" not in raw.columns:
+                raw = raw.rename(columns={"time": "datetime"})
+            raw["datetime"] = pd.to_datetime(raw["datetime"], errors="coerce")
+            cleaned = _filter_ohlcv_bad_rows(raw)
+            if len(cleaned) < 100:
+                result["error"] = f"too few rows after filtering ({len(cleaned)})"
+                continue
+            cleaned["ticker"] = ticker
+            cleaned["provider"] = str(ProviderName.VNSTOCK_DATA)
+            cleaned["source"] = str(source)
+            cleaned["frequency"] = "1D"
+            cols = ["datetime", "ticker", "open", "high", "low", "close", "volume", "provider", "source", "frequency"]
+            cleaned = cleaned[[c for c in cols if c in cleaned.columns]]
+            cleaned = cleaned.dropna(subset=["datetime"]).sort_values("datetime").reset_index(drop=True)
+            CACHE_ROOT.mkdir(parents=True, exist_ok=True)
+            cleaned.to_csv(cache_path(ticker), index=False)
+            result.update({
+                "rows": len(cleaned),
+                "first_datetime": str(cleaned["datetime"].min()),
+                "last_datetime": str(cleaned["datetime"].max()),
+                "status": "success",
+            })
+            return result
+        except Exception as e:
+            result["error"] = str(e)
+    return result
 
 def fetch_ticker_daily(ticker: str, start: str = "2015-01-01", end: str = "2026-12-31") -> dict:
     """Fetch daily data for a single ticker."""
@@ -67,7 +115,12 @@ def fetch_ticker_daily(ticker: str, start: str = "2015-01-01", end: str = "2026-
         else:
             result["error"] = "empty response"
     except Exception as e:
-        result["error"] = str(e)
+        err_msg = str(e)
+        # Fallback: try raw fetch with row filtering for data quality issues
+        if "high is below" in err_msg or "low is above" in err_msg or "high < low" in err_msg:
+            result = _fetch_raw_and_save(ticker, start, end)
+        else:
+            result["error"] = err_msg
     return result
 
 def main() -> int:
