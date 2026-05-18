@@ -309,7 +309,8 @@ def main() -> int:
         OUTPUT_DIR / "run_config.json",
         {
             "status": "run",
-            "models": ["random_forest", "xgboost", "lightgbm", "validation_weighted_soft_voting", "stacking"],
+            "models": ["random_forest", "xgboost", "lightgbm", "validation_weighted_soft_voting"],
+            "stacking": "skipped_not_time_series_safe_in_current_implementation",
             "horizons": list(HORIZONS),
             "feature_sets": list(FEATURE_SETS),
             "selection_rule": "validation only; final scoring only",
@@ -320,7 +321,7 @@ def main() -> int:
 
     rows: list[dict[str, Any]] = []
     scored_predictions: dict[str, pd.DataFrame] = {}
-    model_names = ["random_forest", "xgboost", "lightgbm", "validation_weighted_soft_voting", "stacking"]
+    model_names = ["random_forest", "xgboost", "lightgbm", "validation_weighted_soft_voting"]
     for horizon in HORIZONS:
         for feature_set in FEATURE_SETS:
             data, feature_cols = build_model_dataset(horizon, feature_set)

@@ -2,28 +2,22 @@
 
 ## Safe Claims
 
-- The protocol defines a joint 36-instrument benchmark with 30 VN30 stocks and 6 supported indices.
-- Indices are intended as panel rows and prediction targets, not merely side features.
-- The readiness audit found the current cache is not validation-ready for a 36/36 intraday-hourly joint-panel run.
-- Training v1 was gated and did not fit models because readiness failed.
-- No final combined, stock-only, or index-only trained-model accuracy is claimed.
+- The corrected joint panel contains 30 January 2025 VN30 stocks and 6 supported indices.
+- The corrected 36/36 readiness gate passed before training.
+- Training v1 ran on the full joint panel with validation-only selection and scoring-only final evaluation.
+- The selected candidate was `lightgbm__h40__own_plus_market_context`.
+- Final combined, stock-only, and index-only results are reported separately.
+- The selected candidate did not beat the selected-candidate h=40 combined baseline and did not reach the 60% or 65% combined targets.
+- No confidence abstention, instrument subset, top-k/ranking substitution, or daily-to-hourly substitution was used for the main result.
 
-Safe future claims require all of the following:
-
-- Validation-selected candidate.
-- Full 36-instrument coverage.
-- No confidence abstention.
-- No instrument subset.
-- No top-k/ranking substitution.
-- Leakage audit passed.
-- Baseline comparison included.
-- Combined, stock-only, and index-only results reported separately.
+Safe combined-result claims require validation-selected, full-coverage, no-leakage evaluation with baseline comparison included. Stock-only and index-only slices must remain separately labeled.
 
 ## Conditional Claims
 
-- If a future run improves combined accuracy, it must disclose whether index rows materially lift the combined score.
-- If a future run reaches >=60 combined accuracy, the claim remains combined-panel only unless stock-only accuracy is separately reported and supported.
-- If a future run reaches >=65 combined accuracy, final65 remains exploratory unless selected by validation, audited, and later verified on future blind data.
+- Combined improvement claims are conditional because the final window has been inspected repeatedly.
+- Any combined result where index rows materially lift the score must disclose that lift and must not be described as stock-only performance.
+- A future combined >=60 result would be a combined-panel claim only unless the stock-only slice also supports the statement.
+- A future final65 claim would remain exploratory unless selected by validation, audited, and later verified on future blind data.
 
 ## Unsafe Claims
 
@@ -38,10 +32,12 @@ Safe future claims require all of the following:
 
 ## Current V1 Claim Status
 
-- Combined 36-instrument trained-model result: not available.
-- Stock-only trained-model result: not available.
-- Index-only trained-model result: not available.
+- Combined 36-instrument trained-model result: 49.21%, exploratory.
+- Stock-only trained-model result: 48.99%, separately reported.
+- Index-only trained-model result: 49.56%, separately reported.
+- Combined baseline delta: -4.44 percentage points.
 - Combined >=60 claim: not supported.
 - Combined final65 claim: not supported.
-- Stock-only >=60 claim: not supported by this run.
-- Stock-only final65 claim: not supported by this run.
+- Stock-only >=60 claim: not supported.
+- Stock-only final65 claim: not supported.
+- Trading/profitability/live-deployment claim: not made.

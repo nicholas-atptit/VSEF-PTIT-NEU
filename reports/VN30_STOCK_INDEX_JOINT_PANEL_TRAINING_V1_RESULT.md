@@ -2,63 +2,66 @@
 
 ## Joint Universe
 
-This run targets a joint 36-instrument panel:
+This run uses the corrected January 2025 VN30 joint panel:
 
-- 30 active VN30 January 2025 stock tickers.
+- 30 active VN30 stock tickers: `ACB`, `BID`, `BCM`, `BVH`, `CTG`, `FPT`, `GAS`, `GVR`, `HDB`, `HPG`, `LPB`, `MBB`, `MSN`, `MWG`, `PLX`, `SAB`, `SHB`, `SSB`, `SSI`, `STB`, `TCB`, `TPB`, `VCB`, `VHM`, `VIB`, `VIC`, `VJC`, `VNM`, `VPB`, `VRE`.
 - 6 supported market indices: `VNINDEX`, `VN30`, `HNXINDEX`, `HNX30`, `UPCOMINDEX`, `VN100`.
+- Total instruments: 36.
 
-Indices are defined as prediction targets and rows in the panel, not merely context features.
+Indices are prediction targets and panel rows, not merely context features.
 
 ## Execution Status
 
-- Readiness audit: failed for a validation-safe 36/36 hourly panel.
-- Joint panel training v1: not run; gated by readiness failure.
+- Readiness audit: passed for a validation-safe 36/36 hourly panel.
+- Joint panel training v1: run.
+- Candidate selection: validation-only.
+- Final evaluation: scoring-only.
+- Confidence abstention: no.
+- Instrument subset: no.
+- Top-k/ranking substitution: no.
 - Data fetch: no.
 - Paper/DOCX generated: no.
 - Trading/profitability/live-deployment claim: no.
 
-## Readiness Finding
-
-The readiness audit found:
-
-- Stock instruments present: 30.
-- Index instruments present: 6.
-- Total instruments present: 36.
-- Usable stock instruments under the strict h=120 split rule: 0/30.
-- Usable index instruments under intraday-hourly frequency checks: 1/6.
-- Joint panel can run with 36/36 instruments: false.
-
-Primary blocker:
-
-- Stock cached hourly files contain 111 rows per ticker, which is insufficient for the requested h=120 horizon with train/validation/final splits.
-- Five supported index cache files are marked hourly but contain only midnight timestamps, so they are not validation-safe intraday hourly rows for this joint panel.
-
 ## Baselines
 
-Deterministic baselines were computed as diagnostics only. They are not a trained joint-panel result.
-
-- Best deterministic combined baseline in the diagnostic table: majority/always-up h=120 at 81.28%, driven by index-only rows because stock-only final rows are unavailable at h=120.
+- Best deterministic combined baseline: majority/always-up h=120 at 59.40%.
+- Selected-candidate horizon baseline: majority h=40 combined 53.65%, stock-only 52.45%, index-only 55.55%.
 - Stock-only RF h=60 historical reference: 60.31%; reference only, not a joint-panel result and not a replacement for combined 36-instrument scoring.
 - Existing index benchmark results are reference-only and cannot replace combined 36-instrument scoring.
 
 ## Training Result
 
-- Best validation-selected candidate: none.
-- Final combined accuracy: not available.
-- Final stock-only accuracy: not available.
-- Final index-only accuracy: not available.
-- Final coverage: not available.
-- Delta vs combined baseline: not available.
-- Combined >60 reached: no.
-- Combined 65 reached: no.
-- Stock-only >60 reached: no.
-- Stock-only 65 reached: no.
+- Best validation-selected candidate: `lightgbm__h40__own_plus_market_context`.
+- Best model: LightGBM.
+- Horizon: h=40.
+- Feature set: `own_plus_market_context`.
+- Validation combined accuracy: 62.66%.
+- Final combined accuracy: 49.21%.
+- Final stock-only accuracy: 48.99%.
+- Final index-only accuracy: 49.56%.
+- Final coverage: 100.00%.
+- Final combined rows: 14,300.
+- Final stock-only rows: 8,757.
+- Final index-only rows: 5,543.
+- Combined baseline comparison: 49.21% vs 53.65%, delta -4.44 percentage points.
+- Stock-only baseline comparison: 48.99% vs 52.45%, delta -3.46 percentage points.
+- Index-only baseline comparison: 49.56% vs 55.55%, delta -5.99 percentage points.
+- Combined >=60 reached: no.
+- Combined >=65 reached: no.
+- Stock-only >=60 reached: no.
+- Stock-only >=65 reached: no.
 
-## Safety And Claim Boundary
+## Index-Row Effect
 
-Result status: unsafe for benchmark claims.
+Index rows did not materially lift the result to a useful combined benchmark claim. Final index-only accuracy was 49.56%, slightly above stock-only accuracy at 48.99%, and final combined accuracy was 49.21%; the combined score remained below the selected-candidate h=40 combined baseline.
 
-The current cache cannot support a validation-safe full 36-instrument hourly joint-panel claim. Any future improvement must first fix readiness under protocol, then rerun training with validation-only selection and scoring-only final evaluation.
+## Risk And Claim Level
+
+- Overfit risk: high.
+- Evidence: validation combined accuracy was 62.66%, but final combined accuracy fell to 49.21%.
+- Audit status: exploratory.
+- Claim level: exploratory, with no benchmark success claim.
 
 Because prior final windows have been inspected repeatedly, any future improvement from this branch should remain exploratory unless later verified on future blind data.
 

@@ -22,8 +22,20 @@ from scripts.research.vn30_hourly_common import REPO_ROOT, standardize_hourly_fr
 
 REPORT_DIR = REPO_ROOT / "reports" / "generated" / "vn30_stock_index_joint_panel"
 OUTPUT_DIR = REPO_ROOT / "outputs" / "vn30_stock_index_joint_panel_training_v1"
-STOCK_CACHE = REPO_ROOT / "data" / "hourly_market_split_data"
-INDEX_CACHE = REPO_ROOT / "data" / "market_cache" / "vnstock_data" / "indices" / "hourly_2015"
+REPAIRED_STOCK_CACHE = REPO_ROOT / "data" / "market_cache" / "vnstock_data" / "vn30" / "hourly_2015"
+FALLBACK_STOCK_CACHE = REPO_ROOT / "data" / "hourly_market_split_data"
+ARCHIVE_INDEX_CACHE = (
+    REPO_ROOT
+    / "archive"
+    / "generated_data_snapshots"
+    / "vn30_hourly_pre_benchmark_20260514_062528"
+    / "data"
+    / "market_cache"
+    / "vnstock_data"
+    / "indices"
+    / "hourly"
+)
+ACTIVE_INDEX_CACHE = REPO_ROOT / "data" / "market_cache" / "vnstock_data" / "indices" / "hourly_2015"
 JOINT_UNIVERSE_PATH = REPO_ROOT / "configs" / "universes" / "vn30_jan2025_joint_panel_universe.csv"
 SUPPORTED_INDICES = ("VNINDEX", "VN30", "HNXINDEX", "HNX30", "UPCOMINDEX", "VN100")
 HORIZONS = (40, 60, 80, 100, 120)
@@ -120,27 +132,53 @@ def pct(value: Any) -> str:
         return ""
 
 
+def is_intraday_frame(frame: pd.DataFrame) -> bool:
+    if frame.empty or "datetime" not in frame.columns:
+        return False
+    datetimes = pd.to_datetime(frame["datetime"], errors="coerce").dropna()
+    if datetimes.empty:
+        return False
+    hours = sorted(datetimes.dt.hour.unique().tolist())
+    return len(hours) >= 2 and hours != [0]
+
+
 def load_stock_frame(ticker: str) -> pd.DataFrame:
-    path = STOCK_CACHE / f"{ticker}.csv"
-    if not path.exists():
+    candidates = [REPAIRED_STOCK_CACHE / f"{ticker}.csv", FALLBACK_STOCK_CACHE / f"{ticker}.csv"]
+    loaded: list[tuple[pd.DataFrame, bool]] = []
+    for path in candidates:
+        if not path.exists():
+            continue
+        raw = pd.read_csv(path, low_memory=False)
+        frame = standardize_hourly_frame(raw, ticker)
+        if frame.empty:
+            continue
+        frame = frame.rename(columns={"ticker": "instrument_code"})
+        frame["instrument_type"] = "stock"
+        frame = frame[["datetime", "instrument_code", "instrument_type", *OHLCV]].copy()
+        loaded.append((frame, is_intraday_frame(frame)))
+    if not loaded:
         return pd.DataFrame(columns=["datetime", "instrument_code", "instrument_type", *OHLCV])
-    raw = pd.read_csv(path, low_memory=False)
-    frame = standardize_hourly_frame(raw, ticker)
-    if frame.empty:
-        return pd.DataFrame(columns=["datetime", "instrument_code", "instrument_type", *OHLCV])
-    frame = frame.rename(columns={"ticker": "instrument_code"})
-    frame["instrument_type"] = "stock"
-    return frame[["datetime", "instrument_code", "instrument_type", *OHLCV]].copy()
+    intraday = [item for item in loaded if item[1]]
+    return max(intraday or loaded, key=lambda item: len(item[0]))[0]
 
 
 def load_index_panel_frame(code: str) -> pd.DataFrame:
-    path = INDEX_CACHE / f"{code}.csv"
-    frame = read_index_frame(path, code=code, frequency="1H")
-    if frame.empty:
+    candidates = [ARCHIVE_INDEX_CACHE / f"{code}.csv", ACTIVE_INDEX_CACHE / f"{code}.csv"]
+    loaded: list[tuple[pd.DataFrame, bool]] = []
+    for path in candidates:
+        if not path.exists():
+            continue
+        frame = read_index_frame(path, code=code, frequency="1H")
+        if frame.empty:
+            continue
+        frame = frame.rename(columns={"index_code": "instrument_code"})
+        frame["instrument_type"] = "index"
+        frame = frame[["datetime", "instrument_code", "instrument_type", *OHLCV]].copy()
+        loaded.append((frame, is_intraday_frame(frame)))
+    if not loaded:
         return pd.DataFrame(columns=["datetime", "instrument_code", "instrument_type", *OHLCV])
-    frame = frame.rename(columns={"index_code": "instrument_code"})
-    frame["instrument_type"] = "index"
-    return frame[["datetime", "instrument_code", "instrument_type", *OHLCV]].copy()
+    intraday = [item for item in loaded if item[1]]
+    return max(intraday or loaded, key=lambda item: len(item[0]))[0]
 
 
 def load_joint_ohlcv_panel() -> pd.DataFrame:
