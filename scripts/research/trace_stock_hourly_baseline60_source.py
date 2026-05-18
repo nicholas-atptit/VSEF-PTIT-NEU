@@ -23,7 +23,7 @@ from scripts.research.vn30_hourly_common import HOURLY_SOURCE_DIRS, VN30_TICKERS
 
 REPORT_DIR = REPO_ROOT / "reports" / "generated" / "vn30_stock_index_joint_panel_data_recovery"
 TARGET_OUTPUT_DIR = REPO_ROOT / "outputs" / "vn30_hourly_2015_horizon_relative_target_experiments"
-LOCK_REPORT = REPO_ROOT / "reports" / "VN30_HOURLY_2015_BASELINE60_RESULT_LOCK.md"
+LOCK_REPORT = REPO_ROOT / "reports" / "results" / "VN30_HOURLY_2015_BASELINE60_RESULT_LOCK.md"
 HISTORICAL_SCRIPT = (
     REPO_ROOT
     / "scripts"

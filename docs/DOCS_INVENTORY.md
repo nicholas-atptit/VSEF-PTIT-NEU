@@ -1,4 +1,4 @@
-﻿# Documentation Inventory
+# Documentation Inventory
 ## Document Metadata
 
 | Field | Value |
@@ -186,14 +186,14 @@ Reports are historical snapshots and are not canonical governance docs. Active c
 | docs/usage/USAGE_GUIDE.md | ACTIVE_REFERENCE | Usage guide retained for local workflows; governance schemas override current chain contracts. | docs/README.md and active governance schemas under docs/governance/ | Kept in place. |
 | docs/usage/vnstock_adapter.md | ACTIVE_REFERENCE | Usage guide retained for local workflows; governance schemas override current chain contracts. | docs/README.md and active governance schemas under docs/governance/ | Kept in place. |
 | docs/usage/VSEF_FOREIGN_FLOW_AUDIT_COMMANDS.md | ACTIVE_REFERENCE | Usage guide retained for local workflows; governance schemas override current chain contracts. | docs/README.md and active governance schemas under docs/governance/ | Kept in place. |
-| reports/baseline_local_qwen_4b_report.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
-| reports/comparison_qwen_4b_vs_8b.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
-| reports/full_system_report.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/baseline_local_qwen_4b_report.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/comparison_qwen_4b_vs_8b.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/full_system_report.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
 | reports/README.md | ACTIVE_REFERENCE | Reports directory policy note; reports are snapshots, not canonical governance. | docs/SYSTEM_OVERVIEW.md; docs/DECISION_DIAGNOSTIC_CHAIN.md; docs/AUTHORITY_BOUNDARY.md | Created. |
-| reports/risk_tuning_report.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
-| reports/stress_test_report.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
-| reports/system_benchmark.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
-| reports/VSEF_1000_SEED_SMOKE_EXECUTIVE_SUMMARY.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
-| reports/VSEF_1000_SEED_SMOKE_STABILITY_REPORT.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
-| reports/VSEF_PHASE3_ALLOCATOR_ROUTER_REAL_OUTPUT_SMOKE_REPORT.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
-| reports/VSEF_QUANT_CORE_PHASE3_GAP_CLOSURE_PLAN.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/risk_tuning_report.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/stress_test_report.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/system_benchmark.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/VSEF_1000_SEED_SMOKE_EXECUTIVE_SUMMARY.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/VSEF_1000_SEED_SMOKE_STABILITY_REPORT.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/VSEF_PHASE3_ALLOCATOR_ROUTER_REAL_OUTPUT_SMOKE_REPORT.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |
+| reports/superseded/VSEF_QUANT_CORE_PHASE3_GAP_CLOSURE_PLAN.md | REPORT_ARCHIVE | Top-level report snapshot listed for inventory only; content not rewritten. | docs/README.md and active governance schemas under docs/governance/ | Listed only; not modified. |

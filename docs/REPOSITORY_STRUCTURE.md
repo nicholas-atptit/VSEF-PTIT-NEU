@@ -12,8 +12,16 @@ This repository is the VN Market Directional Benchmark Lab. Its active identity 
 | `scripts/legacy/` | Preserved superseded scripts, failed experiments, old paper builders, and compatibility material. Do not delete for cleanup convenience. |
 | `tests/` | Automated tests. `tests/data/` and `tests/ml/` are protected because they enforce provider policy and metric contracts. |
 | `docs/` | Human-facing usage, workflow, repository structure, governance, runbooks, and archived documentation. |
-| `reports/` | Active evidence summaries, claim registers, cleanup reports, and source artifact indexes. |
-| `reports/generated/` | Generated reports, generated figures/tables, and diagnostic output summaries. Treat as preserved evidence. |
+| `reports/` | Report navigation root. Root Markdown should normally be limited to `reports/README.md`; active reports belong in category folders. |
+| `reports/_index/` | Active evidence indexes, code maps, and current navigation files. |
+| `reports/claims/` | Claim registers, claim notes, and claim-boundary files. |
+| `reports/results/` | Current result summaries, audits, diagnoses, and evidence reports. |
+| `reports/protocols/` | Current protocols, designs, decisions, guides, and next-action notes. |
+| `reports/paper/` | VN30 hourly paper-source support files, table/figure captions, and TODO indexes. |
+| `reports/cleanup/` | Repository cleanup, rename, push, audit-remediation, and governance reports. |
+| `reports/manual_review/` | Unresolved notes that need human classification. |
+| `reports/superseded/` | Preserved historical root reports that are not active evidence entry points. |
+| `reports/generated/` | Generated reports, generated figures/tables, and diagnostic output summaries. Treat as preserved evidence and do not move casually. |
 | `data/` | Raw, cached, or curated market data and local data workspaces. |
 | `outputs/` | Benchmark, prediction, model-run, and diagnostic output artifacts. |
 | `archive/` | Historical snapshots and superseded reports retained for provenance. |
@@ -38,14 +46,28 @@ These paths may be read for inventory and validation, but they must not be reorg
 
 Start with these files when checking current evidence and allowed claims:
 
-- `reports/ACTIVE_EVIDENCE_INDEX.md`
-- `reports/ACTIVE_CODE_MAP.md`
-- `reports/VN30_HOURLY_SELECTED_CANDIDATE_ROLLING_STABILITY_RESULT.md`
-- `reports/VN30_HOURLY_SELECTED_CANDIDATE_CLAIM_BOUNDARY.md`
-- `reports/VN30_RESEARCH_CLAIM_REGISTER.md`
-- `reports/VN30_DAILY_2015_RESULT_SUMMARY.md`
-- `reports/VN30_INDEX_BENCHMARK_RESULT_SUMMARY.md`
-- `reports/VN30_INDEX_BENCHMARK_CLAIM_REGISTER.md`
+- `reports/_index/ACTIVE_EVIDENCE_INDEX.md`
+- `reports/_index/ACTIVE_CODE_MAP.md`
+- `reports/results/VN30_HOURLY_SELECTED_CANDIDATE_ROLLING_STABILITY_RESULT.md`
+- `reports/claims/VN30_HOURLY_SELECTED_CANDIDATE_CLAIM_BOUNDARY.md`
+- `reports/claims/VN30_RESEARCH_CLAIM_REGISTER.md`
+- `reports/results/VN30_DAILY_2015_RESULT_SUMMARY.md`
+- `reports/results/VN30_INDEX_BENCHMARK_RESULT_SUMMARY.md`
+- `reports/claims/VN30_INDEX_BENCHMARK_CLAIM_REGISTER.md`
+
+## Reports Structure
+
+Root `reports/` should contain only `README.md` and high-level pointers. New active reports should go into category folders:
+
+- Use `reports/_index/` for navigation and active evidence indexes.
+- Use `reports/claims/` for claim registers and claim boundaries.
+- Use `reports/results/` for result summaries, audits, diagnoses, and evidence reports.
+- Use `reports/protocols/` for protocols, decisions, run designs, and operating guides.
+- Use `reports/paper/` for paper-source support and table/figure documentation.
+- Use `reports/cleanup/` for repository-management, rename, cleanup, and validation reports.
+- Use `reports/manual_review/` when the file cannot be confidently classified.
+- Use `reports/superseded/` for preserved historical reports that are not active evidence.
+- Keep `reports/generated/` in place as generated evidence.
 
 ## Generated Artifacts
 
@@ -92,14 +114,14 @@ Audit scripts under `scripts/research/audit_*.py` are usually read-only over exi
 
 Paper/source index files use explicit VN30 hourly names:
 
-- `reports/VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md`
-- `reports/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_EN.md`
-- `reports/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_VI.md`
-- `reports/VN30_HOURLY_PAPER_MISSING_METRICS_TODO.md`
-- `reports/VN30_HOURLY_PAPER_ROW_LEVEL_FIGURE_TODO.md`
-- `reports/VN30_HOURLY_PAPER_LITERATURE_DATA_TODO.md`
-- `reports/VN30_HOURLY_PAPER_DOCX_MISSING_FOR_FIGURE_INSERTION.md`
-- `reports/VN30_HOURLY_PAPER_WITH_FIGURES_LAYOUT_QA.md`
+- `reports/paper/VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md`
+- `reports/paper/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_EN.md`
+- `reports/paper/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_VI.md`
+- `reports/paper/VN30_HOURLY_PAPER_MISSING_METRICS_TODO.md`
+- `reports/paper/VN30_HOURLY_PAPER_ROW_LEVEL_FIGURE_TODO.md`
+- `reports/paper/VN30_HOURLY_PAPER_LITERATURE_DATA_TODO.md`
+- `reports/paper/VN30_HOURLY_PAPER_DOCX_MISSING_FOR_FIGURE_INSERTION.md`
+- `reports/paper/VN30_HOURLY_PAPER_WITH_FIGURES_LAYOUT_QA.md`
 
 Paper/DOCX drafts are not generated during cleanup. Builders must read existing repository artifacts only.
 
@@ -107,10 +129,10 @@ Paper/DOCX drafts are not generated during cleanup. Builders must read existing 
 
 Future active files should use stable, descriptive names:
 
-- Reports: `reports/VN30_HOURLY_SELECTED_CANDIDATE_<SUBJECT>.md`, `reports/VN30_DAILY_2015_<SUBJECT>.md`, or `reports/VN30_INDEX_BENCHMARK_<SUBJECT>.md`.
-- Claim registers: end with `_CLAIM_REGISTER.md` or `_CLAIM_BOUNDARY.md`.
-- Protocols: end with `_PROTOCOL.md`.
-- Results: end with `_RESULT.md` or `_RESULT_SUMMARY.md`.
+- Reports: use the appropriate category folder, such as `reports/results/VN30_HOURLY_SELECTED_CANDIDATE_<SUBJECT>.md`, `reports/results/VN30_DAILY_2015_<SUBJECT>.md`, or `reports/results/VN30_INDEX_BENCHMARK_<SUBJECT>.md`.
+- Claim registers: place under `reports/claims/` and end with `_CLAIM_REGISTER.md` or `_CLAIM_BOUNDARY.md`.
+- Protocols: place under `reports/protocols/` and end with `_PROTOCOL.md` when possible.
+- Results: place under `reports/results/` and end with `_RESULT.md` or `_RESULT_SUMMARY.md`.
 - Scripts: use action names such as `audit_...`, `rerun_...`, `build_...`, `validate_...`, `fetch_...`, or `run_...`.
 - Avoid vague active names such as `CURRENT`, `PAPER_READY`, `RESULT_V1`, `TARGET62`, or `FINAL65` unless that phrase is the actual protocol scope being preserved.
 

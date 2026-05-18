@@ -17,12 +17,12 @@ authority.
 The following `reports/` files are controlled remediation records for the current
 audit-remediation branch:
 
-- `reports/AUDIT_REMEDIATION_CHECKLIST.md`
-- `reports/PHASE2_MOCK_PROVENANCE_EVIDENCE.md`
-- `reports/PHASE3_REPOSITORY_HYGIENE_EVIDENCE.md`
-- `reports/PHASE4A_FRONTEND_DESCOPE_EVIDENCE.md`
-- `reports/PHASE4_API_GOVERNANCE_EVIDENCE.md`
-- `reports/PHASE5_REPRODUCIBILITY_COMMAND_REGISTRY_EVIDENCE.md`
+- `reports/cleanup/AUDIT_REMEDIATION_CHECKLIST.md`
+- `reports/cleanup/PHASE2_MOCK_PROVENANCE_EVIDENCE.md`
+- `reports/cleanup/PHASE3_REPOSITORY_HYGIENE_EVIDENCE.md`
+- `reports/cleanup/PHASE4A_FRONTEND_DESCOPE_EVIDENCE.md`
+- `reports/cleanup/PHASE4_API_GOVERNANCE_EVIDENCE.md`
+- `reports/cleanup/PHASE5_REPRODUCIBILITY_COMMAND_REGISTRY_EVIDENCE.md`
 
 These files are canonical only for remediation status, verification evidence,
 rollback notes, and phase closure. They are not schema authority and do not
@@ -88,6 +88,6 @@ and the question is specifically about remediation status or evidence.
 
 ## Untracked Audit Report
 
-`reports/RESEARCH_TOPIC_AND_CODE_AUDIT_REPORT.md` is intentionally left
+`reports/results/RESEARCH_TOPIC_AND_CODE_AUDIT_REPORT.md` is intentionally left
 untracked in the current workspace unless a future task explicitly requests that
 file. Phase 5 does not edit, stage, or commit it.

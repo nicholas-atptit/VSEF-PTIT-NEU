@@ -18,7 +18,7 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.research.vn30_stock_index_joint_panel_features import read_joint_panel_universe, write_csv  # noqa: E402
 
 HISTORICAL_CONSISTENCY_CSV = REPO_ROOT / "reports" / "generated" / "vn30_hourly_2015_consistency" / "rf_h60_consistency_audit.csv"
-HISTORICAL_LOCK_MD = REPO_ROOT / "reports" / "VN30_HOURLY_2015_BASELINE60_RESULT_LOCK.md"
+HISTORICAL_LOCK_MD = REPO_ROOT / "reports" / "results" / "VN30_HOURLY_2015_BASELINE60_RESULT_LOCK.md"
 HISTORICAL_RUN_CONFIG = REPO_ROOT / "outputs" / "vn30_hourly_2015_horizon_relative_target_experiments" / "run_config.json"
 CURRENT_RESULTS_CSV = REPO_ROOT / "outputs" / "vn30_hourly_expanded_model_pool_screening" / "final_candidate_results.csv"
 CURRENT_RUN_CONFIG = REPO_ROOT / "outputs" / "vn30_hourly_expanded_model_pool_screening" / "run_config.json"

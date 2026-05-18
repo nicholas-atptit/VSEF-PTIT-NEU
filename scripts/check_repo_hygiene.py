@@ -24,8 +24,8 @@ LOCAL_PATH_RE = re.compile(r"(?<![A-Za-z])\b[A-Za-z]:[\\/]")
 
 
 CONTENT_ALLOWLIST_PATHS = {
-    "reports/CODE_AUDIT_REPORT.md": "Phase 0 immutable baseline records the local execution environment.",
-    "reports/CODE_AUDIT_REMEDIATION_PLAN.md": "Phase 0 immutable baseline records the local execution environment.",
+    "reports/cleanup/CODE_AUDIT_REPORT.md": "Phase 0 immutable baseline records the local execution environment.",
+    "reports/cleanup/CODE_AUDIT_REMEDIATION_PLAN.md": "Phase 0 immutable baseline records the local execution environment.",
 }
 
 CONTENT_ALLOWLIST_PREFIXES = {
@@ -40,13 +40,15 @@ CONTENT_ALLOWLIST_PREFIXES = {
 
 CONTENT_ALLOWLIST_FILES = {
     "docs/USAGE.md": "documents exact approved local interpreter requested for repository usage.",
-    "reports/VNSTOCK_AGENT_DATA_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
-    "reports/VNSTOCK_AGENT_DATA_GUIDE_SUMMARY.md": "documents exact approved local provider interpreter for future agents.",
-    "reports/VNSTOCK_PROVIDER_STANDARDIZATION_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
-    "reports/VNSTOCK_DATA_INTERPRETER_FIX_PLAN.md": "documents exact local interpreter remediation commands requested for environment repair.",
-    "reports/VSEF_1000_SEED_SMOKE_STABILITY_REPORT.md": "historical benchmark evidence retained.",
-    "reports/stress_test_report.md": "historical benchmark evidence retained until report migration is approved.",
-    "reports/system_benchmark.md": "historical benchmark evidence retained until report migration is approved.",
+    "reports/protocols/VNSTOCK_AGENT_DATA_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
+    "reports/protocols/VNSTOCK_AGENT_DATA_GUIDE_SUMMARY.md": "documents exact approved local provider interpreter for future agents.",
+    "reports/cleanup/VNSTOCK_PROVIDER_STANDARDIZATION_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
+    "reports/cleanup/VNSTOCK_DATA_INTERPRETER_FIX_PLAN.md": "documents exact local interpreter remediation commands requested for environment repair.",
+    "reports/cleanup/REPO_RENAME_CLEANUP_RESULT.md": "documents exact local validation commands from the prior rename cleanup.",
+    "reports/cleanup/REPORTS_STRUCTURE_CLEANUP_RESULT.md": "documents exact local validation commands from the reports structure cleanup.",
+    "reports/superseded/VSEF_1000_SEED_SMOKE_STABILITY_REPORT.md": "historical benchmark evidence retained.",
+    "reports/superseded/stress_test_report.md": "historical benchmark evidence retained until report migration is approved.",
+    "reports/superseded/system_benchmark.md": "historical benchmark evidence retained until report migration is approved.",
 }
 
 

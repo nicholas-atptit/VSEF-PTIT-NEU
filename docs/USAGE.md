@@ -84,20 +84,20 @@ Do not delete market cache, raw fetch data, benchmark outputs, generated reports
 
 Inspect current evidence through:
 
-- `reports/ACTIVE_EVIDENCE_INDEX.md`
-- `reports/ACTIVE_CODE_MAP.md`
+- `reports/_index/ACTIVE_EVIDENCE_INDEX.md`
+- `reports/_index/ACTIVE_CODE_MAP.md`
 - `docs/REPOSITORY_STRUCTURE.md`
-- `reports/REPO_RENAME_CLEANUP_INVENTORY.md`
-- `reports/REPO_CLEANUP_INVENTORY.md`
-- `reports/CODE_CLEANUP_CHANGES.md`
+- `reports/cleanup/REPO_RENAME_CLEANUP_INVENTORY.md`
+- `reports/_index/REPO_CLEANUP_INVENTORY.md`
+- `reports/cleanup/CODE_CLEANUP_CHANGES.md`
 
 Use these files to distinguish active benchmark scripts from diagnostics, legacy scripts, and preserved historical artifacts.
 
 Current paper-source helpers use explicit VN30 hourly names:
 
-- `reports/VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md`
-- `reports/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_EN.md`
-- `reports/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_VI.md`
+- `reports/paper/VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md`
+- `reports/paper/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_EN.md`
+- `reports/paper/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_VI.md`
 - `scripts/research/build_vn30_hourly_paper_empirical_tables.py`
 - `scripts/research/build_vn30_hourly_paper_empirical_figures.py`
 

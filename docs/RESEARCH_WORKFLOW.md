@@ -85,11 +85,11 @@ Protected paths include:
 
 ## 6. Current Active Evidence Entry Points
 
-- `reports/ACTIVE_EVIDENCE_INDEX.md`
-- `reports/ACTIVE_CODE_MAP.md`
+- `reports/_index/ACTIVE_EVIDENCE_INDEX.md`
+- `reports/_index/ACTIVE_CODE_MAP.md`
 - `docs/REPOSITORY_STRUCTURE.md`
-- `reports/REPO_RENAME_CLEANUP_INVENTORY.md`
-- `reports/REPO_CLEANUP_INVENTORY.md`
-- `reports/CODE_CLEANUP_CHANGES.md`
+- `reports/cleanup/REPO_RENAME_CLEANUP_INVENTORY.md`
+- `reports/_index/REPO_CLEANUP_INVENTORY.md`
+- `reports/cleanup/CODE_CLEANUP_CHANGES.md`
 
 Use these before changing script layout, README language, benchmark claim text, or report indexes.

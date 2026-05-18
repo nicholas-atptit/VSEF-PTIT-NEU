@@ -33,7 +33,7 @@ This report documents the systematic cleanup and refactor conducted to improve r
 - **Prompt Runs**: Clustered 20+ historical reports into `docs/prompt_runs/archive/` (categorized by Phase 1, Phase 2, Quant Core, Analysis Feed).
 
 ### Refactored Components
-- **Documentation Paths**: Normalized absolute `H:\` and `file:///` paths in `docs/archive/root/REFACTOR_LOG.md`, `docs/archive/root/STRUCTURE_FINAL.md`, and `reports/stress_test_report.md` to relative repo paths.
+- **Documentation Paths**: Normalized absolute `H:\` and `file:///` paths in `docs/archive/root/REFACTOR_LOG.md`, `docs/archive/root/STRUCTURE_FINAL.md`, and `reports/superseded/stress_test_report.md` to relative repo paths.
 - **Registry & Links**: Updated `docs/prompt_runs/INDEX.md` to reflect the new hierarchical structure of the archive.
 
 ## Preserved Intentionally
