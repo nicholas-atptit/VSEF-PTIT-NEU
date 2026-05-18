@@ -1,6 +1,6 @@
-"""Create paper-ready stability outputs for the selected target62 candidate.
+"""Create paper-ready stability outputs for the selected VN30 hourly candidate.
 
-This audit uses existing target62 artifacts only. It does not train, refit,
+This audit uses existing selected-candidate artifacts only. It does not train, refit,
 reselect, or regenerate row-level predictions.
 """
 

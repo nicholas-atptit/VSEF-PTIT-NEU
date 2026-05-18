@@ -1,4 +1,4 @@
-# VN30 Hourly Target62 Stability Robustness Protocol
+# VN30 Hourly Selected Candidate Stability Robustness Protocol
 
 ## Scope
 
@@ -28,7 +28,7 @@ The purpose of this audit is to check average accuracy, ticker/month/quarter/reg
 
 ## Inputs
 
-The audit uses the existing target62 selected-candidate summary and mandatory audit slice outputs:
+The audit uses the existing selected-candidate summary and mandatory audit slice outputs:
 
 - `selected_candidate_summary.csv`.
 - `target62_by_ticker.csv`.

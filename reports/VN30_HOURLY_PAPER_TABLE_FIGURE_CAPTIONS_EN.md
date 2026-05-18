@@ -1,4 +1,4 @@
-# Paper Table And Figure Captions - English
+# VN30 Hourly Paper Table And Figure Captions - English
 
 ## Tables
 

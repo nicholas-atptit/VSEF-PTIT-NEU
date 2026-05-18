@@ -1,4 +1,4 @@
-"""Build paper-ready empirical tables from existing VN30 artifacts.
+"""Build VN30 hourly paper-ready empirical tables from existing artifacts.
 
 This script reads repository artifacts only. It does not fetch data, train
 models, run benchmarks, or regenerate row-level predictions.
@@ -26,9 +26,9 @@ DAILY_READINESS_DIR = REPO_ROOT / "reports" / "generated" / "vn30_daily_2015"
 INDEX_BENCHMARK_DIR = REPO_ROOT / "reports" / "generated" / "index_benchmark"
 
 OUT_DIR = REPO_ROOT / "reports" / "generated" / "paper_tables_current"
-INVENTORY_PATH = REPO_ROOT / "reports" / "PAPER_FIGURE_DATA_SOURCE_INVENTORY.md"
-LITERATURE_TODO_PATH = REPO_ROOT / "reports" / "PAPER_LITERATURE_DATA_TODO.md"
-MISSING_TODO_PATH = REPO_ROOT / "reports" / "PAPER_MISSING_METRICS_TODO.md"
+INVENTORY_PATH = REPO_ROOT / "reports" / "VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md"
+LITERATURE_TODO_PATH = REPO_ROOT / "reports" / "VN30_HOURLY_PAPER_LITERATURE_DATA_TODO.md"
+MISSING_TODO_PATH = REPO_ROOT / "reports" / "VN30_HOURLY_PAPER_MISSING_METRICS_TODO.md"
 
 BASELINE_LOGISTIC_H40 = 0.6043200785468826
 

@@ -20,6 +20,12 @@ Active reports:
 - `reports/VN30_HOURLY_2015_BENCHMARK_CLAIM_REGISTER.md`
 - `reports/VN30_HOURLY_2015_CANONICAL_EVALUATOR_DECISION.md`
 - `reports/VN30_HOURLY_2015_VALIDATION_FINAL_MISMATCH_PROTOCOL.md`
+- `reports/VN30_HOURLY_SELECTED_CANDIDATE_ARTIFACT_DISCOVERY.md`
+- `reports/VN30_HOURLY_SELECTED_CANDIDATE_ROW_LEVEL_RERUN_PROTOCOL.md`
+- `reports/VN30_HOURLY_SELECTED_CANDIDATE_ROLLING_STABILITY_RESULT.md`
+- `reports/VN30_HOURLY_SELECTED_CANDIDATE_CLAIM_BOUNDARY.md`
+- `reports/VN30_HOURLY_SELECTED_CANDIDATE_STABILITY_AUDIT_RESULT.md`
+- `reports/VN30_RESEARCH_CLAIM_REGISTER.md`
 
 Active scripts:
 
@@ -27,6 +33,9 @@ Active scripts:
 - `scripts/research/vn30_hourly_available_window_common.py`
 - `scripts/research/run_vn30_hourly_available_window_benchmark.py`
 - `scripts/research/audit_vn30_hourly_available_window.py`
+- `scripts/research/rerun_vn30_hourly_selected_candidate_row_predictions.py`
+- `scripts/research/audit_vn30_hourly_selected_candidate_rolling_stability.py`
+- `scripts/research/audit_vn30_hourly_selected_candidate_stability_summary.py`
 - `scripts/research/run_vn30_hourly_available_window_confidence_sweep.py`
 - `scripts/research/run_vn30_hourly_available_window_exante_regime_validation.py`
 - `scripts/research/run_vn30_hourly_available_window_cost_slippage_validation.py`
@@ -35,6 +44,7 @@ Generated summary directories:
 
 - `reports/generated/vn30_hourly_available_window/`
 - `reports/generated/vn30_hourly_data_forensics/`
+- `reports/generated/vn30_hourly_selected_candidate_rolling/`
 
 Claim boundary:
 
@@ -54,7 +64,7 @@ Active reports:
 
 - `reports/VN30_DAILY_2015_SCOPE_AND_DESIGN.md`
 - `reports/VN30_DAILY_2015_BCM_VIB_RECOVERY_REPORT.md`
-- `reports/VN30_DAILY_2015_BENCHMARK_RESULT_SUMMARY.md`
+- `reports/VN30_DAILY_2015_RESULT_SUMMARY.md`
 - `reports/VN30_DAILY_2015_CLAIM_REGISTER.md`
 - `reports/VN30_DAILY_2015_TARGET60_FAILURE_POSTMORTEM_PROTOCOL.md`
 - `reports/VN30_DAILY_2015_TARGET60_NEXT_STEP_DECISION.md`
@@ -95,8 +105,8 @@ Current status:
 
 Active reports:
 
-- `reports/INDEX_DIRECTIONAL_BENCHMARK_RESULT_SUMMARY.md`
-- `reports/INDEX_DIRECTIONAL_BENCHMARK_CLAIM_REGISTER.md`
+- `reports/VN30_INDEX_BENCHMARK_RESULT_SUMMARY.md`
+- `reports/VN30_INDEX_BENCHMARK_CLAIM_REGISTER.md`
 - `reports/INDEX_HOURLY_FETCH_README.md`
 
 Active scripts:
@@ -126,7 +136,38 @@ Claim boundary:
 - Must not present daily index results as hourly results.
 - Must not present available hourly cache results as 2015 hourly results.
 
-## 4. Data Forensics
+## 4. VN30 Hourly Paper Source Artifacts
+
+Current status:
+
+- Paper-source tables, figures, and TODO indexes are named with explicit VN30 hourly scope.
+- Builders must read existing artifacts only and must not fetch data, train models, run broad benchmarks, or generate DOCX/paper content during cleanup.
+
+Active reports:
+
+- `reports/VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md`
+- `reports/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_EN.md`
+- `reports/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_VI.md`
+- `reports/VN30_HOURLY_PAPER_MISSING_METRICS_TODO.md`
+- `reports/VN30_HOURLY_PAPER_ROW_LEVEL_FIGURE_TODO.md`
+- `reports/VN30_HOURLY_PAPER_LITERATURE_DATA_TODO.md`
+
+Active scripts:
+
+- `scripts/research/build_vn30_hourly_paper_empirical_tables.py`
+- `scripts/research/build_vn30_hourly_paper_empirical_figures.py`
+
+Generated summary directories:
+
+- `reports/generated/paper_tables_current/`
+- `reports/generated/paper_figures_current/`
+
+Claim boundary:
+
+- These files define source/caption/TODO artifacts only.
+- They do not create new empirical results, paper drafts, DOCX files, or trading/profitability claims.
+
+## 5. Data Forensics
 
 Current status:
 
@@ -159,7 +200,7 @@ Claim boundary:
 - Must not imply missing data was available or deleted.
 - Must not fetch replacement data as part of cleanup.
 
-## 5. Top-k Ranking
+## 6. Top-k Ranking
 
 Current status:
 

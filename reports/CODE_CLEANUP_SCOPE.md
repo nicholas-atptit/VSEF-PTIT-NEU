@@ -25,8 +25,8 @@ The following active evidence reports must remain preserved:
 
 - `reports/ACTIVE_EVIDENCE_INDEX.md`
 - `reports/REPO_CLEANUP_INVENTORY.md`
-- `reports/INDEX_DIRECTIONAL_BENCHMARK_RESULT_SUMMARY.md`
-- `reports/VN30_DAILY_2015_BENCHMARK_RESULT_SUMMARY.md`
+- `reports/VN30_INDEX_BENCHMARK_RESULT_SUMMARY.md`
+- `reports/VN30_DAILY_2015_RESULT_SUMMARY.md`
 - `reports/VN30_HOURLY_DATA_FORENSICS_DIAGNOSIS.md`
 - `reports/VN30_HOURLY_2015_BASELINE60_RESULT_LOCK.md`
 

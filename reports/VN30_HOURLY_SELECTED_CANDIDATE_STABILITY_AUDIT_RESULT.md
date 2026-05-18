@@ -1,4 +1,4 @@
-# VN30 Hourly Target62 Paper-Ready Stability Audit Result
+# VN30 Hourly Selected Candidate Stability Audit Result
 
 ## Selected Candidate
 

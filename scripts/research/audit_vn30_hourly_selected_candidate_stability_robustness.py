@@ -1,6 +1,6 @@
-"""Audit stability and robustness of the selected Track A target62 candidate.
+"""Audit stability and robustness of the selected Track A candidate.
 
-This script uses existing target62 audit artifacts only. It does not train,
+This script uses existing selected-candidate audit artifacts only. It does not train,
 refit, or reselect models.
 """
 

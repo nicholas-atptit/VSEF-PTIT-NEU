@@ -1,4 +1,4 @@
-# Index Directional Benchmark Result Summary
+# VN30 Index Benchmark Result Summary
 
 - Created at UTC: 2026-05-17.
 - Branch: `research/vn100-evidence-hardening-v1`.

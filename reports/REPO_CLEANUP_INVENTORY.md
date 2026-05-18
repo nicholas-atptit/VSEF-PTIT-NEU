@@ -29,14 +29,14 @@ Reason: these files define current evidence, current claim boundaries, current s
   - `tests/data/test_provider_usage_policy.py`
   - `tests/data/test_vn_price_gateway_contract.py`
 - Current index benchmark evidence:
-  - `reports/INDEX_DIRECTIONAL_BENCHMARK_RESULT_SUMMARY.md`
-  - `reports/INDEX_DIRECTIONAL_BENCHMARK_CLAIM_REGISTER.md`
+  - `reports/VN30_INDEX_BENCHMARK_RESULT_SUMMARY.md`
+  - `reports/VN30_INDEX_BENCHMARK_CLAIM_REGISTER.md`
   - `reports/INDEX_HOURLY_FETCH_README.md`
   - `outputs/index_directional_benchmark/`
   - `reports/generated/index_benchmark/`
 - Current VN30 daily 2015 evidence:
   - `reports/VN30_DAILY_2015_BCM_VIB_RECOVERY_REPORT.md`
-  - `reports/VN30_DAILY_2015_BENCHMARK_RESULT_SUMMARY.md`
+  - `reports/VN30_DAILY_2015_RESULT_SUMMARY.md`
   - `reports/VN30_DAILY_2015_CLAIM_REGISTER.md`
   - `reports/VN30_DAILY_2015_TARGET60_FAILURE_POSTMORTEM_PROTOCOL.md`
   - `reports/VN30_DAILY_2015_TARGET60_NEXT_STEP_DECISION.md`

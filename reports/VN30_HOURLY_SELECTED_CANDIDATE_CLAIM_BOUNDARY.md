@@ -1,4 +1,4 @@
-# VN30 Hourly Target62 Paper-Ready Claim Boundary
+# VN30 Hourly Selected Candidate Claim Boundary
 
 ## Allowed Claim
 

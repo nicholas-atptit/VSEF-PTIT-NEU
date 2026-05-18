@@ -29,6 +29,8 @@ Start with:
 
 - `reports/ACTIVE_EVIDENCE_INDEX.md`
 - `reports/ACTIVE_CODE_MAP.md`
+- `docs/REPOSITORY_STRUCTURE.md`
+- `reports/REPO_RENAME_CLEANUP_INVENTORY.md`
 - `reports/REPO_CLEANUP_INVENTORY.md`
 - `reports/CODE_CLEANUP_CHANGES.md`
 
@@ -39,6 +41,15 @@ Start with:
 - Index benchmark has exact pass60 results, separate from stock.
 - Top-k ranking is not overall directional accuracy.
 - No trading, profitability, live-deployment, or investment-recommendation claim is made.
+
+Current selected-candidate and paper-source files use explicit VN30 hourly names, including:
+
+- `reports/VN30_HOURLY_SELECTED_CANDIDATE_ROLLING_STABILITY_RESULT.md`
+- `reports/VN30_HOURLY_SELECTED_CANDIDATE_CLAIM_BOUNDARY.md`
+- `reports/VN30_RESEARCH_CLAIM_REGISTER.md`
+- `reports/VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md`
+- `reports/VN30_DAILY_2015_RESULT_SUMMARY.md`
+- `reports/VN30_INDEX_BENCHMARK_RESULT_SUMMARY.md`
 
 ## Provider/API Adapter
 

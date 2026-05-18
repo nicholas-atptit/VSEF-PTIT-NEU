@@ -1,4 +1,4 @@
-# VN30 Daily 2015 Benchmark Result Summary
+# VN30 Daily 2015 Result Summary
 
 - Active universe source: VN30 January 2025 review.
 - Usable ticker count: 30.

@@ -1,4 +1,4 @@
-# Paper Literature Data TODO
+# VN30 Hourly Paper Literature Data TODO
 
 No current repository artifact was found that verifies external literature-comparison values for this VN30 target62 paper package.
 

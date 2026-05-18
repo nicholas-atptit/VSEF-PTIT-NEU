@@ -1,4 +1,4 @@
-# Paper Figure Data Source Inventory
+# VN30 Hourly Paper Figure Data Source Inventory
 
 All numeric paper tables and figures are derived from repository artifacts. No market-data fetch, benchmark run, or model training is performed by the paper table/figure builders.
 

@@ -1,4 +1,4 @@
-"""Build paper-ready empirical figures from generated paper tables.
+"""Build VN30 hourly paper-ready empirical figures from generated tables.
 
 This script uses matplotlib only and consumes existing repository-derived
 tables. It does not fetch data, train models, run benchmarks, or regenerate
@@ -17,7 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 TABLE_DIR = REPO_ROOT / "reports" / "generated" / "paper_tables_current"
 TARGET62_DIR = REPO_ROOT / "reports" / "generated" / "vn30_hourly_target62_paper_ready_stability"
 FIG_DIR = REPO_ROOT / "reports" / "generated" / "paper_figures_current"
-ROW_LEVEL_TODO = REPO_ROOT / "reports" / "PAPER_ROW_LEVEL_FIGURE_TODO.md"
+ROW_LEVEL_TODO = REPO_ROOT / "reports" / "VN30_HOURLY_PAPER_ROW_LEVEL_FIGURE_TODO.md"
 
 
 def rel(path: Path) -> str:

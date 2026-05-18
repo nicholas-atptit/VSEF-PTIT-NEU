@@ -1,4 +1,4 @@
-# VN30 Hourly Target62 Stability Robustness Result
+# VN30 Hourly Selected Candidate Stability Robustness Result
 
 ## Scope
 

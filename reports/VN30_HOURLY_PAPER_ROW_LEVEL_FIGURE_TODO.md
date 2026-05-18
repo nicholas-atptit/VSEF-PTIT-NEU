@@ -1,4 +1,4 @@
-# Paper Row-Level Figure TODO
+# VN30 Hourly Paper Row-Level Figure TODO
 
 Target62 row-level prediction files were not saved for the selected L2 Logistic h40 candidate. The existing target62 paper-ready audit marks rolling 250/500/1000 row accuracy as unavailable and states that it did not regenerate predictions.
 

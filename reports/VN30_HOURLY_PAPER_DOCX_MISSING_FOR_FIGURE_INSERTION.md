@@ -1,4 +1,4 @@
-# Paper DOCX Missing For Figure Insertion
+# VN30 Hourly Paper DOCX Missing For Figure Insertion
 
 No current DOCX paper drafts were found in the repository or its immediate parent directory.
 

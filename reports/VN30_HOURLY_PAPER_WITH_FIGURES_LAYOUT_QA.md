@@ -1,4 +1,4 @@
-# Paper With Figures Layout QA
+# VN30 Hourly Paper With Figures Layout QA
 
 ## Scope
 

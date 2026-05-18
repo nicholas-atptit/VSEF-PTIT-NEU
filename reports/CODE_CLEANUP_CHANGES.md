@@ -9,6 +9,7 @@
 - Added cleanup scope, active code map, reorganization plan, and reorganization result reports.
 - Added a follow-up validation hygiene fix for the full-data-backup repository policy and local path redaction.
 - Did not change provider behavior, benchmark metrics, label logic, model logic, empirical results, data files, outputs, generated snapshots, or research claims.
+- Standardized active VN30 hourly selected-candidate, paper-source, daily result, and index benchmark filenames with `git mv`.
 
 ## Files Added or Updated
 
@@ -28,6 +29,36 @@
 - `reports/full_data_push_largest_files.csv` - redacted machine-local repository prefixes to `<repo>` while preserving row count, sizes, timestamps, and relative filenames.
 - `outputs/experiments/*` metadata files - redacted machine-local repository prefixes in logs, manifests, and one summary report without changing benchmark metrics.
 - `outputs/walkforward_governance_audit*` internal model manifests - redacted machine-local repository prefixes without changing model metrics or result values.
+- `docs/REPOSITORY_STRUCTURE.md` - updated current repository layout, protected paths, active evidence, generated artifacts, safe validation scripts, research/benchmark script boundaries, and naming convention.
+- `reports/REPO_RENAME_CLEANUP_INVENTORY.md` - added rename inventory and keep/defer decisions.
+- `reports/REPO_RENAME_CLEANUP_RESULT.md` - added final rename cleanup status and validation summary.
+- `reports/VN30_RESEARCH_CLAIM_REGISTER.md` - added a claim-register index over existing VN30 claim registers and claim boundaries without upgrading claims.
+- Protected generated folder rename decisions are documented in `reports/REPO_RENAME_CLEANUP_INVENTORY.md` and `reports/REPO_RENAME_CLEANUP_RESULT.md`; no new generated-folder index was added under `reports/generated/`.
+
+## Files Renamed For Naming Standardization
+
+- `reports/PAPER_FIGURE_DATA_SOURCE_INVENTORY.md` -> `reports/VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md`
+- `reports/PAPER_TABLE_FIGURE_CAPTIONS_EN.md` -> `reports/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_EN.md`
+- `reports/PAPER_TABLE_FIGURE_CAPTIONS_VI.md` -> `reports/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_VI.md`
+- `reports/PAPER_MISSING_METRICS_TODO.md` -> `reports/VN30_HOURLY_PAPER_MISSING_METRICS_TODO.md`
+- `reports/PAPER_ROW_LEVEL_FIGURE_TODO.md` -> `reports/VN30_HOURLY_PAPER_ROW_LEVEL_FIGURE_TODO.md`
+- `reports/PAPER_LITERATURE_DATA_TODO.md` -> `reports/VN30_HOURLY_PAPER_LITERATURE_DATA_TODO.md`
+- `reports/PAPER_DOCX_MISSING_FOR_FIGURE_INSERTION.md` -> `reports/VN30_HOURLY_PAPER_DOCX_MISSING_FOR_FIGURE_INSERTION.md`
+- `reports/PAPER_WITH_FIGURES_LAYOUT_QA.md` -> `reports/VN30_HOURLY_PAPER_WITH_FIGURES_LAYOUT_QA.md`
+- `reports/VN30_HOURLY_TARGET62_PAPER_READY_CLAIM_BOUNDARY.md` -> `reports/VN30_HOURLY_SELECTED_CANDIDATE_CLAIM_BOUNDARY.md`
+- `reports/VN30_HOURLY_TARGET62_STABILITY_CLAIM_BOUNDARY.md` -> `reports/VN30_HOURLY_SELECTED_CANDIDATE_STABILITY_CLAIM_BOUNDARY.md`
+- `reports/VN30_HOURLY_TARGET62_STABILITY_ROBUSTNESS_PROTOCOL.md` -> `reports/VN30_HOURLY_SELECTED_CANDIDATE_STABILITY_ROBUSTNESS_PROTOCOL.md`
+- `reports/VN30_HOURLY_TARGET62_STABILITY_ROBUSTNESS_RESULT.md` -> `reports/VN30_HOURLY_SELECTED_CANDIDATE_STABILITY_ROBUSTNESS_RESULT.md`
+- `reports/VN30_HOURLY_TARGET62_PAPER_READY_STABILITY_AUDIT_PROTOCOL.md` -> `reports/VN30_HOURLY_SELECTED_CANDIDATE_STABILITY_AUDIT_PROTOCOL.md`
+- `reports/VN30_HOURLY_TARGET62_PAPER_READY_STABILITY_AUDIT_RESULT.md` -> `reports/VN30_HOURLY_SELECTED_CANDIDATE_STABILITY_AUDIT_RESULT.md`
+- `reports/VN30_DAILY_2015_BENCHMARK_RESULT_SUMMARY.md` -> `reports/VN30_DAILY_2015_RESULT_SUMMARY.md`
+- `reports/INDEX_DIRECTIONAL_BENCHMARK_RESULT_SUMMARY.md` -> `reports/VN30_INDEX_BENCHMARK_RESULT_SUMMARY.md`
+- `reports/INDEX_DIRECTIONAL_BENCHMARK_CLAIM_REGISTER.md` -> `reports/VN30_INDEX_BENCHMARK_CLAIM_REGISTER.md`
+- `scripts/research/rerun_vn30_hourly_selected_l2_logistic_h40_row_predictions.py` -> `scripts/research/rerun_vn30_hourly_selected_candidate_row_predictions.py`
+- `scripts/research/build_paper_empirical_tables.py` -> `scripts/research/build_vn30_hourly_paper_empirical_tables.py`
+- `scripts/research/build_paper_empirical_figures.py` -> `scripts/research/build_vn30_hourly_paper_empirical_figures.py`
+- `scripts/research/audit_vn30_hourly_target62_paper_ready_stability.py` -> `scripts/research/audit_vn30_hourly_selected_candidate_stability_summary.py`
+- `scripts/research/audit_vn30_hourly_target62_stability_robustness.py` -> `scripts/research/audit_vn30_hourly_selected_candidate_stability_robustness.py`
 
 ## Files Moved to `scripts/legacy/research/failed_experiments/`
 

@@ -1,4 +1,4 @@
-# Index Directional Benchmark Claim Register
+# VN30 Index Benchmark Claim Register
 
 - Created at UTC: 2026-05-17.
 - Scope: supported index-only directional benchmark.

@@ -65,6 +65,9 @@ Unsafe claims:
 - Archive or move preserved scripts; do not delete evidence or data.
 - Delete only obvious junk such as bytecode cache when it is not tracked evidence.
 - Keep active evidence and protected paths intact.
+- Use `git mv` for tracked file renames.
+- Update references after renaming docs, reports, or scripts.
+- Prefer an index document over renaming protected generated folders.
 - Do not create tags by default.
 - Do not touch or merge `main` during branch cleanup.
 
@@ -84,6 +87,8 @@ Protected paths include:
 
 - `reports/ACTIVE_EVIDENCE_INDEX.md`
 - `reports/ACTIVE_CODE_MAP.md`
+- `docs/REPOSITORY_STRUCTURE.md`
+- `reports/REPO_RENAME_CLEANUP_INVENTORY.md`
 - `reports/REPO_CLEANUP_INVENTORY.md`
 - `reports/CODE_CLEANUP_CHANGES.md`
 

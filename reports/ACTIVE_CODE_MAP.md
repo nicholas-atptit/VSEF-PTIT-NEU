@@ -1,6 +1,6 @@
 # Active Code Map
 
-This map describes the repository structure after the new-remote backup and before code cleanup. It is descriptive only; it does not change research claims or benchmark results.
+This map describes the active repository structure after cleanup and rename standardization. It is descriptive only; it does not change research claims or benchmark results.
 
 ## 1. Provider/API Adapter Layer
 
@@ -83,6 +83,13 @@ Active hourly available-window:
 - `scripts/research/audit_vn30_hourly_available_window.py`
 - `scripts/research/vn30_hourly_available_window_common.py`
 
+Selected-candidate row-level and stability evidence:
+
+- `scripts/research/rerun_vn30_hourly_selected_candidate_row_predictions.py`
+- `scripts/research/audit_vn30_hourly_selected_candidate_rolling_stability.py`
+- `scripts/research/audit_vn30_hourly_selected_candidate_stability_summary.py`
+- `scripts/research/audit_vn30_hourly_selected_candidate_stability_robustness.py`
+
 Active index:
 
 - `scripts/research/run_supported_indices_directional_benchmark.py`
@@ -107,6 +114,13 @@ Top-k separate metric family:
 - `scripts/research/audit_vn30_hourly_2015_topk_ranking_results.py`
 - `scripts/research/verify_vn30_hourly_2015_topk_75_result.py`
 - `scripts/research/verify_vn30_hourly_2015_topk_75_null_test.py`
+
+Paper-source artifact builders:
+
+- `scripts/research/build_vn30_hourly_paper_empirical_tables.py`
+- `scripts/research/build_vn30_hourly_paper_empirical_figures.py`
+
+These paper builders must not be run casually during cleanup because they write generated paper assets. They do not fetch data or train models, but they are not part of the safe validation command set.
 
 ## 4. Legacy Scripts
 
@@ -135,3 +149,10 @@ The following data and artifact paths are protected for this cleanup:
 - `archive/reports_superseded/`
 
 These paths remain preserved. This cleanup does not delete data, rerun benchmarks, fetch data, train models, or regenerate paper/DOCX artifacts.
+
+Protected source/test paths:
+
+- `src/data/providers/`
+- `src/data/adapters/`
+- `tests/data/`
+- `tests/ml/`

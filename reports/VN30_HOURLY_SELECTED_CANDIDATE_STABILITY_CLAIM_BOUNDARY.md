@@ -1,4 +1,4 @@
-# VN30 Hourly Target62 Stability Claim Boundary
+# VN30 Hourly Selected Candidate Stability Claim Boundary
 
 ## Current Boundary
 
