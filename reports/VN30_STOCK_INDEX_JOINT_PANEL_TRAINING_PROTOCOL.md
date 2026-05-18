@@ -18,7 +18,9 @@ This is a joint 36-instrument benchmark.
 
 Stocks:
 
-- `ACB`, `BID`, `CTG`, `DGC`, `FPT`, `GAS`, `GVR`, `HDB`, `HPG`, `LPB`, `MBB`, `MSN`, `MWG`, `PLX`, `SAB`, `SHB`, `SSB`, `SSI`, `STB`, `TCB`, `TPB`, `VCB`, `VHM`, `VIB`, `VIC`, `VJC`, `VNM`, `VPB`, `VPL`, `VRE`
+- `ACB`, `BID`, `BCM`, `BVH`, `CTG`, `FPT`, `GAS`, `GVR`, `HDB`, `HPG`, `LPB`, `MBB`, `MSN`, `MWG`, `PLX`, `SAB`, `SHB`, `SSB`, `SSI`, `STB`, `TCB`, `TPB`, `VCB`, `VHM`, `VIB`, `VIC`, `VJC`, `VNM`, `VPB`, `VRE`
+
+The prior joint-panel protocol accidentally listed `DGC` and `VPL` and omitted `BCM` and `BVH`. The active January 2025 VN30 joint-panel universe excludes `DGC` and `VPL`.
 
 Indices:
 

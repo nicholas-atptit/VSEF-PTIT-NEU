@@ -16,20 +16,62 @@ REPO_ROOT_BOOTSTRAP = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT_BOOTSTRAP) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT_BOOTSTRAP))
 
-from scripts.research.index_benchmark_common import INDEX_CODES, read_index_frame
-from scripts.research.vn30_hourly_common import REPO_ROOT, VN30_TICKERS, standardize_hourly_frame
+from scripts.research.index_benchmark_common import read_index_frame
+from scripts.research.vn30_hourly_common import REPO_ROOT, standardize_hourly_frame
 
 
 REPORT_DIR = REPO_ROOT / "reports" / "generated" / "vn30_stock_index_joint_panel"
 OUTPUT_DIR = REPO_ROOT / "outputs" / "vn30_stock_index_joint_panel_training_v1"
 STOCK_CACHE = REPO_ROOT / "data" / "hourly_market_split_data"
 INDEX_CACHE = REPO_ROOT / "data" / "market_cache" / "vnstock_data" / "indices" / "hourly_2015"
+JOINT_UNIVERSE_PATH = REPO_ROOT / "configs" / "universes" / "vn30_jan2025_joint_panel_universe.csv"
 SUPPORTED_INDICES = ("VNINDEX", "VN30", "HNXINDEX", "HNX30", "UPCOMINDEX", "VN100")
 HORIZONS = (40, 60, 80, 100, 120)
 OHLCV = ("open", "high", "low", "close", "volume")
 TRAIN_SPLIT = 0.60
 VALIDATION_SPLIT = 0.20
 BASELINE_STOCK_RF_H60_REFERENCE = 0.6031
+
+
+def active_bool(value: Any) -> bool:
+    return str(value).strip().lower() in {"true", "1", "yes", "y"}
+
+
+def read_joint_panel_universe(path: Path = JOINT_UNIVERSE_PATH) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    if not path.exists():
+        raise FileNotFoundError(f"Joint panel universe config is missing: {rel(path)}")
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    required = {"instrument_code", "instrument_type", "universe_source", "active_for_joint_panel"}
+    missing = required.difference(rows[0].keys() if rows else [])
+    if missing:
+        raise ValueError(f"Joint panel universe is missing columns: {sorted(missing)}")
+    active_rows = [row for row in rows if active_bool(row.get("active_for_joint_panel"))]
+    stocks = tuple(
+        str(row.get("instrument_code", "")).strip().upper()
+        for row in active_rows
+        if str(row.get("instrument_type", "")).strip().lower() == "stock"
+    )
+    indices = tuple(
+        str(row.get("instrument_code", "")).strip().upper()
+        for row in active_rows
+        if str(row.get("instrument_type", "")).strip().lower() == "index"
+    )
+    if len(stocks) != 30 or len(set(stocks)) != 30:
+        raise ValueError(f"Joint panel stock universe must contain exactly 30 unique active stocks; got {len(stocks)}")
+    if indices != SUPPORTED_INDICES:
+        raise ValueError(f"Joint panel indices must be {SUPPORTED_INDICES}; got {indices}")
+    forbidden = {"DGC", "VPL"}.intersection(stocks)
+    if forbidden:
+        raise ValueError(f"Joint panel stock universe includes excluded tickers: {sorted(forbidden)}")
+    required_stocks = {"BCM", "BVH"}
+    missing_required = required_stocks.difference(stocks)
+    if missing_required:
+        raise ValueError(f"Joint panel stock universe is missing Jan-2025 tickers: {sorted(missing_required)}")
+    return stocks, indices
+
+
+VN30_TICKERS, SUPPORTED_INDICES = read_joint_panel_universe()
 
 
 def rel(path: Path) -> str:

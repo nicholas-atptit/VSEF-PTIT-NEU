@@ -21,6 +21,7 @@ from scripts.research.vn30_stock_index_joint_panel_features import (
     REPORT_DIR,
     SUPPORTED_INDICES,
     VN30_TICKERS,
+    JOINT_UNIVERSE_PATH,
     markdown_table,
     rel,
     write_csv,
@@ -157,19 +158,26 @@ def audit_one(code: str, instrument_type: str) -> dict[str, Any]:
 def main() -> int:
     rows = [audit_one(code, "stock") for code in VN30_TICKERS]
     rows.extend(audit_one(code, "index") for code in SUPPORTED_INDICES)
-    write_csv(REPORT_DIR / "joint_panel_readiness_repaired.csv", rows)
+    write_csv(REPORT_DIR / "joint_panel_readiness_universe_corrected.csv", rows)
     counts = Counter(row["instrument_type"] for row in rows)
     usable = [row for row in rows if row["usable"]]
     stock_usable = [row for row in usable if row["instrument_type"] == "stock"]
     index_usable = [row for row in usable if row["instrument_type"] == "index"]
     can_run = len(stock_usable) == 30 and len(index_usable) == 6
     failed = [row for row in rows if not row["usable"]]
+    row_by_code = {str(row["instrument_code"]): row for row in rows}
+    remaining_blockers = [f"{row['instrument_code']}: {row['reason']}" for row in failed]
     content = [
-        "# VN30 Stock + Index Joint Panel Readiness",
+        "# VN30 Stock + Index Joint Panel Readiness - Universe Corrected",
         "",
+        f"- Universe config: `{rel(JOINT_UNIVERSE_PATH)}`.",
         f"- Stock instrument count: {counts.get('stock', 0)}.",
         f"- Index instrument count: {counts.get('index', 0)}.",
         f"- Total instrument count: {len(rows)}.",
+        f"- BCM included and usable: {str(bool(row_by_code.get('BCM', {}).get('usable'))).lower()}.",
+        f"- BVH included and usable: {str(bool(row_by_code.get('BVH', {}).get('usable'))).lower()}.",
+        f"- DGC excluded: {str('DGC' not in row_by_code).lower()}.",
+        f"- VPL excluded: {str('VPL' not in row_by_code).lower()}.",
         f"- Usable stock instruments: {len(stock_usable)}/30.",
         f"- Usable index instruments: {len(index_usable)}/6.",
         f"- Joint panel can run with 36/36 instruments: {str(can_run).lower()}.",
@@ -199,8 +207,12 @@ def main() -> int:
         "",
         "The joint 36-instrument hourly panel is ready." if can_run else "The joint 36-instrument hourly panel is not validation-ready from current cache.",
         "",
+        "## Remaining Blockers",
+        "",
+        "None." if not remaining_blockers else "\n".join(f"- {blocker}" for blocker in remaining_blockers),
+        "",
     ]
-    (REPORT_DIR / "joint_panel_readiness_repaired.md").write_text("\n".join(content), encoding="utf-8")
+    (REPORT_DIR / "joint_panel_readiness_universe_corrected.md").write_text("\n".join(content), encoding="utf-8")
     print(f"joint_panel_can_run_36={str(can_run).lower()} usable={len(usable)}/36")
     return 0
 
