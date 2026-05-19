@@ -47,3 +47,41 @@ Validation-selected thresholds are reported separately from fixed 0.50 threshold
 Any result above 61.51% must pass audit before being considered a stronger candidate. Any result above 65% remains exploratory unless future blind validation confirms it.
 
 No trading, profitability, investment recommendation, or live-deployment claim is made by this benchmark.
+## Required Implementation Outputs
+
+The benchmark implementation must create the following scripts:
+
+- `scripts/research/audit_vn30_full_benchmark_data_label_scope.py`
+- `scripts/research/run_vn30_full_benchmark_regime_deep.py`
+- `scripts/research/audit_vn30_full_benchmark_regime_deep.py`
+
+The benchmark output directory is:
+
+- `reports/generated/vn30_full_benchmark_regime_deep/`
+
+Required outputs:
+
+- `data_label_audit.md`
+- `data_label_summary.csv`
+- `label_distribution_by_split.csv`
+- `baseline_results.csv`
+- `baseline_row_predictions.csv`
+- `classical_ml_results.csv`
+- `classical_ml_selected_candidates.csv`
+- `classical_ml_row_predictions.csv`
+- `deep_learning_results.csv`
+- `deep_learning_selected_candidates.csv`
+- `deep_learning_row_predictions.csv`
+- `deep_learning_skip_report.md`
+- `regime_feature_manifest.json`
+- `regime_distribution.csv`
+- `regime_slice_results.csv`
+- `walk_forward_config.json`
+- `walk_forward_validation_results.csv`
+- `walk_forward_final_results.csv`
+- `unified_leaderboard.csv`
+- `best_by_group.csv`
+- `best_overall_validation_selected.json`
+- `comparison_summary.md`
+- `audit_result.md`
+- `claim_register.md`
