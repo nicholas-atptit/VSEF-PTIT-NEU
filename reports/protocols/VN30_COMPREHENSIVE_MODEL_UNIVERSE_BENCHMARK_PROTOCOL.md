@@ -14,7 +14,7 @@ The benchmark covers naive baselines, technical rules, linear models, SVMs, dist
 
 Heavy models should be run if technically feasible. SVM RBF, SVM Polynomial, KNN, Radius Neighbors, technical indicators, and feasible statistical direction models are mandatory attempts. Models may only be skipped for dependency, data-shape, implementation, or objective-compatibility reasons. Runtime risk alone is not a skip reason.
 
-CatBoost is attempted when installed. ARIMA, SARIMA, and ETS may be evaluated as direction models only by forecasting return or level and converting the forecast sign into up/down direction. GARCH is not a direct directional classifier; it is treated as a volatility diagnostic or future volatility feature source, not as a headline direction model.
+CatBoost is part of the boosting model family and is attempted when installed. The May 2026 exhaustive rerun installed the CatBoost and arch/GARCH dependencies before rerunning the benchmark. ARIMA, SARIMA, and ETS may be evaluated as direction models only by forecasting return or level and converting the forecast sign into up/down direction. GARCH is not a direct directional classifier; it is treated as a volatility diagnostic or future volatility feature source, not as a headline direction model.
 
 ## Evaluation Rules
 
@@ -32,7 +32,7 @@ Preprocessing must be fit on the train split only. StandardScaler is used for SV
 
 ## Selection Boundary
 
-Model and threshold selection must use validation only. The final window is scoring-only and must not be used for model, feature, threshold, horizon, ensemble, calibration, or router selection.
+Model and threshold selection must use validation only. The final window is scoring-only and must not be used for model, feature, threshold, horizon, ensemble, calibration, router, or dependency-related selection.
 
 The current main h40 paper result remains:
 
@@ -51,7 +51,11 @@ Deep learning models use time-safe sequence construction, no shuffle across time
 
 ## Statistical Model Rules
 
-ARIMA, SARIMA, and ETS direction rows may forecast return or level and convert the forecast sign to up/down direction. VAR direction rows are exploratory when feasible. GARCH is a volatility diagnostic only. It is written under statistical model diagnostics and is not claim eligible as a direct directional classifier unless a clearly defined ex-ante direction rule is implemented. The default benchmark role for GARCH is not claim eligible.
+ARIMA, SARIMA, and ETS direction rows may forecast return or level and convert the forecast sign to up/down direction. VAR direction rows are exploratory when feasible. GARCH is a volatility diagnostic only. It is written under statistical model diagnostics and is not claim eligible as a direct directional classifier unless a clearly defined ex-ante direction conversion rule is implemented before final scoring. The default benchmark role for GARCH is not claim eligible.
+
+## Overfit-Risk Audit
+
+Overfit cannot be ruled out absolutely. It is evaluated through validation-only model and threshold selection, validation-final gap, rolling 250/500/1000-row diagnostics, monthly and quarterly stability, ticker stability, regime-slice stability when available, and post-hoc final-leaderboard checks. Risk is classified as low, medium, or high.
 
 ## Claim Boundary
 

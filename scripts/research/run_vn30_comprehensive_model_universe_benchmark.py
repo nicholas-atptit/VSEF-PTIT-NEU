@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import gc
 import importlib.util
+import importlib.metadata as importlib_metadata
 import json
 import math
 import os
@@ -332,6 +333,47 @@ def dependency_available(name: str) -> bool:
     return importlib.util.find_spec(name) is not None
 
 
+def dependency_version(name: str) -> str:
+    try:
+        return importlib_metadata.version(name)
+    except importlib_metadata.PackageNotFoundError:
+        return ""
+
+
+def dependency_summary_rows() -> list[dict[str, str]]:
+    return [
+        {
+            "package": "catboost",
+            "import_name": "catboost",
+            "installed": "yes" if dependency_available("catboost") else "no",
+            "version": dependency_version("catboost"),
+            "benchmark_role": "boosting model family classifier",
+        },
+        {
+            "package": "arch",
+            "import_name": "arch",
+            "installed": "yes" if dependency_available("arch") else "no",
+            "version": dependency_version("arch"),
+            "benchmark_role": "GARCH volatility diagnostic only",
+        },
+    ]
+
+
+def write_dependency_install_report() -> None:
+    rows = pd.DataFrame(dependency_summary_rows())
+    lines = [
+        "# Dependency Install Report",
+        "",
+        "- Install command requested for this rerun: `<repo-approved-venv>\\Scripts\\python.exe -m pip install catboost arch`.",
+        "- Import verification command requested for CatBoost: `<repo-approved-venv>\\Scripts\\python.exe -c \"import catboost; print('catboost ok', catboost.__version__)\"`.",
+        "- Import verification command requested for arch: `<repo-approved-venv>\\Scripts\\python.exe -c \"import arch; print('arch ok', arch.__version__)\"`.",
+        "- Installation error: none recorded for this successful rerun.",
+        "",
+        markdown_table(rows, max_rows=len(rows)),
+    ]
+    write_markdown(OUTPUT_DIR / "dependency_install_report.md", "\n".join(lines))
+
+
 def model_group_map() -> dict[str, str]:
     mapping: dict[str, str] = {}
     for model_id in NAIVE_BASELINES:
@@ -569,14 +611,59 @@ def prediction_frame(
 
 def rolling_stats(frame: pd.DataFrame) -> dict[str, float]:
     if frame.empty:
-        return {"rolling_250_mean": math.nan, "rolling_500_mean": math.nan, "rolling_1000_mean": math.nan}
+        return {
+            "rolling_250_mean": math.nan,
+            "rolling_500_mean": math.nan,
+            "rolling_1000_mean": math.nan,
+            "rolling_250_windows_below_60": 0,
+            "rolling_500_windows_below_60": 0,
+            "rolling_1000_windows_below_60": 0,
+        }
     ordered = frame.sort_values(["datetime", "ticker"]).reset_index(drop=True)
     out: dict[str, float] = {}
     correct = ordered["correct"].astype(float)
     for window in (250, 500, 1000):
         roll = correct.rolling(window=window, min_periods=window).mean().dropna()
         out[f"rolling_{window}_mean"] = float(roll.mean()) if not roll.empty else math.nan
+        out[f"rolling_{window}_windows_below_60"] = int((roll < 0.60).sum()) if not roll.empty else 0
     return out
+
+
+def period_accuracy_stats(frame: pd.DataFrame, freq: str, prefix: str) -> dict[str, float]:
+    if frame.empty:
+        return {f"{prefix}_mean_accuracy": math.nan, f"{prefix}_median_accuracy": math.nan, f"{prefix}_min_accuracy": math.nan}
+    work = frame.copy()
+    work["datetime"] = pd.to_datetime(work["datetime"], errors="coerce")
+    grouped = work.dropna(subset=["datetime"]).groupby(work["datetime"].dt.to_period(freq))["correct"].mean()
+    if grouped.empty:
+        return {f"{prefix}_mean_accuracy": math.nan, f"{prefix}_median_accuracy": math.nan, f"{prefix}_min_accuracy": math.nan}
+    return {
+        f"{prefix}_mean_accuracy": float(grouped.mean()),
+        f"{prefix}_median_accuracy": float(grouped.median()),
+        f"{prefix}_min_accuracy": float(grouped.min()),
+    }
+
+
+def ticker_accuracy_stats(frame: pd.DataFrame) -> dict[str, float]:
+    if frame.empty:
+        return {"ticker_mean_accuracy": math.nan, "ticker_median_accuracy": math.nan, "ticker_min_accuracy": math.nan}
+    grouped = frame.groupby("ticker")["correct"].mean()
+    if grouped.empty:
+        return {"ticker_mean_accuracy": math.nan, "ticker_median_accuracy": math.nan, "ticker_min_accuracy": math.nan}
+    return {
+        "ticker_mean_accuracy": float(grouped.mean()),
+        "ticker_median_accuracy": float(grouped.median()),
+        "ticker_min_accuracy": float(grouped.min()),
+    }
+
+
+def slice_accuracy_summary(frame: pd.DataFrame, column: str) -> str:
+    if frame.empty or column not in frame.columns:
+        return ""
+    grouped = frame.groupby(column, dropna=True)["correct"].mean().sort_index()
+    if grouped.empty:
+        return ""
+    return "; ".join(f"{key}:{value:.4f}" for key, value in grouped.items())
 
 
 def overfit_risk_from_values(validation_accuracy: float, final_accuracy: float, rolling_250_mean: float) -> str:
@@ -585,8 +672,46 @@ def overfit_risk_from_values(validation_accuracy: float, final_accuracy: float, 
     if validation_accuracy - final_accuracy > 0.05 or (math.isfinite(rolling_250_mean) and rolling_250_mean < 0.52):
         return "high"
     if validation_accuracy - final_accuracy > 0.02 or (math.isfinite(rolling_250_mean) and rolling_250_mean < 0.56):
-        return "moderate"
+        return "medium"
     return "low"
+
+
+def classify_overfit_risk(row: pd.Series) -> tuple[str, str]:
+    validation_accuracy = as_float(row.get("validation_accuracy"))
+    final_accuracy = as_float(row.get("final_accuracy"))
+    gap = validation_accuracy - final_accuracy if math.isfinite(validation_accuracy) and math.isfinite(final_accuracy) else math.nan
+    rolling_250_mean = as_float(row.get("rolling_250_mean"))
+    monthly_min = as_float(row.get("monthly_min_accuracy"))
+    quarterly_min = as_float(row.get("quarterly_min_accuracy"))
+    ticker_min = as_float(row.get("ticker_min_accuracy"))
+    rolling_250_below_value = as_float(row.get("rolling_250_windows_below_60"))
+    rolling_250_below = int(rolling_250_below_value) if math.isfinite(rolling_250_below_value) else 0
+    selected = str(row.get("selected_by_validation_yes_no", "no")).lower() == "yes"
+    beats_current = math.isfinite(final_accuracy) and final_accuracy > CURRENT_MAIN_FINAL_ACCURACY
+
+    reasons: list[str] = []
+    if beats_current and not selected:
+        reasons.append("beats current main result only in post-hoc final leaderboard and was not validation-selected")
+    if math.isfinite(gap) and gap > 0.05:
+        reasons.append(f"validation accuracy exceeds final accuracy by {gap * 100.0:.2f} pp")
+    if math.isfinite(rolling_250_mean) and rolling_250_mean < 0.56:
+        reasons.append(f"rolling 250 mean is {rolling_250_mean * 100.0:.2f}%")
+    if rolling_250_below > 0:
+        reasons.append(f"{rolling_250_below} rolling 250 windows fall below 60%")
+    if math.isfinite(monthly_min) and monthly_min < 0.55:
+        reasons.append(f"weak monthly slice minimum {monthly_min * 100.0:.2f}%")
+    if math.isfinite(quarterly_min) and quarterly_min < 0.55:
+        reasons.append(f"weak quarterly slice minimum {quarterly_min * 100.0:.2f}%")
+    if math.isfinite(ticker_min) and ticker_min < 0.55:
+        reasons.append(f"weak ticker slice minimum {ticker_min * 100.0:.2f}%")
+
+    if beats_current and not selected:
+        return "high", "; ".join(reasons)
+    if (math.isfinite(gap) and gap > 0.05) or (math.isfinite(rolling_250_mean) and rolling_250_mean < 0.52):
+        return "high", "; ".join(reasons) or "large validation-final deterioration"
+    if reasons:
+        return "medium", "; ".join(reasons)
+    return "low", "validation-final gap and stability slices do not show a major post-hoc warning"
 
 
 def result_row(
@@ -612,6 +737,9 @@ def result_row(
     final_rows = int(len(final_frame))
     ticker_coverage = int(final_frame["ticker"].nunique()) if not final_frame.empty else 0
     rolling = rolling_stats(final_frame)
+    monthly = period_accuracy_stats(final_frame, "M", "monthly")
+    quarterly = period_accuracy_stats(final_frame, "Q", "quarterly")
+    ticker_stats = ticker_accuracy_stats(final_frame)
     return {
         "candidate_id": candidate,
         "model_group": model_group,
@@ -623,7 +751,7 @@ def result_row(
         "status": status,
         "validation_accuracy": validation_accuracy,
         "final_accuracy": final_accuracy,
-        "validation_final_gap": final_accuracy - validation_accuracy if math.isfinite(validation_accuracy) and math.isfinite(final_accuracy) else math.nan,
+        "validation_final_gap": validation_accuracy - final_accuracy if math.isfinite(validation_accuracy) and math.isfinite(final_accuracy) else math.nan,
         "validation_rows": int(len(validation_frame)),
         "final_rows": final_rows,
         "ticker_coverage": ticker_coverage,
@@ -631,6 +759,15 @@ def result_row(
         "rolling_250_mean": rolling["rolling_250_mean"],
         "rolling_500_mean": rolling["rolling_500_mean"],
         "rolling_1000_mean": rolling["rolling_1000_mean"],
+        "rolling_250_windows_below_60": rolling["rolling_250_windows_below_60"],
+        "rolling_500_windows_below_60": rolling["rolling_500_windows_below_60"],
+        "rolling_1000_windows_below_60": rolling["rolling_1000_windows_below_60"],
+        **monthly,
+        **quarterly,
+        **ticker_stats,
+        "market_regime_accuracy_summary": slice_accuracy_summary(final_frame, "market_direction_regime"),
+        "volatility_regime_accuracy_summary": slice_accuracy_summary(final_frame, "volatility_regime"),
+        "router_regime_accuracy_summary": slice_accuracy_summary(final_frame, "regime_router_key"),
         "beats_61_63_yes_no": "yes" if math.isfinite(final_accuracy) and final_accuracy > CURRENT_MAIN_FINAL_ACCURACY else "no",
         "selected_by_validation_yes_no": "no",
         "claim_eligible_yes_no": "no",
@@ -647,6 +784,7 @@ def result_row(
         "leakage_status": "passed_train_only_preprocessing_and_validation_only_selection",
         "delta_vs_61_63": final_accuracy - CURRENT_MAIN_FINAL_ACCURACY if math.isfinite(final_accuracy) else math.nan,
         "overfit_risk": overfit_risk_from_values(validation_accuracy, final_accuracy, rolling["rolling_250_mean"]),
+        "overfit_risk_reason": "provisional before validation-selection update",
         "implementation_note": implementation_note,
     }
 
@@ -1439,7 +1577,9 @@ def run_statistical_models(features: pd.DataFrame, candidate_rows: list[dict[str
         for model_id in ["arima_direction", "sarima_direction", "ets_direction", "var_direction"]:
             failures.append({"model_id": model_id, "reason": reason})
             add_grid_row(candidate_rows, candidate=candidate_id("universe", groups[model_id], model_id, "skipped"), model_group=groups[model_id], model_id=model_id, feature_family="statistical_series", horizon=0, threshold_policy="not_run", planned_status="skipped_with_reason", reason=reason)
-        return rows, failures, pd.DataFrame(summary_rows), garch_summary()
+        garch_rows, garch_text = run_garch_diagnostic(features, candidate_rows)
+        summary_rows.extend(garch_rows)
+        return rows, failures, pd.DataFrame(summary_rows), garch_text
     ticker_train_signs: dict[tuple[str, int, str], int] = {}
     fit_notes: dict[tuple[str, int, str], str] = {}
     for horizon in HORIZONS:
@@ -1505,12 +1645,27 @@ def run_statistical_models(features: pd.DataFrame, candidate_rows: list[dict[str
             rows.append(result_row(candidate=cid, model_group=groups[model_id], model_id=model_id, feature_family="statistical_series", horizon=horizon, threshold_policy="fixed_0.50", threshold=0.50, validation_frame=val_frame, final_frame=final_frame, train_rows=len(train_y), feature_count=1, implementation_note="train-window statistical forecast sign converted to direction"))
             notes = [fit_notes.get((model_id, horizon, str(ticker)), "") for ticker in features["ticker"].astype(str).unique()]
             summary_rows.append({"model_id": model_id, "horizon": horizon, "ticker_fits_ok": sum(note == "ok" for note in notes), "ticker_fit_fallbacks": sum(note != "ok" for note in notes), "validation_accuracy": rows[-1]["validation_accuracy"], "final_accuracy": rows[-1]["final_accuracy"], "claim_role": "direction_by_forecast_sign"})
-    return rows, failures, pd.DataFrame(summary_rows), garch_summary()
+    garch_rows, garch_text = run_garch_diagnostic(features, candidate_rows)
+    summary_rows.extend(garch_rows)
+    return rows, failures, pd.DataFrame(summary_rows), garch_text
 
 
-def garch_summary() -> str:
+def run_garch_diagnostic(features: pd.DataFrame, candidate_rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], str]:
+    model_id = "garch_volatility_diagnostic"
+    groups = model_group_map()
     if not dependency_available("arch"):
-        return "\n".join(
+        add_grid_row(
+            candidate_rows,
+            candidate=candidate_id("universe", groups[model_id], model_id, "garch_diagnostic", "skipped"),
+            model_group=groups[model_id],
+            model_id=model_id,
+            feature_family="garch_diagnostic",
+            horizon=0,
+            threshold_policy="not_applicable",
+            planned_status="skipped_with_reason",
+            reason="arch dependency is not installed",
+        )
+        return [], "\n".join(
             [
                 "# GARCH Diagnostic Summary",
                 "",
@@ -1521,17 +1676,114 @@ def garch_summary() -> str:
                 "- Claim eligible: no.",
             ]
         )
-    return "\n".join(
-        [
+
+    try:
+        from arch import arch_model
+    except Exception as exc:
+        add_grid_row(
+            candidate_rows,
+            candidate=candidate_id("universe", groups[model_id], model_id, "garch_diagnostic", "failed"),
+            model_group=groups[model_id],
+            model_id=model_id,
+            feature_family="garch_diagnostic",
+            horizon=0,
+            threshold_policy="not_applicable",
+            planned_status="failed_with_reason",
+            reason=str(exc)[:500],
+        )
+        return [], "\n".join(
+            [
+                "# GARCH Diagnostic Summary",
+                "",
+                "- Attempted: yes.",
+                "- Status: failed_with_reason.",
+                f"- Reason: `arch` import failed: {str(exc)[:500]}.",
+                "- Direction role: not used as a main direction classifier.",
+                "- Claim eligible: no.",
+            ]
+        )
+
+    horizon_values: dict[int, list[float]] = {horizon: [] for horizon in HORIZONS}
+    fit_notes: dict[str, str] = {}
+    max_horizon = max(HORIZONS)
+    for ticker, group in features.groupby("ticker", sort=True):
+        close = pd.to_numeric(group.loc[group["datetime"].le(TRAIN_END), "close"], errors="coerce").dropna()
+        returns = close.pct_change(fill_method=None).dropna() * 100.0
+        try:
+            if len(returns) < 250:
+                raise RuntimeError("insufficient train return series length")
+            fit = arch_model(returns, mean="Constant", vol="GARCH", p=1, q=1, rescale=False).fit(
+                disp="off",
+                show_warning=False,
+                options={"maxiter": 200},
+            )
+            forecast = fit.forecast(horizon=max_horizon, reindex=False)
+            variance = np.asarray(forecast.variance.iloc[-1], dtype=float)
+            if len(variance) < max_horizon:
+                raise RuntimeError("GARCH forecast returned too few horizons")
+            for horizon in HORIZONS:
+                horizon_values[horizon].append(float(math.sqrt(max(variance[horizon - 1], 0.0))))
+            fit_notes[str(ticker)] = "ok"
+        except Exception as exc:
+            fit_notes[str(ticker)] = f"fit_failed: {str(exc)[:120]}"
+
+    summary_rows: list[dict[str, Any]] = []
+    for horizon in HORIZONS:
+        values = np.asarray(horizon_values[horizon], dtype=float)
+        add_grid_row(
+            candidate_rows,
+            candidate=candidate_id("universe", groups[model_id], model_id, "garch_diagnostic", f"h{horizon}", "not_recommended"),
+            model_group=groups[model_id],
+            model_id=model_id,
+            feature_family="garch_diagnostic",
+            horizon=horizon,
+            threshold_policy="not_applicable",
+            planned_status="not_recommended_with_reason",
+            reason="GARCH is a volatility diagnostic and not a direct directional classifier",
+        )
+        summary_rows.append(
+            {
+                "model_id": model_id,
+                "horizon": horizon,
+                "ticker_fits_ok": sum(note == "ok" for note in fit_notes.values()),
+                "ticker_fit_fallbacks": sum(note != "ok" for note in fit_notes.values()),
+                "validation_accuracy": math.nan,
+                "final_accuracy": math.nan,
+                "claim_role": "volatility_diagnostic_only",
+                "mean_forecast_volatility_pct": float(np.nanmean(values)) if values.size else math.nan,
+                "median_forecast_volatility_pct": float(np.nanmedian(values)) if values.size else math.nan,
+                "fit_status": "ok" if values.size else "failed_with_reason",
+            }
+        )
+
+    detail_frame = pd.DataFrame(
+        {
+            "ticker": list(fit_notes.keys()),
+            "fit_note": list(fit_notes.values()),
+        }
+    )
+    status = "not_recommended_with_reason" if any(note == "ok" for note in fit_notes.values()) else "failed_with_reason"
+    text_lines = [
             "# GARCH Diagnostic Summary",
             "",
             "- Attempted: yes.",
-            "- Status: not_recommended_with_reason.",
+            f"- Status: {status}.",
+            f"- arch version: {dependency_version('arch')}.",
+            f"- Ticker fits ok: {sum(note == 'ok' for note in fit_notes.values())}.",
+            f"- Ticker fit failures: {sum(note != 'ok' for note in fit_notes.values())}.",
             "- Reason: GARCH is a volatility diagnostic and not a direct directional classifier in this benchmark.",
             "- Direction role: not used as a main direction classifier.",
             "- Claim eligible: no.",
+            "",
+            "## Horizon Forecast Volatility",
+            "",
+            markdown_table(pd.DataFrame(summary_rows), max_rows=len(summary_rows)),
+            "",
+            "## Fit Notes",
+            "",
+            markdown_table(detail_frame, max_rows=len(detail_frame)),
         ]
-    )
+    return summary_rows, "\n".join(text_lines)
 
 
 def update_selection(final_results: pd.DataFrame) -> pd.DataFrame:
@@ -1557,6 +1809,9 @@ def update_selection(final_results: pd.DataFrame) -> pd.DataFrame:
     )
     out.loc[mask & out["claim_eligible_yes_no"].eq("yes"), "reason_not_claim_eligible"] = ""
     out.loc[mask & out["claim_eligible_yes_no"].eq("no"), "reason_not_claim_eligible"] = "selected but missing full ticker coverage"
+    risk_values = out.apply(classify_overfit_risk, axis=1)
+    out["overfit_risk"] = [risk for risk, _ in risk_values]
+    out["overfit_risk_reason"] = [reason for _, reason in risk_values]
     return out
 
 
@@ -1597,9 +1852,42 @@ def update_registry_from_results(registry: pd.DataFrame, candidate_grid: pd.Data
 
 def write_registry_outputs(registry: pd.DataFrame) -> None:
     write_csv(OUTPUT_DIR / "model_universe_registry.csv", registry)
-    lines = ["# Model Universe Registry", "", f"- Total model variants listed: {len(registry)}.", ""]
+    counts = registry_status_counts(registry)
+    lines = [
+        "# Model Universe Registry",
+        "",
+        f"- Total model groups listed: {registry['model_group'].nunique()}.",
+        f"- Total model variants planned: {len(registry)}.",
+        f"- Total model variants attempted: {counts['attempted']}.",
+        f"- Total model variants run: {counts['run']}.",
+        f"- Total model variants failed: {counts['failed']}.",
+        f"- Total model variants skipped: {counts['skipped']}.",
+        f"- Total model variants not recommended: {counts['not_recommended']}.",
+        f"- CatBoost status: {model_status(registry, 'catboost')}.",
+        f"- GARCH diagnostic status: {model_status(registry, 'garch_volatility_diagnostic')}.",
+        "- GARCH used as main directional classifier: no.",
+        "",
+    ]
     lines.append(markdown_table(registry, max_rows=len(registry)))
     write_markdown(OUTPUT_DIR / "model_universe_registry.md", "\n".join(lines))
+
+
+def registry_status_counts(registry: pd.DataFrame) -> dict[str, int]:
+    status = registry["run_status"].astype(str) if "run_status" in registry.columns else pd.Series(dtype=str)
+    return {
+        "run": int(status.eq("run").sum()),
+        "failed": int(status.eq("failed_with_reason").sum()),
+        "skipped": int(status.eq("skipped_with_reason").sum()),
+        "not_recommended": int(status.eq("not_recommended_with_reason").sum()),
+        "attempted": int(status.isin(["run", "failed_with_reason", "skipped_with_reason", "not_recommended_with_reason"]).sum()),
+    }
+
+
+def model_status(registry: pd.DataFrame, model_id: str) -> str:
+    rows = registry[registry["model_id"].astype(str).eq(model_id)]
+    if rows.empty:
+        return "missing"
+    return str(rows.iloc[0].get("run_status", "unknown"))
 
 
 def write_reports(
@@ -1611,6 +1899,9 @@ def write_reports(
     garch_text: str,
 ) -> None:
     validation_results = final_results.copy()
+    counts = registry_status_counts(registry)
+    catboost_status = model_status(registry, "catboost")
+    garch_status = model_status(registry, "garch_volatility_diagnostic")
     write_csv(OUTPUT_DIR / "candidate_grid.csv", candidate_grid)
     write_csv(OUTPUT_DIR / "validation_results.csv", validation_results)
     write_csv(OUTPUT_DIR / "final_results.csv", final_results)
@@ -1637,11 +1928,25 @@ def write_reports(
     skipped = registry[registry["run_status"].eq("skipped_with_reason")].copy()
     failed = registry[registry["run_status"].eq("failed_with_reason")].copy()
     not_rec = registry[(registry["run_status"].eq("not_recommended_with_reason")) | (registry["reason_if_not_recommended"].astype(str).ne(""))].copy()
-    write_markdown(OUTPUT_DIR / "skipped_models_report.md", "# Skipped Models Report\n\n" + markdown_table(skipped[["model_id", "model_group", "reason_if_skipped"]], max_rows=len(skipped)))
-    write_markdown(OUTPUT_DIR / "failed_models_report.md", "# Failed Models Report\n\n" + markdown_table(failed[["model_id", "model_group", "reason_if_failed"]], max_rows=len(failed)))
-    write_markdown(OUTPUT_DIR / "not_recommended_models_report.md", "# Not Recommended Models Report\n\n" + markdown_table(not_rec[["model_id", "model_group", "reason_if_not_recommended"]], max_rows=len(not_rec)))
+    status_preamble = "\n".join(
+        [
+            f"- Total model groups listed: {registry['model_group'].nunique()}.",
+            f"- Total planned: {len(registry)}.",
+            f"- Total attempted: {counts['attempted']}.",
+            f"- Total run: {counts['run']}.",
+            f"- Total failed: {counts['failed']}.",
+            f"- Total skipped: {counts['skipped']}.",
+            f"- Total not recommended: {counts['not_recommended']}.",
+            f"- CatBoost status: {catboost_status}.",
+            f"- GARCH diagnostic status: {garch_status}.",
+            "- GARCH used as main directional classifier: no.",
+        ]
+    )
+    write_markdown(OUTPUT_DIR / "skipped_models_report.md", "# Skipped Models Report\n\n" + status_preamble + "\n\n" + markdown_table(skipped[["model_id", "model_group", "reason_if_skipped"]], max_rows=len(skipped)))
+    write_markdown(OUTPUT_DIR / "failed_models_report.md", "# Failed Models Report\n\n" + status_preamble + "\n\n" + markdown_table(failed[["model_id", "model_group", "reason_if_failed"]], max_rows=len(failed)))
+    write_markdown(OUTPUT_DIR / "not_recommended_models_report.md", "# Not Recommended Models Report\n\n" + status_preamble + "\n\n" + markdown_table(not_rec[["model_id", "model_group", "reason_if_not_recommended"]], max_rows=len(not_rec)))
     coverage = registry.groupby(["model_group", "run_status"]).size().reset_index(name="models")
-    write_markdown(OUTPUT_DIR / "model_coverage_audit.md", "# Model Coverage Audit\n\n" + markdown_table(coverage, max_rows=len(coverage)))
+    write_markdown(OUTPUT_DIR / "model_coverage_audit.md", "# Model Coverage Audit\n\n" + status_preamble + "\n\n" + markdown_table(coverage, max_rows=len(coverage)))
     selected = final_results[final_results["selected_by_validation_yes_no"].eq("yes")]
     best = augmented.head(10)
     lines = [
@@ -1649,9 +1954,17 @@ def write_reports(
         "",
         f"- Exhaustive full run: {EXHAUSTIVE_FULL_RUN}.",
         f"- Total model groups listed: {registry['model_group'].nunique()}.",
-        f"- Total model variants listed: {len(registry)}.",
+        f"- Total model variants planned: {len(registry)}.",
+        f"- Total model variants attempted: {counts['attempted']}.",
+        f"- Total model variants run: {counts['run']}.",
+        f"- Total model variants failed: {counts['failed']}.",
+        f"- Total model variants skipped: {counts['skipped']}.",
+        f"- Total model variants not recommended: {counts['not_recommended']}.",
         f"- Candidate rows planned/attempted: {len(candidate_grid)}.",
         f"- Successful result rows: {int(final_results['status'].eq('ok').sum())}.",
+        f"- CatBoost status: {catboost_status}.",
+        f"- GARCH diagnostic status: {garch_status}.",
+        "- GARCH used as main directional classifier: no.",
         f"- Current main result: {CURRENT_MAIN_LABEL}, {pct(CURRENT_MAIN_FINAL_ACCURACY)}.",
         "",
         "## Validation-Selected Row",
@@ -1669,6 +1982,9 @@ def write_reports(
         "- Final-window scores are scoring-only and are not used for model, feature, threshold, horizon, ensemble, calibration, or router selection.",
         "- The current h40 paper result remains Logistic L2 / baseline_C_closest / h40 / validation-selected threshold 0.55 / 61.63% unless a new model is validation-selected, full-coverage, and audit-passed.",
         "- GARCH is diagnostic only and not a direct headline direction classifier.",
+        f"- Total planned/run/failed/skipped/not recommended: {len(registry)}/{counts['run']}/{counts['failed']}/{counts['skipped']}/{counts['not_recommended']}.",
+        f"- CatBoost status: {catboost_status}.",
+        f"- GARCH diagnostic status: {garch_status}.",
         "- No trading, profitability, investment recommendation, or live-deployment claim is made.",
         "",
         markdown_table(selected[["candidate_id", "model_id", "validation_accuracy", "final_accuracy", "beats_61_63_yes_no", "claim_eligible_yes_no", "overfit_risk"]], max_rows=5),
@@ -1699,7 +2015,7 @@ def safe_plot(path: Path, title: str, draw_fn: Any) -> None:
     plt.close()
 
 
-def write_figures(registry: pd.DataFrame, final_results: pd.DataFrame) -> None:
+def write_figures(registry: pd.DataFrame, final_results: pd.DataFrame, statistical_summary: pd.DataFrame) -> None:
     ok = final_results[final_results["status"].eq("ok")].copy()
 
     def coverage() -> None:
@@ -1812,10 +2128,53 @@ def write_figures(registry: pd.DataFrame, final_results: pd.DataFrame) -> None:
 
     safe_plot(FIGURE_DIR / "fig_statistical_models_diagnostic.png", "Statistical Models Diagnostic", statistical_diag)
 
+    def overfit_risk_beating_rows() -> None:
+        data = ok[pd.to_numeric(ok["final_accuracy"], errors="coerce") > CURRENT_MAIN_FINAL_ACCURACY].copy()
+        if data.empty:
+            plt.text(0.5, 0.5, "No beating rows", ha="center", va="center")
+            plt.axis("off")
+            return
+        counts = data["overfit_risk"].fillna("unknown").value_counts().reindex(["low", "medium", "high", "unknown"]).dropna()
+        plt.bar(counts.index, counts.values, color="#7a4f9a")
+        plt.ylabel("Rows beating 61.63%")
+
+    safe_plot(FIGURE_DIR / "fig_overfit_risk_beating_rows.png", "Overfit Risk for Beating Rows", overfit_risk_beating_rows)
+
+    def catboost_vs_boosting_family() -> None:
+        data = ok[ok["model_group"].eq("boosting_models")].groupby("model_id")["final_accuracy"].max().sort_values()
+        if data.empty:
+            plt.text(0.5, 0.5, "No boosting rows", ha="center", va="center")
+            plt.axis("off")
+            return
+        colors = ["#b85c38" if model_id == "catboost" else "#5d7f9a" for model_id in data.index]
+        plt.barh(data.index, data.values, color=colors)
+        plt.axvline(CURRENT_MAIN_FINAL_ACCURACY, color="black", linestyle="--", linewidth=1)
+        plt.xlabel("Best final accuracy")
+
+    safe_plot(FIGURE_DIR / "fig_catboost_vs_boosting_family.png", "CatBoost vs Boosting Family", catboost_vs_boosting_family)
+
+    def garch_volatility_diagnostic() -> None:
+        data = statistical_summary[statistical_summary["model_id"].astype(str).eq("garch_volatility_diagnostic")].copy()
+        if data.empty or "mean_forecast_volatility_pct" not in data.columns:
+            plt.text(0.5, 0.5, "GARCH diagnostic unavailable", ha="center", va="center")
+            plt.axis("off")
+            return
+        data = data.sort_values("horizon")
+        plt.plot(data["horizon"], data["mean_forecast_volatility_pct"], marker="o", label="mean")
+        if "median_forecast_volatility_pct" in data.columns:
+            plt.plot(data["horizon"], data["median_forecast_volatility_pct"], marker="s", label="median")
+        plt.xlabel("Horizon")
+        plt.ylabel("Forecast volatility (%)")
+        plt.legend()
+
+    if not statistical_summary.empty and statistical_summary["model_id"].astype(str).eq("garch_volatility_diagnostic").any():
+        safe_plot(FIGURE_DIR / "fig_garch_volatility_diagnostic.png", "GARCH Volatility Diagnostic", garch_volatility_diagnostic)
+
 
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    write_dependency_install_report()
     registry = initial_registry()
     write_registry_outputs(registry)
     features, family_cols, manifest = prepare_features()
@@ -1859,7 +2218,7 @@ def main() -> None:
     write_registry_outputs(registry)
     write_reports(registry, candidate_grid, final_results, failures, statistical_summary, garch_text)
     write_row_predictions(row_predictions)
-    write_figures(registry, final_results)
+    write_figures(registry, final_results, statistical_summary)
     print(f"Wrote VN30 comprehensive model-universe benchmark outputs to {rel(OUTPUT_DIR)}")
 
 
