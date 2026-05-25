@@ -156,7 +156,7 @@ def load_stock_data(tickers: list[str]) -> pd.DataFrame:
 
 def load_index_data() -> dict[str, pd.DataFrame]:
     indices: dict[str, pd.DataFrame] = {}
-    for code in ["VNINDEX", "VN30", "HNXINDEX", "UPCOMINDEX"]:
+    for code in ["VNINDEX", "HNXINDEX", "UPCOMINDEX", "VN30", "HNX30"]:
         path = INDEX_CACHE_DIR / f"{code}.csv"
         if not path.exists():
             continue
@@ -265,12 +265,81 @@ def build_feature_set_c(stock_df: pd.DataFrame, index_data: dict[str, pd.DataFra
 
 def add_absolute_labels(frame: pd.DataFrame, horizon: int) -> pd.Series:
     labels: list[pd.Series] = []
+    target_timestamps: list[pd.Series] = []
     for _ticker, group in frame.groupby("ticker", sort=True):
         future_close = group["close"].shift(-horizon)
+        future_datetime = group["datetime"].shift(-horizon)
         direction = (future_close > group["close"]).astype(float)
         direction.loc[future_close.isna()] = np.nan
+        direction.loc[future_datetime.isna()] = np.nan
         labels.append(pd.Series(direction.values, index=group.index))
-    return pd.concat(labels) if labels else pd.Series(dtype=float)
+        target_timestamps.append(pd.Series(future_datetime.values, index=group.index))
+    out = pd.concat(labels).sort_index() if labels else pd.Series(dtype=float)
+    target_timestamp = pd.concat(target_timestamps).sort_index() if target_timestamps else pd.Series(dtype="datetime64[ns]")
+    out.attrs["target_timestamp"] = pd.to_datetime(target_timestamp, errors="coerce")
+    out.attrs["horizon"] = int(horizon)
+    out.attrs["label_cutoff_rule"] = "split rows require feature datetime and target_timestamp inside split boundaries"
+    return out
+
+
+def target_timestamp_from_labels(labels: pd.Series) -> pd.Series:
+    target_timestamp = labels.attrs.get("target_timestamp")
+    if isinstance(target_timestamp, pd.Series):
+        return pd.to_datetime(target_timestamp.reindex(labels.index), errors="coerce")
+    return pd.Series(pd.NaT, index=labels.index, dtype="datetime64[ns]")
+
+
+def strict_target_split_indices(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    train_end: pd.Timestamp,
+    validation_start: pd.Timestamp,
+    validation_end: pd.Timestamp,
+    final_start: pd.Timestamp,
+) -> dict[str, pd.Index]:
+    target_timestamp = target_timestamp_from_labels(labels).reindex(features.index)
+    y = labels.reindex(features.index)
+    valid = y.notna() & target_timestamp.notna()
+    timestamps = pd.to_datetime(features["datetime"], errors="coerce")
+    train_mask = timestamps.le(train_end) & target_timestamp.le(train_end) & valid
+    validation_mask = (
+        timestamps.between(validation_start, validation_end)
+        & target_timestamp.between(validation_start, validation_end)
+        & valid
+    )
+    final_mask = timestamps.ge(final_start) & target_timestamp.ge(final_start) & valid
+    return {
+        "train": features.index[train_mask],
+        "validation": features.index[validation_mask],
+        "final": features.index[final_mask],
+    }
+
+
+def assert_strict_target_boundaries(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    train_end: pd.Timestamp,
+    validation_start: pd.Timestamp,
+    validation_end: pd.Timestamp,
+    final_start: pd.Timestamp,
+) -> None:
+    target_timestamp = target_timestamp_from_labels(labels).reindex(features.index)
+    timestamps = pd.to_datetime(features["datetime"], errors="coerce")
+    train_idx = splits.get("train", pd.Index([]))
+    validation_idx = splits.get("validation", pd.Index([]))
+    final_idx = splits.get("final", pd.Index([]))
+    if len(train_idx):
+        if bool((timestamps.loc[train_idx] > train_end).any()) or bool((target_timestamp.loc[train_idx] > train_end).any()):
+            raise AssertionError("train split crosses target_timestamp train_end boundary")
+    if len(validation_idx):
+        if bool((timestamps.loc[validation_idx] < validation_start).any()) or bool((timestamps.loc[validation_idx] > validation_end).any()):
+            raise AssertionError("validation split crosses feature timestamp validation boundary")
+        if bool((target_timestamp.loc[validation_idx] < validation_start).any()) or bool((target_timestamp.loc[validation_idx] > validation_end).any()):
+            raise AssertionError("validation split crosses target_timestamp validation boundary")
+    if len(final_idx):
+        if bool((timestamps.loc[final_idx] < final_start).any()) or bool((target_timestamp.loc[final_idx] < final_start).any()):
+            raise AssertionError("final split crosses final_start boundary")
 
 
 def make_model(model_name: str) -> Any | None:
@@ -304,4 +373,3 @@ def selected_by_validation(rows: list[dict[str, Any]], accuracy_key: str = "vali
     selected = max(valid, key=lambda row: (float(row.get(accuracy_key, -1)), float(row.get("horizon", -1))))
     selected["selected_on_validation"] = True
     return selected
-
