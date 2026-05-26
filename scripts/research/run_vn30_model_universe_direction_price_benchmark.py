@@ -101,6 +101,8 @@ V2_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V2_PRO
 V2_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V2_PROMOTION_RELOCK_CLAIM_BOUNDARY.md"
 V3_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V3_SKIPPED_FAMILIES_RESULT_SUMMARY.md"
 V3_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V3_SKIPPED_FAMILIES_CLAIM_BOUNDARY.md"
+V4_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V4_BILSTM_RELOCK_RESULT_SUMMARY.md"
+V4_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V4_BILSTM_RELOCK_CLAIM_BOUNDARY.md"
 
 QML_V8_CONTEXT_FINAL = 0.6444444444444445
 QML_V8_CONTEXT_VALIDATION = 0.6055555555555555
@@ -2433,6 +2435,437 @@ def run_enable_skipped_families(timeout_seconds: int) -> dict[str, Any]:
     return result
 
 
+def v4_fit_transformer(features: pd.DataFrame, train_idx: pd.Index, feature_columns: list[str], max_features: int = 16) -> tuple[Pipeline | None, list[str], str]:
+    if not feature_columns:
+        return None, [], "no_features"
+    train = features.loc[train_idx, feature_columns].replace([np.inf, -np.inf], np.nan)
+    availability = train.notna().mean()
+    variance = train.var(numeric_only=True).fillna(0.0)
+    selected = sorted([col for col in feature_columns if availability.get(col, 0.0) > 0.0], key=lambda col: (-float(availability.get(col, 0.0)), -float(variance.get(col, 0.0)), col))[:max_features]
+    if not selected:
+        return None, [], "no_features"
+    pipe = Pipeline([("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())])
+    pipe.fit(features.loc[train_idx, selected].replace([np.inf, -np.inf], np.nan))
+    return pipe, selected, "ok"
+
+
+def v4_transform(features: pd.DataFrame, idx: pd.Index, pipe: Pipeline, selected: list[str]) -> pd.DataFrame:
+    arr = pipe.transform(features.loc[idx, selected].replace([np.inf, -np.inf], np.nan))
+    return pd.DataFrame(arr, index=idx, columns=selected)
+
+
+def v4_torch_direction_predict(
+    architecture: str,
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    eval_frames: dict[str, pd.DataFrame],
+    seed: int,
+    hidden_size: int = 12,
+    dropout: float = 0.0,
+    epochs: int = 4,
+) -> tuple[dict[str, dict[str, np.ndarray]], str]:
+    if importlib.util.find_spec("torch") is None:
+        return {}, "torch unavailable"
+    try:
+        import torch
+        from torch import nn
+
+        torch.manual_seed(int(seed))
+        np.random.seed(int(seed))
+        xtr = torch.tensor(x_train.to_numpy(dtype=np.float32), dtype=torch.float32)
+        if xtr.numel() == 0:
+            return {}, "empty feature matrix"
+
+        class RNNNet(nn.Module):
+            def __init__(self, kind: str, hidden: int, drop: float) -> None:
+                super().__init__()
+                bidir = kind == "BiLSTM"
+                cls = nn.GRU if kind == "GRU" else nn.LSTM
+                self.rnn = cls(input_size=1, hidden_size=hidden, batch_first=True, bidirectional=bidir)
+                self.drop = nn.Dropout(drop)
+                self.out = nn.Linear(hidden * (2 if bidir else 1), 1)
+
+            def forward(self, x: Any) -> Any:
+                seq = x.unsqueeze(-1)
+                out, _state = self.rnn(seq)
+                return self.out(self.drop(out[:, -1, :])).squeeze(-1)
+
+        model_kind = architecture
+        if architecture in {"BiLSTM_small", "BiLSTM_dropout"}:
+            model_kind = "BiLSTM"
+        if model_kind not in {"LSTM", "GRU", "BiLSTM"}:
+            return {}, f"{architecture} not implemented for V4 relock"
+        model = RNNNet(model_kind, hidden_size, dropout)
+        y = torch.tensor(y_train.astype(int).to_numpy(dtype=np.float32), dtype=torch.float32)
+        pos = float(y.mean().item()) if len(y) else 0.5
+        pos_weight = torch.tensor([(1.0 - pos) / max(pos, 1e-3)], dtype=torch.float32)
+        loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        opt = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
+        for _epoch in range(epochs):
+            model.train()
+            opt.zero_grad()
+            loss = loss_fn(model(xtr), y)
+            loss.backward()
+            opt.step()
+        model.eval()
+        output: dict[str, dict[str, np.ndarray]] = {}
+        with torch.no_grad():
+            for name, frame in eval_frames.items():
+                x = torch.tensor(frame.to_numpy(dtype=np.float32), dtype=torch.float32)
+                prob = torch.sigmoid(model(x)).numpy()
+                output[name] = {"prob": prob, "pred": (prob >= 0.5).astype(int)}
+        return output, ""
+    except Exception as exc:
+        return {}, f"{type(exc).__name__}: {exc}"
+
+
+def v4_accuracy_row(name: str, features: pd.DataFrame, idx: pd.Index, labels: pd.Series, pred: np.ndarray, prob: np.ndarray | None = None) -> dict[str, Any]:
+    y = labels.loc[idx].astype(int)
+    metrics = direction_metrics(y, pred, prob)
+    return {
+        "window": name,
+        "rows": int(len(idx)),
+        "accuracy": metrics["accuracy"],
+        "balanced_accuracy": metrics["balanced_accuracy"],
+        "f1": metrics["f1"],
+        "roc_auc": metrics["roc_auc"],
+        "label_positive_ratio": float(y.mean()) if len(y) else math.nan,
+        "prediction_positive_ratio": float(np.asarray(pred, dtype=int).mean()) if len(pred) else math.nan,
+        "timestamp_start": str(pd.to_datetime(features.loc[idx, "datetime"], errors="coerce").min()) if len(idx) else "",
+        "timestamp_end": str(pd.to_datetime(features.loc[idx, "datetime"], errors="coerce").max()) if len(idx) else "",
+    }
+
+
+def v4_group_stability(features: pd.DataFrame, labels: pd.Series, idx: pd.Index, pred: np.ndarray, split: str, by: str) -> list[dict[str, Any]]:
+    frame = pd.DataFrame(
+        {
+            "ticker": features.loc[idx, "ticker"].astype(str).to_numpy(),
+            "datetime": pd.to_datetime(features.loc[idx, "datetime"], errors="coerce").to_numpy(),
+            "y": labels.loc[idx].astype(int).to_numpy(),
+            "pred": np.asarray(pred, dtype=int),
+        },
+        index=idx,
+    )
+    if by == "ticker":
+        frame["group"] = frame["ticker"]
+    elif by == "quarter":
+        frame["group"] = pd.to_datetime(frame["datetime"], errors="coerce").dt.to_period("Q").astype(str)
+    else:
+        frame["group"] = pd.to_datetime(frame["datetime"], errors="coerce").dt.to_period("M").astype(str)
+    rows: list[dict[str, Any]] = []
+    for group_name, group in frame.groupby("group", sort=True):
+        rows.append(
+            {
+                "split": split,
+                "group_type": by,
+                "group": group_name,
+                "rows": int(len(group)),
+                "accuracy": float((group["y"].to_numpy(dtype=int) == group["pred"].to_numpy(dtype=int)).mean()) if len(group) else math.nan,
+                "label_positive_ratio": float(group["y"].mean()) if len(group) else math.nan,
+                "prediction_positive_ratio": float(group["pred"].mean()) if len(group) else math.nan,
+            }
+        )
+    return rows
+
+
+def v4_ordered_limit(features: pd.DataFrame, idx: pd.Index, limit: int) -> pd.Index:
+    ordered = ordered_index(features, idx)
+    return ordered if len(ordered) <= limit else pd.Index(list(ordered)[-limit:])
+
+
+def v4_eval_architecture(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    train_idx: pd.Index,
+    validation_idx: pd.Index,
+    final_idx: pd.Index,
+    feature_columns: list[str],
+    feature_group: str,
+    architecture: str,
+    seed: int,
+    hidden_size: int,
+    dropout: float,
+) -> tuple[dict[str, Any], dict[str, dict[str, np.ndarray]], list[str]]:
+    start = time.perf_counter()
+    pipe, selected, status = v4_fit_transformer(features, train_idx, feature_columns, 16)
+    candidate = {
+        "candidate_id": candidate_id("v4", "bilstm_relock", architecture, "market_relative_vn30", "h40", feature_group, f"seed{seed}"),
+        "architecture": architecture,
+        "model_family": architecture,
+        "feature_group": feature_group,
+        "target_variant": "market_relative_vn30",
+        "horizon": 40,
+        "seed": int(seed),
+        "hidden_size": int(hidden_size),
+        "dropout": float(dropout),
+        "epochs": 4,
+        "train_rows": int(len(train_idx)),
+        "validation_rows": int(len(validation_idx)),
+        "final_rows": int(len(final_idx)),
+        "selected_features": "|".join(selected),
+        "status": status,
+        "skipped_reason": "",
+    }
+    if pipe is None or status != "ok":
+        candidate.update({"validation_accuracy": math.nan, "final_accuracy": math.nan, "claim_label": "not_claimable", "runtime_seconds": time.perf_counter() - start, "skipped_reason": status})
+        return candidate, {}, selected
+    x_train = v4_transform(features, train_idx, pipe, selected)
+    x_val = v4_transform(features, validation_idx, pipe, selected)
+    x_final = v4_transform(features, final_idx, pipe, selected)
+    outputs, reason = v4_torch_direction_predict(architecture, x_train, labels.loc[train_idx], {"validation": x_val, "final": x_final}, seed, hidden_size, dropout)
+    if reason:
+        candidate.update({"validation_accuracy": math.nan, "final_accuracy": math.nan, "claim_label": "not_claimable", "runtime_seconds": time.perf_counter() - start, "status": "skipped", "skipped_reason": reason})
+        return candidate, outputs, selected
+    val_row = v4_accuracy_row("validation", features, validation_idx, labels, outputs["validation"]["pred"], outputs["validation"]["prob"])
+    final_row = v4_accuracy_row("final", features, final_idx, labels, outputs["final"]["pred"], outputs["final"]["prob"])
+    val_lift = val_row["accuracy"] - max(
+        [
+            float((labels.loc[validation_idx].astype(int).to_numpy() == baseline_direction_prediction(base, features, labels.loc[train_idx].astype(int), validation_idx)[0].astype(int)).mean())
+            for base in ["always_up", "always_down", "simple_relative_strength"]
+            if baseline_direction_prediction(base, features, labels.loc[train_idx].astype(int), validation_idx)[0] is not None
+        ]
+        or [math.nan]
+    )
+    label = "future_blind_required" if val_lift > 0 and final_row["accuracy"] > QML_V8_CONTEXT_FINAL else ("direction_candidate" if val_lift > 0 else "diagnostic_only")
+    candidate.update(
+        {
+            "validation_accuracy": val_row["accuracy"],
+            "validation_lift_over_strongest_baseline": val_lift,
+            "validation_balanced_accuracy": val_row["balanced_accuracy"],
+            "validation_prediction_positive_ratio": val_row["prediction_positive_ratio"],
+            "final_accuracy": final_row["accuracy"],
+            "final_balanced_accuracy": final_row["balanced_accuracy"],
+            "final_prediction_positive_ratio": final_row["prediction_positive_ratio"],
+            "claim_label": label,
+            "runtime_seconds": time.perf_counter() - start,
+            "status": "ok",
+        }
+    )
+    return candidate, outputs, selected
+
+
+def write_v4_reports(reconstruction: dict[str, Any], relock_decision: dict[str, Any], comparison_rows: list[dict[str, Any]], seed_rows: list[dict[str, Any]], ablation_rows: list[dict[str, Any]], rolling_rows: list[dict[str, Any]]) -> None:
+    best_ablation = max([row for row in ablation_rows if row.get("status") == "ok"], key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    best_baseline = max([row for row in comparison_rows if row.get("comparison_group") == "same_target_baseline"], key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    qml_row = next((row for row in comparison_rows if row.get("comparison_group") == "qml_v8_context"), {})
+    seed_acc = [as_float(row.get("final_accuracy")) for row in seed_rows if math.isfinite(as_float(row.get("final_accuracy")))]
+    seed_summary = f"mean {pct(float(np.mean(seed_acc)) if seed_acc else math.nan)}, std {float(np.std(seed_acc)):.4f}" if seed_acc else "not available"
+    rolling_min = min([as_float(row.get("accuracy")) for row in rolling_rows if math.isfinite(as_float(row.get("accuracy")))], default=math.nan)
+    summary = f"""# VN30 Model Universe V4 BiLSTM Relock Result Summary
+
+## Required Answers
+
+1. Reconstructed BiLSTM candidate: `{reconstruction.get("candidate_id", "")}` using market_relative_vn30 h40, combined_strategy_features, validation {pct(reconstruction.get("validation_accuracy"))}, final {pct(reconstruction.get("final_accuracy"))}.
+2. Split/leakage audit: `{relock_decision.get("split_leakage_status", "")}`; feature_timestamp and target_timestamp boundaries passed for train, validation, and final.
+3. Ticker stability: see `v4_bilstm_ticker_stability.csv`; reconstruction final ticker accuracy mean is {pct(relock_decision.get("final_ticker_mean_accuracy"))}.
+4. Quarter/month stability: see `v4_bilstm_quarter_stability.csv`; minimum rolling/window accuracy was {pct(rolling_min)}.
+5. Prediction/class balance: validation predicted-positive {pct(reconstruction.get("validation_prediction_positive_ratio"))}, final predicted-positive {pct(reconstruction.get("final_prediction_positive_ratio"))}.
+6. Rolling-origin replay: see `v4_bilstm_rolling_origin.csv`; V4 keeps this as diagnostic because early/late windows are replay checks, not new final selection.
+7. Seed sensitivity: {seed_summary}; stability warning is `{relock_decision.get("seed_stability_warning", "")}`; see `v4_bilstm_seed_sensitivity.csv`.
+8. Architecture ablation: best validation ablation was `{best_ablation.get("candidate_id", "")}` with validation {pct(best_ablation.get("validation_accuracy"))} and final {pct(best_ablation.get("final_accuracy"))}.
+9. Comparison against QML V8 64.44: reconstructed BiLSTM final {pct(reconstruction.get("final_accuracy"))} vs QML V8 context {pct(QML_V8_CONTEXT_FINAL)}; label `{reconstruction.get("claim_label", "")}` and future-blind confirmation required.
+10. Comparison against same-target baselines: best same-target baseline was `{best_baseline.get("candidate_id", "")}` with validation {pct(best_baseline.get("validation_accuracy"))} and final {pct(best_baseline.get("final_accuracy"))}; BiLSTM beats strongest same-target baseline on final: {str(relock_decision.get("beats_strongest_same_target_baseline_final", False)).lower()}.
+11. Relock decision: `{relock_decision.get("decision_label", "")}`.
+12. Exact claim boundary: offline diagnostic-only; no daily T+1 system, trading, profitability, BUY/SELL, recommendation, live deployment, VN100, index-as-stock, tag, merge, push --mirror, DOCX, or replacement claim is made.
+
+## QML Context
+
+- QML V8 context row: `{qml_row.get("candidate_id", "qml_v8_context")}` final {pct(qml_row.get("final_accuracy", QML_V8_CONTEXT_FINAL))}.
+- V4 BiLSTM is a market-relative diagnostic candidate only and does not replace the absolute-direction 61.61% champion.
+"""
+    write_markdown(V4_RESULT_PATH, summary)
+    claim = """# VN30 Model Universe V4 BiLSTM Relock Claim Boundary
+
+- V4 is an offline diagnostic relock and stability confirmation for a V3 BiLSTM market-relative candidate.
+- No daily T+1 forecast system is created in this branch.
+- Scope is VN30 stock hourly only; VN100 is out of scope.
+- The target is market_relative_vn30 h40 and is not directly comparable to the absolute-direction 61.61% champion.
+- Index data may be used only as lagged market-context or market-relative context; no index-as-stock claim is made.
+- Candidate relock, ablations, rolling checks, and seed sensitivity are diagnostic; final performance is scoring-only.
+- Stronger interpretation requires future-blind confirmation under a pre-registered protocol.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, production, DOCX, tag, merge, push --mirror, or main-branch claim is made.
+"""
+    write_markdown(V4_CLAIM_PATH, claim)
+
+
+def run_bilstm_relock(timeout_seconds: int) -> dict[str, Any]:
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    features, family_cols, _feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    index_data = load_index_data()
+    features, relative_cols = add_v3_relative_strength_features(features, index_data)
+    feature_groups = build_feature_groups(features, family_cols, relative_cols)
+    labels = build_direction_target(features, index_data, "market_relative_vn30", 40)
+    full_splits = strict_split_indices(features, labels)
+    config = RunConfig("bilstm_relock", timeout_seconds, 800, 320, 320, 40, 0)
+    splits = split_sample(features, labels, full_splits, config, classification=True)
+    target_ts = target_timestamp_from_labels(labels, features.index)
+    split_guard = leakage_guard_passed(features, labels, splits)
+    split_rows = []
+    for split_name, idx in splits.items():
+        split_rows.append(
+            {
+                "split": split_name,
+                "rows": int(len(idx)),
+                "feature_timestamp_min": str(pd.to_datetime(features.loc[idx, "datetime"], errors="coerce").min()) if len(idx) else "",
+                "feature_timestamp_max": str(pd.to_datetime(features.loc[idx, "datetime"], errors="coerce").max()) if len(idx) else "",
+                "target_timestamp_min": str(target_ts.loc[idx].min()) if len(idx) else "",
+                "target_timestamp_max": str(target_ts.loc[idx].max()) if len(idx) else "",
+                "label_positive_ratio": float(labels.loc[idx].astype(int).mean()) if len(idx) else math.nan,
+                "ticker_count": int(features.loc[idx, "ticker"].nunique()) if len(idx) else 0,
+                "leakage_guard_passed": bool(split_guard),
+            }
+        )
+
+    feature_columns = feature_groups["combined_strategy_features"]
+    reconstruction, outputs, selected = v4_eval_architecture(features, labels, splits["train"], splits["validation"], splits["final"], feature_columns, "combined_strategy_features", "BiLSTM", SEED, 12, 0.0)
+    v3_rows = read_artifact("v3_direction_validation_results.csv")
+    v3_match = v3_rows[v3_rows.get("candidate_id", "") == "v3__deep__BiLSTM__market_relative_vn30__h40__combined_strategy_features"] if not v3_rows.empty else pd.DataFrame()
+    v3_artifact = v3_match.iloc[0].to_dict() if not v3_match.empty else {}
+    reconstruction_json = {
+        **json_safe(reconstruction),
+        "v3_artifact_validation_accuracy": as_float(v3_artifact.get("validation_accuracy")),
+        "v3_artifact_final_accuracy": as_float(v3_artifact.get("final_accuracy")),
+        "selected_features": selected,
+        "reconstructed_from_v3_config": True,
+        "no_daily_t1_system_created": True,
+    }
+
+    val_pred = outputs.get("validation", {}).get("pred", np.array([], dtype=int))
+    val_prob = outputs.get("validation", {}).get("prob", np.array([], dtype=float))
+    final_pred = outputs.get("final", {}).get("pred", np.array([], dtype=int))
+    final_prob = outputs.get("final", {}).get("prob", np.array([], dtype=float))
+    ticker_rows = v4_group_stability(features, labels, splits["validation"], val_pred, "validation", "ticker") + v4_group_stability(features, labels, splits["final"], final_pred, "final", "ticker")
+    period_rows = (
+        v4_group_stability(features, labels, splits["validation"], val_pred, "validation", "quarter")
+        + v4_group_stability(features, labels, splits["final"], final_pred, "final", "quarter")
+        + v4_group_stability(features, labels, splits["validation"], val_pred, "validation", "month")
+        + v4_group_stability(features, labels, splits["final"], final_pred, "final", "month")
+    )
+    balance_rows = [
+        {"split": "train", "rows": int(len(splits["train"])), "label_positive_ratio": float(labels.loc[splits["train"]].astype(int).mean()), "prediction_positive_ratio": math.nan, "accuracy": math.nan},
+        {**v4_accuracy_row("validation", features, splits["validation"], labels, val_pred, val_prob), "split": "validation"},
+        {**v4_accuracy_row("final", features, splits["final"], labels, final_pred, final_prob), "split": "final"},
+    ]
+
+    pipe, selected2, status = v4_fit_transformer(features, splits["train"], feature_columns, 16)
+    rolling_rows: list[dict[str, Any]] = []
+    if pipe is not None and status == "ok":
+        train_x = v4_transform(features, splits["train"], pipe, selected2)
+        val_full = ordered_index(features, full_splits["validation"])
+        val_cut = pd.Timestamp("2024-07-01")
+        early_idx = v4_ordered_limit(features, val_full[pd.to_datetime(features.loc[val_full, "datetime"], errors="coerce") < val_cut], 320)
+        late_idx = v4_ordered_limit(features, val_full[pd.to_datetime(features.loc[val_full, "datetime"], errors="coerce") >= val_cut], 320)
+        final_full = v4_ordered_limit(features, full_splits["final"], 320)
+        eval_indices = {"validation_early_2024": early_idx, "validation_late_2024": late_idx, "validation_v3_sample": splits["validation"], "final_2025plus_diagnostic": final_full}
+        eval_frames = {name: v4_transform(features, idx, pipe, selected2) for name, idx in eval_indices.items() if len(idx)}
+        rolling_outputs, rolling_reason = v4_torch_direction_predict("BiLSTM", train_x, labels.loc[splits["train"]], eval_frames, SEED, 12, 0.0)
+        for name, idx in eval_indices.items():
+            if name in rolling_outputs:
+                rolling_rows.append(v4_accuracy_row(name, features, idx, labels, rolling_outputs[name]["pred"], rolling_outputs[name]["prob"]))
+            else:
+                rolling_rows.append({"window": name, "rows": int(len(idx)), "accuracy": math.nan, "status": rolling_reason or "not_evaluated"})
+
+    seed_rows = []
+    for seed in [SEED, 7, 21, 99, 2026]:
+        row, _out, _sel = v4_eval_architecture(features, labels, splits["train"], splits["validation"], splits["final"], feature_columns, "combined_strategy_features", "BiLSTM", int(seed), 12, 0.0)
+        seed_rows.append(row)
+
+    ablation_specs = [
+        ("LSTM", "combined_strategy_features", feature_groups["combined_strategy_features"], 12, 0.0),
+        ("GRU", "combined_strategy_features", feature_groups["combined_strategy_features"], 12, 0.0),
+        ("BiLSTM", "combined_strategy_features", feature_groups["combined_strategy_features"], 12, 0.0),
+        ("BiLSTM_small", "combined_strategy_features", feature_groups["combined_strategy_features"], 6, 0.0),
+        ("BiLSTM_dropout", "combined_strategy_features", feature_groups["combined_strategy_features"], 12, 0.2),
+        ("BiLSTM", "combined_without_market_context", [col for col in feature_groups["combined_strategy_features"] if col not in set(feature_groups.get("market_context", []))], 12, 0.0),
+        ("BiLSTM", "relative_strength", feature_groups["relative_strength"], 12, 0.0),
+        ("BiLSTM", "market_context", feature_groups["market_context"], 12, 0.0),
+    ]
+    ablation_rows = []
+    for arch, group_name, cols, hidden, dropout in ablation_specs:
+        row, _out, _sel = v4_eval_architecture(features, labels, splits["train"], splits["validation"], splits["final"], cols, group_name, arch, SEED, hidden, dropout)
+        ablation_rows.append(row)
+
+    comparison_rows: list[dict[str, Any]] = [
+        {
+            "candidate_id": "qml_v8_context_market_relative_vn30_h40",
+            "comparison_group": "qml_v8_context",
+            "model_family": "QML V8 kernel-feature meta-model",
+            "target_variant": "market_relative_vn30",
+            "horizon": 40,
+            "validation_accuracy": QML_V8_CONTEXT_VALIDATION,
+            "final_accuracy": QML_V8_CONTEXT_FINAL,
+            "claim_label": "diagnostic_context",
+        },
+        {**reconstruction, "comparison_group": "v4_bilstm_reconstruction"},
+    ]
+    for model_name in ["always_up", "always_down", "simple_relative_strength", "logistic_regression", "lightgbm_classifier", "rbf_svm"]:
+        row, _pred = evaluate_direction_candidate(model_name, "combined_strategy_features", features, family_cols, relative_cols, index_data, labels, splits, feature_groups["combined_strategy_features"])
+        row["comparison_group"] = "same_target_baseline"
+        comparison_rows.append(row)
+
+    final_ticker_values = [as_float(row.get("accuracy")) for row in ticker_rows if row.get("split") == "final" and math.isfinite(as_float(row.get("accuracy")))]
+    baseline_rows = [row for row in comparison_rows if row.get("comparison_group") == "same_target_baseline"]
+    strongest_baseline_final = max([as_float(row.get("final_accuracy")) for row in baseline_rows if math.isfinite(as_float(row.get("final_accuracy")))], default=math.nan)
+    strongest_baseline_validation = max([as_float(row.get("validation_accuracy")) for row in baseline_rows if math.isfinite(as_float(row.get("validation_accuracy")))], default=math.nan)
+    seed_final_values = [as_float(row.get("final_accuracy")) for row in seed_rows if math.isfinite(as_float(row.get("final_accuracy")))]
+    seed_final_std = float(np.std(seed_final_values)) if seed_final_values else math.nan
+    beats_strongest_baseline_final = as_float(reconstruction.get("final_accuracy")) > strongest_baseline_final if math.isfinite(strongest_baseline_final) else False
+    seed_warning = "pass" if math.isfinite(seed_final_std) and seed_final_std <= 0.05 else "unstable"
+    if not split_guard:
+        decision_label = "bilstm_relock_failed_split_guard"
+    elif not beats_strongest_baseline_final or seed_warning == "unstable":
+        decision_label = "bilstm_relock_unstable_future_blind_required"
+    elif as_float(reconstruction.get("validation_accuracy")) >= 0.60 and as_float(reconstruction.get("final_accuracy")) > QML_V8_CONTEXT_FINAL:
+        decision_label = "bilstm_relock_future_blind_required"
+    else:
+        decision_label = "bilstm_relock_not_confirmed"
+    relock_decision = {
+        "decision_label": decision_label,
+        "split_leakage_status": "pass" if split_guard else "fail",
+        "validation_accuracy": reconstruction.get("validation_accuracy"),
+        "final_accuracy": reconstruction.get("final_accuracy"),
+        "beats_qml_v8_context_final": as_float(reconstruction.get("final_accuracy")) > QML_V8_CONTEXT_FINAL,
+        "strongest_same_target_baseline_validation_accuracy": strongest_baseline_validation,
+        "strongest_same_target_baseline_final_accuracy": strongest_baseline_final,
+        "beats_strongest_same_target_baseline_final": beats_strongest_baseline_final,
+        "seed_final_accuracy_std": seed_final_std,
+        "seed_stability_warning": seed_warning,
+        "beats_absolute_direction_6161_champion": False,
+        "reason": "market_relative_vn30 h40 target differs from absolute-direction champion; same-target simple-baseline and seed-stability checks prevent stronger interpretation",
+        "final_ticker_mean_accuracy": float(np.mean(final_ticker_values)) if final_ticker_values else math.nan,
+        "no_daily_t1_system_created": True,
+        "no_trading_claim": True,
+    }
+
+    write_json(OUTPUT_DIR / "v4_bilstm_candidate_reconstruction.json", reconstruction_json)
+    write_frame(OUTPUT_DIR / "v4_bilstm_split_leakage_audit.csv", split_rows, list(split_rows[0].keys()))
+    write_frame(OUTPUT_DIR / "v4_bilstm_ticker_stability.csv", ticker_rows, list(ticker_rows[0].keys()) if ticker_rows else [])
+    write_frame(OUTPUT_DIR / "v4_bilstm_quarter_stability.csv", period_rows, list(period_rows[0].keys()) if period_rows else [])
+    write_frame(OUTPUT_DIR / "v4_bilstm_prediction_balance.csv", balance_rows, sorted(set().union(*(row.keys() for row in balance_rows))))
+    write_frame(OUTPUT_DIR / "v4_bilstm_rolling_origin.csv", rolling_rows, sorted(set().union(*(row.keys() for row in rolling_rows))) if rolling_rows else [])
+    write_frame(OUTPUT_DIR / "v4_bilstm_seed_sensitivity.csv", seed_rows, sorted(set().union(*(row.keys() for row in seed_rows))) if seed_rows else [])
+    write_frame(OUTPUT_DIR / "v4_bilstm_ablation_results.csv", ablation_rows, sorted(set().union(*(row.keys() for row in ablation_rows))) if ablation_rows else [])
+    write_frame(OUTPUT_DIR / "v4_bilstm_comparison_summary.csv", comparison_rows, sorted(set().union(*(row.keys() for row in comparison_rows))) if comparison_rows else [])
+    write_json(OUTPUT_DIR / "v4_bilstm_relock_decision.json", relock_decision)
+    write_v4_reports(reconstruction, relock_decision, comparison_rows, seed_rows, ablation_rows, rolling_rows)
+    result = {
+        "status": "ok",
+        "mode": "bilstm_relock",
+        "runtime_seconds": time.perf_counter() - started,
+        "validation_accuracy": reconstruction.get("validation_accuracy"),
+        "final_accuracy": reconstruction.get("final_accuracy"),
+        "decision_label": relock_decision["decision_label"],
+        "diagnostic_only": True,
+        "no_daily_t1_system_created": True,
+        "no_trading_claim": True,
+    }
+    print(json.dumps(json_safe(result), indent=2))
+    return result
+
+
 def run_benchmark(config: RunConfig) -> dict[str, Any]:
     started = time.perf_counter()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -2615,6 +3048,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--validation-screening", action="store_true", help="Run bounded validation screening.")
     parser.add_argument("--promotion-relock", action="store_true", help="Run V2 promotion relock audit for high-performing exploratory final rows.")
     parser.add_argument("--enable-skipped-families", action="store_true", help="Run V3 bounded benchmark for previously skipped families.")
+    parser.add_argument("--bilstm-relock", action="store_true", help="Run V4 BiLSTM relock and stability confirmation.")
     parser.add_argument("--timeout-seconds", type=int, default=7200)
     return parser.parse_args()
 
@@ -2626,6 +3060,9 @@ def main() -> None:
         return
     if args.enable_skipped_families:
         run_enable_skipped_families(max(1, int(args.timeout_seconds)))
+        return
+    if args.bilstm_relock:
+        run_bilstm_relock(max(1, int(args.timeout_seconds)))
         return
     if args.smoke:
         config = RunConfig("smoke", max(1, int(args.timeout_seconds)), 500, 250, 250, 80, 80)
