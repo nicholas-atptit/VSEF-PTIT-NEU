@@ -33,6 +33,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.svm import SVC
 
 REPO_ROOT_BOOTSTRAP = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT_BOOTSTRAP) not in sys.path:
@@ -2228,9 +2229,730 @@ def run_smoke(config: SmokeConfig) -> dict[str, Any]:
     return manifest
 
 
+@dataclass
+class V3Config:
+    max_qml_candidates: int = 6
+    max_train_rows: int = 1500
+    max_validation_rows: int = 800
+    max_final_rows: int = 800
+    timeout_seconds: int = 1800
+
+
+V3_TARGETS = ["market_relative_vn30", "market_relative_vnindex", "absolute_direction"]
+V3_HORIZON = 40
+V3_FEATURE_PLAN = [
+    ("compact_stable_features", "topk_availability", 4),
+    ("relative_strength_features", "topk_availability", 4),
+    ("combined_strategy_features", "pca_train_only", 4),
+]
+V3_CLASSICAL_MODELS = ["svm_rbf", "svm_linear", "l2_logistic", "calibrated_logistic", "random_forest_small"]
+V3_QKERNEL_TRAIN_CAP = 120
+V3_QKERNEL_VALIDATION_CAP = 240
+V3_QKERNEL_FINAL_CAP = 240
+
+
+def add_v3_relative_strength_features(features: pd.DataFrame, index_data: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, list[str]]:
+    out = features.copy()
+    row_map = out[["datetime"]].copy()
+    row_map["row_index"] = out.index
+    row_map = row_map.sort_values("datetime")
+    created: list[str] = []
+    stock_lag = pd.to_numeric(out.get("return_1_lag_1", out.get("lag_ret_1", pd.Series(np.nan, index=out.index))), errors="coerce")
+    for code in ["VN30", "VNINDEX"]:
+        if code not in index_data:
+            continue
+        idx = index_data[code][["datetime", "close"]].copy().sort_values("datetime").drop_duplicates("datetime", keep="last")
+        idx["datetime"] = pd.to_datetime(idx["datetime"], errors="coerce")
+        idx["close"] = pd.to_numeric(idx["close"], errors="coerce")
+        idx = idx.dropna(subset=["datetime", "close"])
+        # Shift by one index bar so daily index context is lagged for hourly rows.
+        idx[f"v3_{code.lower()}_return_lag_asof"] = idx["close"].pct_change(fill_method=None).shift(1)
+        merged = pd.merge_asof(
+            row_map,
+            idx[["datetime", f"v3_{code.lower()}_return_lag_asof"]],
+            on="datetime",
+            direction="backward",
+        )
+        market_lag = pd.Series(merged.set_index("row_index")[f"v3_{code.lower()}_return_lag_asof"]).reindex(out.index)
+        diff_col = f"v3_relative_ret_minus_{code.lower()}_lag1"
+        out[diff_col] = stock_lag - pd.to_numeric(market_lag, errors="coerce")
+        created.append(diff_col)
+        mean_col = f"v3_relative_strength_{code.lower()}_mean20_lag"
+        vol_col = f"v3_relative_strength_{code.lower()}_vol20_lag"
+        for _ticker, group in out.groupby("ticker", sort=True):
+            diff = pd.to_numeric(group[diff_col], errors="coerce")
+            out.loc[group.index, mean_col] = diff.rolling(20, min_periods=5).mean()
+            out.loc[group.index, vol_col] = diff.rolling(20, min_periods=5).std()
+        created.extend([mean_col, vol_col])
+    out[created] = out[created].replace([np.inf, -np.inf], np.nan)
+    return out, created
+
+
+def ordered_index(features: pd.DataFrame, index: pd.Index) -> pd.Index:
+    if len(index) == 0:
+        return index
+    ordered = features.loc[index, ["datetime"]].copy()
+    ordered["idx"] = index
+    ordered = ordered.sort_values(["datetime", "idx"])
+    return pd.Index(ordered["idx"].tolist())
+
+
+def balanced_ordered_train_sample(features: pd.DataFrame, labels: pd.Series, index: pd.Index, limit: int) -> pd.Index:
+    ordered = ordered_index(features, index)
+    if len(ordered) <= limit:
+        return ordered
+    frame = features.loc[ordered, ["datetime"]].copy()
+    frame["idx"] = ordered
+    frame["label"] = labels.loc[ordered].astype(int).to_numpy()
+    per_class = max(1, limit // max(1, frame["label"].nunique()))
+    pieces = []
+    for _label, group in frame.groupby("label", sort=True):
+        pieces.append(group.tail(per_class))
+    sampled = pd.concat(pieces, ignore_index=True).sort_values(["datetime", "idx"])
+    if len(sampled) > limit:
+        sampled = sampled.tail(limit).sort_values(["datetime", "idx"])
+    return pd.Index(sampled["idx"].tolist())
+
+
+def ordered_tail_sample(features: pd.DataFrame, index: pd.Index, limit: int) -> pd.Index:
+    ordered = ordered_index(features, index)
+    if len(ordered) <= limit:
+        return ordered
+    return pd.Index(list(ordered)[-limit:])
+
+
+def v3_effective_splits(features: pd.DataFrame, labels: pd.Series, splits: dict[str, pd.Index], config: V3Config) -> dict[str, pd.Index]:
+    train_limit = min(config.max_train_rows, V3_QKERNEL_TRAIN_CAP)
+    validation_limit = min(config.max_validation_rows, V3_QKERNEL_VALIDATION_CAP)
+    final_limit = min(config.max_final_rows, V3_QKERNEL_FINAL_CAP)
+    return {
+        "train": balanced_ordered_train_sample(features, labels, splits["train"], train_limit),
+        "validation": ordered_tail_sample(features, splits["validation"], validation_limit),
+        "final": ordered_tail_sample(features, splits["final"], final_limit),
+    }
+
+
+def v3_make_classical_model(model_name: str) -> Any:
+    if model_name == "svm_rbf":
+        return SVC(kernel="rbf", C=1.0, gamma="scale", class_weight="balanced")
+    if model_name == "svm_linear":
+        return SVC(kernel="linear", C=0.5, class_weight="balanced")
+    return make_classical_model(model_name)
+
+
+def run_v3_classical_models(
+    spec: FeatureSpec,
+    labels: pd.Series,
+    target_variant: str,
+    horizon: int,
+    splits: dict[str, pd.Index],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    train_y = labels.loc[splits["train"]].astype(int)
+    validation_y = labels.loc[splits["validation"]].astype(int)
+    final_y = labels.loc[splits["final"]].astype(int)
+    val_simple_name, val_simple_acc = strongest_simple_baseline(features_global(), labels, splits["validation"])
+    final_simple_name, final_simple_acc = strongest_simple_baseline(features_global(), labels, splits["final"])
+    rows.append(
+        {
+            "candidate_id": candidate_id("v3", "strongest_simple", target_variant, f"h{horizon}", spec.feature_set_name),
+            "model_family": "strongest_simple_baseline",
+            "target_variant": target_variant,
+            "horizon": horizon,
+            "feature_set": spec.feature_set_name,
+            "n_features": spec.n_features,
+            "compression_method": spec.compression_method,
+            "effective_train_rows": 0,
+            "validation_accuracy": val_simple_acc,
+            "validation_lift": 0.0,
+            "validation_rows": int(len(validation_y)),
+            "final_accuracy": final_simple_acc,
+            "final_lift": 0.0,
+            "final_rows": int(len(final_y)),
+            "strongest_validation_baseline": val_simple_name,
+            "strongest_final_baseline": final_simple_name,
+            "runtime_seconds": 0.0,
+            "status": "ok",
+            "skipped_reason": "",
+        }
+    )
+    for model_name in V3_CLASSICAL_MODELS:
+        start = time.perf_counter()
+        try:
+            model = v3_make_classical_model(model_name)
+            if model_name == "calibrated_logistic" and train_y.value_counts().min() < 3:
+                raise ValueError("calibrated logistic requires at least three train rows per class")
+            model.fit(spec.x_train, train_y)
+            if hasattr(model, "predict_proba"):
+                validation_pred = (model.predict_proba(spec.x_validation)[:, 1] >= 0.50).astype(int)
+                final_pred = (model.predict_proba(spec.x_final)[:, 1] >= 0.50).astype(int)
+            else:
+                validation_pred = np.asarray(model.predict(spec.x_validation)).astype(int)
+                final_pred = np.asarray(model.predict(spec.x_final)).astype(int)
+            validation_acc = accuracy(validation_y, validation_pred)
+            final_acc = accuracy(final_y, final_pred)
+            status = "ok"
+            skipped_reason = ""
+        except Exception as exc:
+            validation_acc = math.nan
+            final_acc = math.nan
+            status = "skipped"
+            skipped_reason = f"{type(exc).__name__}: {exc}"
+        rows.append(
+            {
+                "candidate_id": candidate_id("v3", model_name, target_variant, f"h{horizon}", spec.feature_set_name),
+                "model_family": model_name,
+                "target_variant": target_variant,
+                "horizon": horizon,
+                "feature_set": spec.feature_set_name,
+                "n_features": spec.n_features,
+                "compression_method": spec.compression_method,
+                "effective_train_rows": int(len(train_y)),
+                "validation_accuracy": validation_acc,
+                "validation_lift": validation_acc - val_simple_acc if math.isfinite(validation_acc) and math.isfinite(val_simple_acc) else math.nan,
+                "validation_rows": int(len(validation_y)),
+                "final_accuracy": final_acc,
+                "final_lift": final_acc - final_simple_acc if math.isfinite(final_acc) and math.isfinite(final_simple_acc) else math.nan,
+                "final_rows": int(len(final_y)),
+                "strongest_validation_baseline": val_simple_name,
+                "strongest_final_baseline": final_simple_name,
+                "runtime_seconds": time.perf_counter() - start,
+                "status": status,
+                "skipped_reason": skipped_reason,
+            }
+        )
+    return rows
+
+
+def qml_v3_candidate_rows(target_variant: str, horizon: int, spec: FeatureSpec, dependency: dict[str, Any]) -> dict[str, Any]:
+    if not dependency.get("qiskit_machine_learning_available"):
+        status = "skipped"
+        reason = "dependency_missing_or_api_error: qiskit_machine_learning unavailable"
+    else:
+        status = "pending"
+        reason = ""
+    return {
+        "candidate_id": candidate_id("qml_v3", "quantum_kernel_classifier", target_variant, f"h{horizon}", spec.feature_set_name, "q4", "r1"),
+        "qml_family": "quantum_kernel_classifier",
+        "library": "qiskit_machine_learning",
+        "target_variant": target_variant,
+        "horizon": horizon,
+        "feature_set": spec.feature_set_name,
+        "n_qubits": 4,
+        "feature_map": "ZZFeatureMap",
+        "feature_map_reps": 1,
+        "compression_method": spec.compression_method,
+        "effective_train_rows": 0,
+        "validation_accuracy": math.nan,
+        "validation_lift": math.nan,
+        "validation_rows": int(len(spec.x_validation)),
+        "final_accuracy": math.nan,
+        "final_lift": math.nan,
+        "final_rows": int(len(spec.x_final)),
+        "rbf_svm_validation_accuracy": math.nan,
+        "rbf_svm_final_accuracy": math.nan,
+        "linear_svm_validation_accuracy": math.nan,
+        "linear_svm_final_accuracy": math.nan,
+        "logistic_validation_accuracy": math.nan,
+        "logistic_final_accuracy": math.nan,
+        "qml_minus_rbf_svm_validation": math.nan,
+        "qml_minus_rbf_svm_final": math.nan,
+        "qml_minus_logistic_validation": math.nan,
+        "qml_minus_logistic_final": math.nan,
+        "comparison_vs_classical_champion_accuracy": math.nan,
+        "runtime_seconds": 0.0,
+        "status": status,
+        "skipped_reason": reason,
+    }
+
+
+def run_v3_quantum_kernel(
+    row: dict[str, Any],
+    spec: FeatureSpec,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    classical_rows: list[dict[str, Any]],
+    config: V3Config,
+    started: float,
+) -> dict[str, Any]:
+    if row["status"] != "pending":
+        return row
+    if time.perf_counter() - started >= config.timeout_seconds:
+        row["status"] = "skipped"
+        row["skipped_reason"] = "qml_runtime_limited: timeout budget exhausted before candidate start"
+        return row
+    start = time.perf_counter()
+    try:
+        algorithms = importlib.import_module("qiskit_machine_learning.algorithms")
+        circuit_library = importlib.import_module("qiskit.circuit.library")
+        QSVC = getattr(algorithms, "QSVC")
+        ZZFeatureMap = getattr(circuit_library, "ZZFeatureMap")
+        train_y = labels.loc[splits["train"]].astype(int)
+        validation_y = labels.loc[splits["validation"]].astype(int)
+        final_y = labels.loc[splits["final"]].astype(int)
+        if train_y.nunique() < 2:
+            raise ValueError("v3 train sample has fewer than two classes")
+        x_train, x_validation, x_final = scale_for_quantum(spec.x_train, spec.x_validation, spec.x_final)
+        feature_map = ZZFeatureMap(feature_dimension=spec.n_features, reps=1)
+        model = QSVC(feature_map=feature_map)
+        model.fit(x_train.to_numpy(), train_y.to_numpy())
+        validation_pred = np.asarray(model.predict(x_validation.to_numpy())).reshape(-1).astype(int)
+        final_pred = np.asarray(model.predict(x_final.to_numpy())).reshape(-1).astype(int)
+        validation_acc = accuracy(validation_y, validation_pred)
+        final_acc = accuracy(final_y, final_pred)
+        simple_val_name, simple_val_acc = strongest_simple_baseline(features_global(), labels, splits["validation"])
+        simple_final_name, simple_final_acc = strongest_simple_baseline(features_global(), labels, splits["final"])
+        row.update(
+            {
+                "effective_train_rows": int(len(train_y)),
+                "validation_accuracy": validation_acc,
+                "validation_lift": validation_acc - simple_val_acc if math.isfinite(simple_val_acc) else math.nan,
+                "validation_rows": int(len(validation_y)),
+                "final_accuracy": final_acc,
+                "final_lift": final_acc - simple_final_acc if math.isfinite(simple_final_acc) else math.nan,
+                "final_rows": int(len(final_y)),
+                "comparison_vs_classical_champion_accuracy": final_acc - CLASSICAL_CHAMPION["final_accuracy"],
+                "runtime_seconds": time.perf_counter() - start,
+                "status": "ok",
+                "skipped_reason": "",
+            }
+        )
+    except Exception as exc:
+        row.update(
+            {
+                "runtime_seconds": time.perf_counter() - start,
+                "status": "skipped",
+                "skipped_reason": f"dependency_missing_or_api_error: {type(exc).__name__}: {exc}",
+            }
+        )
+    for model_name, prefix in [("svm_rbf", "rbf_svm"), ("svm_linear", "linear_svm"), ("l2_logistic", "logistic")]:
+        match = next(
+            (
+                item
+                for item in classical_rows
+                if item.get("target_variant") == row.get("target_variant")
+                and item.get("feature_set") == row.get("feature_set")
+                and item.get("model_family") == model_name
+                and item.get("status") == "ok"
+            ),
+            None,
+        )
+        if match:
+            row[f"{prefix}_validation_accuracy"] = match.get("validation_accuracy", math.nan)
+            row[f"{prefix}_final_accuracy"] = match.get("final_accuracy", math.nan)
+    qml_val = as_float(row.get("validation_accuracy"))
+    qml_final = as_float(row.get("final_accuracy"))
+    rbf_val = as_float(row.get("rbf_svm_validation_accuracy"))
+    rbf_final = as_float(row.get("rbf_svm_final_accuracy"))
+    log_val = as_float(row.get("logistic_validation_accuracy"))
+    log_final = as_float(row.get("logistic_final_accuracy"))
+    row["qml_minus_rbf_svm_validation"] = qml_val - rbf_val if math.isfinite(qml_val) and math.isfinite(rbf_val) else math.nan
+    row["qml_minus_rbf_svm_final"] = qml_final - rbf_final if math.isfinite(qml_final) and math.isfinite(rbf_final) else math.nan
+    row["qml_minus_logistic_validation"] = qml_val - log_val if math.isfinite(qml_val) and math.isfinite(log_val) else math.nan
+    row["qml_minus_logistic_final"] = qml_final - log_final if math.isfinite(qml_final) and math.isfinite(log_final) else math.nan
+    return row
+
+
+def v3_claim_label(selected: dict[str, Any] | None, runtime_limited: bool) -> str:
+    if runtime_limited and selected is None:
+        return "qml_runtime_limited"
+    if selected is None:
+        return "not_claimable"
+    if selected.get("status") != "ok":
+        return "qml_runtime_limited" if runtime_limited else "not_claimable"
+    qml_final = as_float(selected.get("final_accuracy"))
+    rbf_final = as_float(selected.get("rbf_svm_final_accuracy"))
+    log_final = as_float(selected.get("logistic_final_accuracy"))
+    if math.isfinite(qml_final) and math.isfinite(rbf_final) and qml_final > rbf_final:
+        return "qml_kernel_candidate"
+    if math.isfinite(qml_final) and math.isfinite(log_final) and qml_final <= log_final:
+        return "qml_underperforms_classical"
+    return "qml_diagnostic_only"
+
+
+def write_v3_reports(
+    qml_rows: list[dict[str, Any]],
+    selected: dict[str, Any] | None,
+    final_row: dict[str, Any],
+    comparison_rows: list[dict[str, Any]],
+    runtime_rows: list[dict[str, Any]],
+    manifest: dict[str, Any],
+) -> None:
+    ok_rows = [row for row in qml_rows if row.get("status") == "ok"]
+    kernel_beats_rbf_rows = [row for row in ok_rows if as_float(row.get("qml_minus_rbf_svm_final")) > 0.0]
+    qml_beats_logistic_rows = [row for row in ok_rows if as_float(row.get("qml_minus_logistic_final")) > 0.0]
+    qml_beats_champion_rows = [row for row in ok_rows if as_float(row.get("comparison_vs_classical_champion_accuracy")) > 0.0]
+    selected_beats_rbf = as_float(final_row.get("qml_minus_rbf_svm_final")) > 0.0
+    selected_beats_logistic = as_float(final_row.get("qml_minus_logistic_final")) > 0.0
+    selected_beats_champion = as_float(final_row.get("comparison_vs_classical_champion_accuracy")) > 0.0
+    champion_note = "no validation-selected QML row beat the 61.61% champion"
+    if qml_beats_champion_rows:
+        champion_note = "a non-selected final-scored QML row exceeded 61.61%, but this is exploratory_not_claimable and cannot replace the validation-selected result"
+        if selected_beats_champion:
+            champion_note = "the validation-selected QML row exceeded 61.61%, but stronger claims still require full validation-governed rerun and future-blind confirmation"
+    best_target = str(selected.get("target_variant", "none")) if selected else "none"
+    expansion = "not justified yet; the validation-selected QML row did not beat comparable RBF/logistic baselines on final scoring"
+    if selected_beats_rbf and selected_beats_logistic:
+        expansion = "limited expansion may be justified only as a diagnostic follow-up; full validation-governed rerun and future-blind confirmation remain required"
+    runtime_by_family: dict[str, float] = {}
+    for row in runtime_rows:
+        family = str(row.get("family", "unknown"))
+        runtime_by_family[family] = runtime_by_family.get(family, 0.0) + as_float(row.get("runtime_seconds"))
+    runtime_text = ", ".join(f"{family}={seconds:.2f}s" for family, seconds in sorted(runtime_by_family.items()))
+    summary = f"""# VN30 QML Forecasting V3 Targeted Sanity Result Summary
+
+## Required Answers
+
+1. Did quantum kernel beat RBF SVM on the same target/features/sample: {str(bool(kernel_beats_rbf_rows)).lower()}; validation-selected row: {str(selected_beats_rbf).lower()}.
+2. Did any QML model beat logistic regression: {str(bool(qml_beats_logistic_rows)).lower()}; validation-selected row: {str(selected_beats_logistic).lower()}.
+3. Did any QML model beat the 61.61% classical champion: {str(bool(qml_beats_champion_rows)).lower()}; validation-selected row: {str(selected_beats_champion).lower()}. Boundary: {champion_note}.
+4. Target variant that worked best by validation-selected QML row: {best_target}.
+5. Runtime per model family: {runtime_text}.
+6. Is QML worth expanding to a larger benchmark: {expansion}.
+7. Claim boundary: V3 is a bounded experimental sanity diagnostic only; no QML result is claimable or replaces the 61.61% classical champion.
+
+## Final Validation-Selected QML Result
+
+- Candidate: `{final_row.get("candidate_id", "")}`.
+- QML family/library: {final_row.get("qml_family", "")} / {final_row.get("library", "")}.
+- Target/horizon/features: {final_row.get("target_variant", "")} / h{final_row.get("horizon", "")} / {final_row.get("feature_set", "")}.
+- Validation accuracy: {pct(final_row.get("validation_accuracy"))}.
+- Final accuracy: {pct(final_row.get("final_accuracy"))}.
+- QML minus RBF SVM final accuracy: {pp(final_row.get("qml_minus_rbf_svm_final"))}.
+- QML minus Logistic final accuracy: {pp(final_row.get("qml_minus_logistic_final"))}.
+- QML minus 61.61% classical champion: {pp(final_row.get("comparison_vs_classical_champion_accuracy"))}.
+- Claim label: `{final_row.get("claim_label", "not_claimable")}`.
+
+## Paper-Safe Wording
+
+VN30 QML v3 tested a bounded quantum-kernel sanity benchmark on VN30 hourly stock forecasting with train-only transforms and strict feature_timestamp/target_timestamp split discipline. Quantum-kernel results are diagnostic-only and are compared against same-sample RBF SVM, linear SVM, logistic, calibrated logistic, random forest, and simple baselines. No trading, profitability, BUY/SELL, recommendation, live deployment, VN100, DOCX, merge, tag, push-mirror, or index-as-stock claim is made.
+"""
+    write_markdown(REPO_ROOT / "reports" / "results" / "VN30_QML_FORECASTING_V3_TARGETED_SANITY_RESULT_SUMMARY.md", summary)
+
+    claim = """# VN30 QML Forecasting V3 Targeted Sanity Claim Boundary
+
+- QML v3 targeted sanity is experimental and diagnostic-only.
+- Scope is VN30 stock hourly forecasting only.
+- No VN100 scope is claimed.
+- No index-as-stock claim is made.
+- Main index data may be used only as lagged market-context features or market-relative target context.
+- Feature_timestamp and target_timestamp split discipline is required.
+- Feature scaling, PCA, and sampling decisions must be fit or selected without final-period information.
+- Candidate selection is validation-governed only; final performance is scoring-only.
+- Quantum-kernel rows are compared against same-sample RBF SVM, linear SVM, logistic, calibrated logistic, random forest, and simple baselines.
+- No QML result replaces the 61.61% L2 Logistic classical champion.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, or deployment claim is made.
+- No DOCX, paper artifact, tag, merge, push --mirror, or main-branch claim is made.
+- Stronger QML claims require a full validation-governed benchmark and future-blind confirmation.
+"""
+    write_markdown(REPO_ROOT / "reports" / "claims" / "VN30_QML_FORECASTING_V3_TARGETED_SANITY_CLAIM_BOUNDARY.md", claim)
+
+
+def run_v3_sanity(config: V3Config) -> dict[str, Any]:
+    global _FEATURES_GLOBAL
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    dependency = dependency_status()
+    features, family_cols, feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    index_data = load_index_data()
+    features, v3_relative_cols = add_v3_relative_strength_features(features, index_data)
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    _FEATURES_GLOBAL = features
+    source_groups = build_source_groups(features, family_cols)
+    source_groups["relative_strength_features"] = v3_relative_cols
+    source_groups["combined_strategy_features"] = sorted(set(source_groups["combined_strategy_features"]).union(v3_relative_cols))
+
+    run_config = {
+        "run_id": "vn30_qml_forecasting_v3_targeted_sanity",
+        "targets": V3_TARGETS,
+        "horizon": V3_HORIZON,
+        "feature_plan": V3_FEATURE_PLAN,
+        "max_qml_candidates": config.max_qml_candidates,
+        "max_train_rows": config.max_train_rows,
+        "max_validation_rows": config.max_validation_rows,
+        "max_final_rows": config.max_final_rows,
+        "timeout_seconds": config.timeout_seconds,
+        "effective_qsvc_caps": {
+            "train": min(config.max_train_rows, V3_QKERNEL_TRAIN_CAP),
+            "validation": min(config.max_validation_rows, V3_QKERNEL_VALIDATION_CAP),
+            "final": min(config.max_final_rows, V3_QKERNEL_FINAL_CAP),
+        },
+        "balanced_class_sampling_train_only": True,
+        "preserve_timestamp_order_within_split": True,
+        "dependency_status": dependency,
+    }
+    write_json(OUTPUT_DIR / "qml_v3_run_config.json", run_config)
+
+    qml_rows: list[dict[str, Any]] = []
+    classical_rows: list[dict[str, Any]] = []
+    runtime_rows: list[dict[str, Any]] = []
+    circuit_rows: list[dict[str, Any]] = []
+    spec_lookup: dict[tuple[str, str], FeatureSpec] = {}
+    labels_lookup: dict[str, pd.Series] = {}
+    splits_lookup: dict[str, dict[str, pd.Index]] = {}
+
+    for target_variant in V3_TARGETS:
+        labels = build_labels(features, index_data, target_variant, V3_HORIZON)
+        full_splits = strict_split_indices(features, labels)
+        splits = v3_effective_splits(features, labels, full_splits, config)
+        labels_lookup[target_variant] = labels
+        splits_lookup[target_variant] = splits
+        for source_group, compression_method, n_features in V3_FEATURE_PLAN:
+            spec, _audit = fit_feature_spec(
+                features,
+                labels,
+                target_variant,
+                V3_HORIZON,
+                source_group,
+                source_groups[source_group],
+                compression_method,
+                n_features,
+                splits,
+            )
+            if spec.selection_status not in {"ok", "mutual_info_failed_fallback_availability"}:
+                skipped = qml_v3_candidate_rows(target_variant, V3_HORIZON, spec, dependency)
+                skipped["status"] = "skipped"
+                skipped["skipped_reason"] = f"feature_selection_{spec.selection_status}"
+                qml_rows.append(skipped)
+                continue
+            spec_lookup[(target_variant, spec.feature_set_name)] = spec
+            c_rows = run_v3_classical_models(spec, labels, target_variant, V3_HORIZON, splits)
+            classical_rows.extend(c_rows)
+            runtime_rows.extend(
+                {
+                    "candidate_id": row["candidate_id"],
+                    "family": row["model_family"],
+                    "target_variant": row["target_variant"],
+                    "feature_set": row["feature_set"],
+                    "runtime_seconds": row["runtime_seconds"],
+                    "status": row["status"],
+                    "skipped_reason": row["skipped_reason"],
+                }
+                for row in c_rows
+            )
+            qml_rows.append(qml_v3_candidate_rows(target_variant, V3_HORIZON, spec, dependency))
+
+    runnable_seen = 0
+    runtime_limited = False
+    for row in qml_rows:
+        if row.get("status") != "pending":
+            continue
+        if runnable_seen >= config.max_qml_candidates:
+            row["status"] = "skipped"
+            row["skipped_reason"] = "max_qml_candidates budget reached"
+            continue
+        if time.perf_counter() - started >= config.timeout_seconds:
+            row["status"] = "skipped"
+            row["skipped_reason"] = "qml_runtime_limited: timeout budget exhausted"
+            runtime_limited = True
+            continue
+        spec = spec_lookup.get((str(row["target_variant"]), str(row["feature_set"])))
+        labels = labels_lookup[str(row["target_variant"])]
+        splits = splits_lookup[str(row["target_variant"])]
+        if spec is None:
+            row["status"] = "skipped"
+            row["skipped_reason"] = "feature spec unavailable"
+            continue
+        row = run_v3_quantum_kernel(row, spec, labels, splits, classical_rows, config, started)
+        runnable_seen += 1
+        if str(row.get("skipped_reason", "")).startswith("qml_runtime_limited"):
+            runtime_limited = True
+
+    for row in qml_rows:
+        runtime_rows.append(
+            {
+                "candidate_id": row["candidate_id"],
+                "family": row["qml_family"],
+                "target_variant": row["target_variant"],
+                "feature_set": row["feature_set"],
+                "runtime_seconds": row["runtime_seconds"],
+                "status": row["status"],
+                "skipped_reason": row["skipped_reason"],
+            }
+        )
+        circuit_rows.append(
+            {
+                "candidate_id": row["candidate_id"],
+                "qml_family": row["qml_family"],
+                "library": row["library"],
+                "feature_map": row["feature_map"],
+                "n_qubits": row["n_qubits"],
+                "feature_map_reps": row["feature_map_reps"],
+                "effective_train_rows": row["effective_train_rows"],
+                "validation_rows": row["validation_rows"],
+                "final_rows": row["final_rows"],
+                "status": row["status"],
+                "skipped_reason": row["skipped_reason"],
+            }
+        )
+
+    ok_qml = [row for row in qml_rows if row.get("status") == "ok"]
+    selected = select_qml_candidate(ok_qml)
+    claim_label = v3_claim_label(selected, runtime_limited)
+    final_row = {
+        "candidate_id": selected.get("candidate_id", "") if selected else "",
+        "qml_family": selected.get("qml_family", "") if selected else "",
+        "library": selected.get("library", "") if selected else "",
+        "target_variant": selected.get("target_variant", "") if selected else "",
+        "horizon": selected.get("horizon", V3_HORIZON) if selected else V3_HORIZON,
+        "feature_set": selected.get("feature_set", "") if selected else "",
+        "n_qubits": selected.get("n_qubits", 0) if selected else 0,
+        "feature_map": selected.get("feature_map", "") if selected else "",
+        "feature_map_reps": selected.get("feature_map_reps", 0) if selected else 0,
+        "validation_accuracy": selected.get("validation_accuracy", math.nan) if selected else math.nan,
+        "validation_lift": selected.get("validation_lift", math.nan) if selected else math.nan,
+        "final_accuracy": selected.get("final_accuracy", math.nan) if selected else math.nan,
+        "final_lift": selected.get("final_lift", math.nan) if selected else math.nan,
+        "final_rows": selected.get("final_rows", 0) if selected else 0,
+        "rbf_svm_final_accuracy": selected.get("rbf_svm_final_accuracy", math.nan) if selected else math.nan,
+        "linear_svm_final_accuracy": selected.get("linear_svm_final_accuracy", math.nan) if selected else math.nan,
+        "logistic_final_accuracy": selected.get("logistic_final_accuracy", math.nan) if selected else math.nan,
+        "qml_minus_rbf_svm_validation": selected.get("qml_minus_rbf_svm_validation", math.nan) if selected else math.nan,
+        "qml_minus_rbf_svm_final": selected.get("qml_minus_rbf_svm_final", math.nan) if selected else math.nan,
+        "qml_minus_logistic_validation": selected.get("qml_minus_logistic_validation", math.nan) if selected else math.nan,
+        "qml_minus_logistic_final": selected.get("qml_minus_logistic_final", math.nan) if selected else math.nan,
+        "comparison_vs_classical_champion_accuracy": selected.get("comparison_vs_classical_champion_accuracy", math.nan) if selected else math.nan,
+        "claim_label": claim_label,
+        "status": selected.get("status", "skipped") if selected else "skipped",
+        "skipped_reason": selected.get("skipped_reason", "no QML v3 candidate completed") if selected else "no QML v3 candidate completed",
+    }
+
+    comparison_rows: list[dict[str, Any]] = []
+    for row in qml_rows:
+        comparison_rows.append(
+            {
+                "candidate_id": row["candidate_id"],
+                "target_variant": row["target_variant"],
+                "feature_set": row["feature_set"],
+                "status": row["status"],
+                "validation_accuracy": row["validation_accuracy"],
+                "final_accuracy": row["final_accuracy"],
+                "rbf_svm_validation_accuracy": row["rbf_svm_validation_accuracy"],
+                "rbf_svm_final_accuracy": row["rbf_svm_final_accuracy"],
+                "linear_svm_validation_accuracy": row["linear_svm_validation_accuracy"],
+                "linear_svm_final_accuracy": row["linear_svm_final_accuracy"],
+                "logistic_validation_accuracy": row["logistic_validation_accuracy"],
+                "logistic_final_accuracy": row["logistic_final_accuracy"],
+                "qml_minus_rbf_svm_validation": row["qml_minus_rbf_svm_validation"],
+                "qml_minus_rbf_svm_final": row["qml_minus_rbf_svm_final"],
+                "qml_minus_logistic_validation": row["qml_minus_logistic_validation"],
+                "qml_minus_logistic_final": row["qml_minus_logistic_final"],
+                "comparison_vs_classical_champion_accuracy": row["comparison_vs_classical_champion_accuracy"],
+                "skipped_reason": row["skipped_reason"],
+            }
+        )
+
+    qml_columns = [
+        "candidate_id",
+        "qml_family",
+        "library",
+        "target_variant",
+        "horizon",
+        "feature_set",
+        "n_qubits",
+        "feature_map",
+        "feature_map_reps",
+        "compression_method",
+        "effective_train_rows",
+        "validation_accuracy",
+        "validation_lift",
+        "validation_rows",
+        "final_accuracy",
+        "final_lift",
+        "final_rows",
+        "rbf_svm_validation_accuracy",
+        "rbf_svm_final_accuracy",
+        "linear_svm_validation_accuracy",
+        "linear_svm_final_accuracy",
+        "logistic_validation_accuracy",
+        "logistic_final_accuracy",
+        "qml_minus_rbf_svm_validation",
+        "qml_minus_rbf_svm_final",
+        "qml_minus_logistic_validation",
+        "qml_minus_logistic_final",
+        "comparison_vs_classical_champion_accuracy",
+        "runtime_seconds",
+        "status",
+        "skipped_reason",
+    ]
+    final_columns = [
+        "candidate_id",
+        "qml_family",
+        "library",
+        "target_variant",
+        "horizon",
+        "feature_set",
+        "n_qubits",
+        "feature_map",
+        "feature_map_reps",
+        "validation_accuracy",
+        "validation_lift",
+        "final_accuracy",
+        "final_lift",
+        "final_rows",
+        "rbf_svm_final_accuracy",
+        "linear_svm_final_accuracy",
+        "logistic_final_accuracy",
+        "qml_minus_rbf_svm_validation",
+        "qml_minus_rbf_svm_final",
+        "qml_minus_logistic_validation",
+        "qml_minus_logistic_final",
+        "comparison_vs_classical_champion_accuracy",
+        "claim_label",
+        "status",
+        "skipped_reason",
+    ]
+    leaderboard = sorted(ok_qml, key=lambda row: (as_float(row.get("validation_accuracy")), as_float(row.get("validation_lift")), -as_float(row.get("runtime_seconds"))), reverse=True)
+    write_frame(OUTPUT_DIR / "qml_v3_candidate_grid.csv", qml_rows, qml_columns)
+    write_frame(OUTPUT_DIR / "qml_v3_validation_results.csv", qml_rows, qml_columns)
+    write_frame(OUTPUT_DIR / "qml_v3_leaderboard.csv", leaderboard, qml_columns)
+    write_frame(OUTPUT_DIR / "qml_v3_final_result.csv", [final_row], final_columns)
+    write_frame(
+        OUTPUT_DIR / "qml_v3_classical_kernel_comparison.csv",
+        comparison_rows,
+        ["candidate_id", "target_variant", "feature_set", "status", "validation_accuracy", "final_accuracy", "rbf_svm_validation_accuracy", "rbf_svm_final_accuracy", "linear_svm_validation_accuracy", "linear_svm_final_accuracy", "logistic_validation_accuracy", "logistic_final_accuracy", "qml_minus_rbf_svm_validation", "qml_minus_rbf_svm_final", "qml_minus_logistic_validation", "qml_minus_logistic_final", "comparison_vs_classical_champion_accuracy", "skipped_reason"],
+    )
+    write_frame(OUTPUT_DIR / "qml_v3_runtime_summary.csv", runtime_rows, ["candidate_id", "family", "target_variant", "feature_set", "runtime_seconds", "status", "skipped_reason"])
+    write_frame(OUTPUT_DIR / "qml_v3_circuit_summary.csv", circuit_rows, ["candidate_id", "qml_family", "library", "feature_map", "n_qubits", "feature_map_reps", "effective_train_rows", "validation_rows", "final_rows", "status", "skipped_reason"])
+
+    manifest = {
+        "run_id": "vn30_qml_forecasting_v3_targeted_sanity",
+        "created_utc": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%SZ"),
+        "scope": "VN30 stock hourly forecasting only",
+        "diagnostic_only": True,
+        "full_grid_run": False,
+        "run_config": run_config,
+        "feature_manifest": feature_manifest,
+        "v3_relative_strength_features": v3_relative_cols,
+        "qml_candidates_total": len(qml_rows),
+        "qml_candidates_ran": len(ok_qml),
+        "qml_candidates_skipped": len([row for row in qml_rows if row.get("status") != "ok"]),
+        "runtime_limited": runtime_limited,
+        "selected_qml_candidate": selected if selected is not None else {},
+        "final_result": final_row,
+        "validation_selected_beats_rbf_svm": as_float(final_row.get("qml_minus_rbf_svm_final")) > 0.0,
+        "validation_selected_beats_logistic": as_float(final_row.get("qml_minus_logistic_final")) > 0.0,
+        "validation_selected_beats_classical_champion": as_float(final_row.get("comparison_vs_classical_champion_accuracy")) > 0.0,
+        "any_final_scored_qml_beats_classical_champion": any(as_float(row.get("comparison_vs_classical_champion_accuracy")) > 0.0 for row in ok_qml),
+        "final_ranked_champion_comparison_claimable": False,
+        "runtime_seconds": time.perf_counter() - started,
+        "expansion_justification": "limited diagnostic expansion only" if as_float(final_row.get("qml_minus_rbf_svm_final")) > 0.0 and as_float(final_row.get("qml_minus_logistic_final")) > 0.0 else "not justified yet",
+        "paper_docx_generated": False,
+        "trading_claim": False,
+        "vn100_scope": False,
+        "index_as_stock_claim": False,
+    }
+    write_json(OUTPUT_DIR / "qml_v3_manifest.json", manifest)
+    write_v3_reports(qml_rows, selected, final_row, comparison_rows, runtime_rows, manifest)
+    print(json.dumps(json_safe({"status": "ok", "manifest": rel(OUTPUT_DIR / "qml_v3_manifest.json"), "qml_candidates_ran": manifest["qml_candidates_ran"], "qml_candidates_skipped": manifest["qml_candidates_skipped"], "runtime_limited": runtime_limited}), indent=2))
+    return manifest
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run VN30 QML forecasting diagnostics.")
     parser.add_argument("--qml-smoke", action="store_true", help="Run the limited v2 QML smoke benchmark instead of the full diagnostic grid.")
+    parser.add_argument("--qml-v3-sanity", action="store_true", help="Run the targeted v3 QML sanity benchmark.")
     parser.add_argument("--max-qml-candidates", type=int, default=12)
     parser.add_argument("--max-train-rows", type=int, default=2000)
     parser.add_argument("--max-validation-rows", type=int, default=1000)
@@ -2241,6 +2963,16 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.qml_v3_sanity:
+        config = V3Config(
+            max_qml_candidates=max(0, int(args.max_qml_candidates)),
+            max_train_rows=max(1, int(args.max_train_rows)),
+            max_validation_rows=max(1, int(args.max_validation_rows)),
+            max_final_rows=max(1, int(args.max_final_rows)),
+            timeout_seconds=max(1, int(args.timeout_seconds)),
+        )
+        run_v3_sanity(config)
+        return
     if args.qml_smoke:
         config = SmokeConfig(
             max_qml_candidates=max(0, int(args.max_qml_candidates)),
