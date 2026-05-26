@@ -5849,6 +5849,954 @@ def run_v7_hybrid_kernel_rescue(config: V7Config) -> dict[str, Any]:
     return manifest
 
 
+@dataclass
+class V8Config:
+    timeout_seconds: int = 7200
+
+
+V8_TARGET = "market_relative_vn30"
+V8_HORIZON = 40
+V8_V7_VALIDATION = 0.6111111111111112
+V8_V7_FINAL = 0.5888888888888889
+V8_V4_VALIDATION = 0.6056
+V8_V4_FINAL = 0.6944
+V8_SCALING_METHODS = ["minmax_0_pi", "standard_zscore"]
+V8_META_MODELS = ["l2_logistic", "calibrated_logistic", "lightgbm_small", "random_forest_small", "elasticnet_logistic"]
+V8_FEATURE_SET_MODES = [
+    "qml_kernel_features_only",
+    "qml_kernel_features_plus_relative_strength",
+    "qml_kernel_features_plus_market_context",
+    "qml_kernel_features_plus_relative_strength_market_context",
+]
+V8_DRIFT_METHODS = [
+    "class_prior_correction",
+    "ticker_neutral_calibration",
+    "regime_specific_meta_model",
+    "temporal_bagging",
+    "robust_threshold_by_validation_quantile",
+]
+
+
+def v8_make_meta_model(model_name: str) -> Any:
+    if model_name == "elasticnet_logistic":
+        return LogisticRegression(
+            max_iter=1500,
+            solver="saga",
+            penalty="elasticnet",
+            l1_ratio=0.35,
+            C=0.4,
+            class_weight="balanced",
+            random_state=SEED,
+        )
+    return v5_make_classical_model(model_name)
+
+
+def v8_kernel_feature_frames(
+    k_train: np.ndarray,
+    k_validation: np.ndarray,
+    k_final: np.ndarray,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    train_y = labels.loc[splits["train"]].astype(int).to_numpy()
+    positive = train_y == 1
+    negative = train_y == 0
+    eps = 1e-9
+
+    def build(k_cross: np.ndarray, index: pd.Index, split_name: str) -> pd.DataFrame:
+        pos_sim = k_cross[:, positive].mean(axis=1) if positive.any() else np.full(k_cross.shape[0], np.nan)
+        neg_sim = k_cross[:, negative].mean(axis=1) if negative.any() else np.full(k_cross.shape[0], np.nan)
+        row_std = np.nanstd(k_cross, axis=1)
+        density_k = min(8, k_cross.shape[1])
+        if density_k > 0:
+            local_density = np.sort(k_cross, axis=1)[:, -density_k:].mean(axis=1)
+        else:
+            local_density = np.full(k_cross.shape[0], np.nan)
+        frame = pd.DataFrame(
+            {
+                "positive_centroid_similarity": pos_sim,
+                "negative_centroid_similarity": neg_sim,
+                "centroid_similarity_gap": pos_sim - neg_sim,
+                "kernel_margin_score": (pos_sim - neg_sim) / np.clip(row_std, eps, None),
+                "kernel_local_density": local_density,
+                "class_similarity_ratio": pos_sim / np.clip(neg_sim, eps, None),
+            },
+            index=index,
+        )
+        frame["split_name"] = split_name
+        return frame
+
+    train_features = build(k_train, splits["train"], "train")
+    validation_features = build(k_validation, splits["validation"], "validation")
+    final_features = build(k_final, splits["final"], "final")
+    eigvals, eigvecs = np.linalg.eigh((k_train + k_train.T) / 2.0)
+    order = np.argsort(eigvals)[::-1][: min(3, len(eigvals))]
+    for pos, eig_idx in enumerate(order, start=1):
+        value = max(float(eigvals[eig_idx]), eps)
+        train_features[f"top_eigen_projection_{pos}"] = eigvecs[:, eig_idx] * math.sqrt(value)
+        validation_features[f"top_eigen_projection_{pos}"] = (k_validation @ eigvecs[:, eig_idx]) / math.sqrt(value)
+        final_features[f"top_eigen_projection_{pos}"] = (k_final @ eigvecs[:, eig_idx]) / math.sqrt(value)
+    for pos in range(len(order) + 1, 4):
+        train_features[f"top_eigen_projection_{pos}"] = np.nan
+        validation_features[f"top_eigen_projection_{pos}"] = np.nan
+        final_features[f"top_eigen_projection_{pos}"] = np.nan
+    feature_cols = [col for col in train_features.columns if col != "split_name"]
+    return train_features[feature_cols], validation_features[feature_cols], final_features[feature_cols]
+
+
+def v8_psi(expected: pd.Series, actual: pd.Series) -> float:
+    expected = pd.to_numeric(expected, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+    actual = pd.to_numeric(actual, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+    if len(expected) < 10 or len(actual) < 10:
+        return math.nan
+    quantiles = np.linspace(0.0, 1.0, 11)
+    bins = np.unique(np.nanquantile(expected.to_numpy(dtype=float), quantiles))
+    if len(bins) < 3:
+        return math.nan
+    bins[0] = -np.inf
+    bins[-1] = np.inf
+    expected_counts = pd.cut(expected, bins=bins, include_lowest=True).value_counts(sort=False).to_numpy(dtype=float)
+    actual_counts = pd.cut(actual, bins=bins, include_lowest=True).value_counts(sort=False).to_numpy(dtype=float)
+    expected_share = np.clip(expected_counts / max(1.0, expected_counts.sum()), 1e-6, None)
+    actual_share = np.clip(actual_counts / max(1.0, actual_counts.sum()), 1e-6, None)
+    return float(np.sum((actual_share - expected_share) * np.log(actual_share / expected_share)))
+
+
+def v8_regime_series(features: pd.DataFrame, idx: pd.Index) -> pd.Series:
+    candidates = [col for col in features.columns if "regime" in col.lower() or "risk" in col.lower()]
+    if candidates:
+        values = features.loc[idx, candidates[0]].astype(str).replace({"nan": "neutral", "None": "neutral"})
+        return values.fillna("neutral")
+    return pd.Series("neutral", index=idx)
+
+
+def v8_sample_distribution_rows(features: pd.DataFrame, labels: pd.Series, splits_by_sample: dict[str, dict[str, pd.Index]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    timestamps = pd.to_datetime(features["datetime"], errors="coerce")
+    for sample_id, splits in splits_by_sample.items():
+        for split_name, idx in splits.items():
+            y = labels.loc[idx].dropna().astype(int)
+            quarters = timestamps.loc[idx].dt.to_period("Q").astype(str).value_counts().sort_index().to_dict() if len(idx) else {}
+            months = timestamps.loc[idx].dt.to_period("M").astype(str).value_counts().sort_index().to_dict() if len(idx) else {}
+            regimes = v8_regime_series(features, idx).value_counts().sort_index().to_dict() if len(idx) else {}
+            rows.append(
+                {
+                    "audit_type": "sample_distribution",
+                    "sample_id": sample_id,
+                    "split": split_name,
+                    "feature_set": "",
+                    "scaling": "",
+                    "kernel_feature": "",
+                    "rows": int(len(idx)),
+                    "label_positive_ratio": float((y == 1).mean()) if len(y) else math.nan,
+                    "ticker_count": int(features.loc[idx, "ticker"].nunique()) if len(idx) else 0,
+                    "ticker_entropy": v7_entropy(features.loc[idx, "ticker"]) if len(idx) else math.nan,
+                    "quarter_distribution": json.dumps(quarters, sort_keys=True),
+                    "month_distribution": json.dumps(months, sort_keys=True),
+                    "regime_distribution": json.dumps(regimes, sort_keys=True),
+                    "timestamp_start": str(timestamps.loc[idx].min()) if len(idx) else "",
+                    "timestamp_end": str(timestamps.loc[idx].max()) if len(idx) else "",
+                    "mean": math.nan,
+                    "std": math.nan,
+                    "min": math.nan,
+                    "max": math.nan,
+                    "psi_vs_validation": math.nan,
+                    "feature_target_correlation": math.nan,
+                }
+            )
+    return rows
+
+
+def v8_kernel_drift_rows(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    sample_id: str,
+    feature_set: str,
+    scaling: str,
+    splits: dict[str, pd.Index],
+    kernel_frames: dict[str, pd.DataFrame],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    validation_frame = kernel_frames["validation"]
+    for split_name, frame in kernel_frames.items():
+        idx = splits[split_name]
+        y = labels.loc[idx].astype(int)
+        for col in frame.columns:
+            values = pd.to_numeric(frame[col], errors="coerce")
+            corr = math.nan
+            if len(values.dropna()) > 3 and y.nunique() > 1 and values.std() > 0:
+                corr = float(np.corrcoef(values.fillna(values.median()).to_numpy(dtype=float), y.to_numpy(dtype=float))[0, 1])
+            rows.append(
+                {
+                    "audit_type": "kernel_feature_stats",
+                    "sample_id": sample_id,
+                    "split": split_name,
+                    "feature_set": feature_set,
+                    "scaling": scaling,
+                    "kernel_feature": col,
+                    "rows": int(len(frame)),
+                    "label_positive_ratio": float((y == 1).mean()) if len(y) else math.nan,
+                    "ticker_count": int(features.loc[idx, "ticker"].nunique()) if len(idx) else 0,
+                    "ticker_entropy": v7_entropy(features.loc[idx, "ticker"]) if len(idx) else math.nan,
+                    "quarter_distribution": "",
+                    "month_distribution": "",
+                    "regime_distribution": "",
+                    "timestamp_start": "",
+                    "timestamp_end": "",
+                    "mean": float(values.mean()) if len(values) else math.nan,
+                    "std": float(values.std()) if len(values) else math.nan,
+                    "min": float(values.min()) if len(values) else math.nan,
+                    "max": float(values.max()) if len(values) else math.nan,
+                    "psi_vs_validation": v8_psi(validation_frame[col], values) if split_name == "final" else math.nan,
+                    "feature_target_correlation": corr,
+                }
+            )
+    return rows
+
+
+def v8_kernel_decile_rows(
+    labels: pd.Series,
+    sample_id: str,
+    feature_set: str,
+    scaling: str,
+    splits: dict[str, pd.Index],
+    kernel_frames: dict[str, pd.DataFrame],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    validation_frame = kernel_frames["validation"]
+    for col in validation_frame.columns:
+        reference = pd.to_numeric(validation_frame[col], errors="coerce").replace([np.inf, -np.inf], np.nan)
+        if reference.nunique(dropna=True) < 3:
+            continue
+        quantiles = np.unique(np.nanquantile(reference.dropna().to_numpy(dtype=float), np.linspace(0.0, 1.0, 11)))
+        if len(quantiles) < 3:
+            continue
+        quantiles[0] = -np.inf
+        quantiles[-1] = np.inf
+        for split_name in ["validation", "final"]:
+            frame = kernel_frames[split_name]
+            idx = splits[split_name]
+            values = pd.to_numeric(frame[col], errors="coerce").replace([np.inf, -np.inf], np.nan)
+            deciles = pd.cut(values, bins=quantiles, labels=False, include_lowest=True)
+            y = labels.loc[idx].astype(int)
+            for decile, decile_idx in deciles.dropna().groupby(deciles.dropna()).groups.items():
+                row_idx = pd.Index(decile_idx)
+                y_part = y.loc[row_idx]
+                rows.append(
+                    {
+                        "sample_id": sample_id,
+                        "split": split_name,
+                        "feature_set": feature_set,
+                        "scaling": scaling,
+                        "kernel_feature": col,
+                        "decile": int(decile) + 1,
+                        "rows": int(len(y_part)),
+                        "label_positive_ratio": float((y_part == 1).mean()) if len(y_part) else math.nan,
+                    }
+                )
+    return rows
+
+
+def v8_join_feature_frames(parts: list[pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    train_parts = [part[0] for part in parts]  # type: ignore[index]
+    validation_parts = [part[1] for part in parts]  # type: ignore[index]
+    final_parts = [part[2] for part in parts]  # type: ignore[index]
+    def concat(frames: list[pd.DataFrame]) -> pd.DataFrame:
+        out = pd.concat(frames, axis=1)
+        out = out.loc[:, ~out.columns.duplicated()].copy()
+        return out.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    return concat(train_parts), concat(validation_parts), concat(final_parts)
+
+
+def v8_scores_from_model(
+    model_name: str,
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    x_validation: pd.DataFrame,
+    x_final: pd.DataFrame,
+    method: str,
+) -> tuple[np.ndarray, np.ndarray, str, str]:
+    try:
+        if method == "temporal_bagging":
+            ordered = ordered_index(features_global(), x_train.index)
+            chunks = np.array_split(np.asarray(ordered), 3)
+            validation_scores: list[np.ndarray] = []
+            final_scores: list[np.ndarray] = []
+            for end in range(1, len(chunks) + 1):
+                sub_idx = pd.Index(np.concatenate(chunks[:end]).tolist())
+                if len(sub_idx) < 12 or y_train.loc[sub_idx].nunique() < 2:
+                    continue
+                model = v8_make_meta_model(model_name)
+                model.fit(x_train.loc[sub_idx], y_train.loc[sub_idx])
+                validation_scores.append(predict_probability(model, x_validation))
+                final_scores.append(predict_probability(model, x_final))
+            if not validation_scores:
+                raise ValueError("temporal bagging had no valid class-balanced subwindow")
+            return np.mean(validation_scores, axis=0), np.mean(final_scores, axis=0), "ok", ""
+        model = v8_make_meta_model(model_name)
+        if model_name == "calibrated_logistic" and y_train.value_counts().min() < 3:
+            raise ValueError("calibrated logistic requires at least three train rows per class")
+        model.fit(x_train, y_train)
+        return predict_probability(model, x_validation), predict_probability(model, x_final), "ok", ""
+    except Exception as exc:
+        return np.full(len(x_validation), np.nan), np.full(len(x_final), np.nan), "skipped", f"{type(exc).__name__}: {exc}"
+
+
+def v8_best_threshold(scores: np.ndarray, y_true: pd.Series, quantiles: list[float] | None = None) -> float:
+    clean = pd.Series(scores).replace([np.inf, -np.inf], np.nan).dropna()
+    if clean.empty:
+        return 0.5
+    qs = quantiles or [0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80]
+    best_threshold = 0.5
+    best_acc = -1.0
+    for q in qs:
+        threshold = float(np.nanquantile(clean.to_numpy(dtype=float), q))
+        pred = (scores >= threshold).astype(int)
+        acc = accuracy(y_true, pred)
+        if math.isfinite(acc) and acc > best_acc:
+            best_acc = acc
+            best_threshold = threshold
+    return best_threshold
+
+
+def v8_apply_decision_method(
+    method: str,
+    validation_scores: np.ndarray,
+    final_scores: np.ndarray,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    features: pd.DataFrame,
+) -> tuple[pd.Series, pd.Series, dict[str, Any]]:
+    validation_y = labels.loc[splits["validation"]].astype(int)
+    val_scores = np.asarray(validation_scores, dtype=float)
+    fin_scores = np.asarray(final_scores, dtype=float)
+    metadata: dict[str, Any] = {"method_detail": method, "threshold": 0.5, "coverage_fraction": 1.0}
+    if method == "class_prior_correction":
+        val_prior = float(validation_y.mean()) if len(validation_y) else 0.5
+        threshold = float(np.nanquantile(val_scores, max(0.0, min(1.0, 1.0 - val_prior))))
+    elif method == "robust_threshold_by_validation_quantile":
+        threshold = v8_best_threshold(val_scores, validation_y)
+    elif method == "ticker_neutral_calibration":
+        val_ticker = features.loc[splits["validation"], "ticker"].astype(str)
+        fin_ticker = features.loc[splits["final"], "ticker"].astype(str)
+        global_mean = float(np.nanmean(val_scores))
+        global_std = float(np.nanstd(val_scores)) or 1.0
+        stats = pd.DataFrame({"ticker": val_ticker.to_numpy(), "score": val_scores}).groupby("ticker")["score"].agg(["mean", "std"])
+        stats["std"] = stats["std"].replace(0.0, np.nan).fillna(global_std)
+        val_adj = np.array([(score - stats.loc[ticker, "mean"]) / stats.loc[ticker, "std"] if ticker in stats.index else (score - global_mean) / global_std for score, ticker in zip(val_scores, val_ticker)])
+        fin_adj = np.array([(score - stats.loc[ticker, "mean"]) / stats.loc[ticker, "std"] if ticker in stats.index else (score - global_mean) / global_std for score, ticker in zip(fin_scores, fin_ticker)])
+        threshold = v8_best_threshold(val_adj, validation_y)
+        metadata.update({"threshold": threshold, "method_detail": "ticker_neutral_validation_zscore"})
+        return pd.Series((val_adj >= threshold).astype(int), index=splits["validation"]), pd.Series((fin_adj >= threshold).astype(int), index=splits["final"]), metadata
+    elif method == "regime_specific_meta_model":
+        val_regime = v8_regime_series(features, splits["validation"])
+        fin_regime = v8_regime_series(features, splits["final"])
+        global_threshold = v8_best_threshold(val_scores, validation_y)
+        thresholds: dict[str, float] = {}
+        val_pred = np.zeros(len(val_scores), dtype=int)
+        for regime, positions in val_regime.reset_index(drop=True).groupby(val_regime.reset_index(drop=True)).groups.items():
+            pos = np.asarray(list(positions), dtype=int)
+            if len(pos) >= 10 and validation_y.iloc[pos].nunique() > 1:
+                thresholds[str(regime)] = v8_best_threshold(val_scores[pos], validation_y.iloc[pos])
+            else:
+                thresholds[str(regime)] = global_threshold
+            val_pred[pos] = (val_scores[pos] >= thresholds[str(regime)]).astype(int)
+        final_pred = np.array([(score >= thresholds.get(str(regime), global_threshold)) for score, regime in zip(fin_scores, fin_regime)], dtype=int)
+        metadata.update({"threshold": global_threshold, "regime_thresholds": json.dumps(thresholds, sort_keys=True)})
+        return pd.Series(val_pred, index=splits["validation"]), pd.Series(final_pred, index=splits["final"]), metadata
+    else:
+        threshold = 0.5
+    metadata["threshold"] = threshold
+    return pd.Series((val_scores >= threshold).astype(int), index=splits["validation"]), pd.Series((fin_scores >= threshold).astype(int), index=splits["final"]), metadata
+
+
+def v8_prediction_stability(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    idx: pd.Index,
+    prediction: pd.Series,
+) -> dict[str, float]:
+    frame = pd.DataFrame(
+        {
+            "ticker": features.loc[idx, "ticker"].astype(str).to_numpy(),
+            "quarter": pd.to_datetime(features.loc[idx, "datetime"], errors="coerce").dt.to_period("Q").astype(str).to_numpy(),
+            "y": labels.loc[idx].astype(int).to_numpy(),
+            "pred": prediction.loc[idx].astype(int).to_numpy(),
+        },
+        index=idx,
+    )
+    frame["correct"] = (frame["y"] == frame["pred"]).astype(float)
+    ticker_acc = frame.groupby("ticker")["correct"].mean()
+    quarter_acc = frame.groupby("quarter")["correct"].mean()
+    ticker_counts = frame["ticker"].value_counts(normalize=True)
+    return {
+        "ticker_stability": float(max(0.0, 1.0 - ticker_acc.std(ddof=0))) if len(ticker_acc) else math.nan,
+        "quarter_stability": float(max(0.0, 1.0 - quarter_acc.std(ddof=0))) if len(quarter_acc) else math.nan,
+        "min_ticker_accuracy": float(ticker_acc.min()) if len(ticker_acc) else math.nan,
+        "min_quarter_accuracy": float(quarter_acc.min()) if len(quarter_acc) else math.nan,
+        "max_ticker_share": float(ticker_counts.max()) if len(ticker_counts) else math.nan,
+    }
+
+
+def v8_classical_summary(classical_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    best_val_row: dict[str, Any] = {}
+    best_final_row: dict[str, Any] = {}
+    for model_name in ["l2_logistic", "calibrated_logistic", "lightgbm_small", "svm_rbf", "svm_linear", "random_forest_small"]:
+        rows = [row for row in classical_rows if row.get("model_family") == model_name and row.get("status") == "ok"]
+        if not rows:
+            continue
+        best_row = max(rows, key=lambda row: as_float(row.get("validation_accuracy")))
+        summary[f"{model_name}_validation_accuracy"] = best_row.get("validation_accuracy", math.nan)
+        summary[f"{model_name}_final_accuracy"] = best_row.get("final_accuracy", math.nan)
+        if not best_val_row or as_float(best_row.get("validation_accuracy")) > as_float(best_val_row.get("validation_accuracy")):
+            best_val_row = best_row
+        if not best_final_row or as_float(best_row.get("final_accuracy")) > as_float(best_final_row.get("final_accuracy")):
+            best_final_row = best_row
+    summary["best_classical_validation_model"] = best_val_row.get("model_family", "")
+    summary["best_classical_validation_accuracy"] = best_val_row.get("validation_accuracy", math.nan)
+    summary["best_classical_final_model"] = best_final_row.get("model_family", "")
+    summary["best_classical_final_accuracy"] = best_final_row.get("final_accuracy", math.nan)
+    return summary
+
+
+def v8_drift_penalty(kernel_frames: dict[str, pd.DataFrame]) -> float:
+    penalties: list[float] = []
+    validation = kernel_frames["validation"]
+    final = kernel_frames["final"]
+    for col in validation.columns:
+        val = pd.to_numeric(validation[col], errors="coerce")
+        fin = pd.to_numeric(final[col], errors="coerce")
+        std = float(val.std()) if len(val) else math.nan
+        if math.isfinite(std) and std > 1e-9:
+            penalties.append(abs(float(fin.mean()) - float(val.mean())) / std)
+    mean_penalty = float(np.nanmean(penalties)) if penalties else math.nan
+    return float(1.0 / (1.0 + mean_penalty)) if math.isfinite(mean_penalty) else 0.5
+
+
+def v8_build_meta_feature_set(
+    mode: str,
+    kernel_frames: dict[str, pd.DataFrame],
+    relative_spec: FeatureSpec,
+    market_spec: FeatureSpec,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    parts: list[tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]] = [(kernel_frames["train"], kernel_frames["validation"], kernel_frames["final"])]
+    if mode in {"qml_kernel_features_plus_relative_strength", "qml_kernel_features_plus_relative_strength_market_context"}:
+        parts.append((relative_spec.x_train.add_prefix("relative__"), relative_spec.x_validation.add_prefix("relative__"), relative_spec.x_final.add_prefix("relative__")))
+    if mode in {"qml_kernel_features_plus_market_context", "qml_kernel_features_plus_relative_strength_market_context"}:
+        parts.append((market_spec.x_train.add_prefix("market__"), market_spec.x_validation.add_prefix("market__"), market_spec.x_final.add_prefix("market__")))
+    return v8_join_feature_frames(parts)
+
+
+def v8_result_row(
+    sample_id: str,
+    kernel_feature_source: str,
+    scaling: str,
+    feature_set_mode: str,
+    model_name: str,
+    method: str,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    validation_pred: pd.Series,
+    final_pred: pd.Series,
+    classical_summary: dict[str, Any],
+    drift_penalty_score: float,
+    metadata: dict[str, Any],
+    runtime_seconds: float,
+    status: str = "ok",
+    skipped_reason: str = "",
+    selection_eligible: bool = True,
+) -> dict[str, Any]:
+    validation_y = labels.loc[splits["validation"]].astype(int)
+    final_y = labels.loc[splits["final"]].astype(int)
+    val_acc = accuracy(validation_y, validation_pred.loc[splits["validation"]]) if status == "ok" else math.nan
+    final_acc = accuracy(final_y, final_pred.loc[splits["final"]]) if status == "ok" else math.nan
+    simple_val_name, simple_val_acc = strongest_simple_baseline(features_global(), labels, splits["validation"])
+    simple_final_name, simple_final_acc = strongest_simple_baseline(features_global(), labels, splits["final"])
+    stability = v8_prediction_stability(features_global(), labels, splits["validation"], validation_pred) if status == "ok" else {}
+    val_lift = val_acc - simple_val_acc if math.isfinite(val_acc) and math.isfinite(simple_val_acc) else math.nan
+    validation_score = (
+        0.35 * val_acc
+        + 0.25 * max(0.0, val_lift if math.isfinite(val_lift) else 0.0)
+        + 0.15 * as_float(stability.get("ticker_stability"))
+        + 0.15 * as_float(stability.get("quarter_stability"))
+        + 0.10 * drift_penalty_score
+    ) if status == "ok" else math.nan
+    row = {
+        "candidate_id": candidate_id("qml_v8", sample_id, kernel_feature_source, scaling, feature_set_mode, model_name, method),
+        "sample_id": sample_id,
+        "kernel_feature_source": kernel_feature_source,
+        "scaling": scaling,
+        "feature_set": feature_set_mode,
+        "meta_model": model_name,
+        "drift_method": method,
+        "target_variant": V8_TARGET,
+        "horizon": V8_HORIZON,
+        "validation_accuracy": val_acc,
+        "validation_lift": val_lift,
+        "validation_lift_over_strongest_baseline": val_lift,
+        "validation_score": validation_score,
+        "final_accuracy": final_acc,
+        "final_lift": final_acc - simple_final_acc if math.isfinite(final_acc) and math.isfinite(simple_final_acc) else math.nan,
+        "validation_rows": int(len(validation_y)),
+        "final_rows": int(len(final_y)),
+        "strongest_validation_baseline": simple_val_name,
+        "strongest_final_baseline": simple_final_name,
+        "ticker_stability": stability.get("ticker_stability", math.nan),
+        "quarter_stability": stability.get("quarter_stability", math.nan),
+        "min_ticker_accuracy": stability.get("min_ticker_accuracy", math.nan),
+        "min_quarter_accuracy": stability.get("min_quarter_accuracy", math.nan),
+        "max_ticker_share": stability.get("max_ticker_share", math.nan),
+        "drift_penalty_score": drift_penalty_score,
+        "threshold": metadata.get("threshold", math.nan),
+        "coverage_fraction": metadata.get("coverage_fraction", 1.0),
+        "method_detail": metadata.get("method_detail", method),
+        "runtime_seconds": runtime_seconds,
+        "status": status,
+        "skipped_reason": skipped_reason,
+        "selection_eligible": bool(selection_eligible),
+        "claim_label": "qml_not_claimable",
+    }
+    row.update(classical_summary)
+    for model_name_cmp, prefix in [("l2_logistic", "logistic"), ("svm_rbf", "rbf_svm"), ("lightgbm_small", "lightgbm_small")]:
+        row[f"qml_minus_{prefix}_validation"] = val_acc - as_float(classical_summary.get(f"{model_name_cmp}_validation_accuracy")) if math.isfinite(val_acc) else math.nan
+        row[f"qml_minus_{prefix}_final"] = final_acc - as_float(classical_summary.get(f"{model_name_cmp}_final_accuracy")) if math.isfinite(final_acc) else math.nan
+    row["qml_minus_best_classical_validation"] = val_acc - as_float(classical_summary.get("best_classical_validation_accuracy")) if math.isfinite(val_acc) else math.nan
+    row["qml_minus_best_classical_final"] = final_acc - as_float(classical_summary.get("best_classical_final_accuracy")) if math.isfinite(final_acc) else math.nan
+    row["comparison_vs_v7_final_accuracy"] = final_acc - V8_V7_FINAL if math.isfinite(final_acc) else math.nan
+    row["comparison_vs_v4_final_accuracy"] = final_acc - V8_V4_FINAL if math.isfinite(final_acc) else math.nan
+    row["comparison_vs_classical_champion_accuracy"] = final_acc - CLASSICAL_CHAMPION["final_accuracy"] if math.isfinite(final_acc) else math.nan
+    if (
+        selection_eligible
+        and status == "ok"
+        and final_acc > V8_V7_FINAL
+        and val_acc >= V8_V7_VALIDATION - 0.02
+        and (
+            as_float(row.get("qml_minus_logistic_validation")) > 0.0
+            or as_float(row.get("qml_minus_rbf_svm_validation")) > 0.0
+            or as_float(row.get("qml_minus_lightgbm_small_validation")) > 0.0
+        )
+    ):
+        row["claim_label"] = "qml_kernel_feature_rescue_improved_requires_future_blind"
+    elif method.startswith("abstention_coverage"):
+        row["claim_label"] = "exploratory_not_claimable"
+    else:
+        row["claim_label"] = "qml_diagnostic_only"
+    return row
+
+
+def v8_abstention_rows(
+    base_context: dict[str, Any],
+    validation_scores: np.ndarray,
+    final_scores: np.ndarray,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    classical_summary: dict[str, Any],
+    drift_penalty_score: float,
+    threshold: float,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    val_conf = np.abs(validation_scores - threshold)
+    fin_conf = np.abs(final_scores - threshold)
+    for coverage in [0.20, 0.40, 0.60]:
+        val_take = max(1, int(round(len(val_conf) * coverage)))
+        fin_take = max(1, int(round(len(fin_conf) * coverage)))
+        val_order = np.argsort(val_conf)[::-1][:val_take]
+        fin_order = np.argsort(fin_conf)[::-1][:fin_take]
+        val_idx = pd.Index(np.asarray(splits["validation"])[val_order])
+        fin_idx = pd.Index(np.asarray(splits["final"])[fin_order])
+        sub_splits = {"train": splits["train"], "validation": val_idx, "final": fin_idx}
+        val_pred = pd.Series((validation_scores[val_order] >= threshold).astype(int), index=val_idx)
+        fin_pred = pd.Series((final_scores[fin_order] >= threshold).astype(int), index=fin_idx)
+        metadata = {"threshold": threshold, "coverage_fraction": coverage, "method_detail": f"abstention_coverage_{int(coverage * 100)}"}
+        rows.append(
+            v8_result_row(
+                base_context["sample_id"],
+                base_context["kernel_feature_source"],
+                base_context["scaling"],
+                base_context["feature_set_mode"],
+                base_context["model_name"],
+                f"abstention_coverage_{int(coverage * 100)}",
+                labels,
+                sub_splits,
+                val_pred,
+                fin_pred,
+                classical_summary,
+                drift_penalty_score,
+                metadata,
+                0.0,
+                "ok",
+                "",
+                selection_eligible=False,
+            )
+        )
+    return rows
+
+
+def write_v8_reports(decision: dict[str, Any], drift_rows: list[dict[str, Any]], audit_rows: list[dict[str, Any]], leaderboard: list[dict[str, Any]], classical_rows: list[dict[str, Any]]) -> None:
+    selected = decision.get("validation_selected_candidate", {})
+    best_feature_corr = sorted(
+        [row for row in drift_rows if row.get("audit_type") == "kernel_feature_stats" and row.get("split") == "validation" and math.isfinite(as_float(row.get("feature_target_correlation")))],
+        key=lambda row: abs(as_float(row.get("feature_target_correlation"))),
+        reverse=True,
+    )
+    useful_features = ", ".join(row.get("kernel_feature", "") for row in best_feature_corr[:3])
+    final_improved = as_float(selected.get("final_accuracy")) > V8_V7_FINAL
+    same_target_wins = [
+        name
+        for name, field in [
+            ("Logistic", "qml_minus_logistic_validation"),
+            ("RBF SVM", "qml_minus_rbf_svm_validation"),
+            ("LightGBM", "qml_minus_lightgbm_small_validation"),
+        ]
+        if as_float(selected.get(field)) > 0.0
+    ]
+    final_psi_values = [as_float(row.get("psi_vs_validation")) for row in drift_rows if row.get("audit_type") == "kernel_feature_stats" and row.get("split") == "final"]
+    mean_final_psi = float(np.nanmean([value for value in final_psi_values if math.isfinite(value)])) if any(math.isfinite(value) for value in final_psi_values) else math.nan
+    summary = f"""# VN30 QML Forecasting V8 Drift-Aware Kernel-Feature Result Summary
+
+## Required Answers
+
+1. Did kernel-feature drift explain validation-final decay: partially; mean final PSI versus validation across kernel-feature audits was {mean_final_psi:.4f} where finite, and final label/ticker distribution still differed from validation.
+2. Which QML kernel features were most useful: {useful_features or "no stable correlation feature dominated"}.
+3. Did drift-aware calibration improve over V7: {str(final_improved).lower()}.
+4. Did the final result improve over 58.89%: {str(final_improved).lower()}; selected final accuracy was {pct(selected.get("final_accuracy"))}.
+5. Did the model beat same-target Logistic/RBF/LightGBM: validation wins versus {", ".join(same_target_wins) if same_target_wins else "none"}.
+6. Does any result replace the 61.61% classical champion: no; target/scope differs and future-blind confirmation is required.
+7. Is a new QML paper still justified: yes, as a diagnostic representation-and-drift study, not as a replacement claim.
+8. Exact claim boundary: V8 is experimental and diagnostic-only; selection is validation-governed; final rows are scoring-only; no trading, profitability, BUY/SELL, live deployment, VN100, DOCX, merge, tag, push-mirror, or index-as-stock claim is made.
+
+## Locked Validation-Selected Candidate
+
+- Candidate: `{selected.get("candidate_id", "")}`.
+- Sample: {selected.get("sample_id", "")}.
+- Kernel feature source: {selected.get("kernel_feature_source", "")}.
+- Feature set: {selected.get("feature_set", "")}.
+- Meta-model: {selected.get("meta_model", "")}.
+- Drift method: {selected.get("drift_method", "")}.
+- Validation accuracy: {pct(selected.get("validation_accuracy"))}.
+- Final accuracy: {pct(selected.get("final_accuracy"))}.
+- Delta versus V7 final 58.89%: {pp(selected.get("comparison_vs_v7_final_accuracy"))}.
+- Delta versus 61.61% classical champion context: {pp(selected.get("comparison_vs_classical_champion_accuracy"))}.
+- Claim label: `{selected.get("claim_label", "qml_diagnostic_only")}`.
+"""
+    write_markdown(REPO_ROOT / "reports" / "results" / "VN30_QML_FORECASTING_V8_DRIFT_AWARE_KERNEL_FEATURE_RESULT_SUMMARY.md", summary)
+    claim = """# VN30 QML Forecasting V8 Drift-Aware Kernel-Feature Claim Boundary
+
+- QML v8 drift-aware kernel-feature rescue is experimental and diagnostic-only.
+- Scope is VN30 stock hourly forecasting only.
+- Target scope is market_relative_vn30 at h40 only.
+- No VN100 scope is claimed.
+- No index-as-stock claim is made.
+- The QML component is quantum-kernel-derived feature extraction only; this is not a broad QSVC or circuit search.
+- Feature_timestamp and target_timestamp split discipline is required.
+- Feature selection, scaling, kernel construction, PCA, and kernel-feature transforms must be train-only or validation-governed without final-label selection.
+- Drift-aware thresholds, ticker calibration, regime thresholds, and temporal bagging are selected by validation only.
+- Final performance is scoring-only and does not rank claimable rows.
+- Abstention/coverage rows are diagnostic only and cannot substitute for full-coverage accuracy.
+- Same-target comparisons are diagnostic and do not replace the 61.61% L2 Logistic classical champion because the target/scope is not directly identical.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, or deployment claim is made.
+- No DOCX, paper artifact, tag, merge, push --mirror, or main-branch claim is made.
+- Stronger QML claims require full validation governance and future-blind confirmation.
+"""
+    write_markdown(REPO_ROOT / "reports" / "claims" / "VN30_QML_FORECASTING_V8_DRIFT_AWARE_KERNEL_FEATURE_CLAIM_BOUNDARY.md", claim)
+
+
+def run_v8_drift_aware_kernel_features(config: V8Config) -> dict[str, Any]:
+    global _FEATURES_GLOBAL
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    dependency = dependency_status()
+    write_json(OUTPUT_DIR / "qml_dependency_status.json", dependency)
+    features, family_cols, feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    index_data = load_index_data()
+    features, relative_cols = add_v3_relative_strength_features(features, index_data)
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    _FEATURES_GLOBAL = features
+    source_groups = build_source_groups(features, family_cols)
+    source_groups["relative_strength_features"] = relative_cols
+    source_groups["relative_plus_market_context_features"] = sorted(set(relative_cols).union(source_groups.get("market_context_features", [])[:12]))
+    source_groups["combined_strategy_features"] = sorted(set(source_groups["combined_strategy_features"]).union(relative_cols))
+    labels = build_labels(features, index_data, V8_TARGET, V8_HORIZON)
+    full_splits = strict_split_indices(features, labels)
+    sample_defs = {
+        "v4_sized_distribution_matched": (80, 180, 180, False),
+        "medium_distribution_matched": (100, 240, 240, False),
+        "largest_feasible_distribution_matched": (120, 300, 300, False),
+    }
+    splits_by_sample = {
+        sample_id: v7_distribution_matched_splits(features, labels, full_splits, train_n, val_n, final_n, original)
+        for sample_id, (train_n, val_n, final_n, original) in sample_defs.items()
+    }
+    drift_rows = v8_sample_distribution_rows(features, labels, splits_by_sample)
+    decile_rows: list[dict[str, Any]] = []
+    audit_rows: list[dict[str, Any]] = []
+    validation_rows: list[dict[str, Any]] = []
+    classical_rows_all: list[dict[str, Any]] = []
+    classical_summary_by_sample: dict[str, dict[str, Any]] = {}
+
+    for sample_id, splits in splits_by_sample.items():
+        specs: dict[str, FeatureSpec] = {}
+        for name, source_group, compression, n_features in [
+            ("relative_strength_topk4", "relative_strength_features", "topk_availability", 4),
+            ("relative_market_context_topk4", "relative_plus_market_context_features", "topk_availability", 4),
+            ("market_context_topk4", "market_context_features", "topk_availability", 4),
+        ]:
+            spec, _audit = fit_feature_spec(features, labels, V8_TARGET, V8_HORIZON, source_group, source_groups[source_group], compression, n_features, splits)
+            if spec.selection_status in {"ok", "mutual_info_failed_fallback_availability"}:
+                specs[name] = spec
+        if "relative_strength_topk4" not in specs or "market_context_topk4" not in specs:
+            continue
+        classical_rows_for_sample: list[dict[str, Any]] = []
+        for spec in specs.values():
+            rows, _pred = v5_run_classical_models(spec, labels, splits, sample_id)
+            classical_rows_for_sample.extend(rows)
+            classical_rows_all.extend(rows)
+        classical_summary = v8_classical_summary(classical_rows_for_sample)
+        classical_summary_by_sample[sample_id] = classical_summary
+
+        kernel_sources = [
+            ("relative_strength_topk4", specs["relative_strength_topk4"]),
+            ("relative_market_context_topk4", specs.get("relative_market_context_topk4", specs["relative_strength_topk4"])),
+        ]
+        for kernel_name, spec in kernel_sources:
+            for scaling in V8_SCALING_METHODS:
+                if time.perf_counter() - started >= config.timeout_seconds:
+                    break
+                kernel_started = time.perf_counter()
+                try:
+                    x_train, x_validation, x_final, scaling_info = v6_scaling_transform(spec, scaling)
+                    if scaling_info["status"] != "ok":
+                        raise ValueError(scaling_info["skipped_reason"])
+                    k_train, k_validation, k_final = v6_quantum_kernel_matrices(x_train, x_validation, x_final, 2, "full")
+                    health = v7_health_row(sample_id, spec, scaling, "ZZFeatureMap", 2, labels, splits, k_train, k_validation)
+                    train_meta, validation_meta, final_meta = v8_kernel_feature_frames(k_train, k_validation, k_final, labels, splits)
+                    kernel_frames = {"train": train_meta, "validation": validation_meta, "final": final_meta}
+                    drift_penalty_score = v8_drift_penalty(kernel_frames)
+                    audit_rows.append(
+                        {
+                            "sample_id": sample_id,
+                            "kernel_feature_source": kernel_name,
+                            "feature_set_name": spec.feature_set_name,
+                            "scaling": scaling,
+                            "feature_map": "ZZFeatureMap",
+                            "reps": 2,
+                            "train_rows": int(len(splits["train"])),
+                            "validation_rows": int(len(splits["validation"])),
+                            "final_rows": int(len(splits["final"])),
+                            "selected_features": "|".join(spec.selected_features),
+                            "kernel_feature_names": "|".join(train_meta.columns),
+                            "leakage_guard_passed": bool(leakage_guard_passed(features, labels, splits)),
+                            "kernel_alignment": health.get("kernel_target_alignment", math.nan),
+                            "validation_kernel_alignment": health.get("validation_kernel_target_alignment", math.nan),
+                            "effective_rank_ratio": health.get("effective_rank_ratio", math.nan),
+                            "class_similarity_gap": health.get("class_similarity_gap", math.nan),
+                            "drift_penalty_score": drift_penalty_score,
+                            "runtime_seconds": time.perf_counter() - kernel_started,
+                            "status": "ok",
+                            "skipped_reason": "",
+                        }
+                    )
+                    drift_rows.extend(v8_kernel_drift_rows(features, labels, sample_id, spec.feature_set_name, scaling, splits, kernel_frames))
+                    decile_rows.extend(v8_kernel_decile_rows(labels, sample_id, spec.feature_set_name, scaling, splits, kernel_frames))
+                    for feature_set_mode in V8_FEATURE_SET_MODES:
+                        x_train_meta, x_validation_meta, x_final_meta = v8_build_meta_feature_set(feature_set_mode, kernel_frames, specs["relative_strength_topk4"], specs["market_context_topk4"])
+                        y_train = labels.loc[splits["train"]].astype(int)
+                        for model_name in V8_META_MODELS:
+                            for method in V8_DRIFT_METHODS:
+                                row_started = time.perf_counter()
+                                val_scores, final_scores, status, skipped = v8_scores_from_model(model_name, x_train_meta, y_train, x_validation_meta, x_final_meta, method)
+                                if status == "ok":
+                                    val_pred, final_pred, metadata = v8_apply_decision_method(method, val_scores, final_scores, labels, splits, features)
+                                else:
+                                    val_pred = pd.Series(np.zeros(len(splits["validation"]), dtype=int), index=splits["validation"])
+                                    final_pred = pd.Series(np.zeros(len(splits["final"]), dtype=int), index=splits["final"])
+                                    metadata = {"threshold": math.nan, "coverage_fraction": 1.0, "method_detail": method}
+                                row = v8_result_row(
+                                    sample_id,
+                                    kernel_name,
+                                    scaling,
+                                    feature_set_mode,
+                                    model_name,
+                                    method,
+                                    labels,
+                                    splits,
+                                    val_pred,
+                                    final_pred,
+                                    classical_summary,
+                                    drift_penalty_score,
+                                    metadata,
+                                    time.perf_counter() - row_started,
+                                    status,
+                                    skipped,
+                                    selection_eligible=True,
+                                )
+                                validation_rows.append(row)
+                                if status == "ok" and method == "robust_threshold_by_validation_quantile":
+                                    threshold = as_float(row.get("threshold"))
+                                    validation_rows.extend(
+                                        v8_abstention_rows(
+                                            {
+                                                "sample_id": sample_id,
+                                                "kernel_feature_source": kernel_name,
+                                                "scaling": scaling,
+                                                "feature_set_mode": feature_set_mode,
+                                                "model_name": model_name,
+                                            },
+                                            val_scores,
+                                            final_scores,
+                                            labels,
+                                            splits,
+                                            classical_summary,
+                                            drift_penalty_score,
+                                            threshold if math.isfinite(threshold) else 0.5,
+                                        )
+                                    )
+                except Exception as exc:
+                    audit_rows.append(
+                        {
+                            "sample_id": sample_id,
+                            "kernel_feature_source": kernel_name,
+                            "feature_set_name": spec.feature_set_name,
+                            "scaling": scaling,
+                            "feature_map": "ZZFeatureMap",
+                            "reps": 2,
+                            "train_rows": int(len(splits["train"])),
+                            "validation_rows": int(len(splits["validation"])),
+                            "final_rows": int(len(splits["final"])),
+                            "selected_features": "|".join(spec.selected_features),
+                            "kernel_feature_names": "",
+                            "leakage_guard_passed": bool(leakage_guard_passed(features, labels, splits)),
+                            "kernel_alignment": math.nan,
+                            "validation_kernel_alignment": math.nan,
+                            "effective_rank_ratio": math.nan,
+                            "class_similarity_gap": math.nan,
+                            "drift_penalty_score": math.nan,
+                            "runtime_seconds": time.perf_counter() - kernel_started,
+                            "status": "skipped",
+                            "skipped_reason": f"{type(exc).__name__}: {exc}",
+                        }
+                    )
+
+    valid_selectable = [
+        row
+        for row in validation_rows
+        if row.get("status") == "ok"
+        and row.get("selection_eligible") is True
+        and math.isfinite(as_float(row.get("validation_accuracy")))
+        and as_float(row.get("validation_rows")) >= 180
+        and (not math.isfinite(as_float(row.get("max_ticker_share"))) or as_float(row.get("max_ticker_share")) <= 0.25)
+        and (not math.isfinite(as_float(row.get("min_quarter_accuracy"))) or as_float(row.get("min_quarter_accuracy")) >= 0.45)
+    ]
+    if not valid_selectable:
+        valid_selectable = [row for row in validation_rows if row.get("status") == "ok" and row.get("selection_eligible") is True and math.isfinite(as_float(row.get("validation_accuracy")))]
+    preferred_selectable = [
+        row
+        for row in valid_selectable
+        if as_float(row.get("validation_accuracy")) >= 0.60
+        and as_float(row.get("validation_lift_over_strongest_baseline")) > 0.0
+    ]
+    selection_pool = preferred_selectable if preferred_selectable else valid_selectable
+    ranked_selection_pool = sorted(
+        selection_pool,
+        key=lambda row: (as_float(row.get("validation_score")), as_float(row.get("validation_accuracy")), -as_float(row.get("runtime_seconds"))),
+        reverse=True,
+    )
+    remaining_rows = [row for row in valid_selectable if row.get("candidate_id") not in {item.get("candidate_id") for item in ranked_selection_pool}]
+    validation_leaderboard = ranked_selection_pool + sorted(
+        remaining_rows,
+        key=lambda row: (as_float(row.get("validation_score")), as_float(row.get("validation_accuracy")), -as_float(row.get("runtime_seconds"))),
+        reverse=True,
+    )
+    selected = validation_leaderboard[0] if validation_leaderboard else {}
+    final_leaderboard = [dict(row) for row in sorted([row for row in validation_rows if row.get("status") == "ok"], key=lambda row: as_float(row.get("final_accuracy")), reverse=True)]
+    for row in final_leaderboard:
+        if row.get("candidate_id") != selected.get("candidate_id"):
+            row["claim_label"] = "exploratory_not_claimable"
+    locked = {
+        "selection_rule": "validation_score_only",
+        "selected_at_utc": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%SZ"),
+        "candidate": selected,
+        "no_final_selection": True,
+    }
+    final_result = {
+        "candidate_id": selected.get("candidate_id", ""),
+        "sample_id": selected.get("sample_id", ""),
+        "final_accuracy": selected.get("final_accuracy", math.nan),
+        "final_lift": selected.get("final_lift", math.nan),
+        "final_rows": selected.get("final_rows", 0),
+        "comparison_vs_v7_final_accuracy": selected.get("comparison_vs_v7_final_accuracy", math.nan),
+        "comparison_vs_v4_final_accuracy": selected.get("comparison_vs_v4_final_accuracy", math.nan),
+        "comparison_vs_classical_champion_accuracy": selected.get("comparison_vs_classical_champion_accuracy", math.nan),
+        "claim_label": selected.get("claim_label", "qml_diagnostic_only"),
+        "status": selected.get("status", "skipped"),
+    }
+    improved = (
+        as_float(selected.get("final_accuracy")) > V8_V7_FINAL
+        and as_float(selected.get("validation_accuracy")) >= V8_V7_VALIDATION - 0.02
+        and (
+            as_float(selected.get("qml_minus_logistic_validation")) > 0.0
+            or as_float(selected.get("qml_minus_rbf_svm_validation")) > 0.0
+            or as_float(selected.get("qml_minus_lightgbm_small_validation")) > 0.0
+        )
+    )
+    decision_labels = ["qml_kernel_feature_rescue_improved" if improved else "qml_kernel_feature_rescue_not_improved"]
+    if as_float(selected.get("drift_penalty_score")) >= 0.50:
+        decision_labels.append("qml_drift_partially_corrected")
+    decision_labels.extend(["qml_future_blind_required", "qml_not_claimable"])
+    decision = {
+        "decision_labels": decision_labels,
+        "validation_selected_candidate": selected,
+        "meaningful_improvement": bool(improved),
+        "final_improved_over_v7": as_float(selected.get("final_accuracy")) > V8_V7_FINAL,
+        "validation_not_materially_below_v7": as_float(selected.get("validation_accuracy")) >= V8_V7_VALIDATION - 0.02,
+        "beats_same_target_logistic_validation": as_float(selected.get("qml_minus_logistic_validation")) > 0.0,
+        "beats_same_target_rbf_validation": as_float(selected.get("qml_minus_rbf_svm_validation")) > 0.0,
+        "beats_same_target_lightgbm_validation": as_float(selected.get("qml_minus_lightgbm_small_validation")) > 0.0,
+        "qml_replaces_6161_classical_champion": False,
+        "diagnostic_only": True,
+        "runtime_seconds": time.perf_counter() - started,
+        "runtime_limited": time.perf_counter() - started >= config.timeout_seconds,
+    }
+    champion_context = [
+        {"benchmark": "v7_best_qml_kernel_feature_meta", "validation_accuracy": V8_V7_VALIDATION, "final_accuracy": V8_V7_FINAL, "scope": "market_relative_vn30 h40 bounded sample"},
+        {"benchmark": "v4_bounded_qml_kernel", "validation_accuracy": V8_V4_VALIDATION, "final_accuracy": V8_V4_FINAL, "scope": "market_relative_vn30 h40 bounded sample"},
+        {"benchmark": "classical_champion_context", "validation_accuracy": math.nan, "final_accuracy": CLASSICAL_CHAMPION["final_accuracy"], "scope": "absolute_direction h40 contextual only"},
+        {"benchmark": "v8_locked_candidate", "validation_accuracy": selected.get("validation_accuracy", math.nan), "final_accuracy": selected.get("final_accuracy", math.nan), "scope": "market_relative_vn30 h40 validation-selected"},
+    ]
+    write_frame(OUTPUT_DIR / "qml_v8_kernel_feature_audit.csv", audit_rows, list(audit_rows[0].keys()) if audit_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v8_drift_audit.csv", drift_rows, list(drift_rows[0].keys()) if drift_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v8_kernel_feature_deciles.csv", decile_rows, list(decile_rows[0].keys()) if decile_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v8_validation_results.csv", validation_rows, list(validation_rows[0].keys()) if validation_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v8_validation_leaderboard.csv", validation_leaderboard, list(validation_leaderboard[0].keys()) if validation_leaderboard else [])
+    write_json(OUTPUT_DIR / "qml_v8_locked_candidate.json", locked)
+    write_frame(OUTPUT_DIR / "qml_v8_final_result.csv", [final_result], list(final_result.keys()))
+    write_frame(OUTPUT_DIR / "qml_v8_exploratory_final_leaderboard.csv", final_leaderboard, list(final_leaderboard[0].keys()) if final_leaderboard else [])
+    write_frame(OUTPUT_DIR / "qml_v8_same_target_classical_comparison.csv", classical_rows_all, list(classical_rows_all[0].keys()) if classical_rows_all else [])
+    write_frame(OUTPUT_DIR / "qml_v8_champion_context_comparison.csv", champion_context, list(champion_context[0].keys()))
+    write_json(OUTPUT_DIR / "qml_v8_rescue_decision.json", decision)
+    manifest = {
+        "run_id": "vn30_qml_forecasting_v8_drift_aware_kernel_features",
+        "created_utc": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%SZ"),
+        "scope": "VN30 stock hourly forecasting only",
+        "target": V8_TARGET,
+        "horizon": V8_HORIZON,
+        "diagnostic_only": True,
+        "dependency_status": dependency,
+        "decision": decision,
+        "runtime_seconds": time.perf_counter() - started,
+        "paper_docx_generated": False,
+        "trading_claim": False,
+        "vn100_scope": False,
+        "index_as_stock_claim": False,
+    }
+    write_json(OUTPUT_DIR / "qml_v8_manifest.json", manifest)
+    write_v8_reports(decision, drift_rows, audit_rows, validation_leaderboard, classical_rows_all)
+    print(json.dumps(json_safe({"status": "ok", "manifest": rel(OUTPUT_DIR / "qml_v8_manifest.json"), "decision_labels": decision_labels, "runtime_limited": decision["runtime_limited"]}), indent=2))
+    return manifest
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run VN30 QML forecasting diagnostics.")
     parser.add_argument("--qml-smoke", action="store_true", help="Run the limited v2 QML smoke benchmark instead of the full diagnostic grid.")
@@ -5857,6 +6805,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--qml-v5-full-confirmation", action="store_true", help="Run the focused v5 frozen quantum-kernel confirmation benchmark.")
     parser.add_argument("--qml-v6-scaling-rescue", action="store_true", help="Run the v6 QML scaling-failure diagnosis and kernel-rescue benchmark.")
     parser.add_argument("--qml-v7-hybrid-kernel-rescue", action="store_true", help="Run the v7 distribution-matched hybrid-kernel rescue benchmark.")
+    parser.add_argument("--qml-v8-drift-aware-kernel-features", action="store_true", help="Run the v8 drift-aware QML kernel-feature meta-model benchmark.")
     parser.add_argument("--max-qml-candidates", type=int, default=12)
     parser.add_argument("--max-train-rows", type=int, default=2000)
     parser.add_argument("--max-validation-rows", type=int, default=1000)
@@ -5867,6 +6816,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.qml_v8_drift_aware_kernel_features:
+        config = V8Config(timeout_seconds=max(1, int(args.timeout_seconds)))
+        run_v8_drift_aware_kernel_features(config)
+        return
     if args.qml_v7_hybrid_kernel_rescue:
         config = V7Config(timeout_seconds=max(1, int(args.timeout_seconds)))
         run_v7_hybrid_kernel_rescue(config)
