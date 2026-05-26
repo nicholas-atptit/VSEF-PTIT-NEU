@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import argparse
 import json
 import math
 import os
@@ -204,6 +205,13 @@ def dependency_status() -> dict[str, Any]:
         backend = "none"
         execution = "skipped"
         reason = "qiskit_machine_learning and pennylane are unavailable"
+    versions: dict[str, str] = {}
+    for name in ["qiskit", "qiskit_machine_learning", "pennylane", "sklearn", "numpy", "pandas"]:
+        try:
+            module = importlib.import_module(name)
+            versions[name] = str(getattr(module, "__version__", "unknown"))
+        except Exception:
+            versions[name] = ""
     return {
         "qiskit_available": qiskit_available,
         "qiskit_machine_learning_available": qiskit_ml_available,
@@ -211,6 +219,7 @@ def dependency_status() -> dict[str, Any]:
         "sklearn_available": sklearn_available,
         "numpy_available": numpy_available,
         "pandas_available": pandas_available,
+        "versions": versions,
         "qml_backend_used": backend,
         "qml_execution_status": execution,
         "skipped_reason": reason,
@@ -901,11 +910,15 @@ def run_qiskit_vqc_candidate(
     try:
         classifiers = importlib.import_module("qiskit_machine_learning.algorithms.classifiers")
         circuit_library = importlib.import_module("qiskit.circuit.library")
-        optimizers = importlib.import_module("qiskit_algorithms.optimizers")
         VQC = getattr(classifiers, "VQC")
         ZZFeatureMap = getattr(circuit_library, "ZZFeatureMap")
         RealAmplitudes = getattr(circuit_library, "RealAmplitudes")
-        COBYLA = getattr(optimizers, "COBYLA")
+        try:
+            optimizers = importlib.import_module("qiskit_machine_learning.optimizers")
+            COBYLA = getattr(optimizers, "COBYLA")
+        except Exception:
+            optimizers = importlib.import_module("qiskit_algorithms.optimizers")
+            COBYLA = getattr(optimizers, "COBYLA")
         train_idx = sample_indices(splits["train"], labels, min(60, QML_TRAIN_LIMIT))
         validation_idx = sample_indices(splits["validation"], labels, min(40, QML_VALIDATION_LIMIT))
         x_train, x_validation, _x_final = scale_for_quantum(
@@ -1558,7 +1571,686 @@ QML remains experimental and diagnostic-only. Final-period results are scoring-o
     write_markdown(CLAIM_PATH, claim)
 
 
+@dataclass
+class SmokeConfig:
+    max_qml_candidates: int = 12
+    max_train_rows: int = 2000
+    max_validation_rows: int = 1000
+    max_final_rows: int = 1000
+    timeout_seconds: int = 1800
+
+
+SMOKE_TARGETS = ["absolute_direction", "market_relative_vn30"]
+SMOKE_HORIZON = 40
+SMOKE_FEATURE_PLAN = [
+    ("compact_stable_features", "topk_availability", 4),
+    ("compact_stable_features", "topk_availability", 6),
+    ("combined_strategy_features", "pca_train_only", 4),
+]
+SMOKE_BASELINE_MODELS = ["l2_logistic", "calibrated_logistic", "random_forest_small"]
+
+
+def tail_limited_index(index: pd.Index, limit: int) -> pd.Index:
+    if len(index) <= limit:
+        return index
+    return pd.Index(list(index)[-limit:])
+
+
+def smoke_split_indices(labels: pd.Series, splits: dict[str, pd.Index], config: SmokeConfig) -> dict[str, pd.Index]:
+    return {
+        "train": sample_indices(splits["train"], labels, config.max_train_rows),
+        "validation": tail_limited_index(splits["validation"], config.max_validation_rows),
+        "final": tail_limited_index(splits["final"], config.max_final_rows),
+    }
+
+
+def run_smoke_simple_baselines(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    target_variant: str,
+    horizon: int,
+    splits: dict[str, pd.Index],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    val_y = labels.loc[splits["validation"]].astype(int)
+    final_y = labels.loc[splits["final"]].astype(int)
+    val_best_name, val_best_acc = strongest_simple_baseline(features, labels, splits["validation"])
+    final_best_name, final_best_acc = strongest_simple_baseline(features, labels, splits["final"])
+    for baseline in SIMPLE_BASELINES:
+        val_pred, val_reason = simple_baseline_predictions(features, splits["validation"], baseline)
+        final_pred, final_reason = simple_baseline_predictions(features, splits["final"], baseline)
+        status = "ok" if val_pred is not None and final_pred is not None else "skipped"
+        val_acc = accuracy(val_y, val_pred) if val_pred is not None else math.nan
+        final_acc = accuracy(final_y, final_pred) if final_pred is not None else math.nan
+        rows.append(
+            {
+                "candidate_id": candidate_id("smoke", "simple", baseline, target_variant, f"h{horizon}"),
+                "model_family": baseline,
+                "target_variant": target_variant,
+                "horizon": horizon,
+                "feature_set": "simple_baseline",
+                "n_features": 0,
+                "compression_method": "none",
+                "validation_accuracy": val_acc,
+                "validation_lift": val_acc - val_best_acc if math.isfinite(val_acc) and math.isfinite(val_best_acc) else math.nan,
+                "validation_rows": int(len(val_y)),
+                "final_accuracy": final_acc,
+                "final_lift": final_acc - final_best_acc if math.isfinite(final_acc) and math.isfinite(final_best_acc) else math.nan,
+                "final_rows": int(len(final_y)),
+                "strongest_validation_baseline": val_best_name,
+                "strongest_final_baseline": final_best_name,
+                "runtime_seconds": 0.0,
+                "status": status,
+                "skipped_reason": "" if status == "ok" else (val_reason or final_reason),
+            }
+        )
+    return rows
+
+
+def run_smoke_classical_models(
+    spec: FeatureSpec,
+    labels: pd.Series,
+    target_variant: str,
+    horizon: int,
+    splits: dict[str, pd.Index],
+    val_strongest_name: str,
+    val_strongest_acc: float,
+    final_strongest_name: str,
+    final_strongest_acc: float,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    train_y = labels.loc[splits["train"]].astype(int)
+    val_y = labels.loc[splits["validation"]].astype(int)
+    final_y = labels.loc[splits["final"]].astype(int)
+    for model_name in SMOKE_BASELINE_MODELS:
+        start = time.perf_counter()
+        try:
+            model = make_classical_model(model_name)
+            if model_name == "calibrated_logistic" and train_y.value_counts().min() < 3:
+                raise ValueError("calibrated logistic requires at least three train rows per class")
+            model.fit(spec.x_train, train_y)
+            val_prob = predict_probability(model, spec.x_validation)
+            final_prob = predict_probability(model, spec.x_final)
+            val_acc = accuracy(val_y, (val_prob >= 0.50).astype(int))
+            final_acc = accuracy(final_y, (final_prob >= 0.50).astype(int))
+            status = "ok"
+            skipped_reason = ""
+        except Exception as exc:
+            val_acc = math.nan
+            final_acc = math.nan
+            status = "skipped"
+            skipped_reason = f"{type(exc).__name__}: {exc}"
+        elapsed = time.perf_counter() - start
+        rows.append(
+            {
+                "candidate_id": candidate_id("smoke", model_name, target_variant, f"h{horizon}", spec.feature_set_name),
+                "model_family": model_name,
+                "target_variant": target_variant,
+                "horizon": horizon,
+                "feature_set": spec.feature_set_name,
+                "n_features": spec.n_features,
+                "compression_method": spec.compression_method,
+                "validation_accuracy": val_acc,
+                "validation_lift": val_acc - val_strongest_acc if math.isfinite(val_acc) and math.isfinite(val_strongest_acc) else math.nan,
+                "validation_rows": int(len(val_y)),
+                "final_accuracy": final_acc,
+                "final_lift": final_acc - final_strongest_acc if math.isfinite(final_acc) and math.isfinite(final_strongest_acc) else math.nan,
+                "final_rows": int(len(final_y)),
+                "strongest_validation_baseline": val_strongest_name,
+                "strongest_final_baseline": final_strongest_name,
+                "runtime_seconds": elapsed,
+                "status": status,
+                "skipped_reason": skipped_reason,
+            }
+        )
+    return rows
+
+
+def qml_effective_limits(family: str, config: SmokeConfig) -> tuple[int, int, int, int]:
+    if family == "quantum_kernel_classifier":
+        return min(config.max_train_rows, 120), min(config.max_validation_rows, 240), min(config.max_final_rows, 240), 1
+    if family == "variational_quantum_classifier":
+        return min(config.max_train_rows, 36), min(config.max_validation_rows, 80), min(config.max_final_rows, 80), 1
+    return min(config.max_train_rows, 80), min(config.max_validation_rows, 120), min(config.max_final_rows, 120), 1
+
+
+def qml_smoke_candidate_rows(target_variant: str, horizon: int, spec: FeatureSpec, dependency: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    families = [
+        ("quantum_kernel_classifier", "qiskit_machine_learning", 1),
+        ("variational_quantum_classifier", "qiskit_machine_learning", 1),
+    ]
+    for family, library, depth in families:
+        if library == "qiskit_machine_learning" and not dependency.get("qiskit_machine_learning_available"):
+            status = "skipped"
+            reason = "dependency_missing_or_api_error: qiskit_machine_learning unavailable"
+        else:
+            status = "pending"
+            reason = ""
+        rows.append(
+            {
+                "candidate_id": candidate_id("qml_smoke", family, target_variant, f"h{horizon}", spec.feature_set_name, f"d{depth}"),
+                "qml_family": family,
+                "library": library,
+                "target_variant": target_variant,
+                "horizon": horizon,
+                "feature_set": spec.feature_set_name,
+                "n_qubits": spec.n_features,
+                "circuit_depth_or_reps": depth,
+                "compression_method": spec.compression_method,
+                "effective_train_rows": 0,
+                "validation_accuracy": math.nan,
+                "validation_lift": math.nan,
+                "validation_rows": 0,
+                "final_accuracy": math.nan,
+                "final_lift": math.nan,
+                "final_rows": 0,
+                "strongest_validation_baseline": "",
+                "strongest_final_baseline": "",
+                "comparison_vs_classical_smoke_baseline": math.nan,
+                "comparison_vs_classical_champion_accuracy": math.nan,
+                "runtime_seconds": 0.0,
+                "status": status,
+                "skipped_reason": reason,
+            }
+        )
+    return rows
+
+
+def run_qml_smoke_candidate(
+    row: dict[str, Any],
+    spec: FeatureSpec,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    config: SmokeConfig,
+    smoke_start: float,
+) -> dict[str, Any]:
+    if row["status"] != "pending":
+        return row
+    if time.perf_counter() - smoke_start >= config.timeout_seconds:
+        row["status"] = "skipped"
+        row["skipped_reason"] = "timeout_seconds budget exhausted before candidate start"
+        return row
+    family = str(row["qml_family"])
+    train_limit, validation_limit, final_limit, depth = qml_effective_limits(family, config)
+    start = time.perf_counter()
+    try:
+        train_idx = sample_indices(spec.x_train.index, labels, train_limit)
+        validation_idx = tail_limited_index(spec.x_validation.index, validation_limit)
+        final_idx = tail_limited_index(spec.x_final.index, final_limit)
+        train_y = labels.loc[train_idx].astype(int)
+        validation_y = labels.loc[validation_idx].astype(int)
+        final_y = labels.loc[final_idx].astype(int)
+        if train_y.nunique() < 2:
+            raise ValueError("smoke train sample has fewer than two classes")
+        x_train, x_validation, x_final = scale_for_quantum(
+            spec.x_train.loc[train_idx],
+            spec.x_validation.loc[validation_idx],
+            spec.x_final.loc[final_idx],
+        )
+        val_base_name, val_base_acc = strongest_simple_baseline(features_global(), labels, validation_idx)
+        final_base_name, final_base_acc = strongest_simple_baseline(features_global(), labels, final_idx)
+        if family == "quantum_kernel_classifier":
+            algorithms = importlib.import_module("qiskit_machine_learning.algorithms")
+            circuit_library = importlib.import_module("qiskit.circuit.library")
+            QSVC = getattr(algorithms, "QSVC")
+            ZZFeatureMap = getattr(circuit_library, "ZZFeatureMap")
+            feature_map = ZZFeatureMap(feature_dimension=spec.n_features, reps=depth)
+            model = QSVC(feature_map=feature_map)
+        elif family == "variational_quantum_classifier":
+            classifiers = importlib.import_module("qiskit_machine_learning.algorithms.classifiers")
+            circuit_library = importlib.import_module("qiskit.circuit.library")
+            optimizers = importlib.import_module("qiskit_machine_learning.optimizers")
+            VQC = getattr(classifiers, "VQC")
+            ZZFeatureMap = getattr(circuit_library, "ZZFeatureMap")
+            RealAmplitudes = getattr(circuit_library, "RealAmplitudes")
+            COBYLA = getattr(optimizers, "COBYLA")
+            feature_map = ZZFeatureMap(feature_dimension=spec.n_features, reps=1)
+            ansatz = RealAmplitudes(num_qubits=spec.n_features, reps=depth)
+            optimizer = COBYLA(maxiter=12)
+            model = VQC(feature_map=feature_map, ansatz=ansatz, optimizer=optimizer)
+        else:
+            raise ValueError(f"unknown smoke QML family {family}")
+        model.fit(x_train.to_numpy(), train_y.to_numpy())
+        validation_pred = np.asarray(model.predict(x_validation.to_numpy())).reshape(-1).astype(int)
+        final_pred = np.asarray(model.predict(x_final.to_numpy())).reshape(-1).astype(int)
+        val_acc = accuracy(validation_y, validation_pred)
+        final_acc = accuracy(final_y, final_pred)
+        row.update(
+            {
+                "effective_train_rows": int(len(train_y)),
+                "validation_accuracy": val_acc,
+                "validation_lift": val_acc - val_base_acc if math.isfinite(val_base_acc) else math.nan,
+                "validation_rows": int(len(validation_y)),
+                "final_accuracy": final_acc,
+                "final_lift": final_acc - final_base_acc if math.isfinite(final_base_acc) else math.nan,
+                "final_rows": int(len(final_y)),
+                "strongest_validation_baseline": val_base_name,
+                "strongest_final_baseline": final_base_name,
+                "comparison_vs_classical_champion_accuracy": final_acc - CLASSICAL_CHAMPION["final_accuracy"],
+                "runtime_seconds": time.perf_counter() - start,
+                "status": "ok",
+                "skipped_reason": "",
+            }
+        )
+    except Exception as exc:
+        row.update(
+            {
+                "runtime_seconds": time.perf_counter() - start,
+                "status": "skipped",
+                "skipped_reason": f"dependency_missing_or_api_error: {type(exc).__name__}: {exc}",
+            }
+        )
+    return row
+
+
+def smoke_claim_label(qml_row: dict[str, Any] | None, dependency: dict[str, Any], comparable_final_accuracy: float) -> str:
+    if not dependency.get("qiskit_machine_learning_available") and not dependency.get("pennylane_available"):
+        return "qml_dependency_missing"
+    if qml_row is None or qml_row.get("status") != "ok":
+        return "qml_runtime_failed"
+    final_acc = as_float(qml_row.get("final_accuracy"))
+    if not math.isfinite(final_acc):
+        return "qml_runtime_failed"
+    if not math.isfinite(comparable_final_accuracy) or final_acc <= comparable_final_accuracy:
+        return "qml_diagnostic_only"
+    if final_acc <= CLASSICAL_CHAMPION["final_accuracy"]:
+        return "qml_experimental_candidate"
+    return "qml_experimental_candidate_full_validation_required"
+
+
+def write_smoke_reports(
+    dependency: dict[str, Any],
+    qml_rows: list[dict[str, Any]],
+    selected_qml: dict[str, Any] | None,
+    final_row: dict[str, Any],
+    comparable: dict[str, Any] | None,
+    manifest: dict[str, Any],
+) -> None:
+    ran = [row for row in qml_rows if row.get("status") == "ok"]
+    skipped = [row for row in qml_rows if row.get("status") != "ok"]
+    qml_families = sorted({str(row.get("qml_family")) for row in ran})
+    qml_libraries = sorted({str(row.get("library")) for row in ran})
+    final_acc = as_float(final_row.get("final_accuracy"))
+    final_lift = as_float(final_row.get("final_lift"))
+    comparable_final = as_float(final_row.get("classical_smoke_baseline_final_accuracy"))
+    beats_smoke = math.isfinite(final_acc) and math.isfinite(comparable_final) and final_acc > comparable_final
+    beats_champion = math.isfinite(final_acc) and final_acc > CLASSICAL_CHAMPION["final_accuracy"]
+    summary = f"""# VN30 QML Forecasting V2 Smoke Result Summary
+
+## Required Answers
+
+1. QML dependencies installed successfully: {str(dependency.get("qiskit_machine_learning_available") or dependency.get("pennylane_available")).lower()}.
+2. QML library actually ran: {", ".join(qml_libraries) if qml_libraries else "none"}.
+3. QML model family actually ran: {", ".join(qml_families) if qml_families else "none"}.
+4. QML candidates ran vs skipped: {len(ran)} ran / {len(skipped)} skipped.
+5. Best QML validation candidate: {selected_qml.get("candidate_id", "none") if selected_qml else "none"}.
+6. Final smoke result: accuracy={pct(final_acc)}, lift={pp(final_lift)}, claim_label=`{final_row.get("claim_label", "not_claimable")}`.
+7. QML vs classical smoke baseline: {str(beats_smoke).lower()} ({pp(final_row.get("comparison_vs_classical_smoke_baseline"))}).
+8. QML vs 61.61% classical champion: {str(beats_champion).lower()} ({pp(final_row.get("comparison_vs_classical_champion_accuracy"))}).
+9. Runtime and circuit complexity: see `qml_smoke_runtime_summary.csv` and `qml_smoke_circuit_summary.csv`; total runtime was {manifest.get("runtime_seconds", ""):.2f} seconds.
+10. Claimable result: no. V2 is a smoke diagnostic only.
+11. Claim boundary: experimental QML smoke only; no trading, profitability, BUY/SELL, recommendation, live deployment, DOCX, VN100, tag, merge, or index-as-stock claim; stronger QML claims require full validation-governed rerun and future-blind confirmation.
+
+## Classical Champion To Beat
+
+- L2 Logistic Regression / feature_set_C_closest / h40 / threshold 0.50.
+- Final accuracy: 61.61%.
+- Final lift: +10.90 pp.
+- Claim label: baseline60_candidate.
+"""
+    write_markdown(REPO_ROOT / "reports" / "results" / "VN30_QML_FORECASTING_V2_SMOKE_RESULT_SUMMARY.md", summary)
+
+    claim = """# VN30 QML Forecasting V2 Smoke Claim Boundary
+
+- QML V2 smoke is experimental and diagnostic-only.
+- Scope is VN30 stock hourly forecasting only.
+- The smoke run is not a full 1,440-candidate validation-governed rerun.
+- No QML smoke result replaces the 61.61% L2 Logistic classical champion.
+- If a smoke QML row beats a classical smoke baseline, it remains an experimental candidate only.
+- If a smoke QML row beats the 61.61% champion, stronger claims still require a full split-safe validation-governed rerun and future-blind confirmation.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, or deployment claim is made.
+- No VN100 scope is claimed.
+- Main index data may be used only as lagged market-context features or market-relative target context.
+- No index-as-stock claim is made.
+- No DOCX, paper artifact, tag, merge, push --mirror, or main-branch claim is made.
+"""
+    write_markdown(REPO_ROOT / "reports" / "claims" / "VN30_QML_FORECASTING_V2_SMOKE_CLAIM_BOUNDARY.md", claim)
+
+
+def run_smoke(config: SmokeConfig) -> dict[str, Any]:
+    global _FEATURES_GLOBAL
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    dependency = dependency_status()
+    write_json(OUTPUT_DIR / "qml_dependency_status.json", dependency)
+
+    features, family_cols, feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    _FEATURES_GLOBAL = features
+    index_data = load_index_data()
+    source_groups = build_source_groups(features, family_cols)
+
+    baseline_rows: list[dict[str, Any]] = []
+    qml_rows: list[dict[str, Any]] = []
+    circuit_rows: list[dict[str, Any]] = []
+    runtime_rows: list[dict[str, Any]] = []
+    baseline_comparison_rows: list[dict[str, Any]] = []
+    spec_lookup: dict[tuple[str, int, str], FeatureSpec] = {}
+    labels_lookup: dict[tuple[str, int], pd.Series] = {}
+    splits_lookup: dict[tuple[str, int], dict[str, pd.Index]] = {}
+
+    for target_variant in SMOKE_TARGETS:
+        labels = build_labels(features, index_data, target_variant, SMOKE_HORIZON)
+        full_splits = strict_split_indices(features, labels)
+        splits = smoke_split_indices(labels, full_splits, config)
+        labels_lookup[(target_variant, SMOKE_HORIZON)] = labels
+        splits_lookup[(target_variant, SMOKE_HORIZON)] = splits
+        baseline_rows.extend(run_smoke_simple_baselines(features, labels, target_variant, SMOKE_HORIZON, splits))
+        val_base_name, val_base_acc = strongest_simple_baseline(features, labels, splits["validation"])
+        final_base_name, final_base_acc = strongest_simple_baseline(features, labels, splits["final"])
+        for source_group, compression_method, n_features in SMOKE_FEATURE_PLAN:
+            spec, _audit = fit_feature_spec(
+                features,
+                labels,
+                target_variant,
+                SMOKE_HORIZON,
+                source_group,
+                source_groups[source_group],
+                compression_method,
+                n_features,
+                splits,
+            )
+            if spec.selection_status not in {"ok", "mutual_info_failed_fallback_availability"}:
+                continue
+            spec_lookup[(target_variant, SMOKE_HORIZON, spec.feature_set_name)] = spec
+            baseline_rows.extend(
+                run_smoke_classical_models(
+                    spec,
+                    labels,
+                    target_variant,
+                    SMOKE_HORIZON,
+                    splits,
+                    val_base_name,
+                    val_base_acc,
+                    final_base_name,
+                    final_base_acc,
+                )
+            )
+            qml_rows.extend(qml_smoke_candidate_rows(target_variant, SMOKE_HORIZON, spec, dependency))
+
+    qml_rows = qml_rows[: max(0, config.max_qml_candidates)]
+    for row in qml_rows:
+        if row["status"] == "pending":
+            spec = spec_lookup.get((str(row["target_variant"]), int(row["horizon"]), str(row["feature_set"])))
+            labels = labels_lookup[(str(row["target_variant"]), int(row["horizon"]))]
+            splits = splits_lookup[(str(row["target_variant"]), int(row["horizon"]))]
+            if spec is None:
+                row["status"] = "skipped"
+                row["skipped_reason"] = "smoke feature spec unavailable"
+            else:
+                row = run_qml_smoke_candidate(row, spec, labels, splits, config, started)
+        runtime_rows.append(
+            {
+                "candidate_id": row["candidate_id"],
+                "family": row["qml_family"],
+                "runtime_seconds": row["runtime_seconds"],
+                "status": row["status"],
+                "skipped_reason": row["skipped_reason"],
+            }
+        )
+        circuit_rows.append(
+            {
+                "candidate_id": row["candidate_id"],
+                "qml_family": row["qml_family"],
+                "library": row["library"],
+                "n_qubits": row["n_qubits"],
+                "circuit_depth_or_reps": row["circuit_depth_or_reps"],
+                "effective_train_rows": row.get("effective_train_rows", 0),
+                "validation_rows": row.get("validation_rows", 0),
+                "final_rows": row.get("final_rows", 0),
+                "status": row["status"],
+                "skipped_reason": row["skipped_reason"],
+            }
+        )
+
+    selected_qml = select_qml_candidate(qml_rows)
+    comparable: dict[str, Any] | None = None
+    final_result: dict[str, Any]
+    if selected_qml is not None:
+        comparable_candidates = [
+            row
+            for row in baseline_rows
+            if row.get("target_variant") == selected_qml.get("target_variant")
+            and int(row.get("horizon", -1)) == int(selected_qml.get("horizon", -2))
+            and row.get("status") == "ok"
+        ]
+        comparable = best_by_validation(comparable_candidates)
+        comparable_final = as_float(comparable.get("final_accuracy")) if comparable else math.nan
+        selected_qml["comparison_vs_classical_smoke_baseline"] = (
+            as_float(selected_qml.get("final_accuracy")) - comparable_final if math.isfinite(comparable_final) else math.nan
+        )
+        label = smoke_claim_label(selected_qml, dependency, comparable_final)
+        final_result = {
+            "candidate_id": selected_qml["candidate_id"],
+            "qml_family": selected_qml["qml_family"],
+            "library": selected_qml["library"],
+            "target_variant": selected_qml["target_variant"],
+            "horizon": selected_qml["horizon"],
+            "feature_set": selected_qml["feature_set"],
+            "n_qubits": selected_qml["n_qubits"],
+            "circuit_depth_or_reps": selected_qml["circuit_depth_or_reps"],
+            "validation_accuracy": selected_qml["validation_accuracy"],
+            "validation_lift": selected_qml["validation_lift"],
+            "final_accuracy": selected_qml["final_accuracy"],
+            "final_lift": selected_qml["final_lift"],
+            "final_rows": selected_qml["final_rows"],
+            "classical_smoke_baseline_candidate_id": comparable.get("candidate_id", "") if comparable else "",
+            "classical_smoke_baseline_final_accuracy": comparable_final,
+            "comparison_vs_classical_smoke_baseline": selected_qml["comparison_vs_classical_smoke_baseline"],
+            "comparison_vs_classical_champion_accuracy": selected_qml["comparison_vs_classical_champion_accuracy"],
+            "claim_label": label,
+            "status": "ok",
+            "skipped_reason": "",
+        }
+    else:
+        label = smoke_claim_label(None, dependency, math.nan)
+        final_result = {
+            "candidate_id": "",
+            "qml_family": "",
+            "library": "",
+            "target_variant": "",
+            "horizon": SMOKE_HORIZON,
+            "feature_set": "",
+            "n_qubits": 0,
+            "circuit_depth_or_reps": 0,
+            "validation_accuracy": math.nan,
+            "validation_lift": math.nan,
+            "final_accuracy": math.nan,
+            "final_lift": math.nan,
+            "final_rows": 0,
+            "classical_smoke_baseline_candidate_id": "",
+            "classical_smoke_baseline_final_accuracy": math.nan,
+            "comparison_vs_classical_smoke_baseline": math.nan,
+            "comparison_vs_classical_champion_accuracy": math.nan,
+            "claim_label": label,
+            "status": "skipped",
+            "skipped_reason": "no QML smoke candidate completed successfully",
+        }
+
+    for target_variant in SMOKE_TARGETS:
+        rows = [
+            row
+            for row in baseline_rows
+            if row.get("target_variant") == target_variant and int(row.get("horizon", -1)) == SMOKE_HORIZON and row.get("status") == "ok"
+        ]
+        best_classical = best_by_validation(rows)
+        qml_for_target = [
+            row
+            for row in qml_rows
+            if row.get("target_variant") == target_variant and int(row.get("horizon", -1)) == SMOKE_HORIZON and row.get("status") == "ok"
+        ]
+        best_qml = select_qml_candidate(qml_for_target)
+        baseline_comparison_rows.append(
+            {
+                "target_variant": target_variant,
+                "horizon": SMOKE_HORIZON,
+                "best_classical_candidate_id": best_classical.get("candidate_id", "") if best_classical else "",
+                "best_classical_validation_accuracy": best_classical.get("validation_accuracy", math.nan) if best_classical else math.nan,
+                "best_classical_final_accuracy": best_classical.get("final_accuracy", math.nan) if best_classical else math.nan,
+                "best_qml_candidate_id": best_qml.get("candidate_id", "") if best_qml else "",
+                "best_qml_validation_accuracy": best_qml.get("validation_accuracy", math.nan) if best_qml else math.nan,
+                "best_qml_final_accuracy": best_qml.get("final_accuracy", math.nan) if best_qml else math.nan,
+                "qml_minus_classical_final_accuracy": (as_float(best_qml.get("final_accuracy")) - as_float(best_classical.get("final_accuracy"))) if best_qml and best_classical else math.nan,
+            }
+        )
+
+    qml_columns = [
+        "candidate_id",
+        "qml_family",
+        "library",
+        "target_variant",
+        "horizon",
+        "feature_set",
+        "n_qubits",
+        "circuit_depth_or_reps",
+        "compression_method",
+        "effective_train_rows",
+        "validation_accuracy",
+        "validation_lift",
+        "validation_rows",
+        "final_accuracy",
+        "final_lift",
+        "final_rows",
+        "strongest_validation_baseline",
+        "strongest_final_baseline",
+        "comparison_vs_classical_smoke_baseline",
+        "comparison_vs_classical_champion_accuracy",
+        "runtime_seconds",
+        "status",
+        "skipped_reason",
+    ]
+    baseline_columns = [
+        "candidate_id",
+        "model_family",
+        "target_variant",
+        "horizon",
+        "feature_set",
+        "n_features",
+        "compression_method",
+        "validation_accuracy",
+        "validation_lift",
+        "validation_rows",
+        "final_accuracy",
+        "final_lift",
+        "final_rows",
+        "strongest_validation_baseline",
+        "strongest_final_baseline",
+        "runtime_seconds",
+        "status",
+        "skipped_reason",
+    ]
+    final_columns = [
+        "candidate_id",
+        "qml_family",
+        "library",
+        "target_variant",
+        "horizon",
+        "feature_set",
+        "n_qubits",
+        "circuit_depth_or_reps",
+        "validation_accuracy",
+        "validation_lift",
+        "final_accuracy",
+        "final_lift",
+        "final_rows",
+        "classical_smoke_baseline_candidate_id",
+        "classical_smoke_baseline_final_accuracy",
+        "comparison_vs_classical_smoke_baseline",
+        "comparison_vs_classical_champion_accuracy",
+        "claim_label",
+        "status",
+        "skipped_reason",
+    ]
+
+    leaderboard = sorted(
+        [row for row in qml_rows if row.get("status") == "ok"],
+        key=lambda row: (as_float(row.get("validation_accuracy")), as_float(row.get("validation_lift")), -as_float(row.get("runtime_seconds"))),
+        reverse=True,
+    )
+    write_frame(OUTPUT_DIR / "qml_smoke_candidate_grid.csv", qml_rows, qml_columns)
+    write_frame(OUTPUT_DIR / "qml_smoke_validation_results.csv", qml_rows, qml_columns)
+    write_frame(OUTPUT_DIR / "qml_smoke_leaderboard.csv", leaderboard, qml_columns)
+    write_frame(OUTPUT_DIR / "qml_smoke_final_result.csv", [final_result], final_columns)
+    write_frame(OUTPUT_DIR / "qml_smoke_baseline_comparison.csv", baseline_comparison_rows, ["target_variant", "horizon", "best_classical_candidate_id", "best_classical_validation_accuracy", "best_classical_final_accuracy", "best_qml_candidate_id", "best_qml_validation_accuracy", "best_qml_final_accuracy", "qml_minus_classical_final_accuracy"])
+    write_frame(OUTPUT_DIR / "qml_smoke_runtime_summary.csv", runtime_rows, ["candidate_id", "family", "runtime_seconds", "status", "skipped_reason"])
+    write_frame(OUTPUT_DIR / "qml_smoke_circuit_summary.csv", circuit_rows, ["candidate_id", "qml_family", "library", "n_qubits", "circuit_depth_or_reps", "effective_train_rows", "validation_rows", "final_rows", "status", "skipped_reason"])
+
+    manifest = {
+        "run_id": "vn30_qml_forecasting_v2_smoke",
+        "created_utc": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%SZ"),
+        "scope": "VN30 stock hourly forecasting only",
+        "diagnostic_only": True,
+        "full_grid_run": False,
+        "smoke_config": {
+            "max_qml_candidates": config.max_qml_candidates,
+            "max_train_rows": config.max_train_rows,
+            "max_validation_rows": config.max_validation_rows,
+            "max_final_rows": config.max_final_rows,
+            "timeout_seconds": config.timeout_seconds,
+            "family_specific_effective_caps": {
+                "quantum_kernel_classifier": qml_effective_limits("quantum_kernel_classifier", config)[:3],
+                "variational_quantum_classifier": qml_effective_limits("variational_quantum_classifier", config)[:3],
+            },
+        },
+        "dependency_status": dependency,
+        "targets": SMOKE_TARGETS,
+        "horizon": SMOKE_HORIZON,
+        "feature_plan": SMOKE_FEATURE_PLAN,
+        "qml_candidates_total": len(qml_rows),
+        "qml_candidates_ran": len([row for row in qml_rows if row.get("status") == "ok"]),
+        "qml_candidates_skipped": len([row for row in qml_rows if row.get("status") != "ok"]),
+        "qml_models_run": sorted({row["qml_family"] for row in qml_rows if row.get("status") == "ok"}),
+        "pennylane_status": "available_but_not_run_in_v2_smoke_budget" if dependency.get("pennylane_available") else "unavailable",
+        "selected_qml_candidate": selected_qml if selected_qml is not None else {},
+        "final_result": final_result,
+        "classical_champion_to_beat": CLASSICAL_CHAMPION,
+        "runtime_seconds": time.perf_counter() - started,
+        "paper_docx_generated": False,
+        "trading_claim": False,
+        "vn100_scope": False,
+        "index_as_stock_claim": False,
+    }
+    write_json(OUTPUT_DIR / "qml_v2_manifest.json", manifest)
+    write_smoke_reports(dependency, qml_rows, selected_qml, final_result, comparable, manifest)
+    print(json.dumps(json_safe({"status": "ok", "manifest": rel(OUTPUT_DIR / "qml_v2_manifest.json"), "qml_candidates_ran": manifest["qml_candidates_ran"], "qml_candidates_skipped": manifest["qml_candidates_skipped"]}), indent=2))
+    return manifest
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run VN30 QML forecasting diagnostics.")
+    parser.add_argument("--qml-smoke", action="store_true", help="Run the limited v2 QML smoke benchmark instead of the full diagnostic grid.")
+    parser.add_argument("--max-qml-candidates", type=int, default=12)
+    parser.add_argument("--max-train-rows", type=int, default=2000)
+    parser.add_argument("--max-validation-rows", type=int, default=1000)
+    parser.add_argument("--max-final-rows", type=int, default=1000)
+    parser.add_argument("--timeout-seconds", type=int, default=1800)
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
+    if args.qml_smoke:
+        config = SmokeConfig(
+            max_qml_candidates=max(0, int(args.max_qml_candidates)),
+            max_train_rows=max(1, int(args.max_train_rows)),
+            max_validation_rows=max(1, int(args.max_validation_rows)),
+            max_final_rows=max(1, int(args.max_final_rows)),
+            timeout_seconds=max(1, int(args.timeout_seconds)),
+        )
+        run_smoke(config)
+        return
     manifest = run()
     print(json.dumps(json_safe({"status": "ok", "manifest": rel(OUTPUT_DIR / "qml_manifest.json"), "qml_execution_status": manifest["dependencies"]["qml_execution_status"]}), indent=2))
 
