@@ -1633,7 +1633,29 @@ def write_v2_reports(
     ]
     abs_cluster_verdict = str(abs_cluster.iloc[0].get("cluster_verdict", "")) if not abs_cluster.empty else ""
     mr_cluster_verdict = str(mr_cluster.iloc[0].get("cluster_verdict", "")) if not mr_cluster.empty else ""
-    price_final_beats = as_float(locked_price_best.get("final_rmse_improvement_over_baseline")) > 0
+    abs_final_relocks = [
+        row for row in locked_direction
+        if row.get("target_variant") == "absolute_direction"
+        and int(as_float(row.get("horizon"))) == 40
+        and row.get("relock_claim_label") == "future_blind_required"
+        and as_float(row.get("final_accuracy")) > CLASSICAL_CHAMPION["final_accuracy"]
+    ]
+    abs_final_best = max(abs_final_relocks, key=lambda row: as_float(row.get("final_accuracy")), default={})
+    mr_trivial_final_relocks = [
+        row for row in locked_direction
+        if row.get("target_variant") == "market_relative_vn30"
+        and int(as_float(row.get("horizon"))) == 40
+        and as_float(row.get("final_accuracy")) > QML_V8_CONTEXT_FINAL
+    ]
+    mr_nontrivial_final_relocks = [row for row in mr_trivial_final_relocks if row.get("relock_claim_label") == "future_blind_required"]
+    mr_final_best = max(mr_nontrivial_final_relocks or mr_trivial_final_relocks, key=lambda row: as_float(row.get("final_accuracy")), default={})
+    price_final_relocks = [
+        row for row in locked_price
+        if row.get("relock_claim_label") == "future_blind_required"
+        and as_float(row.get("final_rmse_improvement_over_baseline")) > 0
+    ]
+    price_final_best = max(price_final_relocks, key=lambda row: as_float(row.get("final_rmse_improvement_over_baseline")), default={})
+    price_final_beats = bool(price_final_relocks)
     summary = f"""# VN30 Model Universe V2 Promotion Relock Result Summary
 
 ## Required Answers
@@ -1642,15 +1664,16 @@ def write_v2_reports(
 2. What produced the exploratory 74.57% market-relative final row: `{mr_row.get("candidate_id", "")}` with final accuracy {pct(mr_row.get("final_accuracy"))}; this is a trivial/simple baseline pattern with validation lift {pp(mr_row.get("lift_over_strongest_baseline"))}, so it is not promotable.
 3. Were those results isolated one-offs or cluster-supported: the absolute-direction source is `{abs_cluster_verdict}` and the market-relative source is `{mr_cluster_verdict}` under the model/target/horizon/feature cluster audit.
 4. Could any family be re-locked by validation: yes, V2 froze final-discovered hypothesis families and selected exact candidates by validation only, but all such relocks remain future-blind-required because the families were discovered from final exploratory rows.
-5. Did any relocked direction candidate beat 61.61% on comparable scope: {str(as_float(locked_abs.get("final_accuracy")) > CLASSICAL_CHAMPION["final_accuracy"]).lower()} for `{locked_abs.get("candidate_id", "")}` with final accuracy {pct(locked_abs.get("final_accuracy"))}; this is not a replacement claim.
-6. Did any relocked market-relative candidate beat 64.44% on comparable scope: {str(as_float(locked_mr.get("final_accuracy")) > QML_V8_CONTEXT_FINAL).lower()} for `{locked_mr.get("candidate_id", "")}` with final accuracy {pct(locked_mr.get("final_accuracy"))}; this is not a QML replacement claim.
-7. Did any relocked price/return candidate beat random walk/last price on final: {str(price_final_beats).lower()} for `{locked_price_best.get("candidate_id", "")}` with final RMSE improvement {pp(locked_price_best.get("final_rmse_improvement_over_baseline"))}.
+5. Did any relocked direction candidate beat 61.61% on comparable scope: {str(bool(abs_final_relocks)).lower()} for `{abs_final_best.get("candidate_id", "")}` with final accuracy {pct(abs_final_best.get("final_accuracy"))}; this is future-blind-required and not a replacement claim. The validation-best absolute h40 relock was `{locked_abs.get("candidate_id", "")}` with final accuracy {pct(locked_abs.get("final_accuracy"))}.
+6. Did any relocked market-relative candidate beat 64.44% on comparable scope: {str(bool(mr_nontrivial_final_relocks)).lower()} for non-trivial relocks. The strongest row over 64.44% was `{mr_final_best.get("candidate_id", "")}` at {pct(mr_final_best.get("final_accuracy"))}, but its label is `{mr_final_best.get("relock_claim_label", "")}`.
+7. Did any relocked price/return candidate beat random walk/last price on final: {str(price_final_beats).lower()} for validation-supported relocks. Best validation-supported final improvement was `{price_final_best.get("candidate_id", locked_price_best.get("candidate_id", ""))}` with final RMSE improvement {pp(price_final_best.get("final_rmse_improvement_over_baseline", locked_price_best.get("final_rmse_improvement_over_baseline")))}.
 8. Which results remain exploratory: all source final-ranked rows and all relocked rows remain diagnostic/future-blind-required unless confirmed by a new pre-registered future-blind run.
 9. Exact claim boundary: offline diagnostic-only; no trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, VN100, index-as-stock, tag, merge, push --mirror, DOCX, or production claim is made.
 
 ## Relocked Direction Candidates
 
 - Best absolute h40 relock: `{locked_abs.get("candidate_id", "")}`; validation {pct(locked_abs.get("validation_accuracy"))}, final {pct(locked_abs.get("final_accuracy"))}, label `{locked_abs.get("relock_claim_label", "")}`.
+- Strongest absolute h40 future-blind-required final diagnostic: `{abs_final_best.get("candidate_id", "")}`; validation {pct(abs_final_best.get("validation_accuracy"))}, final {pct(abs_final_best.get("final_accuracy"))}, label `{abs_final_best.get("relock_claim_label", "")}`.
 - Best market-relative h40 relock: `{locked_mr.get("candidate_id", "")}`; validation {pct(locked_mr.get("validation_accuracy"))}, final {pct(locked_mr.get("final_accuracy"))}, label `{locked_mr.get("relock_claim_label", "")}`.
 
 ## Relocked Price/Return Candidate
