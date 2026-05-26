@@ -3664,11 +3664,704 @@ def run_v4_kernel_confirmation(config: V4Config) -> dict[str, Any]:
     return manifest
 
 
+@dataclass
+class V5Config:
+    timeout_seconds: int = 3600
+
+
+V5_TARGET = "market_relative_vn30"
+V5_HORIZON = 40
+V5_FROZEN_SOURCE_GROUP = "relative_strength_features"
+V5_FROZEN_COMPRESSION = "topk_availability"
+V5_FROZEN_N_FEATURES = 4
+V5_FROZEN_REPS = 2
+V5_CLASSICAL_MODELS = ["svm_rbf", "svm_linear", "l2_logistic", "calibrated_logistic", "random_forest_small", "lightgbm_small"]
+V5_SAMPLE_LADDER = [
+    {
+        "sample_stage": "v4_sized",
+        "requested_max_train_rows": 1500,
+        "requested_max_validation_rows": 800,
+        "requested_max_final_rows": 800,
+        "effective_qml_train_rows": 80,
+        "effective_qml_validation_rows": 180,
+        "effective_qml_final_rows": 180,
+    },
+    {
+        "sample_stage": "medium",
+        "requested_max_train_rows": 3000,
+        "requested_max_validation_rows": 1500,
+        "requested_max_final_rows": 1500,
+        "effective_qml_train_rows": 100,
+        "effective_qml_validation_rows": 240,
+        "effective_qml_final_rows": 240,
+    },
+    {
+        "sample_stage": "largest_feasible",
+        "requested_max_train_rows": "all_feasible",
+        "requested_max_validation_rows": "all_feasible",
+        "requested_max_final_rows": "all_feasible",
+        "effective_qml_train_rows": 120,
+        "effective_qml_validation_rows": 300,
+        "effective_qml_final_rows": 300,
+    },
+]
+V5_SMALL_VARIANTS = [
+    {"variant_id": "topk4_reps1", "n_features": 4, "reps": 1},
+    {"variant_id": "topk4_reps2", "n_features": 4, "reps": 2},
+    {"variant_id": "topk6_reps1", "n_features": 6, "reps": 1},
+    {"variant_id": "topk6_reps2", "n_features": 6, "reps": 2},
+]
+
+
+def v5_make_classical_model(model_name: str) -> Any:
+    if model_name == "lightgbm_small":
+        lightgbm = importlib.import_module("lightgbm")
+        return lightgbm.LGBMClassifier(
+            n_estimators=80,
+            max_depth=4,
+            learning_rate=0.05,
+            num_leaves=15,
+            min_child_samples=30,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            class_weight="balanced",
+            random_state=SEED,
+            verbosity=-1,
+            n_jobs=2,
+        )
+    if model_name == "random_forest_small":
+        return make_classical_model(model_name)
+    return v3_make_classical_model(model_name)
+
+
+def v5_stage_splits(features: pd.DataFrame, labels: pd.Series, full_splits: dict[str, pd.Index], stage: dict[str, Any]) -> dict[str, pd.Index]:
+    train_limit = int(stage["effective_qml_train_rows"])
+    validation_limit = int(stage["effective_qml_validation_rows"])
+    final_limit = int(stage["effective_qml_final_rows"])
+    timestamps = pd.to_datetime(features["datetime"], errors="coerce")
+    target_timestamp = target_timestamp_from_labels(labels, features.index)
+    validation_idx = ordered_index(features, full_splits["validation"])
+    early_mask = timestamps.loc[validation_idx].lt(V4_VAL_SPLIT) & target_timestamp.loc[validation_idx].lt(V4_VAL_SPLIT)
+    late_mask = timestamps.loc[validation_idx].ge(V4_VAL_SPLIT) & target_timestamp.loc[validation_idx].ge(V4_VAL_SPLIT)
+    early_idx = pd.Index(validation_idx[early_mask.to_numpy()])
+    late_idx = pd.Index(validation_idx[late_mask.to_numpy()])
+    half = max(1, validation_limit // 2)
+    early_sample = ordered_tail_sample(features, early_idx, half)
+    late_sample = ordered_tail_sample(features, late_idx, validation_limit - len(early_sample))
+    validation_sample = ordered_index(features, pd.Index(list(early_sample) + list(late_sample)))
+    if len(validation_sample) < validation_limit:
+        used = set(validation_sample)
+        fallback = [idx for idx in ordered_tail_sample(features, full_splits["validation"], validation_limit) if idx not in used]
+        validation_sample = ordered_index(features, pd.Index(list(validation_sample) + fallback[: validation_limit - len(validation_sample)]))
+    if len(validation_sample) == 0:
+        validation_sample = ordered_tail_sample(features, full_splits["validation"], validation_limit)
+    return {
+        "train": balanced_ordered_train_sample(features, labels, full_splits["train"], train_limit),
+        "validation": validation_sample,
+        "final": ordered_tail_sample(features, full_splits["final"], final_limit),
+    }
+
+
+def v5_run_classical_models(
+    spec: FeatureSpec,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    sample_stage: str,
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, pd.Series]]]:
+    rows: list[dict[str, Any]] = []
+    predictions: dict[str, dict[str, pd.Series]] = {}
+    train_y = labels.loc[splits["train"]].astype(int)
+    validation_y = labels.loc[splits["validation"]].astype(int)
+    final_y = labels.loc[splits["final"]].astype(int)
+    val_simple_name, val_simple_acc = strongest_simple_baseline(features_global(), labels, splits["validation"])
+    final_simple_name, final_simple_acc = strongest_simple_baseline(features_global(), labels, splits["final"])
+    rows.append(
+        {
+            "sample_stage": sample_stage,
+            "model_family": "strongest_simple_baseline",
+            "candidate_id": candidate_id("v5", sample_stage, "strongest_simple", V5_TARGET, f"h{V5_HORIZON}", spec.feature_set_name),
+            "target_variant": V5_TARGET,
+            "horizon": V5_HORIZON,
+            "feature_set": spec.feature_set_name,
+            "n_features": spec.n_features,
+            "compression_method": spec.compression_method,
+            "train_rows": 0,
+            "validation_rows": int(len(validation_y)),
+            "final_rows": int(len(final_y)),
+            "validation_accuracy": val_simple_acc,
+            "validation_lift": 0.0,
+            "final_accuracy": final_simple_acc,
+            "final_lift": 0.0,
+            "strongest_validation_baseline": val_simple_name,
+            "strongest_final_baseline": final_simple_name,
+            "runtime_seconds": 0.0,
+            "status": "ok",
+            "skipped_reason": "",
+        }
+    )
+    for model_name in V5_CLASSICAL_MODELS:
+        start = time.perf_counter()
+        validation_pred = pd.Series(dtype=int)
+        final_pred = pd.Series(dtype=int)
+        try:
+            model = v5_make_classical_model(model_name)
+            if model_name == "calibrated_logistic" and train_y.value_counts().min() < 3:
+                raise ValueError("calibrated logistic requires at least three train rows per class")
+            model.fit(spec.x_train, train_y)
+            if hasattr(model, "predict_proba"):
+                validation_values = (model.predict_proba(spec.x_validation)[:, 1] >= 0.50).astype(int)
+                final_values = (model.predict_proba(spec.x_final)[:, 1] >= 0.50).astype(int)
+            else:
+                validation_values = np.asarray(model.predict(spec.x_validation)).astype(int)
+                final_values = np.asarray(model.predict(spec.x_final)).astype(int)
+            validation_pred = pd.Series(validation_values, index=splits["validation"])
+            final_pred = pd.Series(final_values, index=splits["final"])
+            validation_acc = accuracy(validation_y, validation_pred.loc[splits["validation"]])
+            final_acc = accuracy(final_y, final_pred.loc[splits["final"]])
+            status = "ok"
+            skipped_reason = ""
+        except Exception as exc:
+            validation_acc = math.nan
+            final_acc = math.nan
+            status = "skipped"
+            skipped_reason = f"{type(exc).__name__}: {exc}"
+        rows.append(
+            {
+                "sample_stage": sample_stage,
+                "model_family": model_name,
+                "candidate_id": candidate_id("v5", sample_stage, model_name, V5_TARGET, f"h{V5_HORIZON}", spec.feature_set_name),
+                "target_variant": V5_TARGET,
+                "horizon": V5_HORIZON,
+                "feature_set": spec.feature_set_name,
+                "n_features": spec.n_features,
+                "compression_method": spec.compression_method,
+                "train_rows": int(len(train_y)),
+                "validation_rows": int(len(validation_y)),
+                "final_rows": int(len(final_y)),
+                "validation_accuracy": validation_acc,
+                "validation_lift": validation_acc - val_simple_acc if math.isfinite(validation_acc) and math.isfinite(val_simple_acc) else math.nan,
+                "final_accuracy": final_acc,
+                "final_lift": final_acc - final_simple_acc if math.isfinite(final_acc) and math.isfinite(final_simple_acc) else math.nan,
+                "strongest_validation_baseline": val_simple_name,
+                "strongest_final_baseline": final_simple_name,
+                "runtime_seconds": time.perf_counter() - start,
+                "status": status,
+                "skipped_reason": skipped_reason,
+            }
+        )
+        if status == "ok":
+            predictions[model_name] = {"validation": validation_pred, "final": final_pred}
+    return rows, predictions
+
+
+def v5_run_frozen_qsvc(
+    spec: FeatureSpec,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    sample_stage: str,
+    reps: int,
+    n_features: int,
+    classical_rows: list[dict[str, Any]],
+    classical_predictions: dict[str, dict[str, pd.Series]],
+    timeout_seconds: int,
+    started: float,
+) -> tuple[dict[str, Any], dict[str, pd.Series], list[dict[str, Any]]]:
+    row = {
+        "sample_stage": sample_stage,
+        "candidate_id": candidate_id("qml_v5", sample_stage, "quantum_kernel_classifier", V5_TARGET, f"h{V5_HORIZON}", spec.feature_set_name, f"q{n_features}", f"r{reps}"),
+        "qml_family": "quantum_kernel_classifier",
+        "library": "qiskit_machine_learning",
+        "target_variant": V5_TARGET,
+        "horizon": V5_HORIZON,
+        "feature_set": spec.feature_set_name,
+        "n_qubits": n_features,
+        "feature_map": "ZZFeatureMap",
+        "feature_map_reps": reps,
+        "compression_method": spec.compression_method,
+        "train_rows": int(len(splits["train"])),
+        "validation_rows": int(len(splits["validation"])),
+        "final_rows": int(len(splits["final"])),
+        "validation_accuracy": math.nan,
+        "validation_lift": math.nan,
+        "final_accuracy": math.nan,
+        "final_lift": math.nan,
+        "rbf_svm_validation_accuracy": math.nan,
+        "rbf_svm_final_accuracy": math.nan,
+        "linear_svm_validation_accuracy": math.nan,
+        "linear_svm_final_accuracy": math.nan,
+        "logistic_validation_accuracy": math.nan,
+        "logistic_final_accuracy": math.nan,
+        "calibrated_logistic_validation_accuracy": math.nan,
+        "calibrated_logistic_final_accuracy": math.nan,
+        "random_forest_small_validation_accuracy": math.nan,
+        "random_forest_small_final_accuracy": math.nan,
+        "lightgbm_small_validation_accuracy": math.nan,
+        "lightgbm_small_final_accuracy": math.nan,
+        "qml_minus_rbf_svm_validation": math.nan,
+        "qml_minus_rbf_svm_final": math.nan,
+        "qml_minus_logistic_validation": math.nan,
+        "qml_minus_logistic_final": math.nan,
+        "qml_minus_best_classical_validation": math.nan,
+        "qml_minus_best_classical_final": math.nan,
+        "comparison_vs_classical_champion_accuracy": math.nan,
+        "runtime_seconds": 0.0,
+        "status": "pending",
+        "skipped_reason": "",
+    }
+    if time.perf_counter() - started >= timeout_seconds:
+        row["status"] = "skipped"
+        row["skipped_reason"] = "qml_runtime_limited: timeout budget exhausted before candidate start"
+        return row, {}, []
+    start = time.perf_counter()
+    predictions: dict[str, pd.Series] = {}
+    rolling_rows: list[dict[str, Any]] = []
+    try:
+        algorithms = importlib.import_module("qiskit_machine_learning.algorithms")
+        circuit_library = importlib.import_module("qiskit.circuit.library")
+        QSVC = getattr(algorithms, "QSVC")
+        ZZFeatureMap = getattr(circuit_library, "ZZFeatureMap")
+        train_y = labels.loc[splits["train"]].astype(int)
+        validation_y = labels.loc[splits["validation"]].astype(int)
+        final_y = labels.loc[splits["final"]].astype(int)
+        if train_y.nunique() < 2:
+            raise ValueError("v5 train sample has fewer than two classes")
+        x_train, x_validation, x_final = scale_for_quantum(spec.x_train, spec.x_validation, spec.x_final)
+        feature_map = ZZFeatureMap(feature_dimension=n_features, reps=reps)
+        model = QSVC(feature_map=feature_map)
+        model.fit(x_train.to_numpy(), train_y.to_numpy())
+        validation_pred = pd.Series(np.asarray(model.predict(x_validation.to_numpy())).reshape(-1).astype(int), index=splits["validation"])
+        final_pred = pd.Series(np.asarray(model.predict(x_final.to_numpy())).reshape(-1).astype(int), index=splits["final"])
+        predictions = {"validation": validation_pred, "final": final_pred}
+        validation_acc = accuracy(validation_y, validation_pred.loc[splits["validation"]])
+        final_acc = accuracy(final_y, final_pred.loc[splits["final"]])
+        simple_val_name, simple_val_acc = strongest_simple_baseline(features_global(), labels, splits["validation"])
+        simple_final_name, simple_final_acc = strongest_simple_baseline(features_global(), labels, splits["final"])
+        row.update(
+            {
+                "validation_accuracy": validation_acc,
+                "validation_lift": validation_acc - simple_val_acc if math.isfinite(simple_val_acc) else math.nan,
+                "final_accuracy": final_acc,
+                "final_lift": final_acc - simple_final_acc if math.isfinite(simple_final_acc) else math.nan,
+                "strongest_validation_baseline": simple_val_name,
+                "strongest_final_baseline": simple_final_name,
+                "comparison_vs_classical_champion_accuracy": final_acc - CLASSICAL_CHAMPION["final_accuracy"],
+                "runtime_seconds": time.perf_counter() - start,
+                "status": "ok",
+                "skipped_reason": "",
+            }
+        )
+        rolling_rows = v5_rolling_rows(row, labels, splits, predictions, classical_predictions)
+    except Exception as exc:
+        row.update(
+            {
+                "runtime_seconds": time.perf_counter() - start,
+                "status": "skipped",
+                "skipped_reason": f"dependency_missing_or_api_error: {type(exc).__name__}: {exc}",
+            }
+        )
+    for model_name, prefix in [
+        ("svm_rbf", "rbf_svm"),
+        ("svm_linear", "linear_svm"),
+        ("l2_logistic", "logistic"),
+        ("calibrated_logistic", "calibrated_logistic"),
+        ("random_forest_small", "random_forest_small"),
+        ("lightgbm_small", "lightgbm_small"),
+    ]:
+        match = next((item for item in classical_rows if item.get("model_family") == model_name and item.get("status") == "ok"), None)
+        if match:
+            row[f"{prefix}_validation_accuracy"] = match.get("validation_accuracy", math.nan)
+            row[f"{prefix}_final_accuracy"] = match.get("final_accuracy", math.nan)
+    qml_val = as_float(row.get("validation_accuracy"))
+    qml_final = as_float(row.get("final_accuracy"))
+    rbf_val = as_float(row.get("rbf_svm_validation_accuracy"))
+    rbf_final = as_float(row.get("rbf_svm_final_accuracy"))
+    log_val = as_float(row.get("logistic_validation_accuracy"))
+    log_final = as_float(row.get("logistic_final_accuracy"))
+    row["qml_minus_rbf_svm_validation"] = qml_val - rbf_val if math.isfinite(qml_val) and math.isfinite(rbf_val) else math.nan
+    row["qml_minus_rbf_svm_final"] = qml_final - rbf_final if math.isfinite(qml_final) and math.isfinite(rbf_final) else math.nan
+    row["qml_minus_logistic_validation"] = qml_val - log_val if math.isfinite(qml_val) and math.isfinite(log_val) else math.nan
+    row["qml_minus_logistic_final"] = qml_final - log_final if math.isfinite(qml_final) and math.isfinite(log_final) else math.nan
+    classical_accs_val = [as_float(item.get("validation_accuracy")) for item in classical_rows if item.get("status") == "ok" and item.get("model_family") != "strongest_simple_baseline"]
+    classical_accs_final = [as_float(item.get("final_accuracy")) for item in classical_rows if item.get("status") == "ok" and item.get("model_family") != "strongest_simple_baseline"]
+    best_val = max([value for value in classical_accs_val if math.isfinite(value)], default=math.nan)
+    best_final = max([value for value in classical_accs_final if math.isfinite(value)], default=math.nan)
+    row["best_classical_validation_accuracy"] = best_val
+    row["best_classical_final_accuracy"] = best_final
+    row["qml_minus_best_classical_validation"] = qml_val - best_val if math.isfinite(qml_val) and math.isfinite(best_val) else math.nan
+    row["qml_minus_best_classical_final"] = qml_final - best_final if math.isfinite(qml_final) and math.isfinite(best_final) else math.nan
+    return row, predictions, rolling_rows
+
+
+def v5_quarter_windows(features: pd.DataFrame, labels: pd.Series, splits: dict[str, pd.Index]) -> dict[str, tuple[str, pd.Index]]:
+    timestamps = pd.to_datetime(features["datetime"], errors="coerce")
+    target_timestamp = target_timestamp_from_labels(labels, features.index)
+    windows = v4_window_indices(features, labels, splits)
+    quarters = [
+        ("validation_2024_q1", "validation", pd.Timestamp("2024-01-01"), pd.Timestamp("2024-04-01")),
+        ("validation_2024_q2", "validation", pd.Timestamp("2024-04-01"), pd.Timestamp("2024-07-01")),
+        ("validation_2024_q3", "validation", pd.Timestamp("2024-07-01"), pd.Timestamp("2024-10-01")),
+        ("validation_2024_q4", "validation", pd.Timestamp("2024-10-01"), pd.Timestamp("2025-01-01")),
+        ("final_2025_q1", "final", pd.Timestamp("2025-01-01"), pd.Timestamp("2025-04-01")),
+        ("final_2025_q2_plus", "final", pd.Timestamp("2025-04-01"), pd.Timestamp.max),
+    ]
+    for name, split_name, start, end in quarters:
+        base_idx = splits[split_name]
+        mask = timestamps.loc[base_idx].ge(start) & timestamps.loc[base_idx].lt(end) & target_timestamp.loc[base_idx].ge(start) & target_timestamp.loc[base_idx].lt(end)
+        idx = pd.Index(base_idx[mask.to_numpy()])
+        if len(idx):
+            windows[name] = (split_name, idx)
+    return windows
+
+
+def v5_rolling_rows(
+    candidate: dict[str, Any],
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    qml_predictions: dict[str, pd.Series],
+    classical_predictions: dict[str, dict[str, pd.Series]],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    windows = v5_quarter_windows(features_global(), labels, splits)
+    for window_name, (split_name, idx) in windows.items():
+        qml_pred = qml_predictions.get(split_name, pd.Series(dtype=int))
+        qml_acc = metric_for_prediction(labels, qml_pred, idx)
+        simple_name, simple_acc = strongest_simple_baseline(features_global(), labels, idx)
+        rbf_acc = metric_for_prediction(labels, classical_predictions.get("svm_rbf", {}).get(split_name, pd.Series(dtype=int)), idx)
+        linear_acc = metric_for_prediction(labels, classical_predictions.get("svm_linear", {}).get(split_name, pd.Series(dtype=int)), idx)
+        logistic_acc = metric_for_prediction(labels, classical_predictions.get("l2_logistic", {}).get(split_name, pd.Series(dtype=int)), idx)
+        calibrated_acc = metric_for_prediction(labels, classical_predictions.get("calibrated_logistic", {}).get(split_name, pd.Series(dtype=int)), idx)
+        rf_acc = metric_for_prediction(labels, classical_predictions.get("random_forest_small", {}).get(split_name, pd.Series(dtype=int)), idx)
+        lgbm_acc = metric_for_prediction(labels, classical_predictions.get("lightgbm_small", {}).get(split_name, pd.Series(dtype=int)), idx)
+        rows.append(
+            {
+                "sample_stage": candidate["sample_stage"],
+                "candidate_id": candidate["candidate_id"],
+                "window": window_name,
+                "split": split_name,
+                "target_variant": candidate["target_variant"],
+                "horizon": candidate["horizon"],
+                "feature_set": candidate["feature_set"],
+                "rows": int(len(idx)),
+                "qml_accuracy": qml_acc,
+                "qml_lift": qml_acc - simple_acc if math.isfinite(qml_acc) and math.isfinite(simple_acc) else math.nan,
+                "strongest_simple_baseline": simple_name,
+                "strongest_simple_accuracy": simple_acc,
+                "rbf_svm_accuracy": rbf_acc,
+                "linear_svm_accuracy": linear_acc,
+                "logistic_accuracy": logistic_acc,
+                "calibrated_logistic_accuracy": calibrated_acc,
+                "random_forest_small_accuracy": rf_acc,
+                "lightgbm_small_accuracy": lgbm_acc,
+                "qml_minus_rbf_svm": qml_acc - rbf_acc if math.isfinite(qml_acc) and math.isfinite(rbf_acc) else math.nan,
+                "qml_minus_logistic": qml_acc - logistic_acc if math.isfinite(qml_acc) and math.isfinite(logistic_acc) else math.nan,
+                "runtime_seconds": candidate.get("runtime_seconds", math.nan),
+                "final_scoring_only": split_name == "final",
+                "status": "ok" if math.isfinite(qml_acc) else "skipped",
+                "skipped_reason": "" if math.isfinite(qml_acc) else "window has no scored rows",
+            }
+        )
+    return rows
+
+
+def v5_decision_label(frozen_rows: list[dict[str, Any]], rolling_rows: list[dict[str, Any]], timeout_hit: bool) -> str:
+    ok_rows = [row for row in frozen_rows if row.get("status") == "ok"]
+    if not ok_rows:
+        return "qml_not_confirmed"
+    medium = next((row for row in ok_rows if row.get("sample_stage") == "medium"), None)
+    largest = next((row for row in ok_rows if row.get("sample_stage") == "largest_feasible"), None)
+    candidate = medium or largest or ok_rows[-1]
+    beats_same_target = (
+        as_float(candidate.get("qml_minus_rbf_svm_validation")) > 0.0
+        and as_float(candidate.get("qml_minus_rbf_svm_final")) > 0.0
+        and as_float(candidate.get("qml_minus_logistic_validation")) > 0.0
+        and as_float(candidate.get("qml_minus_logistic_final")) > 0.0
+        and as_float(candidate.get("qml_minus_best_classical_validation")) > 0.0
+        and as_float(candidate.get("qml_minus_best_classical_final")) > 0.0
+    )
+    stage_windows = [row for row in rolling_rows if row.get("sample_stage") == candidate.get("sample_stage") and row.get("status") == "ok"]
+    rolling_supported = sum(1 for row in stage_windows if as_float(row.get("qml_minus_rbf_svm")) > 0.0 and as_float(row.get("qml_minus_logistic")) > 0.0) >= max(2, len(stage_windows) // 2)
+    if beats_same_target and rolling_supported:
+        return "qml_requires_future_blind"
+    if as_float(candidate.get("qml_minus_rbf_svm_final")) > 0.0 or as_float(candidate.get("qml_minus_logistic_final")) > 0.0:
+        return "qml_same_target_candidate"
+    if timeout_hit:
+        return "qml_expansion_not_justified"
+    return "qml_not_confirmed"
+
+
+def write_v5_reports(
+    frozen_rows: list[dict[str, Any]],
+    variant_rows: list[dict[str, Any]],
+    comparison_rows: list[dict[str, Any]],
+    rolling_rows: list[dict[str, Any]],
+    decision: dict[str, Any],
+    manifest: dict[str, Any],
+) -> None:
+    replay = next((row for row in frozen_rows if row.get("sample_stage") == "v4_sized"), {})
+    medium = next((row for row in frozen_rows if row.get("sample_stage") == "medium"), {})
+    largest = next((row for row in frozen_rows if row.get("sample_stage") == "largest_feasible"), {})
+    final_eval = largest if largest.get("status") == "ok" else (medium if medium.get("status") == "ok" else replay)
+    qml_beats_rbf = as_float(final_eval.get("qml_minus_rbf_svm_validation")) > 0.0 and as_float(final_eval.get("qml_minus_rbf_svm_final")) > 0.0
+    qml_beats_logistic = as_float(final_eval.get("qml_minus_logistic_validation")) > 0.0 and as_float(final_eval.get("qml_minus_logistic_final")) > 0.0
+    qml_beats_best = as_float(final_eval.get("qml_minus_best_classical_validation")) > 0.0 and as_float(final_eval.get("qml_minus_best_classical_final")) > 0.0
+    medium_survived = medium.get("status") == "ok" and as_float(medium.get("validation_accuracy")) >= 0.50 and as_float(medium.get("final_accuracy")) >= 0.50
+    rolling_eval_rows = [row for row in rolling_rows if row.get("sample_stage") == final_eval.get("sample_stage") and row.get("status") == "ok"]
+    rolling_wins = sum(1 for row in rolling_eval_rows if as_float(row.get("qml_minus_rbf_svm")) > 0.0 and as_float(row.get("qml_minus_logistic")) > 0.0)
+    expansion = "not justified beyond focused diagnostics"
+    if decision.get("decision_label") == "qml_requires_future_blind":
+        expansion = "future-blind confirmation is justified before any stronger QML claim"
+    elif decision.get("decision_label") in {"qml_same_target_candidate", "qml_beats_same_target_classical"}:
+        expansion = "limited same-target diagnostics are justified; broad QML search is not"
+    summary = f"""# VN30 QML Forecasting V5 Full Confirmation Result Summary
+
+## Required Answers
+
+1. Did the v4 QML candidate reproduce: {str(replay.get("status") == "ok").lower()}; replay validation {pct(replay.get("validation_accuracy"))}, final {pct(replay.get("final_accuracy"))}.
+2. Did performance survive larger sample sizes: medium survived = {str(medium_survived).lower()}; medium validation {pct(medium.get("validation_accuracy"))}, final {pct(medium.get("final_accuracy"))}; largest feasible validation {pct(largest.get("validation_accuracy"))}, final {pct(largest.get("final_accuracy"))}.
+3. Did QML beat RBF SVM under the same target: {str(qml_beats_rbf).lower()} for the final evaluated sample stage `{final_eval.get("sample_stage", "")}`.
+4. Did QML beat Logistic under the same target: {str(qml_beats_logistic).lower()} for the final evaluated sample stage `{final_eval.get("sample_stage", "")}`.
+5. Did QML beat other same-target classical models: {str(qml_beats_best).lower()} against the best same-target classical row.
+6. Did rolling-origin checks support the signal: {rolling_wins}/{len(rolling_eval_rows)} final-stage windows beat both RBF SVM and Logistic.
+7. Is QML expansion justified: {expansion}.
+8. Can any QML result be claimed: no; QML v5 remains diagnostic-only and requires future-blind confirmation for stronger wording.
+9. Does QML replace the 61.61% classical champion: no; the champion is a different target/scope benchmark and is not replaced by this market-relative diagnostic.
+10. Exact paper-safe wording: VN30 QML v5 replayed a frozen quantum-kernel candidate on VN30 hourly market-relative VN30 h40 forecasting with train-only feature selection/scaling and feature_timestamp/target_timestamp split discipline. Results are diagnostic-only, same-target classical comparisons are reported, and no trading, profitability, BUY/SELL, recommendation, live deployment, VN100, DOCX, merge, tag, push-mirror, or index-as-stock claim is made.
+
+## Frozen Candidate
+
+- Candidate: `{final_eval.get("candidate_id", "")}`.
+- Feature design: relative_strength_features, top-k {V5_FROZEN_N_FEATURES}, ZZFeatureMap reps {V5_FROZEN_REPS}.
+- Final evaluated sample stage: {final_eval.get("sample_stage", "")}.
+- Validation accuracy: {pct(final_eval.get("validation_accuracy"))}.
+- Final accuracy: {pct(final_eval.get("final_accuracy"))}.
+- QML minus RBF SVM: validation {pp(final_eval.get("qml_minus_rbf_svm_validation"))}, final {pp(final_eval.get("qml_minus_rbf_svm_final"))}.
+- QML minus Logistic: validation {pp(final_eval.get("qml_minus_logistic_validation"))}, final {pp(final_eval.get("qml_minus_logistic_final"))}.
+- QML minus best same-target classical: validation {pp(final_eval.get("qml_minus_best_classical_validation"))}, final {pp(final_eval.get("qml_minus_best_classical_final"))}.
+- QML minus 61.61% champion: {pp(final_eval.get("comparison_vs_classical_champion_accuracy"))}.
+- Final decision label: `{decision.get("decision_label", "qml_not_confirmed")}`.
+"""
+    write_markdown(REPO_ROOT / "reports" / "results" / "VN30_QML_FORECASTING_V5_FULL_CONFIRMATION_RESULT_SUMMARY.md", summary)
+
+    claim = """# VN30 QML Forecasting V5 Full Confirmation Claim Boundary
+
+- QML v5 full confirmation is experimental and diagnostic-only.
+- Scope is VN30 stock hourly forecasting only.
+- Target scope is market_relative_vn30 at h40 only.
+- No VN100 scope is claimed.
+- No index-as-stock claim is made.
+- Main index data may be used only as lagged market-context features or market-relative target context.
+- Feature_timestamp and target_timestamp split discipline is required.
+- Feature selection, scaling, and compression must be train-only or validation-safe.
+- The primary QML design is frozen from prior validation; no final-performance selection is allowed.
+- Final-ranked rows remain exploratory_not_claimable.
+- Same-target comparisons are diagnostic and do not replace the 61.61% L2 Logistic classical champion because the target/scope is not directly identical.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, or deployment claim is made.
+- No DOCX, paper artifact, tag, merge, push --mirror, or main-branch claim is made.
+- Stronger QML claims require full validation governance and future-blind confirmation.
+"""
+    write_markdown(REPO_ROOT / "reports" / "claims" / "VN30_QML_FORECASTING_V5_FULL_CONFIRMATION_CLAIM_BOUNDARY.md", claim)
+
+
+def run_v5_full_confirmation(config: V5Config) -> dict[str, Any]:
+    global _FEATURES_GLOBAL
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    dependency = dependency_status()
+    features, family_cols, feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    index_data = load_index_data()
+    features, v5_relative_cols = add_v3_relative_strength_features(features, index_data)
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    _FEATURES_GLOBAL = features
+    source_groups = build_source_groups(features, family_cols)
+    source_groups["relative_strength_features"] = v5_relative_cols
+    source_groups["combined_strategy_features"] = sorted(set(source_groups["combined_strategy_features"]).union(v5_relative_cols))
+
+    labels = build_labels(features, index_data, V5_TARGET, V5_HORIZON)
+    full_splits = strict_split_indices(features, labels)
+    run_config = {
+        "run_id": "vn30_qml_forecasting_v5_full_confirmation",
+        "target": V5_TARGET,
+        "horizon": V5_HORIZON,
+        "frozen_design": {
+            "source_group": V5_FROZEN_SOURCE_GROUP,
+            "compression_method": V5_FROZEN_COMPRESSION,
+            "n_features": V5_FROZEN_N_FEATURES,
+            "feature_map": "ZZFeatureMap",
+            "n_qubits": V5_FROZEN_N_FEATURES,
+            "reps": V5_FROZEN_REPS,
+        },
+        "sample_ladder": V5_SAMPLE_LADDER,
+        "small_variants": V5_SMALL_VARIANTS,
+        "timeout_seconds": config.timeout_seconds,
+        "dependency_status": dependency,
+        "split_discipline": "feature_timestamp and target_timestamp split-safe",
+        "train_only_feature_selection_and_scaling": True,
+    }
+    write_json(OUTPUT_DIR / "qml_v5_frozen_replay_manifest.json", run_config)
+
+    frozen_rows: list[dict[str, Any]] = []
+    comparison_rows: list[dict[str, Any]] = []
+    rolling_rows: list[dict[str, Any]] = []
+    variant_rows: list[dict[str, Any]] = []
+    timeout_hit = False
+
+    for stage in V5_SAMPLE_LADDER:
+        if time.perf_counter() - started >= config.timeout_seconds:
+            timeout_hit = True
+            break
+        sample_stage = str(stage["sample_stage"])
+        splits = v5_stage_splits(features, labels, full_splits, stage)
+        spec, _audit = fit_feature_spec(
+            features,
+            labels,
+            V5_TARGET,
+            V5_HORIZON,
+            V5_FROZEN_SOURCE_GROUP,
+            source_groups[V5_FROZEN_SOURCE_GROUP],
+            V5_FROZEN_COMPRESSION,
+            V5_FROZEN_N_FEATURES,
+            splits,
+        )
+        if spec.selection_status not in {"ok", "mutual_info_failed_fallback_availability"}:
+            row = {
+                "sample_stage": sample_stage,
+                "candidate_id": candidate_id("qml_v5", sample_stage, "quantum_kernel_classifier", V5_TARGET, f"h{V5_HORIZON}", "feature_selection_failed"),
+                "status": "skipped",
+                "skipped_reason": f"feature_selection_{spec.selection_status}",
+            }
+            frozen_rows.append(row)
+            continue
+        classical_rows, classical_predictions = v5_run_classical_models(spec, labels, splits, sample_stage)
+        comparison_rows.extend(classical_rows)
+        qml_row, _predictions, stage_rolling = v5_run_frozen_qsvc(
+            spec,
+            labels,
+            splits,
+            sample_stage,
+            V5_FROZEN_REPS,
+            V5_FROZEN_N_FEATURES,
+            classical_rows,
+            classical_predictions,
+            config.timeout_seconds,
+            started,
+        )
+        frozen_rows.append(qml_row)
+        rolling_rows.extend(stage_rolling)
+        comparison_rows.append({**qml_row, "model_family": "quantum_kernel_classifier"})
+        if str(qml_row.get("skipped_reason", "")).startswith("qml_runtime_limited"):
+            timeout_hit = True
+            break
+
+    replay_rows = [row for row in frozen_rows if row.get("sample_stage") == "v4_sized"]
+    write_frame(OUTPUT_DIR / "qml_v5_frozen_replay_result.csv", replay_rows, list(replay_rows[0].keys()) if replay_rows else [])
+
+    if not timeout_hit and time.perf_counter() - started < config.timeout_seconds * 0.72:
+        stage = V5_SAMPLE_LADDER[0]
+        splits = v5_stage_splits(features, labels, full_splits, stage)
+        for variant in V5_SMALL_VARIANTS:
+            if time.perf_counter() - started >= config.timeout_seconds * 0.92:
+                timeout_hit = True
+                break
+            spec, _audit = fit_feature_spec(
+                features,
+                labels,
+                V5_TARGET,
+                V5_HORIZON,
+                V5_FROZEN_SOURCE_GROUP,
+                source_groups[V5_FROZEN_SOURCE_GROUP],
+                V5_FROZEN_COMPRESSION,
+                int(variant["n_features"]),
+                splits,
+            )
+            if spec.selection_status not in {"ok", "mutual_info_failed_fallback_availability"}:
+                variant_rows.append(
+                    {
+                        "variant_id": variant["variant_id"],
+                        "n_features": variant["n_features"],
+                        "feature_map_reps": variant["reps"],
+                        "status": "skipped",
+                        "skipped_reason": f"feature_selection_{spec.selection_status}",
+                    }
+                )
+                continue
+            classical_rows, classical_predictions = v5_run_classical_models(spec, labels, splits, f"variant_{variant['variant_id']}")
+            qml_row, _predictions, _rolling = v5_run_frozen_qsvc(
+                spec,
+                labels,
+                splits,
+                f"variant_{variant['variant_id']}",
+                int(variant["reps"]),
+                int(variant["n_features"]),
+                classical_rows,
+                classical_predictions,
+                config.timeout_seconds,
+                started,
+            )
+            qml_row["variant_id"] = variant["variant_id"]
+            variant_rows.append(qml_row)
+
+    decision_label = v5_decision_label(frozen_rows, rolling_rows, timeout_hit)
+    final_stage_row = next((row for row in frozen_rows if row.get("sample_stage") == "largest_feasible" and row.get("status") == "ok"), None)
+    if final_stage_row is None:
+        final_stage_row = next((row for row in frozen_rows if row.get("sample_stage") == "medium" and row.get("status") == "ok"), None)
+    if final_stage_row is None:
+        final_stage_row = next((row for row in frozen_rows if row.get("status") == "ok"), {})
+    decision = {
+        "decision_label": decision_label,
+        "final_evaluated_sample_stage": final_stage_row.get("sample_stage", ""),
+        "final_evaluated_candidate_id": final_stage_row.get("candidate_id", ""),
+        "qml_replaces_6161_classical_champion": False,
+        "replacement_blocked_reason": "target/scope is market_relative_vn30 h40 and is not directly identical to the 61.61% classical champion benchmark; future-blind confirmation is required",
+        "same_target_validation_beats_rbf_svm": as_float(final_stage_row.get("qml_minus_rbf_svm_validation")) > 0.0,
+        "same_target_final_beats_rbf_svm": as_float(final_stage_row.get("qml_minus_rbf_svm_final")) > 0.0,
+        "same_target_validation_beats_logistic": as_float(final_stage_row.get("qml_minus_logistic_validation")) > 0.0,
+        "same_target_final_beats_logistic": as_float(final_stage_row.get("qml_minus_logistic_final")) > 0.0,
+        "same_target_validation_beats_best_classical": as_float(final_stage_row.get("qml_minus_best_classical_validation")) > 0.0,
+        "same_target_final_beats_best_classical": as_float(final_stage_row.get("qml_minus_best_classical_final")) > 0.0,
+        "future_blind_required": True,
+        "diagnostic_only": True,
+        "runtime_limited": timeout_hit,
+    }
+    write_json(OUTPUT_DIR / "qml_v5_final_decision.json", decision)
+
+    write_frame(OUTPUT_DIR / "qml_v5_sample_size_ladder.csv", frozen_rows, list(frozen_rows[0].keys()) if frozen_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v5_same_target_classical_comparison.csv", comparison_rows, list(comparison_rows[0].keys()) if comparison_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v5_rolling_origin_confirmation.csv", rolling_rows, list(rolling_rows[0].keys()) if rolling_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v5_small_variant_results.csv", variant_rows, list(variant_rows[0].keys()) if variant_rows else [])
+
+    manifest = {
+        "run_id": "vn30_qml_forecasting_v5_full_confirmation",
+        "created_utc": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%SZ"),
+        "scope": "VN30 stock hourly forecasting only",
+        "diagnostic_only": True,
+        "run_config": run_config,
+        "feature_manifest": feature_manifest,
+        "v5_relative_strength_features": v5_relative_cols,
+        "frozen_replay": replay_rows[0] if replay_rows else {},
+        "sample_ladder_rows": frozen_rows,
+        "small_variant_rows": variant_rows,
+        "rolling_rows": rolling_rows,
+        "final_decision": decision,
+        "runtime_limited": timeout_hit,
+        "runtime_seconds": time.perf_counter() - started,
+        "paper_docx_generated": False,
+        "trading_claim": False,
+        "vn100_scope": False,
+        "index_as_stock_claim": False,
+    }
+    write_json(OUTPUT_DIR / "qml_v5_frozen_replay_manifest.json", manifest)
+    write_v5_reports(frozen_rows, variant_rows, comparison_rows, rolling_rows, decision, manifest)
+    print(json.dumps(json_safe({"status": "ok", "manifest": rel(OUTPUT_DIR / "qml_v5_frozen_replay_manifest.json"), "decision_label": decision_label, "runtime_limited": timeout_hit}), indent=2))
+    return manifest
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run VN30 QML forecasting diagnostics.")
     parser.add_argument("--qml-smoke", action="store_true", help="Run the limited v2 QML smoke benchmark instead of the full diagnostic grid.")
     parser.add_argument("--qml-v3-sanity", action="store_true", help="Run the targeted v3 QML sanity benchmark.")
     parser.add_argument("--qml-v4-kernel-confirmation", action="store_true", help="Run the focused v4 quantum-kernel confirmation benchmark.")
+    parser.add_argument("--qml-v5-full-confirmation", action="store_true", help="Run the focused v5 frozen quantum-kernel confirmation benchmark.")
     parser.add_argument("--max-qml-candidates", type=int, default=12)
     parser.add_argument("--max-train-rows", type=int, default=2000)
     parser.add_argument("--max-validation-rows", type=int, default=1000)
@@ -3679,6 +4372,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.qml_v5_full_confirmation:
+        config = V5Config(timeout_seconds=max(1, int(args.timeout_seconds)))
+        run_v5_full_confirmation(config)
+        return
     if args.qml_v4_kernel_confirmation:
         config = V4Config(
             max_qml_candidates=max(0, int(args.max_qml_candidates)),
