@@ -99,6 +99,8 @@ RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_DIRECTION
 CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_DIRECTION_PRICE_CLAIM_BOUNDARY.md"
 V2_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V2_PROMOTION_RELOCK_RESULT_SUMMARY.md"
 V2_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V2_PROMOTION_RELOCK_CLAIM_BOUNDARY.md"
+V3_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V3_SKIPPED_FAMILIES_RESULT_SUMMARY.md"
+V3_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V3_SKIPPED_FAMILIES_CLAIM_BOUNDARY.md"
 
 QML_V8_CONTEXT_FINAL = 0.6444444444444445
 QML_V8_CONTEXT_VALIDATION = 0.6055555555555555
@@ -1753,6 +1755,684 @@ def run_promotion_relock(timeout_seconds: int) -> dict[str, Any]:
     return result
 
 
+def v3_dependency_status() -> dict[str, Any]:
+    packages = [
+        "catboost",
+        "statsmodels",
+        "arch",
+        "pykalman",
+        "torch",
+        "pytorch_forecasting",
+        "tensorflow",
+        "qiskit",
+        "qiskit_machine_learning",
+        "pennylane",
+    ]
+    status: dict[str, Any] = {}
+    for package in packages:
+        available = importlib.util.find_spec(package) is not None
+        version = ""
+        if available:
+            try:
+                version = str(getattr(importlib.import_module(package), "__version__", "unknown"))
+            except Exception:
+                version = "unknown"
+        status[f"{package}_available"] = bool(available)
+        status[f"{package}_version"] = version
+    status["diagnostic_only"] = True
+    status["no_trading_claim"] = True
+    return status
+
+
+def v3_price_row(
+    candidate: dict[str, Any],
+    target: pd.Series,
+    splits: dict[str, pd.Index],
+    features: pd.DataFrame,
+    val_pred: np.ndarray,
+    final_pred: np.ndarray,
+    runtime_seconds: float,
+    status: str = "ok",
+    skipped_reason: str = "",
+) -> dict[str, Any]:
+    target_variant = str(candidate["target_variant"])
+    horizon = int(candidate["horizon"])
+    train_y = pd.to_numeric(target.loc[splits["train"]], errors="coerce")
+    val_y = pd.to_numeric(target.loc[splits["validation"]], errors="coerce")
+    final_y = pd.to_numeric(target.loc[splits["final"]], errors="coerce")
+    naive_name = "last_price" if target_variant == "future_close_h" else "historical_mean_return"
+    naive_val, _ = baseline_price_prediction(naive_name, features, train_y, splits["validation"], target_variant, horizon)
+    naive_final, _ = baseline_price_prediction(naive_name, features, train_y, splits["final"], target_variant, horizon)
+    if naive_val is None:
+        naive_val = np.zeros(len(val_y), dtype=float)
+    if naive_final is None:
+        naive_final = np.zeros(len(final_y), dtype=float)
+    val_close = pd.to_numeric(features.loc[splits["validation"], "close"], errors="coerce").to_numpy(dtype=float)
+    final_close = pd.to_numeric(features.loc[splits["final"], "close"], errors="coerce").to_numpy(dtype=float)
+    val_metrics = price_metrics(val_y, val_pred, naive_val, val_close, target_variant)
+    final_metrics = price_metrics(final_y, final_pred, naive_final, final_close, target_variant)
+    baseline_val_rmse = rmse(val_y.to_numpy(dtype=float), naive_val)
+    baseline_final_rmse = rmse(final_y.to_numpy(dtype=float), naive_final)
+    validation_improvement = (baseline_val_rmse - val_metrics["rmse"]) / baseline_val_rmse if math.isfinite(baseline_val_rmse) and baseline_val_rmse > 0 and math.isfinite(val_metrics["rmse"]) else math.nan
+    final_improvement = (baseline_final_rmse - final_metrics["rmse"]) / baseline_final_rmse if math.isfinite(baseline_final_rmse) and baseline_final_rmse > 0 and math.isfinite(final_metrics["rmse"]) else math.nan
+    label = "future_blind_required" if validation_improvement > 0 and final_improvement > 0 else ("price_return_candidate" if validation_improvement > 0 else "diagnostic_only")
+    return {
+        "candidate_id": candidate["candidate_id"],
+        "task": "price_return",
+        "source_family": candidate.get("source_family", ""),
+        "model_family": candidate["model_family"],
+        "feature_group": candidate.get("feature_group", ""),
+        "target_variant": target_variant,
+        "horizon": horizon,
+        "train_rows": int(len(splits["train"])),
+        "validation_rows": int(len(splits["validation"])),
+        "final_rows": int(len(splits["final"])),
+        "validation_rmse": val_metrics["rmse"],
+        "validation_mae": val_metrics["mae"],
+        "validation_sign_accuracy": val_metrics["sign_accuracy"],
+        "validation_correlation_pred_actual": val_metrics["correlation_pred_actual"],
+        "validation_error_improvement_over_baseline": validation_improvement,
+        "final_rmse": final_metrics["rmse"],
+        "final_mae": final_metrics["mae"],
+        "final_sign_accuracy": final_metrics["sign_accuracy"],
+        "final_correlation_pred_actual": final_metrics["correlation_pred_actual"],
+        "final_error_improvement_over_baseline": final_improvement,
+        "strongest_final_baseline_rmse": baseline_final_rmse,
+        "claim_label": label,
+        "runtime_seconds": runtime_seconds,
+        "status": status,
+        "skipped_reason": skipped_reason,
+    }
+
+
+def v3_direction_row(
+    candidate: dict[str, Any],
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    features: pd.DataFrame,
+    val_pred: np.ndarray,
+    val_prob: np.ndarray | None,
+    final_pred: np.ndarray,
+    final_prob: np.ndarray | None,
+    runtime_seconds: float,
+    status: str = "ok",
+    skipped_reason: str = "",
+) -> dict[str, Any]:
+    target_variant = str(candidate["target_variant"])
+    horizon = int(candidate["horizon"])
+    val_y = labels.loc[splits["validation"]].astype(int)
+    final_y = labels.loc[splits["final"]].astype(int)
+    train_y = labels.loc[splits["train"]].astype(int)
+    val_metrics = direction_metrics(val_y, val_pred, val_prob)
+    final_metrics = direction_metrics(final_y, final_pred, final_prob)
+    baseline_accs = []
+    for baseline in ["always_up", "always_down", "lag1_direction", "simple_momentum", "simple_relative_strength"]:
+        pred, _prob, _reason = baseline_direction_prediction(baseline, features, train_y, splits["validation"])
+        if pred is not None:
+            baseline_accs.append(float((val_y.to_numpy(dtype=int) == pred.astype(int)).mean()))
+    strongest_baseline = max(baseline_accs) if baseline_accs else math.nan
+    val_lift = val_metrics["accuracy"] - strongest_baseline if math.isfinite(strongest_baseline) else math.nan
+    label = "diagnostic_only"
+    if val_lift > 0:
+        label = "direction_candidate"
+    if target_variant == "absolute_direction" and horizon == 40 and val_lift > 0 and final_metrics["accuracy"] > CLASSICAL_CHAMPION["final_accuracy"]:
+        label = "future_blind_required"
+    if target_variant == "market_relative_vn30" and horizon == 40 and val_lift > 0 and final_metrics["accuracy"] > QML_V8_CONTEXT_FINAL:
+        label = "future_blind_required"
+    return {
+        "candidate_id": candidate["candidate_id"],
+        "task": "direction",
+        "source_family": candidate.get("source_family", ""),
+        "model_family": candidate["model_family"],
+        "feature_group": candidate.get("feature_group", ""),
+        "target_variant": target_variant,
+        "horizon": horizon,
+        "train_rows": int(len(splits["train"])),
+        "validation_rows": int(len(splits["validation"])),
+        "final_rows": int(len(splits["final"])),
+        "validation_accuracy": val_metrics["accuracy"],
+        "validation_lift_over_strongest_baseline": val_lift,
+        "validation_balanced_accuracy": val_metrics["balanced_accuracy"],
+        "validation_f1": val_metrics["f1"],
+        "validation_roc_auc": val_metrics["roc_auc"],
+        "final_accuracy": final_metrics["accuracy"],
+        "final_balanced_accuracy": final_metrics["balanced_accuracy"],
+        "final_f1": final_metrics["f1"],
+        "final_roc_auc": final_metrics["roc_auc"],
+        "claim_label": label,
+        "runtime_seconds": runtime_seconds,
+        "status": status,
+        "skipped_reason": skipped_reason,
+    }
+
+
+def v3_skipped_row(task: str, source_family: str, model_family: str, target_variant: str = "", horizon: Any = "", feature_group: str = "", reason: str = "") -> dict[str, Any]:
+    return {
+        "task": task,
+        "source_family": source_family,
+        "model_family": model_family,
+        "target_variant": target_variant,
+        "horizon": horizon,
+        "feature_group": feature_group,
+        "status": "skipped",
+        "skipped_reason": reason,
+    }
+
+
+def v3_series_forecast(model_name: str, train_values: pd.Series, n_val: int, n_final: int, dependency: dict[str, Any]) -> tuple[np.ndarray | None, np.ndarray | None, str]:
+    y = pd.to_numeric(train_values, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna().astype(float).tail(500)
+    if len(y) < 40:
+        return None, None, "insufficient train rows for statistical model"
+    if model_name in {"ARIMA", "SARIMAX", "ETS", "Kalman/local level"} and not dependency.get("statsmodels_available"):
+        return None, None, "statsmodels unavailable"
+    if model_name == "GARCH-assisted" and not dependency.get("arch_available"):
+        return None, None, "arch unavailable"
+    try:
+        if model_name == "ARIMA":
+            from statsmodels.tsa.arima.model import ARIMA
+
+            fit = ARIMA(y.to_numpy(dtype=float), order=(1, 0, 0), trend="c").fit()
+            return np.asarray(fit.forecast(n_val), dtype=float), np.asarray(fit.forecast(n_final), dtype=float), ""
+        if model_name == "SARIMAX":
+            from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+            fit = SARIMAX(y.to_numpy(dtype=float), order=(1, 0, 0), trend="c", enforce_stationarity=False, enforce_invertibility=False).fit(disp=False, maxiter=50)
+            return np.asarray(fit.forecast(n_val), dtype=float), np.asarray(fit.forecast(n_final), dtype=float), ""
+        if model_name == "ETS":
+            from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+            fit = ExponentialSmoothing(y.to_numpy(dtype=float), trend=None, seasonal=None, initialization_method="estimated").fit(optimized=True)
+            return np.asarray(fit.forecast(n_val), dtype=float), np.asarray(fit.forecast(n_final), dtype=float), ""
+        if model_name == "GARCH-assisted":
+            arch_mod = importlib.import_module("arch")
+            scaled = y.to_numpy(dtype=float) * 100.0
+            fit = arch_mod.arch_model(scaled, mean="AR", lags=1, vol="GARCH", p=1, q=1, rescale=False).fit(disp="off", show_warning=False)
+            one = float(np.asarray(fit.forecast(horizon=1).mean.iloc[-1])[0]) / 100.0
+            return np.full(n_val, one, dtype=float), np.full(n_final, one, dtype=float), ""
+        if model_name == "Kalman/local level":
+            from statsmodels.tsa.statespace.structural import UnobservedComponents
+
+            fit = UnobservedComponents(y.to_numpy(dtype=float), level="local level").fit(disp=False, maxiter=50)
+            return np.asarray(fit.forecast(n_val), dtype=float), np.asarray(fit.forecast(n_final), dtype=float), ""
+    except Exception as exc:
+        return None, None, f"{type(exc).__name__}: {exc}"
+    return None, None, f"{model_name} not implemented"
+
+
+def run_v3_statistical(features: pd.DataFrame, index_data: dict[str, pd.DataFrame], dependency: dict[str, Any], config: RunConfig, started: float, timeout_seconds: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    rows: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    models = ["ARIMA", "SARIMAX", "ETS", "GARCH-assisted", "Kalman/local level"]
+    targets = ["forward_log_return_h", "forward_simple_return_h", "market_excess_return_h", "future_close_h"]
+    for horizon in [10, 20, 40]:
+        for target_variant in targets:
+            target = build_price_target(features, index_data, target_variant, horizon)
+            splits = split_sample(features, target, strict_split_for_target(features, target), config, classification=False)
+            for model_name in models:
+                if time.perf_counter() - started > timeout_seconds:
+                    skipped.append(v3_skipped_row("price_return", "statistical", model_name, target_variant, horizon, "", "runtime_budget_exhausted"))
+                    continue
+                start = time.perf_counter()
+                candidate = {
+                    "candidate_id": candidate_id("v3", "statistical", model_name, target_variant, f"h{horizon}"),
+                    "source_family": "statistical",
+                    "model_family": model_name,
+                    "feature_group": "target_history",
+                    "target_variant": target_variant,
+                    "horizon": horizon,
+                }
+                val_pred, final_pred, reason = v3_series_forecast(model_name, target.loc[splits["train"]], len(splits["validation"]), len(splits["final"]), dependency)
+                if val_pred is None or final_pred is None:
+                    skipped.append(v3_skipped_row("price_return", "statistical", model_name, target_variant, horizon, "target_history", reason))
+                    rows.append({**candidate, "task": "price_return", "status": "skipped", "skipped_reason": reason})
+                    continue
+                rows.append(v3_price_row(candidate, target, splits, features, val_pred, final_pred, time.perf_counter() - start))
+    return rows, skipped
+
+
+def v3_torch_predict(model_name: str, task: str, x_train: pd.DataFrame, y_train: pd.Series, x_val: pd.DataFrame, x_final: pd.DataFrame, epochs: int = 4) -> tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None, np.ndarray | None, str]:
+    if importlib.util.find_spec("torch") is None:
+        return None, None, None, None, "torch unavailable"
+    try:
+        import torch
+        from torch import nn
+
+        torch.manual_seed(SEED)
+        xtr = torch.tensor(x_train.to_numpy(dtype=np.float32), dtype=torch.float32)
+        xva = torch.tensor(x_val.to_numpy(dtype=np.float32), dtype=torch.float32)
+        xfi = torch.tensor(x_final.to_numpy(dtype=np.float32), dtype=torch.float32)
+        if xtr.numel() == 0:
+            return None, None, None, None, "empty feature matrix"
+
+        class MLPNet(nn.Module):
+            def __init__(self, n: int) -> None:
+                super().__init__()
+                self.net = nn.Sequential(nn.Linear(n, 24), nn.ReLU(), nn.Dropout(0.05), nn.Linear(24, 1))
+
+            def forward(self, x: Any) -> Any:
+                return self.net(x).squeeze(-1)
+
+        class RNNNet(nn.Module):
+            def __init__(self, kind: str, n: int) -> None:
+                super().__init__()
+                bidir = kind == "BiLSTM"
+                cls = nn.GRU if kind == "GRU" else nn.LSTM
+                self.rnn = cls(input_size=1, hidden_size=12, batch_first=True, bidirectional=bidir)
+                self.out = nn.Linear(24 if bidir else 12, 1)
+
+            def forward(self, x: Any) -> Any:
+                seq = x.unsqueeze(-1)
+                out, _state = self.rnn(seq)
+                return self.out(out[:, -1, :]).squeeze(-1)
+
+        class CNNNet(nn.Module):
+            def __init__(self, n: int, dilation: int = 1) -> None:
+                super().__init__()
+                self.conv = nn.Sequential(nn.Conv1d(1, 12, kernel_size=3, padding=dilation, dilation=dilation), nn.ReLU(), nn.AdaptiveAvgPool1d(1))
+                self.out = nn.Linear(12, 1)
+
+            def forward(self, x: Any) -> Any:
+                return self.out(self.conv(x.unsqueeze(1)).squeeze(-1)).squeeze(-1)
+
+        class TransformerNet(nn.Module):
+            def __init__(self, n: int) -> None:
+                super().__init__()
+                self.proj = nn.Linear(1, 12)
+                layer = nn.TransformerEncoderLayer(d_model=12, nhead=3, dim_feedforward=24, dropout=0.05, batch_first=True)
+                self.encoder = nn.TransformerEncoder(layer, num_layers=1)
+                self.out = nn.Linear(12, 1)
+
+            def forward(self, x: Any) -> Any:
+                seq = self.encoder(self.proj(x.unsqueeze(-1)))
+                return self.out(seq.mean(dim=1)).squeeze(-1)
+
+        if model_name == "MLP":
+            model = MLPNet(xtr.shape[1])
+        elif model_name in {"LSTM", "GRU", "BiLSTM"}:
+            model = RNNNet(model_name, xtr.shape[1])
+        elif model_name == "1D CNN":
+            model = CNNNet(xtr.shape[1], dilation=1)
+        elif model_name == "TCN":
+            model = CNNNet(xtr.shape[1], dilation=2)
+        elif model_name == "Transformer encoder":
+            model = TransformerNet(xtr.shape[1])
+        else:
+            return None, None, None, None, f"{model_name} not implemented"
+
+        opt = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
+        if task == "direction":
+            y = torch.tensor(y_train.astype(int).to_numpy(dtype=np.float32), dtype=torch.float32)
+            pos = float(y.mean().item()) if len(y) else 0.5
+            pos_weight = torch.tensor([(1.0 - pos) / max(pos, 1e-3)], dtype=torch.float32)
+            loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            for _epoch in range(epochs):
+                model.train()
+                opt.zero_grad()
+                loss = loss_fn(model(xtr), y)
+                loss.backward()
+                opt.step()
+            model.eval()
+            with torch.no_grad():
+                val_prob = torch.sigmoid(model(xva)).numpy()
+                final_prob = torch.sigmoid(model(xfi)).numpy()
+            return (val_prob >= 0.5).astype(int), val_prob, (final_prob >= 0.5).astype(int), final_prob, ""
+        y_np = pd.to_numeric(y_train, errors="coerce").to_numpy(dtype=np.float32)
+        y_mean = float(np.nanmean(y_np))
+        y_std = float(np.nanstd(y_np)) or 1.0
+        y = torch.tensor((y_np - y_mean) / y_std, dtype=torch.float32)
+        loss_fn = nn.MSELoss()
+        for _epoch in range(epochs):
+            model.train()
+            opt.zero_grad()
+            loss = loss_fn(model(xtr), y)
+            loss.backward()
+            opt.step()
+        model.eval()
+        with torch.no_grad():
+            val_pred = model(xva).numpy() * y_std + y_mean
+            final_pred = model(xfi).numpy() * y_std + y_mean
+        return val_pred, None, final_pred, None, ""
+    except Exception as exc:
+        return None, None, None, None, f"{type(exc).__name__}: {exc}"
+
+
+def run_v3_deep_sequence(features: pd.DataFrame, family_cols: dict[str, list[str]], relative_cols: list[str], index_data: dict[str, pd.DataFrame], feature_groups: dict[str, list[str]], dependency: dict[str, Any], config: RunConfig, started: float, timeout_seconds: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    direction_rows: list[dict[str, Any]] = []
+    price_rows: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    models = ["MLP", "LSTM", "GRU", "BiLSTM", "1D CNN", "TCN", "Transformer encoder"]
+    if not dependency.get("torch_available"):
+        for model in models:
+            skipped.append(v3_skipped_row("deep_sequence", "deep_sequence", model, reason="torch unavailable"))
+        return direction_rows, price_rows, skipped
+    direction_plan = [
+        ("absolute_direction", 20, "relative_strength"),
+        ("absolute_direction", 40, "market_context"),
+        ("absolute_direction", 40, "combined_strategy_features"),
+        ("market_relative_vn30", 20, "relative_strength"),
+        ("market_relative_vn30", 40, "market_context"),
+        ("market_relative_vn30", 40, "combined_strategy_features"),
+    ]
+    for target_variant, horizon, feature_group in direction_plan:
+        labels = build_direction_target(features, index_data, target_variant, horizon)
+        splits = split_sample(features, labels, strict_split_indices(features, labels), config, classification=True)
+        x_train, x_val, x_final, selected, status = fit_matrix(features, splits, feature_groups.get(feature_group, []), 16)
+        if status != "ok":
+            skipped.append(v3_skipped_row("direction", "deep_sequence", "all", target_variant, horizon, feature_group, status))
+            continue
+        for model_name in models:
+            if time.perf_counter() - started > timeout_seconds:
+                skipped.append(v3_skipped_row("direction", "deep_sequence", model_name, target_variant, horizon, feature_group, "runtime_budget_exhausted"))
+                continue
+            start = time.perf_counter()
+            val_pred, val_prob, final_pred, final_prob, reason = v3_torch_predict(model_name, "direction", x_train, labels.loc[splits["train"]], x_val, x_final)
+            candidate = {"candidate_id": candidate_id("v3", "deep", model_name, target_variant, f"h{horizon}", feature_group), "source_family": "deep_sequence", "model_family": model_name, "feature_group": feature_group, "target_variant": target_variant, "horizon": horizon}
+            if val_pred is None or final_pred is None:
+                skipped.append(v3_skipped_row("direction", "deep_sequence", model_name, target_variant, horizon, feature_group, reason))
+                direction_rows.append({**candidate, "task": "direction", "status": "skipped", "skipped_reason": reason})
+                continue
+            direction_rows.append(v3_direction_row(candidate, labels, splits, features, val_pred, val_prob, final_pred, final_prob, time.perf_counter() - start))
+    price_plan = [
+        ("forward_log_return_h", 20, "relative_strength"),
+        ("forward_log_return_h", 40, "market_context"),
+        ("market_excess_return_h", 20, "relative_strength"),
+        ("market_excess_return_h", 40, "market_context"),
+    ]
+    for target_variant, horizon, feature_group in price_plan:
+        target = build_price_target(features, index_data, target_variant, horizon)
+        splits = split_sample(features, target, strict_split_for_target(features, target), config, classification=False)
+        x_train, x_val, x_final, selected, status = fit_matrix(features, splits, feature_groups.get(feature_group, []), 16)
+        if status != "ok":
+            skipped.append(v3_skipped_row("price_return", "deep_sequence", "all", target_variant, horizon, feature_group, status))
+            continue
+        for model_name in models:
+            if time.perf_counter() - started > timeout_seconds:
+                skipped.append(v3_skipped_row("price_return", "deep_sequence", model_name, target_variant, horizon, feature_group, "runtime_budget_exhausted"))
+                continue
+            start = time.perf_counter()
+            val_pred, _val_prob, final_pred, _final_prob, reason = v3_torch_predict(model_name, "price_return", x_train, target.loc[splits["train"]], x_val, x_final)
+            candidate = {"candidate_id": candidate_id("v3", "deep", model_name, target_variant, f"h{horizon}", feature_group), "source_family": "deep_sequence", "model_family": model_name, "feature_group": feature_group, "target_variant": target_variant, "horizon": horizon}
+            if val_pred is None or final_pred is None:
+                skipped.append(v3_skipped_row("price_return", "deep_sequence", model_name, target_variant, horizon, feature_group, reason))
+                price_rows.append({**candidate, "task": "price_return", "status": "skipped", "skipped_reason": reason})
+                continue
+            price_rows.append(v3_price_row(candidate, target, splits, features, np.asarray(val_pred), np.asarray(final_pred), time.perf_counter() - start))
+    return direction_rows, price_rows, skipped
+
+
+def run_v3_catboost(features: pd.DataFrame, family_cols: dict[str, list[str]], relative_cols: list[str], index_data: dict[str, pd.DataFrame], feature_groups: dict[str, list[str]], dependency: dict[str, Any], config: RunConfig) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    direction_rows: list[dict[str, Any]] = []
+    price_rows: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    if not dependency.get("catboost_available"):
+        for task, model in [("direction", "catboost_classifier"), ("price_return", "catboost_regressor")]:
+            skipped.append(v3_skipped_row(task, "catboost", model, reason="catboost unavailable"))
+        return direction_rows, price_rows, skipped
+    for target_variant, horizon in [("absolute_direction", 40), ("market_relative_vn30", 40)]:
+        labels = build_direction_target(features, index_data, target_variant, horizon)
+        splits = split_sample(features, labels, strict_split_indices(features, labels), config, classification=True)
+        for feature_group in ["relative_strength", "market_context"]:
+            row, _pred = evaluate_direction_candidate("catboost_classifier", feature_group, features, family_cols, relative_cols, index_data, labels, splits, feature_groups.get(feature_group, []))
+            row["source_family"] = "catboost"
+            direction_rows.append(row)
+            if row.get("status") == "skipped":
+                skipped.append(v3_skipped_row("direction", "catboost", "catboost_classifier", target_variant, horizon, feature_group, row.get("skipped_reason", "")))
+    for target_variant, horizon in [("forward_log_return_h", 40), ("market_excess_return_h", 40)]:
+        target = build_price_target(features, index_data, target_variant, horizon)
+        splits = split_sample(features, target, strict_split_for_target(features, target), config, classification=False)
+        for feature_group in ["relative_strength", "market_context"]:
+            row, _pred = evaluate_price_candidate("catboost_regressor", feature_group, features, target, splits, feature_groups.get(feature_group, []))
+            row["source_family"] = "catboost"
+            price_rows.append(row)
+            if row.get("status") == "skipped":
+                skipped.append(v3_skipped_row("price_return", "catboost", "catboost_regressor", target_variant, horizon, feature_group, row.get("skipped_reason", "")))
+    return direction_rows, price_rows, skipped
+
+
+def run_v3_qml(features: pd.DataFrame, family_cols: dict[str, list[str]], relative_cols: list[str], index_data: dict[str, pd.DataFrame], dependency: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    rows: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    config = RunConfig("v3_qml", 1200, 260, 140, 140, 20, 0)
+    for target_variant in ["market_relative_vn30", "absolute_direction"]:
+        labels = build_direction_target(features, index_data, target_variant, 40)
+        splits = split_sample(features, labels, strict_split_indices(features, labels), config, classification=True)
+        for model_name in ["qml_v8_kernel_features_l2", "qml_v8_kernel_features_lightgbm"]:
+            row, _pred = evaluate_direction_candidate(model_name, "qml_kernel_features", features, family_cols, relative_cols, index_data, labels, splits, [])
+            row["source_family"] = "qml_integration"
+            rows.append(row)
+            if row.get("status") == "skipped":
+                skipped.append(v3_skipped_row("direction", "qml_integration", model_name, target_variant, 40, "qml_kernel_features", row.get("skipped_reason", "")))
+    skipped.append(v3_skipped_row("direction", "qml_integration", "V4 pure quantum kernel replay", "market_relative_vn30", 40, "relative_strength", "not run in V3 bounded integration; V4 evidence exists in QML artifacts"))
+    skipped.append(v3_skipped_row("direction", "qml_integration", "PennyLane hybrid QNN", "market_relative_vn30", 40, "relative_strength", "not run in V3 bounded integration; focused QML smoke path required"))
+    return rows, skipped
+
+
+def v3_direction_ensemble(features: pd.DataFrame, index_data: dict[str, pd.DataFrame], feature_groups: dict[str, list[str]], target_variant: str, horizon: int, feature_group: str, ensemble_name: str, config: RunConfig) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    start = time.perf_counter()
+    labels = build_direction_target(features, index_data, target_variant, horizon)
+    splits = split_sample(features, labels, strict_split_indices(features, labels), config, classification=True)
+    x_train, x_val, x_final, selected, status = fit_matrix(features, splits, feature_groups.get(feature_group, []), 16)
+    candidate = {"candidate_id": candidate_id("v3", "ensemble", ensemble_name, target_variant, f"h{horizon}", feature_group), "source_family": "ensemble", "model_family": ensemble_name, "feature_group": feature_group, "target_variant": target_variant, "horizon": horizon}
+    if status != "ok":
+        return {**candidate, "task": "direction", "status": "skipped", "skipped_reason": status}, v3_skipped_row("direction", "ensemble", ensemble_name, target_variant, horizon, feature_group, status)
+    base_models = ["logistic_regression", "linear_svm", "naive_bayes", "random_forest"]
+    val_probs: list[np.ndarray] = []
+    final_probs: list[np.ndarray] = []
+    val_y = labels.loc[splits["validation"]].astype(int).to_numpy()
+    train_y = labels.loc[splits["train"]].astype(int)
+    for base in base_models:
+        model, reason = direction_model(base)
+        if model is None:
+            continue
+        try:
+            model.fit(x_train, train_y)
+            if hasattr(model, "predict_proba"):
+                vp = np.asarray(model.predict_proba(x_val)[:, 1], dtype=float)
+                fp = np.asarray(model.predict_proba(x_final)[:, 1], dtype=float)
+            else:
+                vs = np.asarray(model.decision_function(x_val), dtype=float)
+                fs = np.asarray(model.decision_function(x_final), dtype=float)
+                vp = 1.0 / (1.0 + np.exp(-np.clip(vs, -30.0, 30.0)))
+                fp = 1.0 / (1.0 + np.exp(-np.clip(fs, -30.0, 30.0)))
+            val_probs.append(vp)
+            final_probs.append(fp)
+        except Exception:
+            continue
+    if len(val_probs) < 2:
+        return {**candidate, "task": "direction", "status": "skipped", "skipped_reason": "fewer than two base models fit"}, v3_skipped_row("direction", "ensemble", ensemble_name, target_variant, horizon, feature_group, "fewer than two base models fit")
+    val_stack = np.vstack(val_probs)
+    final_stack = np.vstack(final_probs)
+    if ensemble_name == "soft_voting":
+        val_prob = val_stack.mean(axis=0)
+        final_prob = final_stack.mean(axis=0)
+    elif ensemble_name == "rank_average":
+        val_prob = pd.DataFrame(val_stack.T).rank(pct=True).mean(axis=1).to_numpy(dtype=float)
+        final_prob = pd.DataFrame(final_stack.T).rank(pct=True).mean(axis=1).to_numpy(dtype=float)
+    elif ensemble_name == "model_family_ensemble":
+        weights = np.asarray([max(0.01, float(((vp >= 0.5).astype(int) == val_y).mean())) for vp in val_probs], dtype=float)
+        weights = weights / weights.sum()
+        val_prob = np.average(val_stack, axis=0, weights=weights)
+        final_prob = np.average(final_stack, axis=0, weights=weights)
+    else:
+        val_prob = val_stack.mean(axis=0)
+        final_prob = final_stack.mean(axis=0)
+    return v3_direction_row(candidate, labels, splits, features, (val_prob >= 0.5).astype(int), val_prob, (final_prob >= 0.5).astype(int), final_prob, time.perf_counter() - start), None
+
+
+def run_v3_ensembles(features: pd.DataFrame, index_data: dict[str, pd.DataFrame], feature_groups: dict[str, list[str]], config: RunConfig) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    rows: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for target_variant, feature_group in [("absolute_direction", "market_context"), ("absolute_direction", "combined_strategy_features"), ("market_relative_vn30", "market_context")]:
+        for ensemble_name in ["soft_voting", "rank_average", "model_family_ensemble"]:
+            row, skip = v3_direction_ensemble(features, index_data, feature_groups, target_variant, 40, feature_group, ensemble_name, config)
+            rows.append(row)
+            if skip is not None:
+                skipped.append(skip)
+    skipped.append(v3_skipped_row("direction", "ensemble", "stacking_logistic", "absolute_direction", 40, "market_context", "row-level out-of-fold predictions not preserved in V1/V2; skipped to avoid validation leakage"))
+    skipped.append(v3_skipped_row("direction", "ensemble", "direction-price_joint_diagnostic_ensemble", "absolute_direction", 40, "market_context", "joint direction-price row-level alignment requires a separate pre-registered adapter"))
+    return rows, skipped
+
+
+def v3_unified_leaderboard(direction_rows: list[dict[str, Any]], price_rows: list[dict[str, Any]], ensemble_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for row in direction_rows + ensemble_rows:
+        if row.get("status") != "ok":
+            continue
+        rows.append({**row, "primary_validation_metric": row.get("validation_accuracy", math.nan), "primary_final_metric": row.get("final_accuracy", math.nan), "metric_direction": "higher_is_better"})
+    for row in price_rows:
+        if row.get("status") != "ok":
+            continue
+        rows.append({**row, "primary_validation_metric": row.get("validation_error_improvement_over_baseline", math.nan), "primary_final_metric": row.get("final_error_improvement_over_baseline", math.nan), "metric_direction": "higher_is_better"})
+    return sorted(rows, key=lambda row: as_float(row.get("primary_validation_metric")), reverse=True)
+
+
+def v3_future_blind_registry(direction_rows: list[dict[str, Any]], price_rows: list[dict[str, Any]], ensemble_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    registry: list[dict[str, Any]] = []
+    required_ids = {
+        "direction__linear_svm__absolute_direction__h40__market_context": "V2 future-blind-required absolute h40 diagnostic",
+        "direction__naive_bayes__absolute_direction__h40__market_context": "V2 exploratory 69.86 source family",
+    }
+    v2_audit = read_artifact("v2_relock_protocol_audit.csv")
+    for cid, reason in required_ids.items():
+        match = v2_audit[v2_audit.get("selected_candidate_id", "") == cid] if not v2_audit.empty else pd.DataFrame()
+        if not match.empty:
+            row = match.iloc[0].to_dict()
+            registry.append({"candidate_id": cid, "source": "v2", "why_promising": reason, "why_not_claimable_now": row.get("audit_note", "final-discovered hypothesis family"), "future_blind_test_needed": "pre-register target/model/feature/horizon and evaluate on a future-blind post-final window"})
+        else:
+            registry.append({"candidate_id": cid, "source": "v2", "why_promising": reason, "why_not_claimable_now": "final-discovered hypothesis family", "future_blind_test_needed": "pre-register and rerun on a future-blind window"})
+    for row in direction_rows + ensemble_rows:
+        if row.get("status") != "ok":
+            continue
+        target = row.get("target_variant")
+        horizon = int(as_float(row.get("horizon"))) if math.isfinite(as_float(row.get("horizon"))) else 0
+        final_acc = as_float(row.get("final_accuracy"))
+        val_lift = as_float(row.get("validation_lift_over_strongest_baseline"))
+        if target == "absolute_direction" and horizon == 40 and final_acc > CLASSICAL_CHAMPION["final_accuracy"]:
+            registry.append({"candidate_id": row.get("candidate_id", ""), "source": "v3", "why_promising": f"final absolute_direction h40 {pct(final_acc)} exceeds 61.61 context", "why_not_claimable_now": "V3 is skipped-family diagnostic and final rows are scoring-only", "future_blind_test_needed": "lock from validation and test on future-blind h40 absolute_direction window"})
+        if target == "market_relative_vn30" and horizon == 40 and final_acc > QML_V8_CONTEXT_FINAL and val_lift > 0:
+            registry.append({"candidate_id": row.get("candidate_id", ""), "source": "v3", "why_promising": f"final market_relative_vn30 h40 {pct(final_acc)} exceeds 64.44 QML V8 context", "why_not_claimable_now": "target is market-relative and V3 is diagnostic", "future_blind_test_needed": "lock from validation and test on future-blind market_relative_vn30 h40 window"})
+    for row in price_rows:
+        if row.get("status") == "ok" and as_float(row.get("final_error_improvement_over_baseline")) > 0:
+            registry.append({"candidate_id": row.get("candidate_id", ""), "source": "v3", "why_promising": f"final error improvement {pp(row.get('final_error_improvement_over_baseline'))}", "why_not_claimable_now": "V3 is diagnostic and price/return final transfer needs future-blind confirmation", "future_blind_test_needed": "pre-register target/horizon/model and compare against random walk/last price on future-blind data"})
+    return pd.DataFrame(registry).drop_duplicates("candidate_id").to_dict("records") if registry else []
+
+
+def write_v3_reports(direction_rows: list[dict[str, Any]], price_rows: list[dict[str, Any]], ensemble_rows: list[dict[str, Any]], qml_rows: list[dict[str, Any]], skipped: list[dict[str, Any]], registry: list[dict[str, Any]]) -> None:
+    ok_direction = [row for row in direction_rows + ensemble_rows if row.get("status") == "ok"]
+    ok_price = [row for row in price_rows if row.get("status") == "ok"]
+    best_direction = max(ok_direction, key=lambda row: (as_float(row.get("validation_accuracy")), as_float(row.get("validation_lift_over_strongest_baseline"))), default={})
+    best_price = max(ok_price, key=lambda row: as_float(row.get("validation_error_improvement_over_baseline")), default={})
+    best_ensemble = max([row for row in ensemble_rows if row.get("status") == "ok"], key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    best_qml = max([row for row in qml_rows if row.get("status") == "ok"], key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    stat_price = [row for row in price_rows if row.get("source_family") == "statistical" and row.get("status") == "ok"]
+    deep_direction = [row for row in direction_rows if row.get("source_family") == "deep_sequence" and row.get("status") == "ok"]
+    deep_price = [row for row in price_rows if row.get("source_family") == "deep_sequence" and row.get("status") == "ok"]
+    catboost_rows = [row for row in direction_rows + price_rows if row.get("source_family") == "catboost" and row.get("status") == "ok"]
+    enabled_families = sorted(set(row.get("source_family", "") for row in direction_rows + price_rows + ensemble_rows if row.get("status") == "ok"))
+    skipped_families = sorted(set(row.get("model_family", "") for row in skipped))
+    abs_candidates = [row for row in ok_direction if row.get("target_variant") == "absolute_direction" and int(as_float(row.get("horizon"))) == 40 and as_float(row.get("validation_lift_over_strongest_baseline")) > 0]
+    best_abs_final = max(abs_candidates, key=lambda row: as_float(row.get("final_accuracy")), default={})
+    mr_candidates = [row for row in ok_direction if row.get("target_variant") == "market_relative_vn30" and int(as_float(row.get("horizon"))) == 40 and as_float(row.get("validation_lift_over_strongest_baseline")) > 0]
+    best_mr_final = max(mr_candidates, key=lambda row: as_float(row.get("final_accuracy")), default={})
+    price_final = max(ok_price, key=lambda row: as_float(row.get("final_error_improvement_over_baseline")), default={})
+    summary = f"""# VN30 Model Universe V3 Skipped Families Result Summary
+
+## Required Answers
+
+1. Which skipped families successfully ran: {", ".join(enabled_families) if enabled_families else "none"}.
+2. Which skipped families remained unavailable: {", ".join(skipped_families[:20]) if skipped_families else "none"}.
+3. Did statistical models improve price/return forecasting: {str(any(as_float(row.get("validation_error_improvement_over_baseline")) > 0 for row in stat_price)).lower()} on validation; best statistical row is `{max(stat_price, key=lambda row: as_float(row.get("validation_error_improvement_over_baseline")), default={}).get("candidate_id", "")}`.
+4. Did deep/sequence models improve direction forecasting: {str(any(as_float(row.get("validation_lift_over_strongest_baseline")) > 0 for row in deep_direction)).lower()} on validation.
+5. Did deep/sequence models improve price/return forecasting: {str(any(as_float(row.get("validation_error_improvement_over_baseline")) > 0 for row in deep_price)).lower()} on validation.
+6. Did CatBoost improve over XGBoost/LightGBM if available: {"CatBoost ran" if catboost_rows else "CatBoost unavailable or skipped"}.
+7. Did QML integration improve over QML V8 or same-target classical baselines: {str(as_float(best_qml.get("final_accuracy")) > QML_V8_CONTEXT_FINAL).lower()} for the best QML integration row `{best_qml.get("candidate_id", "")}`; this remains diagnostic-only.
+8. Did ensembles improve validation-to-final transfer: best ensemble `{best_ensemble.get("candidate_id", "")}` validation {pct(best_ensemble.get("validation_accuracy"))}, final {pct(best_ensemble.get("final_accuracy"))}.
+9. Did any validation-governed candidate beat the 61.61 absolute-direction champion on comparable scope: {str(as_float(best_abs_final.get("final_accuracy")) > CLASSICAL_CHAMPION["final_accuracy"]).lower()} for `{best_abs_final.get("candidate_id", "")}` with final {pct(best_abs_final.get("final_accuracy"))}; future-blind confirmation is still required.
+10. Did any validation-governed candidate beat the 64.44 QML V8 market-relative result on comparable scope: {str(as_float(best_mr_final.get("final_accuracy")) > QML_V8_CONTEXT_FINAL).lower()} for `{best_mr_final.get("candidate_id", "")}` with final {pct(best_mr_final.get("final_accuracy"))}; future-blind confirmation is still required.
+11. Did any price/return model beat random walk/last price on final: {str(as_float(price_final.get("final_error_improvement_over_baseline")) > 0).lower()} for `{price_final.get("candidate_id", "")}` with final improvement {pp(price_final.get("final_error_improvement_over_baseline"))}.
+12. Which candidates require future-blind confirmation: {len(registry)} rows are listed in `v3_future_blind_candidate_registry.csv`.
+13. Exact claim boundary: offline diagnostic-only; no trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, production, VN100, index-as-stock, tag, merge, push --mirror, DOCX, or replacement claim is made.
+
+## Best Rows
+
+- Best direction validation row: `{best_direction.get("candidate_id", "")}`; validation {pct(best_direction.get("validation_accuracy"))}, final {pct(best_direction.get("final_accuracy"))}.
+- Best price/return validation row: `{best_price.get("candidate_id", "")}`; validation improvement {pp(best_price.get("validation_error_improvement_over_baseline"))}, final improvement {pp(best_price.get("final_error_improvement_over_baseline"))}.
+- Best ensemble row: `{best_ensemble.get("candidate_id", "")}`; validation {pct(best_ensemble.get("validation_accuracy"))}, final {pct(best_ensemble.get("final_accuracy"))}.
+- Best QML integration row: `{best_qml.get("candidate_id", "")}`; validation {pct(best_qml.get("validation_accuracy"))}, final {pct(best_qml.get("final_accuracy"))}.
+"""
+    write_markdown(V3_RESULT_PATH, summary)
+    claim = """# VN30 Model Universe V3 Skipped Families Claim Boundary
+
+- V3 is an offline diagnostic benchmark for previously skipped model families.
+- Direction and price/return targets are separate; directional accuracy is not mixed with price/return error metrics.
+- Optional dependencies are dependency-guarded; unavailable families are recorded, not forced.
+- Candidate selection is validation-governed only; final rows are scoring-only.
+- Final-ranked rows remain exploratory_not_claimable.
+- Results exceeding the 61.61% absolute-direction champion or 64.44% QML V8 market-relative context require future-blind confirmation and do not replace prior champions.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, production, VN100, index-as-stock, DOCX, tag, merge, push --mirror, or main-branch claim is made.
+"""
+    write_markdown(V3_CLAIM_PATH, claim)
+
+
+def run_enable_skipped_families(timeout_seconds: int) -> dict[str, Any]:
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    dependency = v3_dependency_status()
+    write_json(OUTPUT_DIR / "v3_dependency_status.json", dependency)
+    features, family_cols, _feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    index_data = load_index_data()
+    features, relative_cols = add_v3_relative_strength_features(features, index_data)
+    feature_groups = build_feature_groups(features, family_cols, relative_cols)
+    config = RunConfig("enable_skipped_families", timeout_seconds, 800, 320, 320, 200, 200)
+
+    statistical_rows, skipped = run_v3_statistical(features, index_data, dependency, config, started, timeout_seconds)
+    deep_direction, deep_price, deep_skipped = run_v3_deep_sequence(features, family_cols, relative_cols, index_data, feature_groups, dependency, config, started, timeout_seconds)
+    cat_direction, cat_price, cat_skipped = run_v3_catboost(features, family_cols, relative_cols, index_data, feature_groups, dependency, config)
+    qml_rows, qml_skipped = run_v3_qml(features, family_cols, relative_cols, index_data, dependency)
+    ensemble_rows, ensemble_skipped = run_v3_ensembles(features, index_data, feature_groups, config)
+    skipped.extend(deep_skipped + cat_skipped + qml_skipped + ensemble_skipped)
+
+    direction_rows = deep_direction + cat_direction + qml_rows + ensemble_rows
+    price_rows = statistical_rows + deep_price + cat_price
+    direction_ok = [row for row in direction_rows if row.get("status") == "ok"]
+    price_ok = [row for row in price_rows if row.get("status") == "ok"]
+    direction_final = sorted(direction_ok, key=lambda row: as_float(row.get("final_accuracy")), reverse=True)
+    price_final = sorted(price_ok, key=lambda row: as_float(row.get("final_error_improvement_over_baseline")), reverse=True)
+    unified = v3_unified_leaderboard(direction_ok, price_ok, ensemble_rows)
+    registry = v3_future_blind_registry(direction_ok, price_ok, ensemble_rows)
+
+    write_frame(OUTPUT_DIR / "v3_statistical_results.csv", statistical_rows, sorted(set().union(*(row.keys() for row in statistical_rows))) if statistical_rows else [])
+    write_frame(OUTPUT_DIR / "v3_deep_sequence_results.csv", deep_direction + deep_price, sorted(set().union(*(row.keys() for row in deep_direction + deep_price))) if (deep_direction or deep_price) else [])
+    write_frame(OUTPUT_DIR / "v3_catboost_results.csv", cat_direction + cat_price, sorted(set().union(*(row.keys() for row in cat_direction + cat_price))) if (cat_direction or cat_price) else [])
+    write_frame(OUTPUT_DIR / "v3_qml_integration_results.csv", qml_rows, sorted(set().union(*(row.keys() for row in qml_rows))) if qml_rows else [])
+    write_frame(OUTPUT_DIR / "v3_ensemble_results.csv", ensemble_rows, sorted(set().union(*(row.keys() for row in ensemble_rows))) if ensemble_rows else [])
+    write_frame(OUTPUT_DIR / "v3_direction_validation_results.csv", direction_ok, sorted(set().union(*(row.keys() for row in direction_ok))) if direction_ok else [])
+    write_frame(OUTPUT_DIR / "v3_direction_final_results.csv", direction_final, sorted(set().union(*(row.keys() for row in direction_final))) if direction_final else [])
+    write_frame(OUTPUT_DIR / "v3_price_validation_results.csv", price_ok, sorted(set().union(*(row.keys() for row in price_ok))) if price_ok else [])
+    write_frame(OUTPUT_DIR / "v3_price_final_results.csv", price_final, sorted(set().union(*(row.keys() for row in price_final))) if price_final else [])
+    write_frame(OUTPUT_DIR / "v3_unified_leaderboard.csv", unified, sorted(set().union(*(row.keys() for row in unified))) if unified else [])
+    write_frame(OUTPUT_DIR / "v3_skipped_models.csv", skipped, sorted(set().union(*(row.keys() for row in skipped))) if skipped else [])
+    runtime_rows = [{"phase": "v3_enable_skipped_families", "runtime_seconds": time.perf_counter() - started, "direction_rows": len(direction_ok), "price_rows": len(price_ok), "skipped_rows": len(skipped), "timeout_seconds": timeout_seconds}]
+    write_frame(OUTPUT_DIR / "v3_runtime_summary.csv", runtime_rows, list(runtime_rows[0].keys()))
+    write_frame(OUTPUT_DIR / "v3_future_blind_candidate_registry.csv", registry, sorted(set().union(*(row.keys() for row in registry))) if registry else [])
+    write_v3_reports(direction_ok, price_ok, ensemble_rows, qml_rows, skipped, registry)
+    result = {
+        "status": "ok",
+        "mode": "enable_skipped_families",
+        "runtime_seconds": time.perf_counter() - started,
+        "direction_rows": len(direction_ok),
+        "price_rows": len(price_ok),
+        "skipped_rows": len(skipped),
+        "future_blind_registry_rows": len(registry),
+        "diagnostic_only": True,
+        "no_trading_claim": True,
+    }
+    print(json.dumps(json_safe(result), indent=2))
+    return result
+
+
 def run_benchmark(config: RunConfig) -> dict[str, Any]:
     started = time.perf_counter()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1934,6 +2614,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--smoke", action="store_true", help="Run small smoke coverage.")
     parser.add_argument("--validation-screening", action="store_true", help="Run bounded validation screening.")
     parser.add_argument("--promotion-relock", action="store_true", help="Run V2 promotion relock audit for high-performing exploratory final rows.")
+    parser.add_argument("--enable-skipped-families", action="store_true", help="Run V3 bounded benchmark for previously skipped families.")
     parser.add_argument("--timeout-seconds", type=int, default=7200)
     return parser.parse_args()
 
@@ -1942,6 +2623,9 @@ def main() -> None:
     args = parse_args()
     if args.promotion_relock:
         run_promotion_relock(max(1, int(args.timeout_seconds)))
+        return
+    if args.enable_skipped_families:
+        run_enable_skipped_families(max(1, int(args.timeout_seconds)))
         return
     if args.smoke:
         config = RunConfig("smoke", max(1, int(args.timeout_seconds)), 500, 250, 250, 80, 80)
