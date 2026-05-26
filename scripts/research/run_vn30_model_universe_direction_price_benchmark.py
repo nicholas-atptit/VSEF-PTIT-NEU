@@ -97,6 +97,8 @@ warnings.filterwarnings("ignore", category=UserWarning)
 OUTPUT_DIR = REPO_ROOT / "reports" / "generated" / "vn30_model_universe_direction_price"
 RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_DIRECTION_PRICE_RESULT_SUMMARY.md"
 CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_DIRECTION_PRICE_CLAIM_BOUNDARY.md"
+V2_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V2_PROMOTION_RELOCK_RESULT_SUMMARY.md"
+V2_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V2_PROMOTION_RELOCK_CLAIM_BOUNDARY.md"
 
 QML_V8_CONTEXT_FINAL = 0.6444444444444445
 QML_V8_CONTEXT_VALIDATION = 0.6055555555555555
@@ -1179,6 +1181,555 @@ def write_reports(direction_rows: list[dict[str, Any]], price_rows: list[dict[st
     write_markdown(CLAIM_PATH, claim)
 
 
+def read_artifact(name: str) -> pd.DataFrame:
+    path = OUTPUT_DIR / name
+    if not path.exists():
+        return pd.DataFrame()
+    return pd.read_csv(path)
+
+
+def numeric_series(frame: pd.DataFrame, column: str) -> pd.Series:
+    if column not in frame.columns:
+        return pd.Series(np.nan, index=frame.index, dtype=float)
+    return pd.to_numeric(frame[column], errors="coerce")
+
+
+def v2_baseline_maps(baseline: pd.DataFrame) -> tuple[dict[tuple[str, int, str], float], dict[tuple[str, int], float], dict[tuple[str, int, str], float], dict[tuple[str, int], float]]:
+    if baseline.empty:
+        return {}, {}, {}, {}
+    frame = baseline.copy()
+    frame["horizon"] = numeric_series(frame, "horizon").astype("Int64")
+    frame["final_value_num"] = numeric_series(frame, "final_value")
+    direction = frame[(frame["task"] == "direction") & frame["final_value_num"].notna()]
+    price = frame[(frame["task"] == "price_return") & frame["final_value_num"].notna()]
+    dir_feature = direction.groupby(["target_variant", "horizon", "feature_group"], dropna=False)["final_value_num"].max().to_dict()
+    dir_target = direction.groupby(["target_variant", "horizon"], dropna=False)["final_value_num"].max().to_dict()
+    price_feature = price.groupby(["target_variant", "horizon", "feature_group"], dropna=False)["final_value_num"].min().to_dict()
+    price_target = price.groupby(["target_variant", "horizon"], dropna=False)["final_value_num"].min().to_dict()
+    return dir_feature, dir_target, price_feature, price_target
+
+
+def v2_lookup_baseline(row: pd.Series, exact: dict[tuple[str, int, str], float], fallback: dict[tuple[str, int], float]) -> float:
+    target = str(row.get("target_variant", ""))
+    horizon = int(as_float(row.get("horizon"))) if math.isfinite(as_float(row.get("horizon"))) else 0
+    feature_group = str(row.get("feature_group", ""))
+    value = exact.get((target, horizon, feature_group))
+    if value is None:
+        value = fallback.get((target, horizon))
+    return float(value) if value is not None and math.isfinite(float(value)) else math.nan
+
+
+def annotate_v2_direction(direction: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
+    if direction.empty:
+        return direction
+    dir_feature, dir_target, _price_feature, _price_target = v2_baseline_maps(baseline)
+    frame = direction.copy()
+    frame = frame[frame.get("status", "ok") == "ok"].copy()
+    for column in ["horizon", "validation_accuracy", "final_accuracy", "lift_over_strongest_baseline", "balanced_accuracy", "ticker_stability", "quarter_stability", "validation_rows", "final_rows"]:
+        frame[column] = numeric_series(frame, column)
+    frame["strongest_final_baseline_accuracy"] = frame.apply(lambda row: v2_lookup_baseline(row, dir_feature, dir_target), axis=1)
+    frame["final_lift_over_strongest_baseline"] = frame["final_accuracy"] - frame["strongest_final_baseline_accuracy"]
+    frame["is_trivial_baseline"] = frame["model_family"].isin(["always_up", "always_down", "random_same_class_balance"])
+    frame["comparable_absolute_h40_scope"] = (frame["target_variant"] == "absolute_direction") & (frame["horizon"] == 40)
+    frame["comparable_market_relative_h40_scope"] = (frame["target_variant"] == "market_relative_vn30") & (frame["horizon"] == 40)
+    frame["v2_claim_label"] = "exploratory_not_claimable"
+    return frame
+
+
+def annotate_v2_price(price: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
+    if price.empty:
+        return price
+    _dir_feature, _dir_target, price_feature, price_target = v2_baseline_maps(baseline)
+    frame = price.copy()
+    frame = frame[frame.get("status", "ok") == "ok"].copy()
+    for column in [
+        "horizon",
+        "validation_rmse",
+        "final_rmse",
+        "validation_sign_accuracy",
+        "final_sign_accuracy",
+        "validation_correlation_pred_actual",
+        "final_correlation_pred_actual",
+        "error_improvement_over_baseline",
+        "validation_rows",
+        "final_rows",
+    ]:
+        frame[column] = numeric_series(frame, column)
+    frame["strongest_final_baseline_rmse"] = frame.apply(lambda row: v2_lookup_baseline(row, price_feature, price_target), axis=1)
+    frame["final_rmse_improvement_over_baseline"] = np.where(
+        (frame["strongest_final_baseline_rmse"] > 0.0) & frame["strongest_final_baseline_rmse"].notna() & frame["final_rmse"].notna(),
+        (frame["strongest_final_baseline_rmse"] - frame["final_rmse"]) / frame["strongest_final_baseline_rmse"],
+        np.nan,
+    )
+    frame["is_price_baseline"] = frame["model_family"].isin(["random_walk_price", "last_price", "zero_return", "historical_mean_return", "rolling_mean_return"])
+    frame["v2_claim_label"] = "exploratory_not_claimable"
+    return frame
+
+
+def source_bucket_frame(frame: pd.DataFrame, bucket: str, sort_column: str, ascending: bool, n: int = 50) -> pd.DataFrame:
+    if frame.empty or sort_column not in frame.columns:
+        return pd.DataFrame()
+    subset = frame[frame[sort_column].notna()].sort_values(sort_column, ascending=ascending).head(n).copy()
+    subset["v2_selection_bucket"] = bucket
+    return subset
+
+
+def v2_top_direction_candidates(direction: pd.DataFrame) -> pd.DataFrame:
+    pieces = [
+        source_bucket_frame(direction[direction["target_variant"] == "absolute_direction"], "top50_absolute_direction_final_accuracy", "final_accuracy", False),
+        source_bucket_frame(direction[direction["target_variant"] == "market_relative_vn30"], "top50_market_relative_vn30_final_accuracy", "final_accuracy", False),
+        source_bucket_frame(direction, "top50_final_lift_over_strongest_baseline", "final_lift_over_strongest_baseline", False),
+        source_bucket_frame(direction[(direction["target_variant"].isin(["absolute_direction", "market_relative_vn30"])) & (direction["horizon"] == 40)], "included_comparable_h40_rows", "final_accuracy", False),
+    ]
+    combined = pd.concat([piece for piece in pieces if not piece.empty], ignore_index=True)
+    if combined.empty:
+        return combined
+    bucket_map = combined.groupby("candidate_id")["v2_selection_bucket"].apply(lambda values: "|".join(sorted(set(values)))).to_dict()
+    top = combined.sort_values(["final_accuracy", "final_lift_over_strongest_baseline"], ascending=False).drop_duplicates("candidate_id").copy()
+    top["v2_selection_bucket"] = top["candidate_id"].map(bucket_map)
+    return top.sort_values(["final_accuracy", "final_lift_over_strongest_baseline"], ascending=False)
+
+
+def v2_top_price_candidates(price: pd.DataFrame) -> pd.DataFrame:
+    pieces = [
+        source_bucket_frame(price, "top50_final_rmse_improvement", "final_rmse_improvement_over_baseline", False),
+        source_bucket_frame(price, "top50_final_sign_accuracy", "final_sign_accuracy", False),
+        source_bucket_frame(price, "top50_final_correlation_pred_actual", "final_correlation_pred_actual", False),
+        source_bucket_frame(price[price["target_variant"].isin(["forward_log_return_h", "market_excess_return_h"])], "included_forward_log_and_market_excess", "final_rmse_improvement_over_baseline", False),
+    ]
+    combined = pd.concat([piece for piece in pieces if not piece.empty], ignore_index=True)
+    if combined.empty:
+        return combined
+    bucket_map = combined.groupby("candidate_id")["v2_selection_bucket"].apply(lambda values: "|".join(sorted(set(values)))).to_dict()
+    top = combined.sort_values(["final_rmse_improvement_over_baseline", "final_sign_accuracy", "final_correlation_pred_actual"], ascending=False).drop_duplicates("candidate_id").copy()
+    top["v2_selection_bucket"] = top["candidate_id"].map(bucket_map)
+    return top.sort_values(["final_rmse_improvement_over_baseline", "final_sign_accuracy"], ascending=False)
+
+
+def candidate_coverage_maps(ticker_stability: pd.DataFrame, quarter_stability: pd.DataFrame, task: str) -> tuple[dict[str, int], dict[str, int]]:
+    ticker_counts: dict[str, int] = {}
+    quarter_counts: dict[str, int] = {}
+    if not ticker_stability.empty and "candidate_id" in ticker_stability.columns:
+        ticker_counts = ticker_stability[ticker_stability.get("task") == task].groupby("candidate_id")["group"].nunique().to_dict()
+    if not quarter_stability.empty and "candidate_id" in quarter_stability.columns:
+        quarter_counts = quarter_stability[quarter_stability.get("task") == task].groupby("candidate_id")["group"].nunique().to_dict()
+    return ticker_counts, quarter_counts
+
+
+def v2_cluster_summary(top: pd.DataFrame, task: str, ticker_stability: pd.DataFrame, quarter_stability: pd.DataFrame) -> pd.DataFrame:
+    if top.empty:
+        return pd.DataFrame()
+    ticker_counts, quarter_counts = candidate_coverage_maps(ticker_stability, quarter_stability, task)
+    frame = top.copy()
+    frame["ticker_coverage"] = frame["candidate_id"].map(ticker_counts).fillna(0).astype(int)
+    frame["quarter_coverage"] = frame["candidate_id"].map(quarter_counts).fillna(0).astype(int)
+    support_key = ["model_family", "target_variant", "horizon"]
+    support_counts = frame.groupby(support_key, dropna=False)["candidate_id"].nunique().to_dict()
+    rows: list[dict[str, Any]] = []
+    group_cols = ["model_family", "target_variant", "horizon", "feature_group"]
+    for key, group in frame.groupby(group_cols, dropna=False):
+        model_family, target_variant, horizon, feature_group = key
+        support_count = int(support_counts.get((model_family, target_variant, horizon), len(group)))
+        if task == "direction":
+            final_values = numeric_series(group, "final_accuracy")
+            validation_values = numeric_series(group, "validation_accuracy")
+            max_final = float(final_values.max())
+            median_final = float(final_values.median())
+            median_validation = float(validation_values.median())
+            gap = median_final - median_validation
+            metric_name = "accuracy"
+        else:
+            final_values = numeric_series(group, "final_rmse_improvement_over_baseline")
+            validation_values = numeric_series(group, "error_improvement_over_baseline")
+            max_final = float(final_values.max())
+            median_final = float(final_values.median())
+            median_validation = float(validation_values.median())
+            gap = median_final - median_validation
+            metric_name = "rmse_improvement_over_baseline"
+        cluster_count = int(len(group))
+        verdict = "cluster_supported" if cluster_count >= 2 or support_count >= 2 else "isolated_one_off"
+        rows.append(
+            {
+                "task": task,
+                "model_family": model_family,
+                "target_variant": target_variant,
+                "horizon": int(horizon) if math.isfinite(as_float(horizon)) else horizon,
+                "feature_group": feature_group,
+                "cluster_count": cluster_count,
+                "family_target_horizon_support_count": support_count,
+                "metric_name": metric_name,
+                "max_final_metric": max_final,
+                "median_final_metric": median_final,
+                "validation_median_metric": median_validation,
+                "validation_final_gap": gap,
+                "median_row_count": float(numeric_series(group, "final_rows").median()) if "final_rows" in group.columns else math.nan,
+                "median_ticker_coverage": float(group["ticker_coverage"].median()),
+                "median_quarter_coverage": float(group["quarter_coverage"].median()),
+                "median_ticker_stability": float(numeric_series(group, "ticker_stability").median()) if "ticker_stability" in group.columns else math.nan,
+                "median_quarter_stability": float(numeric_series(group, "quarter_stability").median()) if "quarter_stability" in group.columns else math.nan,
+                "cluster_verdict": verdict,
+                "candidate_ids": "|".join(group["candidate_id"].astype(str).tolist()[:12]),
+            }
+        )
+    return pd.DataFrame(rows).sort_values(["max_final_metric", "family_target_horizon_support_count"], ascending=False)
+
+
+def v2_relock_direction_candidates(direction: pd.DataFrame, clusters: pd.DataFrame) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    locked: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    if direction.empty or clusters.empty:
+        return locked, audit
+    interesting = clusters.head(24).copy()
+    required = clusters[((clusters["target_variant"].isin(["absolute_direction", "market_relative_vn30"])) & (clusters["horizon"] == 40))]
+    interesting = pd.concat([interesting, required], ignore_index=True).drop_duplicates(["model_family", "target_variant", "horizon", "feature_group"])
+    for _, cluster in interesting.iterrows():
+        subset = direction[
+            (direction["model_family"] == cluster["model_family"])
+            & (direction["target_variant"] == cluster["target_variant"])
+            & (direction["horizon"] == cluster["horizon"])
+            & (direction["feature_group"] == cluster["feature_group"])
+        ].copy()
+        if subset.empty:
+            continue
+        ranked = subset.sort_values(["validation_accuracy", "lift_over_strongest_baseline", "balanced_accuracy"], ascending=False)
+        selected = ranked.iloc[0].to_dict()
+        is_trivial = bool(selected.get("is_trivial_baseline"))
+        validation_lift = as_float(selected.get("lift_over_strongest_baseline"))
+        final_accuracy = as_float(selected.get("final_accuracy"))
+        target = str(selected.get("target_variant", ""))
+        horizon = int(as_float(selected.get("horizon"))) if math.isfinite(as_float(selected.get("horizon"))) else 0
+        if is_trivial:
+            label = "not_claimable"
+            reason = "trivial_baseline_family"
+        elif validation_lift <= 0:
+            label = "exploratory_not_claimable"
+            reason = "validation_lift_not_positive"
+        elif target == "absolute_direction" and horizon == 40 and final_accuracy > CLASSICAL_CHAMPION["final_accuracy"]:
+            label = "future_blind_required"
+            reason = "validation_relocked_final_beats_context_but_hypothesis_was_final_discovered"
+        elif target == "market_relative_vn30" and horizon == 40 and final_accuracy > QML_V8_CONTEXT_FINAL:
+            label = "future_blind_required"
+            reason = "validation_relocked_final_beats_qml_v8_context_but_hypothesis_was_final_discovered"
+        else:
+            label = "future_blind_required"
+            reason = "validation_relocked_diagnostic_requires_future_blind_confirmation"
+        selected.update(
+            {
+                "relock_source": "final_discovered_cluster_hypothesis",
+                "selection_rule": "within_cluster_validation_accuracy_then_validation_lift",
+                "relock_claim_label": label,
+                "relock_reason": reason,
+                "cluster_verdict": cluster.get("cluster_verdict", ""),
+                "family_target_horizon_support_count": int(cluster.get("family_target_horizon_support_count", 0)),
+                "final_selection_used": False,
+                "future_blind_required": True,
+            }
+        )
+        locked.append(json_safe(selected))
+        audit.append(
+            {
+                "task": "direction",
+                "source_model_family": cluster["model_family"],
+                "target_variant": cluster["target_variant"],
+                "horizon": cluster["horizon"],
+                "feature_group": cluster["feature_group"],
+                "source_cluster_verdict": cluster.get("cluster_verdict", ""),
+                "cluster_count": cluster.get("cluster_count", 0),
+                "family_target_horizon_support_count": cluster.get("family_target_horizon_support_count", 0),
+                "selection_freeze": "model_family/target/horizon/feature_group",
+                "selection_metric": "validation_accuracy_then_validation_lift",
+                "selected_candidate_id": selected.get("candidate_id", ""),
+                "selected_validation_accuracy": selected.get("validation_accuracy", math.nan),
+                "selected_final_accuracy": selected.get("final_accuracy", math.nan),
+                "final_selection_used": False,
+                "claim_label": label,
+                "audit_note": reason,
+            }
+        )
+    return locked, audit
+
+
+def v2_relock_price_candidates(price: pd.DataFrame, clusters: pd.DataFrame) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    locked: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    if price.empty or clusters.empty:
+        return locked, audit
+    interesting = clusters.head(24).copy()
+    required = clusters[clusters["target_variant"].isin(["forward_log_return_h", "market_excess_return_h"])]
+    interesting = pd.concat([interesting, required], ignore_index=True).drop_duplicates(["model_family", "target_variant", "horizon", "feature_group"])
+    for _, cluster in interesting.iterrows():
+        subset = price[
+            (price["model_family"] == cluster["model_family"])
+            & (price["target_variant"] == cluster["target_variant"])
+            & (price["horizon"] == cluster["horizon"])
+            & (price["feature_group"] == cluster["feature_group"])
+        ].copy()
+        if subset.empty:
+            continue
+        ranked = subset.sort_values(["error_improvement_over_baseline", "validation_sign_accuracy", "validation_correlation_pred_actual", "validation_rmse"], ascending=[False, False, False, True])
+        selected = ranked.iloc[0].to_dict()
+        final_improvement = as_float(selected.get("final_rmse_improvement_over_baseline"))
+        validation_improvement = as_float(selected.get("error_improvement_over_baseline"))
+        if bool(selected.get("is_price_baseline")):
+            label = "not_claimable"
+            reason = "baseline_family"
+        elif validation_improvement <= 0:
+            label = "exploratory_not_claimable"
+            reason = "validation_error_improvement_not_positive"
+        elif final_improvement > 0:
+            label = "future_blind_required"
+            reason = "validation_relocked_final_beats_price_baseline_but_hypothesis_was_final_discovered"
+        else:
+            label = "future_blind_required"
+            reason = "validation_relocked_price_diagnostic_requires_future_blind_confirmation"
+        selected.update(
+            {
+                "relock_source": "final_discovered_cluster_hypothesis",
+                "selection_rule": "within_cluster_validation_error_improvement_then_sign_accuracy",
+                "relock_claim_label": label,
+                "relock_reason": reason,
+                "cluster_verdict": cluster.get("cluster_verdict", ""),
+                "family_target_horizon_support_count": int(cluster.get("family_target_horizon_support_count", 0)),
+                "final_selection_used": False,
+                "future_blind_required": True,
+            }
+        )
+        locked.append(json_safe(selected))
+        audit.append(
+            {
+                "task": "price_return",
+                "source_model_family": cluster["model_family"],
+                "target_variant": cluster["target_variant"],
+                "horizon": cluster["horizon"],
+                "feature_group": cluster["feature_group"],
+                "source_cluster_verdict": cluster.get("cluster_verdict", ""),
+                "cluster_count": cluster.get("cluster_count", 0),
+                "family_target_horizon_support_count": cluster.get("family_target_horizon_support_count", 0),
+                "selection_freeze": "model_family/target/horizon/feature_group",
+                "selection_metric": "validation_error_improvement_then_sign_accuracy",
+                "selected_candidate_id": selected.get("candidate_id", ""),
+                "selected_validation_rmse": selected.get("validation_rmse", math.nan),
+                "selected_final_rmse": selected.get("final_rmse", math.nan),
+                "selected_final_rmse_improvement": selected.get("final_rmse_improvement_over_baseline", math.nan),
+                "final_selection_used": False,
+                "claim_label": label,
+                "audit_note": reason,
+            }
+        )
+    return locked, audit
+
+
+def v2_rolling_rows_from_artifacts(locked: list[dict[str, Any]], quarter_stability: pd.DataFrame, task: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    quarter_frame = quarter_stability[quarter_stability.get("task") == task].copy() if not quarter_stability.empty and "task" in quarter_stability.columns else pd.DataFrame()
+    for item in locked:
+        candidate = str(item.get("candidate_id", ""))
+        if task == "direction":
+            rows.extend(
+                [
+                    {"candidate_id": candidate, "task": task, "window": "validation_2024_full", "metric": "accuracy", "value": item.get("validation_accuracy", math.nan), "rows": item.get("validation_rows", math.nan), "status": "aggregate_available"},
+                    {"candidate_id": candidate, "task": task, "window": "validation_early_2024", "metric": "accuracy", "value": math.nan, "rows": math.nan, "status": "not_available_from_v1_aggregate_artifacts"},
+                    {"candidate_id": candidate, "task": task, "window": "validation_late_2024", "metric": "accuracy", "value": math.nan, "rows": math.nan, "status": "not_available_from_v1_aggregate_artifacts"},
+                    {"candidate_id": candidate, "task": task, "window": "final_2025plus_diagnostic", "metric": "accuracy", "value": item.get("final_accuracy", math.nan), "rows": item.get("final_rows", math.nan), "status": "aggregate_available"},
+                ]
+            )
+        else:
+            rows.extend(
+                [
+                    {"candidate_id": candidate, "task": task, "window": "validation_2024_full", "metric": "rmse", "value": item.get("validation_rmse", math.nan), "rows": item.get("validation_rows", math.nan), "status": "aggregate_available"},
+                    {"candidate_id": candidate, "task": task, "window": "validation_early_2024", "metric": "rmse", "value": math.nan, "rows": math.nan, "status": "not_available_from_v1_aggregate_artifacts"},
+                    {"candidate_id": candidate, "task": task, "window": "validation_late_2024", "metric": "rmse", "value": math.nan, "rows": math.nan, "status": "not_available_from_v1_aggregate_artifacts"},
+                    {"candidate_id": candidate, "task": task, "window": "final_2025plus_diagnostic", "metric": "rmse", "value": item.get("final_rmse", math.nan), "rows": item.get("final_rows", math.nan), "status": "aggregate_available"},
+                ]
+            )
+        if not quarter_frame.empty:
+            for _, qrow in quarter_frame[quarter_frame["candidate_id"] == candidate].iterrows():
+                rows.append(
+                    {
+                        "candidate_id": candidate,
+                        "task": task,
+                        "window": f"final_quarter_{qrow.get('group', '')}",
+                        "metric": qrow.get("metric", ""),
+                        "value": as_float(qrow.get("value")),
+                        "rows": as_float(qrow.get("rows")),
+                        "status": "quarter_artifact_available",
+                    }
+                )
+    return rows
+
+
+def best_relocked_direction(locked: list[dict[str, Any]], target: str | None = None, horizon: int | None = None) -> dict[str, Any]:
+    rows = [
+        row for row in locked
+        if (target is None or row.get("target_variant") == target)
+        and (horizon is None or int(as_float(row.get("horizon"))) == horizon)
+        and row.get("relock_claim_label") != "not_claimable"
+    ]
+    if not rows:
+        rows = [row for row in locked if target is None or row.get("target_variant") == target]
+    return max(rows, key=lambda row: (as_float(row.get("validation_accuracy")), as_float(row.get("lift_over_strongest_baseline")), as_float(row.get("final_accuracy"))), default={})
+
+
+def best_relocked_price(locked: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = [row for row in locked if row.get("relock_claim_label") != "not_claimable"]
+    if not rows:
+        rows = locked
+    return max(rows, key=lambda row: (as_float(row.get("error_improvement_over_baseline")), as_float(row.get("final_rmse_improvement_over_baseline")), as_float(row.get("validation_sign_accuracy"))), default={})
+
+
+def v2_comparison_rows(locked_direction: list[dict[str, Any]], locked_price: list[dict[str, Any]], manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    v1_direction = manifest.get("locked_direction", {}) if isinstance(manifest, dict) else {}
+    v1_price = manifest.get("locked_price", {}) if isinstance(manifest, dict) else {}
+    for item in locked_direction:
+        target = str(item.get("target_variant", ""))
+        horizon = int(as_float(item.get("horizon"))) if math.isfinite(as_float(item.get("horizon"))) else 0
+        if target == "absolute_direction" and horizon == 40:
+            rows.append({"task": "direction", "candidate_id": item.get("candidate_id", ""), "comparison": "61.61_absolute_direction_classical_champion", "candidate_metric": item.get("final_accuracy", math.nan), "reference_metric": CLASSICAL_CHAMPION["final_accuracy"], "delta": as_float(item.get("final_accuracy")) - CLASSICAL_CHAMPION["final_accuracy"], "claim_status": item.get("relock_claim_label", "")})
+        if target == "market_relative_vn30" and horizon == 40:
+            rows.append({"task": "direction", "candidate_id": item.get("candidate_id", ""), "comparison": "64.44_qml_v8_market_relative_context", "candidate_metric": item.get("final_accuracy", math.nan), "reference_metric": QML_V8_CONTEXT_FINAL, "delta": as_float(item.get("final_accuracy")) - QML_V8_CONTEXT_FINAL, "claim_status": item.get("relock_claim_label", "")})
+        if v1_direction:
+            rows.append({"task": "direction", "candidate_id": item.get("candidate_id", ""), "comparison": "v1_locked_direction_final_accuracy", "candidate_metric": item.get("final_accuracy", math.nan), "reference_metric": v1_direction.get("final_accuracy", math.nan), "delta": as_float(item.get("final_accuracy")) - as_float(v1_direction.get("final_accuracy")), "claim_status": item.get("relock_claim_label", "")})
+    for item in locked_price:
+        if v1_price:
+            rows.append({"task": "price_return", "candidate_id": item.get("candidate_id", ""), "comparison": "v1_locked_price_final_rmse", "candidate_metric": item.get("final_rmse", math.nan), "reference_metric": v1_price.get("final_rmse", math.nan), "delta": as_float(v1_price.get("final_rmse")) - as_float(item.get("final_rmse")), "claim_status": item.get("relock_claim_label", "")})
+        rows.append({"task": "price_return", "candidate_id": item.get("candidate_id", ""), "comparison": "strongest_price_baseline_final_rmse", "candidate_metric": item.get("final_rmse", math.nan), "reference_metric": item.get("strongest_final_baseline_rmse", math.nan), "delta": as_float(item.get("strongest_final_baseline_rmse")) - as_float(item.get("final_rmse")), "claim_status": item.get("relock_claim_label", "")})
+    return rows
+
+
+def write_v2_reports(
+    top_direction: pd.DataFrame,
+    direction_clusters: pd.DataFrame,
+    top_price: pd.DataFrame,
+    locked_direction: list[dict[str, Any]],
+    locked_price: list[dict[str, Any]],
+    comparison_rows: list[dict[str, Any]],
+) -> None:
+    abs_source_all = top_direction[(top_direction["target_variant"] == "absolute_direction") & (top_direction["horizon"] == 40)].sort_values("final_accuracy", ascending=False).head(1)
+    abs_source_promotable = top_direction[
+        (top_direction["target_variant"] == "absolute_direction")
+        & (top_direction["horizon"] == 40)
+        & (~top_direction["is_trivial_baseline"])
+        & (top_direction["lift_over_strongest_baseline"] > 0)
+    ].sort_values("final_accuracy", ascending=False).head(1)
+    mr_source = top_direction[(top_direction["target_variant"] == "market_relative_vn30") & (top_direction["horizon"] == 40)].sort_values("final_accuracy", ascending=False).head(1)
+    abs_row = abs_source_promotable.iloc[0].to_dict() if not abs_source_promotable.empty else (abs_source_all.iloc[0].to_dict() if not abs_source_all.empty else {})
+    abs_all_row = abs_source_all.iloc[0].to_dict() if not abs_source_all.empty else {}
+    mr_row = mr_source.iloc[0].to_dict() if not mr_source.empty else {}
+    locked_abs = best_relocked_direction(locked_direction, "absolute_direction", 40)
+    locked_mr = best_relocked_direction(locked_direction, "market_relative_vn30", 40)
+    locked_price_best = best_relocked_price(locked_price)
+    abs_cluster = direction_clusters[
+        (direction_clusters["model_family"] == abs_row.get("model_family"))
+        & (direction_clusters["target_variant"] == abs_row.get("target_variant"))
+        & (direction_clusters["horizon"] == abs_row.get("horizon"))
+        & (direction_clusters["feature_group"] == abs_row.get("feature_group"))
+    ]
+    mr_cluster = direction_clusters[
+        (direction_clusters["model_family"] == mr_row.get("model_family"))
+        & (direction_clusters["target_variant"] == mr_row.get("target_variant"))
+        & (direction_clusters["horizon"] == mr_row.get("horizon"))
+        & (direction_clusters["feature_group"] == mr_row.get("feature_group"))
+    ]
+    abs_cluster_verdict = str(abs_cluster.iloc[0].get("cluster_verdict", "")) if not abs_cluster.empty else ""
+    mr_cluster_verdict = str(mr_cluster.iloc[0].get("cluster_verdict", "")) if not mr_cluster.empty else ""
+    price_final_beats = as_float(locked_price_best.get("final_rmse_improvement_over_baseline")) > 0
+    summary = f"""# VN30 Model Universe V2 Promotion Relock Result Summary
+
+## Required Answers
+
+1. What produced the exploratory 69.86% absolute-direction final row: the strongest non-trivial comparable h40 source was `{abs_row.get("candidate_id", "")}` with final accuracy {pct(abs_row.get("final_accuracy"))}, validation accuracy {pct(abs_row.get("validation_accuracy"))}, and validation lift {pp(abs_row.get("lift_over_strongest_baseline"))}. The absolute highest h40 final row was `{abs_all_row.get("candidate_id", "")}` at {pct(abs_all_row.get("final_accuracy"))}, but it did not pass validation-lift promotion screening.
+2. What produced the exploratory 74.57% market-relative final row: `{mr_row.get("candidate_id", "")}` with final accuracy {pct(mr_row.get("final_accuracy"))}; this is a trivial/simple baseline pattern with validation lift {pp(mr_row.get("lift_over_strongest_baseline"))}, so it is not promotable.
+3. Were those results isolated one-offs or cluster-supported: the absolute-direction source is `{abs_cluster_verdict}` and the market-relative source is `{mr_cluster_verdict}` under the model/target/horizon/feature cluster audit.
+4. Could any family be re-locked by validation: yes, V2 froze final-discovered hypothesis families and selected exact candidates by validation only, but all such relocks remain future-blind-required because the families were discovered from final exploratory rows.
+5. Did any relocked direction candidate beat 61.61% on comparable scope: {str(as_float(locked_abs.get("final_accuracy")) > CLASSICAL_CHAMPION["final_accuracy"]).lower()} for `{locked_abs.get("candidate_id", "")}` with final accuracy {pct(locked_abs.get("final_accuracy"))}; this is not a replacement claim.
+6. Did any relocked market-relative candidate beat 64.44% on comparable scope: {str(as_float(locked_mr.get("final_accuracy")) > QML_V8_CONTEXT_FINAL).lower()} for `{locked_mr.get("candidate_id", "")}` with final accuracy {pct(locked_mr.get("final_accuracy"))}; this is not a QML replacement claim.
+7. Did any relocked price/return candidate beat random walk/last price on final: {str(price_final_beats).lower()} for `{locked_price_best.get("candidate_id", "")}` with final RMSE improvement {pp(locked_price_best.get("final_rmse_improvement_over_baseline"))}.
+8. Which results remain exploratory: all source final-ranked rows and all relocked rows remain diagnostic/future-blind-required unless confirmed by a new pre-registered future-blind run.
+9. Exact claim boundary: offline diagnostic-only; no trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, VN100, index-as-stock, tag, merge, push --mirror, DOCX, or production claim is made.
+
+## Relocked Direction Candidates
+
+- Best absolute h40 relock: `{locked_abs.get("candidate_id", "")}`; validation {pct(locked_abs.get("validation_accuracy"))}, final {pct(locked_abs.get("final_accuracy"))}, label `{locked_abs.get("relock_claim_label", "")}`.
+- Best market-relative h40 relock: `{locked_mr.get("candidate_id", "")}`; validation {pct(locked_mr.get("validation_accuracy"))}, final {pct(locked_mr.get("final_accuracy"))}, label `{locked_mr.get("relock_claim_label", "")}`.
+
+## Relocked Price/Return Candidate
+
+- Best price/return relock: `{locked_price_best.get("candidate_id", "")}`; validation RMSE {as_float(locked_price_best.get("validation_rmse")):.6g}, final RMSE {as_float(locked_price_best.get("final_rmse")):.6g}, final baseline improvement {pp(locked_price_best.get("final_rmse_improvement_over_baseline"))}, label `{locked_price_best.get("relock_claim_label", "")}`.
+
+## Audit Note
+
+V2 uses V1 aggregate artifacts for promotion relock. Early/late validation window rows are marked unavailable when row-level validation predictions were not preserved by V1; final quarter diagnostics are included where V1 stability artifacts exist.
+"""
+    write_markdown(V2_RESULT_PATH, summary)
+    claim = """# VN30 Model Universe V2 Promotion Relock Claim Boundary
+
+- V2 is an offline diagnostic promotion-relock audit only.
+- Exploratory final rows are used only to define hypothesis families, not to select claimable rows.
+- Exact relocked candidates are selected within each frozen hypothesis family by validation metrics only.
+- Because hypothesis families were discovered from final exploratory rows, all stronger interpretation requires a new future-blind protocol.
+- Final-ranked rows remain exploratory_not_claimable unless re-run under a future-blind design.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, production, VN100, index-as-stock, DOCX, tag, merge, push --mirror, or main-branch claim is made.
+- Comparisons against the 61.61% absolute-direction champion are contextual and only valid on comparable absolute_direction h40 scope.
+- Comparisons against the 64.44% QML V8 market-relative result are contextual and only valid on comparable market_relative_vn30 h40 scope.
+"""
+    write_markdown(V2_CLAIM_PATH, claim)
+
+
+def run_promotion_relock(timeout_seconds: int) -> dict[str, Any]:
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    direction_raw = read_artifact("direction_validation_results.csv")
+    price_raw = read_artifact("price_validation_results.csv")
+    baseline = read_artifact("baseline_comparison.csv")
+    ticker_stability = read_artifact("ticker_stability.csv")
+    quarter_stability = read_artifact("quarter_stability.csv")
+    manifest_path = OUTPUT_DIR / "model_universe_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+    direction = annotate_v2_direction(direction_raw, baseline)
+    price = annotate_v2_price(price_raw, baseline)
+    top_direction = v2_top_direction_candidates(direction)
+    top_price = v2_top_price_candidates(price)
+    direction_clusters = v2_cluster_summary(top_direction, "direction", ticker_stability, quarter_stability)
+    price_clusters = v2_cluster_summary(top_price, "price_return", ticker_stability, quarter_stability)
+    locked_direction, direction_audit = v2_relock_direction_candidates(direction, direction_clusters)
+    locked_price, price_audit = v2_relock_price_candidates(price, price_clusters)
+    protocol_audit = direction_audit + price_audit
+    rolling_direction = v2_rolling_rows_from_artifacts(locked_direction, quarter_stability, "direction")
+    rolling_price = v2_rolling_rows_from_artifacts(locked_price, quarter_stability, "price_return")
+    comparison_rows = v2_comparison_rows(locked_direction, locked_price, manifest)
+
+    write_frame(OUTPUT_DIR / "v2_top_exploratory_direction_candidates.csv", top_direction.to_dict("records"), list(top_direction.columns) if not top_direction.empty else [])
+    write_frame(OUTPUT_DIR / "v2_top_exploratory_price_candidates.csv", top_price.to_dict("records"), list(top_price.columns) if not top_price.empty else [])
+    write_frame(OUTPUT_DIR / "v2_direction_candidate_cluster_summary.csv", direction_clusters.to_dict("records"), list(direction_clusters.columns) if not direction_clusters.empty else [])
+    write_frame(OUTPUT_DIR / "v2_price_candidate_cluster_summary.csv", price_clusters.to_dict("records"), list(price_clusters.columns) if not price_clusters.empty else [])
+    write_frame(OUTPUT_DIR / "v2_relock_protocol_audit.csv", protocol_audit, list(protocol_audit[0].keys()) if protocol_audit else [])
+    write_json(OUTPUT_DIR / "v2_locked_direction_candidates.json", {"locked_candidates": locked_direction, "selection": "validation_only_within_final_discovered_hypothesis_family", "future_blind_required": True})
+    write_json(OUTPUT_DIR / "v2_locked_price_candidates.json", {"locked_candidates": locked_price, "selection": "validation_only_within_final_discovered_hypothesis_family", "future_blind_required": True})
+    write_frame(OUTPUT_DIR / "v2_rolling_origin_direction.csv", rolling_direction, list(rolling_direction[0].keys()) if rolling_direction else [])
+    write_frame(OUTPUT_DIR / "v2_rolling_origin_price.csv", rolling_price, list(rolling_price[0].keys()) if rolling_price else [])
+    write_frame(OUTPUT_DIR / "v2_relocked_comparison_summary.csv", comparison_rows, list(comparison_rows[0].keys()) if comparison_rows else [])
+    write_v2_reports(top_direction, direction_clusters, top_price, locked_direction, locked_price, comparison_rows)
+
+    result = {
+        "status": "ok",
+        "mode": "promotion_relock",
+        "runtime_seconds": time.perf_counter() - started,
+        "timeout_seconds": timeout_seconds,
+        "top_direction_candidates": int(len(top_direction)),
+        "top_price_candidates": int(len(top_price)),
+        "direction_clusters": int(len(direction_clusters)),
+        "price_clusters": int(len(price_clusters)),
+        "locked_direction_candidates": int(len(locked_direction)),
+        "locked_price_candidates": int(len(locked_price)),
+        "diagnostic_only": True,
+        "future_blind_required": True,
+        "no_trading_claim": True,
+    }
+    print(json.dumps(json_safe(result), indent=2))
+    return result
+
+
 def run_benchmark(config: RunConfig) -> dict[str, Any]:
     started = time.perf_counter()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -1359,12 +1910,16 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run VN30 model-universe direction and price/return diagnostics.")
     parser.add_argument("--smoke", action="store_true", help="Run small smoke coverage.")
     parser.add_argument("--validation-screening", action="store_true", help="Run bounded validation screening.")
+    parser.add_argument("--promotion-relock", action="store_true", help="Run V2 promotion relock audit for high-performing exploratory final rows.")
     parser.add_argument("--timeout-seconds", type=int, default=7200)
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    if args.promotion_relock:
+        run_promotion_relock(max(1, int(args.timeout_seconds)))
+        return
     if args.smoke:
         config = RunConfig("smoke", max(1, int(args.timeout_seconds)), 500, 250, 250, 80, 80)
     else:
