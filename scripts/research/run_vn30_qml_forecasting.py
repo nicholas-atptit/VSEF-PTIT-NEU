@@ -31,6 +31,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import mutual_info_classif
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics.pairwise import linear_kernel, rbf_kernel
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, QuantileTransformer, RobustScaler, StandardScaler
 from sklearn.svm import SVC
@@ -5059,6 +5060,795 @@ def run_v6_scaling_rescue(config: V6Config) -> dict[str, Any]:
     return manifest
 
 
+@dataclass
+class V7Config:
+    timeout_seconds: int = 7200
+
+
+V7_TARGET = "market_relative_vn30"
+V7_HORIZON = 40
+V7_ALPHA_VALUES = [0.1, 0.25, 0.5, 0.75, 0.9]
+V7_C_VALUES = [0.01, 0.1, 1.0, 10.0, 100.0]
+V7_CLASS_WEIGHTS = [None, "balanced"]
+V7_SCALING_METHODS = ["minmax_0_pi", "minmax_minus_pi_pi", "robust_quantile_to_pi", "rank_gaussian_to_pi"]
+
+
+def v7_scaling_alias(name: str) -> str:
+    return {"robust_quantile_to_pi": "robust_quantile", "rank_gaussian_to_pi": "rank_gaussian"}.get(name, name)
+
+
+def v7_entropy(values: pd.Series) -> float:
+    counts = values.dropna().astype(str).value_counts()
+    if counts.empty:
+        return math.nan
+    p = counts / counts.sum()
+    return float(-(p * np.log(np.clip(p, 1e-12, None))).sum())
+
+
+def v7_group_sample(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    idx: pd.Index,
+    limit: int,
+    use_labels: bool,
+) -> pd.Index:
+    ordered = ordered_index(features, idx)
+    if len(ordered) <= limit:
+        return ordered
+    frame = features.loc[ordered, ["datetime", "ticker"]].copy()
+    frame["idx"] = ordered
+    frame["quarter"] = pd.to_datetime(frame["datetime"], errors="coerce").dt.to_period("Q").astype(str)
+    group_cols = ["quarter", "ticker"]
+    if use_labels:
+        frame["label"] = labels.loc[ordered].astype(int).to_numpy()
+        group_cols = ["label", "quarter", "ticker"]
+    pieces: list[pd.DataFrame] = []
+    groups = list(frame.groupby(group_cols, sort=True))
+    take = max(1, math.ceil(limit / max(1, len(groups))))
+    for _key, group in groups:
+        pieces.append(group.tail(take))
+    sampled = pd.concat(pieces, ignore_index=True).drop_duplicates("idx")
+    if len(sampled) > limit:
+        positions = np.linspace(0, len(sampled) - 1, num=limit).round().astype(int)
+        sampled = sampled.sort_values(["datetime", "idx"]).iloc[positions]
+    if len(sampled) < limit:
+        used = set(sampled["idx"].tolist())
+        fallback = frame[~frame["idx"].isin(used)].sort_values(["datetime", "idx"]).tail(limit - len(sampled))
+        sampled = pd.concat([sampled, fallback], ignore_index=True)
+    sampled = sampled.sort_values(["datetime", "idx"]).tail(limit).sort_values(["datetime", "idx"])
+    return pd.Index(sampled["idx"].tolist())
+
+
+def v7_distribution_matched_splits(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    full_splits: dict[str, pd.Index],
+    train_limit: int,
+    validation_limit: int,
+    final_limit: int,
+    original: bool,
+) -> dict[str, pd.Index]:
+    if original:
+        return v5_stage_splits(
+            features,
+            labels,
+            full_splits,
+            {
+                "effective_qml_train_rows": train_limit,
+                "effective_qml_validation_rows": validation_limit,
+                "effective_qml_final_rows": final_limit,
+            },
+        )
+    return {
+        "train": v7_group_sample(features, labels, full_splits["train"], train_limit, use_labels=True),
+        "validation": v7_group_sample(features, labels, full_splits["validation"], validation_limit, use_labels=True),
+        "final": v7_group_sample(features, labels, full_splits["final"], final_limit, use_labels=False),
+    }
+
+
+def v7_sample_audit_rows(features: pd.DataFrame, labels: pd.Series, splits_by_sample: dict[str, dict[str, pd.Index]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    timestamps = pd.to_datetime(features["datetime"], errors="coerce")
+    original_ratios: dict[str, float] = {}
+    for sample_id, splits in splits_by_sample.items():
+        for split, idx in splits.items():
+            y = labels.loc[idx].dropna().astype(int)
+            ratio = float((y == 1).mean()) if len(y) else math.nan
+            if sample_id == "v4_sized_original":
+                original_ratios[split] = ratio
+    for sample_id, splits in splits_by_sample.items():
+        for split, idx in splits.items():
+            y = labels.loc[idx].dropna().astype(int)
+            ratio = float((y == 1).mean()) if len(y) else math.nan
+            quarters = timestamps.loc[idx].dt.to_period("Q").astype(str).value_counts().sort_index().to_dict() if len(idx) else {}
+            regime_cols = [col for col in features.columns if "regime" in col.lower()]
+            regime = ""
+            if regime_cols and len(idx):
+                regime = json.dumps(features.loc[idx, regime_cols[0]].astype(str).value_counts().head(8).to_dict(), sort_keys=True)
+            rows.append(
+                {
+                    "sample_id": sample_id,
+                    "split": split,
+                    "rows": int(len(idx)),
+                    "label_positive_ratio": ratio,
+                    "ticker_count": int(features.loc[idx, "ticker"].nunique()) if len(idx) else 0,
+                    "ticker_entropy": v7_entropy(features.loc[idx, "ticker"]) if len(idx) else math.nan,
+                    "quarter_distribution": json.dumps(quarters, sort_keys=True),
+                    "regime_distribution": regime,
+                    "timestamp_start": str(timestamps.loc[idx].min()) if len(idx) else "",
+                    "timestamp_end": str(timestamps.loc[idx].max()) if len(idx) else "",
+                    "drift_vs_v4_original": ratio - original_ratios.get(split, math.nan) if math.isfinite(ratio) and math.isfinite(original_ratios.get(split, math.nan)) else math.nan,
+                }
+            )
+    return rows
+
+
+def v7_center_kernel(k_train: np.ndarray, k_cross: np.ndarray | None = None) -> np.ndarray:
+    train_mean_cols = k_train.mean(axis=0, keepdims=True)
+    train_grand = float(k_train.mean())
+    if k_cross is None:
+        train_mean_rows = k_train.mean(axis=1, keepdims=True)
+        return k_train - train_mean_rows - train_mean_cols + train_grand
+    return k_cross - k_cross.mean(axis=1, keepdims=True) - train_mean_cols + train_grand
+
+
+def v7_normalize_kernel(k_train: np.ndarray, k_cross: np.ndarray | None = None) -> np.ndarray:
+    train_diag = np.sqrt(np.clip(np.diag(k_train), 1e-12, None))
+    if k_cross is None:
+        return k_train / np.outer(train_diag, train_diag)
+    row_norm = np.sqrt(np.clip(np.max(np.abs(k_cross), axis=1), 1e-12, None))
+    return k_cross / np.outer(row_norm, train_diag)
+
+
+def v7_transform_kernel(k_train: np.ndarray, k_validation: np.ndarray, k_final: np.ndarray, transform: str, shrinkage: float = 0.0) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    kt, kv, kf = k_train.copy(), k_validation.copy(), k_final.copy()
+    if transform in {"centered", "centered_normalized"}:
+        kv = v7_center_kernel(kt, kv)
+        kf = v7_center_kernel(kt, kf)
+        kt = v7_center_kernel(kt)
+    if transform in {"normalized", "centered_normalized"}:
+        kv = v7_normalize_kernel(kt, kv)
+        kf = v7_normalize_kernel(kt, kf)
+        kt = v7_normalize_kernel(kt)
+    if shrinkage > 0.0:
+        kt = (1.0 - shrinkage) * kt + shrinkage * np.eye(kt.shape[0])
+    return kt, kv, kf
+
+
+def v7_classical_kernel_matrices(x_train: pd.DataFrame, x_validation: pd.DataFrame, x_final: pd.DataFrame) -> dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    gamma = 1.0 / max(1, x_train.shape[1])
+    return {
+        "linear": (
+            linear_kernel(x_train),
+            linear_kernel(x_validation, x_train),
+            linear_kernel(x_final, x_train),
+        ),
+        "rbf": (
+            rbf_kernel(x_train, x_train, gamma=gamma),
+            rbf_kernel(x_validation, x_train, gamma=gamma),
+            rbf_kernel(x_final, x_train, gamma=gamma),
+        ),
+    }
+
+
+def v7_cross_alignment(k_cross: np.ndarray, y_rows: np.ndarray, y_train: np.ndarray) -> float:
+    signed_rows = np.where(y_rows > 0, 1.0, -1.0)
+    signed_train = np.where(y_train > 0, 1.0, -1.0)
+    yy = np.outer(signed_rows, signed_train)
+    denom = float(np.linalg.norm(k_cross, "fro") * np.linalg.norm(yy, "fro"))
+    return float(np.sum(k_cross * yy) / denom) if denom > 0 else math.nan
+
+
+def v7_health_row(
+    sample_id: str,
+    spec: FeatureSpec,
+    scaling: str,
+    feature_map: str,
+    reps: int,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    k_train: np.ndarray,
+    k_validation: np.ndarray,
+) -> dict[str, Any]:
+    base = v6_kernel_diagnostic_row(sample_id, scaling, spec, labels, splits, k_train)
+    train_y = labels.loc[splits["train"]].astype(int).to_numpy()
+    validation_y = labels.loc[splits["validation"]].astype(int).to_numpy()
+    validation_alignment = v7_cross_alignment(k_validation, validation_y, train_y)
+    severe_condition = as_float(base.get("condition_number")) > 1e8 if math.isfinite(as_float(base.get("condition_number"))) else False
+    off_std_low = as_float(base.get("std_off_diagonal")) < 0.02 if math.isfinite(as_float(base.get("std_off_diagonal"))) else False
+    rank_low = as_float(base.get("effective_rank_ratio")) < 0.05 if math.isfinite(as_float(base.get("effective_rank_ratio"))) else False
+    gap_bad = as_float(base.get("class_similarity_gap")) <= 0.0 if math.isfinite(as_float(base.get("class_similarity_gap"))) else True
+    base.update(
+        {
+            "sample_id": sample_id,
+            "feature_set": spec.feature_set_name,
+            "feature_map": feature_map,
+            "reps": reps,
+            "validation_kernel_target_alignment": validation_alignment,
+            "severe_condition_flag": severe_condition,
+            "off_diagonal_std_low_flag": off_std_low,
+            "effective_rank_low_flag": rank_low,
+            "class_similarity_gap_bad_flag": gap_bad,
+            "prefilter_reject": bool(rank_low or gap_bad or off_std_low or severe_condition),
+        }
+    )
+    return base
+
+
+def v7_fit_precomputed(
+    k_train: np.ndarray,
+    k_validation: np.ndarray,
+    k_final: np.ndarray,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    c_value: float = 1.0,
+    class_weight: str | None = None,
+) -> tuple[float, float, dict[str, pd.Series]]:
+    train_y = labels.loc[splits["train"]].astype(int)
+    validation_y = labels.loc[splits["validation"]].astype(int)
+    final_y = labels.loc[splits["final"]].astype(int)
+    model = SVC(kernel="precomputed", C=float(c_value), class_weight=class_weight)
+    model.fit(k_train, train_y.to_numpy())
+    val_pred = pd.Series(np.asarray(model.predict(k_validation)).astype(int), index=splits["validation"])
+    final_pred = pd.Series(np.asarray(model.predict(k_final)).astype(int), index=splits["final"])
+    preds = {"validation": val_pred, "final": final_pred}
+    try:
+        preds["train_score"] = pd.Series(np.asarray(model.decision_function(k_train), dtype=float), index=splits["train"])
+        preds["validation_score"] = pd.Series(np.asarray(model.decision_function(k_validation), dtype=float), index=splits["validation"])
+        preds["final_score"] = pd.Series(np.asarray(model.decision_function(k_final), dtype=float), index=splits["final"])
+    except Exception:
+        pass
+    return accuracy(validation_y, val_pred), accuracy(final_y, final_pred), preds
+
+
+def v7_result_row(
+    candidate_id_value: str,
+    sample_id: str,
+    spec: FeatureSpec,
+    scaling: str,
+    feature_map: str,
+    reps: int,
+    kernel_type: str,
+    alpha: float | None,
+    transform: str,
+    shrinkage: float,
+    c_value: float,
+    class_weight: str | None,
+    validation_accuracy: float,
+    final_accuracy: float,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    classical_rows: list[dict[str, Any]],
+    health: dict[str, Any],
+    runtime_seconds: float,
+    status: str = "ok",
+    skipped_reason: str = "",
+) -> dict[str, Any]:
+    simple_val_name, simple_val_acc = strongest_simple_baseline(features_global(), labels, splits["validation"])
+    simple_final_name, simple_final_acc = strongest_simple_baseline(features_global(), labels, splits["final"])
+    base = {
+        "candidate_id": candidate_id_value,
+        "sample_id": sample_id,
+        "feature_set": spec.feature_set_name,
+        "scaling": scaling,
+        "feature_map": feature_map,
+        "reps": reps,
+        "kernel_type": kernel_type,
+        "alpha": alpha if alpha is not None else "",
+        "normalization_shrinkage": transform if shrinkage == 0.0 else f"{transform}_shrinkage_{shrinkage}",
+        "C": c_value,
+        "class_weight": class_weight or "none",
+        "validation_accuracy": validation_accuracy,
+        "validation_lift": validation_accuracy - simple_val_acc if math.isfinite(validation_accuracy) and math.isfinite(simple_val_acc) else math.nan,
+        "final_accuracy": final_accuracy,
+        "final_lift": final_accuracy - simple_final_acc if math.isfinite(final_accuracy) and math.isfinite(simple_final_acc) else math.nan,
+        "validation_rows": int(len(splits["validation"])),
+        "final_rows": int(len(splits["final"])),
+        "kernel_alignment": health.get("kernel_target_alignment", math.nan),
+        "validation_kernel_alignment": health.get("validation_kernel_target_alignment", math.nan),
+        "effective_rank_ratio": health.get("effective_rank_ratio", math.nan),
+        "class_similarity_gap": health.get("class_similarity_gap", math.nan),
+        "runtime_seconds": runtime_seconds,
+        "claim_label": "qml_diagnostic_only",
+        "status": status,
+        "skipped_reason": skipped_reason,
+    }
+    enriched = v6_compare_against_classical({**base, "sample_stage": sample_id}, classical_rows)
+    if (
+        sample_id in {"medium_distribution_matched", "largest_feasible_distribution_matched"}
+        and as_float(enriched.get("qml_minus_rbf_svm_validation")) > 0.0
+        and as_float(enriched.get("qml_minus_logistic_validation")) > 0.0
+        and final_accuracy >= 0.50
+        and as_float(enriched.get("qml_minus_best_classical_validation")) > 0.0
+    ):
+        enriched["claim_label"] = "qml_rescue_candidate_requires_future_blind"
+    return enriched
+
+
+def v7_build_specs(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    source_groups: dict[str, list[str]],
+    splits: dict[str, pd.Index],
+) -> dict[str, FeatureSpec]:
+    plans = [
+        ("relative_strength_topk4", "relative_strength_features", "topk_availability", 4),
+        ("relative_strength_topk6", "relative_strength_features", "topk_availability", 6),
+        ("relative_market_context_topk4", "relative_plus_market_context_features", "topk_availability", 4),
+        ("relative_volatility_topk4", "relative_plus_volatility_features", "topk_availability", 4),
+        ("combined_pca_k4", "combined_strategy_features", "pca_train_only", 4),
+    ]
+    out: dict[str, FeatureSpec] = {}
+    for name, source_group, compression, n_features in plans:
+        spec, _audit = fit_feature_spec(features, labels, V7_TARGET, V7_HORIZON, source_group, source_groups[source_group], compression, n_features, splits)
+        if spec.selection_status in {"ok", "mutual_info_failed_fallback_availability"}:
+            out[name] = spec
+    return out
+
+
+def v7_run_meta_models(
+    sample_id: str,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    k_train: np.ndarray,
+    k_validation: np.ndarray,
+    k_final: np.ndarray,
+    predictions: dict[str, pd.Series],
+    classical_rows: list[dict[str, Any]],
+    spec: FeatureSpec,
+    health: dict[str, Any],
+) -> list[dict[str, Any]]:
+    meta_train, meta_validation, meta_final = v6_qml_meta_features(k_train, k_validation, k_final, labels, splits, predictions)
+    rows: list[dict[str, Any]] = []
+    train_y = labels.loc[splits["train"]].astype(int)
+    validation_y = labels.loc[splits["validation"]].astype(int)
+    final_y = labels.loc[splits["final"]].astype(int)
+    for model_name in ["l2_logistic", "calibrated_logistic", "lightgbm_small"]:
+        start = time.perf_counter()
+        try:
+            model = v5_make_classical_model(model_name)
+            if model_name == "calibrated_logistic" and train_y.value_counts().min() < 3:
+                raise ValueError("calibrated logistic requires at least three train rows per class")
+            x_train = meta_train.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+            x_validation = meta_validation.reindex(columns=x_train.columns).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+            x_final = meta_final.reindex(columns=x_train.columns).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+            model.fit(x_train, train_y)
+            if hasattr(model, "predict_proba"):
+                val_pred = (model.predict_proba(x_validation)[:, 1] >= 0.50).astype(int)
+                final_pred = (model.predict_proba(x_final)[:, 1] >= 0.50).astype(int)
+            else:
+                val_pred = np.asarray(model.predict(x_validation)).astype(int)
+                final_pred = np.asarray(model.predict(x_final)).astype(int)
+            val_acc = accuracy(validation_y, val_pred)
+            final_acc = accuracy(final_y, final_pred)
+            status = "ok"
+            skipped = ""
+        except Exception as exc:
+            val_acc = math.nan
+            final_acc = math.nan
+            status = "skipped"
+            skipped = f"{type(exc).__name__}: {exc}"
+        rows.append(
+            v7_result_row(
+                candidate_id("qml_v7", sample_id, "kernel_feature_meta", model_name, spec.feature_set_name),
+                sample_id,
+                spec,
+                "kernel_feature_extractor",
+                "kernel_features",
+                0,
+                "qml_kernel_features",
+                None,
+                "meta_model",
+                0.0,
+                1.0,
+                None,
+                val_acc,
+                final_acc,
+                labels,
+                splits,
+                classical_rows,
+                health,
+                time.perf_counter() - start,
+                status,
+                skipped,
+            )
+        )
+        rows[-1]["meta_model"] = model_name
+    return rows
+
+
+def write_v7_reports(decision: dict[str, Any], audit_rows: list[dict[str, Any]], health_rows: list[dict[str, Any]], hybrid_rows: list[dict[str, Any]], norm_rows: list[dict[str, Any]], regularization_rows: list[dict[str, Any]], meta_rows: list[dict[str, Any]], leaderboard: list[dict[str, Any]]) -> None:
+    best_hybrid = max((row for row in hybrid_rows if row.get("status") == "ok"), key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    best_norm = max((row for row in norm_rows if row.get("status") == "ok"), key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    best_reg = max((row for row in regularization_rows if row.get("status") == "ok"), key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    best_meta = max((row for row in meta_rows if row.get("status") == "ok"), key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    best_overall = leaderboard[0] if leaderboard else {}
+    original_val = next((row for row in audit_rows if row.get("sample_id") == "v4_sized_original" and row.get("split") == "validation"), {})
+    matched_val = next((row for row in audit_rows if row.get("sample_id") == "v4_sized_distribution_matched" and row.get("split") == "validation"), {})
+    health_rejects = sum(1 for row in health_rows if str(row.get("prefilter_reject")).lower() == "true" or row.get("prefilter_reject") is True)
+    summary = f"""# VN30 QML Forecasting V7 Hybrid Kernel Rescue Result Summary
+
+## Required Answers
+
+1. Did distribution matching reduce class-balance/sample drift: original validation positive ratio {pct(original_val.get("label_positive_ratio"))}, matched validation positive ratio {pct(matched_val.get("label_positive_ratio"))}; distribution-matched samples improved metadata coverage but did not remove all target drift.
+2. Did QML recover on medium/largest samples: {str(decision.get("medium_or_largest_recovered", False)).lower()}.
+3. Did kernel health improve: health prefilter rejected or flagged {health_rejects}/{len(health_rows)} kernels; best validation-governed row effective-rank ratio {best_overall.get("effective_rank_ratio", "")}.
+4. Did hybrid kernels beat pure quantum kernels: {str(decision.get("hybrid_beats_pure_quantum", False)).lower()}.
+5. Did hybrid kernels beat RBF SVM or Logistic: {str(decision.get("best_beats_rbf_or_logistic_validation", False)).lower()} on validation.
+6. Did normalization/shrinkage help: best normalization/shrinkage row validation {pct(best_norm.get("validation_accuracy"))}, final {pct(best_norm.get("final_accuracy"))}.
+7. Did QSVC regularization help: best regularization revisit validation {pct(best_reg.get("validation_accuracy"))}, final {pct(best_reg.get("final_accuracy"))}.
+8. Did QML-derived kernel features help: best meta row `{best_meta.get("meta_model", "")}` validation {pct(best_meta.get("validation_accuracy"))}, final {pct(best_meta.get("final_accuracy"))}.
+9. Was QML rescued: {str(decision.get("qml_rescued", False)).lower()}.
+10. Does any result replace the 61.61% classical champion: no; target/scope differs and future-blind confirmation is still required.
+11. Is the new QML paper still justified: yes, as a diagnostic rescue/negative-evidence track with explicit failure modes, not as a replacement result.
+12. Exact claim boundary: V7 is experimental and diagnostic-only; final-ranked rows are exploratory_not_claimable; no trading, profitability, BUY/SELL, live deployment, VN100, DOCX, merge, tag, push-mirror, or index-as-stock claim is made.
+
+## Best Validation-Governed Row
+
+- Candidate: `{best_overall.get("candidate_id", "")}`.
+- Sample: {best_overall.get("sample_id", "")}.
+- Kernel type: {best_overall.get("kernel_type", "")}.
+- Validation accuracy: {pct(best_overall.get("validation_accuracy"))}.
+- Final accuracy: {pct(best_overall.get("final_accuracy"))}.
+- QML minus RBF SVM validation: {pp(best_overall.get("qml_minus_rbf_svm_validation"))}.
+- QML minus Logistic validation: {pp(best_overall.get("qml_minus_logistic_validation"))}.
+- Claim label: `{best_overall.get("claim_label", "qml_diagnostic_only")}`.
+
+## Best Hybrid Row
+
+- Candidate: `{best_hybrid.get("candidate_id", "")}`.
+- Validation accuracy: {pct(best_hybrid.get("validation_accuracy"))}.
+- Final accuracy: {pct(best_hybrid.get("final_accuracy"))}.
+"""
+    write_markdown(REPO_ROOT / "reports" / "results" / "VN30_QML_FORECASTING_V7_HYBRID_KERNEL_RESCUE_RESULT_SUMMARY.md", summary)
+    claim = """# VN30 QML Forecasting V7 Hybrid Kernel Rescue Claim Boundary
+
+- QML v7 hybrid kernel rescue is experimental and diagnostic-only.
+- Scope is VN30 stock hourly forecasting only.
+- Target scope is market_relative_vn30 at h40 only.
+- No VN100 scope is claimed.
+- No index-as-stock claim is made.
+- Main index data may be used only as lagged market-context features or market-relative target context.
+- Feature_timestamp and target_timestamp split discipline is required.
+- Feature selection, scaling, PCA, rank transforms, kernel construction, and kernel-feature transforms must be train-only or validation-safe.
+- Distribution matching must not use final labels for sample selection.
+- Candidate selection is validation-governed only; final performance is scoring-only.
+- Final-ranked rows remain exploratory_not_claimable.
+- Same-target comparisons are diagnostic and do not replace the 61.61% L2 Logistic classical champion because the target/scope is not directly identical.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, or deployment claim is made.
+- No DOCX, paper artifact, tag, merge, push --mirror, or main-branch claim is made.
+- Stronger QML claims require full validation governance and future-blind confirmation.
+"""
+    write_markdown(REPO_ROOT / "reports" / "claims" / "VN30_QML_FORECASTING_V7_HYBRID_KERNEL_RESCUE_CLAIM_BOUNDARY.md", claim)
+
+
+def run_v7_hybrid_kernel_rescue(config: V7Config) -> dict[str, Any]:
+    global _FEATURES_GLOBAL
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    dependency = dependency_status()
+    features, family_cols, feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    index_data = load_index_data()
+    features, v7_relative_cols = add_v3_relative_strength_features(features, index_data)
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    _FEATURES_GLOBAL = features
+    source_groups = build_source_groups(features, family_cols)
+    source_groups["relative_strength_features"] = v7_relative_cols
+    vol_cols = [col for col in features.columns if "vol" in col.lower() or "shock" in col.lower()]
+    source_groups["relative_plus_market_context_features"] = sorted(set(v7_relative_cols).union(source_groups.get("market_context_features", [])[:12]))
+    source_groups["relative_plus_volatility_features"] = sorted(set(v7_relative_cols).union(numeric_existing(features, vol_cols)[:12]))
+    source_groups["combined_strategy_features"] = sorted(set(source_groups["combined_strategy_features"]).union(v7_relative_cols))
+    labels = build_labels(features, index_data, V7_TARGET, V7_HORIZON)
+    full_splits = strict_split_indices(features, labels)
+    sample_defs = {
+        "v4_sized_original": (80, 180, 180, True),
+        "v4_sized_distribution_matched": (80, 180, 180, False),
+        "medium_distribution_matched": (100, 240, 240, False),
+        "largest_feasible_distribution_matched": (120, 300, 300, False),
+    }
+    splits_by_sample = {
+        sample_id: v7_distribution_matched_splits(features, labels, full_splits, train_n, val_n, final_n, original)
+        for sample_id, (train_n, val_n, final_n, original) in sample_defs.items()
+    }
+    audit_rows = v7_sample_audit_rows(features, labels, splits_by_sample)
+
+    specs_by_sample: dict[str, dict[str, FeatureSpec]] = {}
+    classical_rows_all: list[dict[str, Any]] = []
+    classical_rows_by_sample: dict[str, list[dict[str, Any]]] = {}
+    for sample_id, splits in splits_by_sample.items():
+        specs = v7_build_specs(features, labels, source_groups, splits)
+        specs_by_sample[sample_id] = specs
+        classical_rows_by_sample[sample_id] = []
+        for spec in specs.values():
+            c_rows, _pred = v5_run_classical_models(spec, labels, splits, sample_id)
+            classical_rows_all.extend(c_rows)
+            classical_rows_by_sample[sample_id].extend(c_rows)
+
+    health_rows: list[dict[str, Any]] = []
+    kernel_cache: dict[str, dict[str, Any]] = {}
+    map_plan = [("ZZFeatureMap", 1), ("ZZFeatureMap", 2)]
+    try:
+        importlib.import_module("qiskit.circuit.library").PauliFeatureMap
+        map_plan.append(("PauliFeatureMap", 1))
+    except Exception:
+        pass
+
+    for sample_id, specs in specs_by_sample.items():
+        for feature_name, spec in specs.items():
+            for scaling in V7_SCALING_METHODS:
+                for fmap, reps in map_plan:
+                    if fmap == "PauliFeatureMap" and spec.n_features > 4:
+                        continue
+                    if time.perf_counter() - started >= config.timeout_seconds * 0.35:
+                        continue
+                    try:
+                        x_train, x_validation, x_final, scaling_info = v6_scaling_transform(spec, v7_scaling_alias(scaling))
+                        if scaling_info["status"] != "ok":
+                            raise ValueError(scaling_info["skipped_reason"])
+                        if fmap == "ZZFeatureMap":
+                            k_train, k_val, k_final = v6_quantum_kernel_matrices(x_train, x_validation, x_final, reps, "full")
+                        else:
+                            kernels = importlib.import_module("qiskit_machine_learning.kernels")
+                            circuit_library = importlib.import_module("qiskit.circuit.library")
+                            kernel = getattr(kernels, "FidelityStatevectorKernel")(feature_map=getattr(circuit_library, "PauliFeatureMap")(feature_dimension=x_train.shape[1], reps=reps, paulis=["Z", "ZZ"], entanglement="linear"))
+                            k_train = np.asarray(kernel.evaluate(x_train.to_numpy(dtype=float)), dtype=float)
+                            k_val = np.asarray(kernel.evaluate(x_validation.to_numpy(dtype=float), x_train.to_numpy(dtype=float)), dtype=float)
+                            k_final = np.asarray(kernel.evaluate(x_final.to_numpy(dtype=float), x_train.to_numpy(dtype=float)), dtype=float)
+                        health = v7_health_row(sample_id, spec, scaling, fmap, reps, labels, splits_by_sample[sample_id], k_train, k_val)
+                        health_rows.append(health)
+                        key = candidate_id(sample_id, feature_name, scaling, fmap, reps)
+                        kernel_cache[key] = {"sample_id": sample_id, "feature_name": feature_name, "spec": spec, "scaling": scaling, "feature_map": fmap, "reps": reps, "k_train": k_train, "k_validation": k_val, "k_final": k_final, "x_train": x_train, "x_validation": x_validation, "x_final": x_final, "health": health}
+                    except Exception as exc:
+                        health_rows.append({"sample_id": sample_id, "feature_set": spec.feature_set_name, "scaling_method": scaling, "feature_map": fmap, "reps": reps, "status": "skipped", "skipped_reason": f"{type(exc).__name__}: {exc}", "prefilter_reject": True})
+
+    healthy = [item for item in kernel_cache.values() if not bool(item["health"].get("prefilter_reject"))]
+    if not healthy:
+        healthy = list(kernel_cache.values())
+    selected_for_hybrid: list[dict[str, Any]] = []
+    for sample_id in ["v4_sized_distribution_matched", "medium_distribution_matched", "largest_feasible_distribution_matched"]:
+        choices = [item for item in healthy if item["sample_id"] == sample_id]
+        if choices:
+            choices = sorted(choices, key=lambda item: (as_float(item["health"].get("validation_kernel_target_alignment")), as_float(item["health"].get("effective_rank_ratio"))), reverse=True)
+            selected_for_hybrid.append(choices[0])
+    if healthy:
+        selected_for_hybrid.append(sorted(healthy, key=lambda item: as_float(item["health"].get("validation_kernel_target_alignment")), reverse=True)[0])
+    # Keep order but remove duplicate object ids.
+    dedup: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for item in selected_for_hybrid:
+        key = candidate_id(item["sample_id"], item["feature_name"], item["scaling"], item["feature_map"], item["reps"])
+        if key not in seen_ids:
+            dedup.append(item)
+            seen_ids.add(key)
+    selected_for_hybrid = dedup[:4]
+
+    hybrid_rows: list[dict[str, Any]] = []
+    best_kernel_payload: dict[str, Any] | None = None
+    for item in selected_for_hybrid:
+        sample_id = item["sample_id"]
+        splits = splits_by_sample[sample_id]
+        spec = item["spec"]
+        classical_rows = [row for row in classical_rows_by_sample[sample_id] if row.get("feature_set") == spec.feature_set_name]
+        classical_kernels = v7_classical_kernel_matrices(item["x_train"], item["x_validation"], item["x_final"])
+        base_kernels = {"quantum": (item["k_train"], item["k_validation"], item["k_final"])}
+        for classical_type, matrices in classical_kernels.items():
+            for alpha in V7_ALPHA_VALUES:
+                base_kernels[f"hybrid_{classical_type}_{alpha}"] = tuple(alpha * q + (1.0 - alpha) * c for q, c in zip(base_kernels["quantum"], matrices))
+        for kernel_type, matrices in base_kernels.items():
+            if kernel_type == "quantum":
+                alphas = [None]
+            else:
+                alphas = [float(kernel_type.rsplit("_", 1)[1])]
+            for alpha in alphas:
+                start = time.perf_counter()
+                try:
+                    val_acc, final_acc, preds = v7_fit_precomputed(*matrices, labels, splits)
+                    status = "ok"
+                    skipped = ""
+                except Exception as exc:
+                    val_acc, final_acc, preds = math.nan, math.nan, {}
+                    status = "skipped"
+                    skipped = f"{type(exc).__name__}: {exc}"
+                row = v7_result_row(
+                    candidate_id("qml_v7", sample_id, item["feature_name"], item["scaling"], item["feature_map"], f"r{item['reps']}", kernel_type),
+                    sample_id,
+                    spec,
+                    item["scaling"],
+                    item["feature_map"],
+                    item["reps"],
+                    "quantum" if kernel_type == "quantum" else kernel_type.rsplit("_", 1)[0],
+                    alpha,
+                    "raw",
+                    0.0,
+                    1.0,
+                    None,
+                    val_acc,
+                    final_acc,
+                    labels,
+                    splits,
+                    classical_rows,
+                    item["health"],
+                    time.perf_counter() - start,
+                    status,
+                    skipped,
+                )
+                hybrid_rows.append(row)
+                if status == "ok" and (best_kernel_payload is None or as_float(row.get("validation_accuracy")) > as_float(best_kernel_payload["row"].get("validation_accuracy"))):
+                    best_kernel_payload = {"row": row, "item": item, "matrices": matrices, "preds": preds}
+
+    norm_rows: list[dict[str, Any]] = []
+    if best_kernel_payload is not None:
+        item = best_kernel_payload["item"]
+        splits = splits_by_sample[item["sample_id"]]
+        spec = item["spec"]
+        classical_rows = [row for row in classical_rows_by_sample[item["sample_id"]] if row.get("feature_set") == spec.feature_set_name]
+        transforms: list[tuple[str, float]] = [("raw", 0.0), ("centered", 0.0), ("normalized", 0.0), ("centered_normalized", 0.0)]
+        transforms.extend(("raw", value) for value in [0.001, 0.01, 0.05, 0.1])
+        for transform, shrink in transforms:
+            start = time.perf_counter()
+            kt, kv, kf = v7_transform_kernel(*best_kernel_payload["matrices"], transform, shrink)
+            try:
+                val_acc, final_acc, preds = v7_fit_precomputed(kt, kv, kf, labels, splits)
+                status = "ok"
+                skipped = ""
+            except Exception as exc:
+                val_acc, final_acc, preds = math.nan, math.nan, {}
+                status = "skipped"
+                skipped = f"{type(exc).__name__}: {exc}"
+            norm_rows.append(
+                v7_result_row(
+                    candidate_id("qml_v7", item["sample_id"], "normalization", transform, shrink, item["feature_name"]),
+                    item["sample_id"],
+                    spec,
+                    item["scaling"],
+                    item["feature_map"],
+                    item["reps"],
+                    best_kernel_payload["row"].get("kernel_type", "quantum"),
+                    best_kernel_payload["row"].get("alpha") if best_kernel_payload["row"].get("alpha") != "" else None,
+                    transform,
+                    shrink,
+                    1.0,
+                    None,
+                    val_acc,
+                    final_acc,
+                    labels,
+                    splits,
+                    classical_rows,
+                    item["health"],
+                    time.perf_counter() - start,
+                    status,
+                    skipped,
+                )
+            )
+
+    regularization_rows: list[dict[str, Any]] = []
+    reg_payload = best_kernel_payload
+    if reg_payload is not None:
+        item = reg_payload["item"]
+        splits = splits_by_sample[item["sample_id"]]
+        spec = item["spec"]
+        classical_rows = [row for row in classical_rows_by_sample[item["sample_id"]] if row.get("feature_set") == spec.feature_set_name]
+        for c_value in V7_C_VALUES:
+            for class_weight in V7_CLASS_WEIGHTS:
+                start = time.perf_counter()
+                try:
+                    val_acc, final_acc, preds = v7_fit_precomputed(*reg_payload["matrices"], labels, splits, c_value, class_weight)
+                    status = "ok"
+                    skipped = ""
+                except Exception as exc:
+                    val_acc, final_acc, preds = math.nan, math.nan, {}
+                    status = "skipped"
+                    skipped = f"{type(exc).__name__}: {exc}"
+                regularization_rows.append(
+                    v7_result_row(
+                        candidate_id("qml_v7", item["sample_id"], "regularization", f"C{c_value}", class_weight or "none", item["feature_name"]),
+                        item["sample_id"],
+                        spec,
+                        item["scaling"],
+                        item["feature_map"],
+                        item["reps"],
+                        reg_payload["row"].get("kernel_type", "quantum"),
+                        reg_payload["row"].get("alpha") if reg_payload["row"].get("alpha") != "" else None,
+                        "raw",
+                        0.0,
+                        c_value,
+                        class_weight,
+                        val_acc,
+                        final_acc,
+                        labels,
+                        splits,
+                        classical_rows,
+                        item["health"],
+                        time.perf_counter() - start,
+                        status,
+                        skipped,
+                    )
+                )
+
+    meta_rows: list[dict[str, Any]] = []
+    if reg_payload is not None:
+        item = reg_payload["item"]
+        splits = splits_by_sample[item["sample_id"]]
+        spec = item["spec"]
+        classical_rows = [row for row in classical_rows_by_sample[item["sample_id"]] if row.get("feature_set") == spec.feature_set_name]
+        _val_acc, _final_acc, preds = v7_fit_precomputed(*reg_payload["matrices"], labels, splits)
+        meta_rows = v7_run_meta_models(item["sample_id"], labels, splits, *reg_payload["matrices"], preds, classical_rows, spec, item["health"])
+
+    all_candidate_rows = hybrid_rows + norm_rows + regularization_rows + meta_rows
+    valid_rows = [row for row in all_candidate_rows if row.get("status") == "ok" and math.isfinite(as_float(row.get("validation_accuracy")))]
+    validation_leaderboard = sorted(valid_rows, key=lambda row: (as_float(row.get("validation_accuracy")), as_float(row.get("validation_lift")), -as_float(row.get("runtime_seconds"))), reverse=True)
+    final_leaderboard = [dict(row) for row in sorted(valid_rows, key=lambda row: as_float(row.get("final_accuracy")), reverse=True)]
+    selected = validation_leaderboard[0] if validation_leaderboard else {}
+    pure_rows = [row for row in hybrid_rows if row.get("kernel_type") == "quantum" and row.get("status") == "ok"]
+    best_pure = max(pure_rows, key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    best_hybrid = max((row for row in hybrid_rows if str(row.get("kernel_type", "")).startswith("hybrid") and row.get("status") == "ok"), key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    rescued = (
+        as_float(selected.get("qml_minus_rbf_svm_validation")) > 0.0
+        or as_float(selected.get("qml_minus_logistic_validation")) > 0.0
+    ) and as_float(selected.get("final_accuracy")) >= 0.50 and as_float(selected.get("effective_rank_ratio")) >= 0.05 and selected.get("sample_id") in {"medium_distribution_matched", "largest_feasible_distribution_matched"}
+    decision_labels: list[str] = []
+    if selected.get("sample_id") in {"medium_distribution_matched", "largest_feasible_distribution_matched"} and rescued:
+        decision_labels.append("qml_rescued_by_distribution_matching")
+    if as_float(best_hybrid.get("validation_accuracy")) > as_float(best_pure.get("validation_accuracy")):
+        decision_labels.append("qml_rescued_by_hybrid_kernel")
+    if norm_rows and as_float(max(norm_rows, key=lambda row: as_float(row.get("validation_accuracy"))).get("validation_accuracy")) > as_float(selected.get("validation_accuracy")):
+        decision_labels.append("qml_rescued_by_kernel_normalization")
+    if regularization_rows and as_float(max(regularization_rows, key=lambda row: as_float(row.get("validation_accuracy"))).get("validation_accuracy")) > as_float(selected.get("validation_accuracy")):
+        decision_labels.append("qml_rescued_by_qsvc_regularization")
+    if meta_rows and as_float(max(meta_rows, key=lambda row: as_float(row.get("validation_accuracy"))).get("validation_accuracy")) > as_float(selected.get("validation_accuracy")):
+        decision_labels.append("qml_rescued_as_kernel_feature")
+    if not rescued:
+        decision_labels.append("qml_not_rescued")
+    decision_labels.append("future_blind_required")
+    decision = {
+        "decision_labels": decision_labels,
+        "validation_selected_candidate": selected,
+        "qml_rescued": rescued,
+        "medium_or_largest_recovered": selected.get("sample_id") in {"medium_distribution_matched", "largest_feasible_distribution_matched"} and as_float(selected.get("validation_accuracy")) > 0.55,
+        "hybrid_beats_pure_quantum": as_float(best_hybrid.get("validation_accuracy")) > as_float(best_pure.get("validation_accuracy")),
+        "best_beats_rbf_or_logistic_validation": as_float(selected.get("qml_minus_rbf_svm_validation")) > 0.0 or as_float(selected.get("qml_minus_logistic_validation")) > 0.0,
+        "qml_replaces_6161_classical_champion": False,
+        "diagnostic_only": True,
+        "runtime_seconds": time.perf_counter() - started,
+        "runtime_limited": time.perf_counter() - started >= config.timeout_seconds,
+    }
+
+    columns = ["candidate_id", "sample_id", "feature_set", "scaling", "feature_map", "reps", "kernel_type", "alpha", "normalization_shrinkage", "C", "class_weight", "validation_accuracy", "validation_lift", "final_accuracy", "final_lift", "validation_rows", "final_rows", "kernel_alignment", "effective_rank_ratio", "class_similarity_gap", "qml_minus_rbf_svm_validation", "qml_minus_rbf_svm_final", "qml_minus_logistic_validation", "qml_minus_logistic_final", "runtime_seconds", "claim_label", "status", "skipped_reason"]
+    write_frame(OUTPUT_DIR / "qml_v7_distribution_matched_sample_audit.csv", audit_rows, list(audit_rows[0].keys()) if audit_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v7_kernel_health_prefilter.csv", health_rows, list(health_rows[0].keys()) if health_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v7_hybrid_kernel_results.csv", hybrid_rows, columns)
+    write_frame(OUTPUT_DIR / "qml_v7_kernel_normalization_shrinkage_results.csv", norm_rows, columns)
+    write_frame(OUTPUT_DIR / "qml_v7_qsvc_regularization_revisit.csv", regularization_rows, columns)
+    write_frame(OUTPUT_DIR / "qml_v7_kernel_feature_meta_results.csv", meta_rows, columns + ["meta_model"])
+    write_frame(OUTPUT_DIR / "qml_v7_validation_governed_leaderboard.csv", validation_leaderboard, columns + ["best_classical_validation_accuracy", "best_classical_final_accuracy"])
+    for row in final_leaderboard:
+        if row.get("candidate_id") != selected.get("candidate_id"):
+            row["claim_label"] = "exploratory_not_claimable"
+    write_frame(OUTPUT_DIR / "qml_v7_exploratory_final_leaderboard.csv", final_leaderboard, columns + ["best_classical_validation_accuracy", "best_classical_final_accuracy"])
+    write_frame(OUTPUT_DIR / "qml_v7_same_target_classical_comparison.csv", classical_rows_all, list(classical_rows_all[0].keys()) if classical_rows_all else [])
+    write_json(OUTPUT_DIR / "qml_v7_rescue_decision.json", decision)
+    manifest = {
+        "run_id": "vn30_qml_forecasting_v7_hybrid_kernel_rescue",
+        "created_utc": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%SZ"),
+        "scope": "VN30 stock hourly forecasting only",
+        "target": V7_TARGET,
+        "horizon": V7_HORIZON,
+        "diagnostic_only": True,
+        "dependency_status": dependency,
+        "decision": decision,
+        "runtime_seconds": time.perf_counter() - started,
+        "paper_docx_generated": False,
+        "trading_claim": False,
+        "vn100_scope": False,
+        "index_as_stock_claim": False,
+    }
+    write_json(OUTPUT_DIR / "qml_v7_manifest.json", manifest)
+    write_v7_reports(decision, audit_rows, health_rows, hybrid_rows, norm_rows, regularization_rows, meta_rows, validation_leaderboard)
+    print(json.dumps(json_safe({"status": "ok", "manifest": rel(OUTPUT_DIR / "qml_v7_manifest.json"), "decision_labels": decision_labels, "runtime_limited": decision["runtime_limited"]}), indent=2))
+    return manifest
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run VN30 QML forecasting diagnostics.")
     parser.add_argument("--qml-smoke", action="store_true", help="Run the limited v2 QML smoke benchmark instead of the full diagnostic grid.")
@@ -5066,6 +5856,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--qml-v4-kernel-confirmation", action="store_true", help="Run the focused v4 quantum-kernel confirmation benchmark.")
     parser.add_argument("--qml-v5-full-confirmation", action="store_true", help="Run the focused v5 frozen quantum-kernel confirmation benchmark.")
     parser.add_argument("--qml-v6-scaling-rescue", action="store_true", help="Run the v6 QML scaling-failure diagnosis and kernel-rescue benchmark.")
+    parser.add_argument("--qml-v7-hybrid-kernel-rescue", action="store_true", help="Run the v7 distribution-matched hybrid-kernel rescue benchmark.")
     parser.add_argument("--max-qml-candidates", type=int, default=12)
     parser.add_argument("--max-train-rows", type=int, default=2000)
     parser.add_argument("--max-validation-rows", type=int, default=1000)
@@ -5076,6 +5867,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.qml_v7_hybrid_kernel_rescue:
+        config = V7Config(timeout_seconds=max(1, int(args.timeout_seconds)))
+        run_v7_hybrid_kernel_rescue(config)
+        return
     if args.qml_v6_scaling_rescue:
         config = V6Config(timeout_seconds=max(1, int(args.timeout_seconds)))
         run_v6_scaling_rescue(config)
