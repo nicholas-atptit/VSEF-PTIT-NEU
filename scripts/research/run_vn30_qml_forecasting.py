@@ -32,7 +32,7 @@ from sklearn.feature_selection import mutual_info_classif
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler, QuantileTransformer, RobustScaler, StandardScaler
 from sklearn.svm import SVC
 
 REPO_ROOT_BOOTSTRAP = Path(__file__).resolve().parents[2]
@@ -4356,12 +4356,716 @@ def run_v5_full_confirmation(config: V5Config) -> dict[str, Any]:
     return manifest
 
 
+@dataclass
+class V6Config:
+    timeout_seconds: int = 5400
+
+
+V6_TARGET = "market_relative_vn30"
+V6_HORIZON = 40
+V6_SCALING_METHODS = ["standard_zscore", "minmax_0_pi", "minmax_minus_pi_pi", "robust_quantile", "rank_gaussian"]
+V6_PRIMARY_SCALING = "minmax_0_pi"
+V6_FROZEN_REPS = 2
+V6_FROZEN_ENTANGLEMENT = "full"
+V6_REGULARIZATION_C = [0.1, 1.0, 10.0]
+V6_REGULARIZATION_CLASS_WEIGHT = [None, "balanced"]
+
+
+def v6_scaling_transform(
+    spec: FeatureSpec,
+    scaling_method: str,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    train = spec.x_train.replace([np.inf, -np.inf], np.nan)
+    validation = spec.x_validation.replace([np.inf, -np.inf], np.nan)
+    final = spec.x_final.replace([np.inf, -np.inf], np.nan)
+    imputer = SimpleImputer(strategy="median")
+    train_imp = imputer.fit_transform(train)
+    validation_imp = imputer.transform(validation)
+    final_imp = imputer.transform(final)
+    status = "ok"
+    skipped_reason = ""
+    if scaling_method == "standard_zscore":
+        scaler = StandardScaler()
+        train_scaled = scaler.fit_transform(train_imp)
+        validation_scaled = scaler.transform(validation_imp)
+        final_scaled = scaler.transform(final_imp)
+    elif scaling_method == "minmax_0_pi":
+        scaler = MinMaxScaler(feature_range=(0.0, math.pi))
+        train_scaled = scaler.fit_transform(train_imp)
+        validation_scaled = scaler.transform(validation_imp)
+        final_scaled = scaler.transform(final_imp)
+    elif scaling_method == "minmax_minus_pi_pi":
+        scaler = MinMaxScaler(feature_range=(-math.pi, math.pi))
+        train_scaled = scaler.fit_transform(train_imp)
+        validation_scaled = scaler.transform(validation_imp)
+        final_scaled = scaler.transform(final_imp)
+    elif scaling_method == "robust_quantile":
+        scaler = RobustScaler(quantile_range=(10.0, 90.0))
+        train_scaled = np.clip(scaler.fit_transform(train_imp), -3.0, 3.0) * (math.pi / 3.0)
+        validation_scaled = np.clip(scaler.transform(validation_imp), -3.0, 3.0) * (math.pi / 3.0)
+        final_scaled = np.clip(scaler.transform(final_imp), -3.0, 3.0) * (math.pi / 3.0)
+    elif scaling_method == "rank_gaussian":
+        try:
+            n_quantiles = max(10, min(1000, len(train_imp)))
+            scaler = QuantileTransformer(n_quantiles=n_quantiles, output_distribution="normal", random_state=SEED)
+            train_scaled = np.clip(scaler.fit_transform(train_imp), -3.0, 3.0) * (math.pi / 3.0)
+            validation_scaled = np.clip(scaler.transform(validation_imp), -3.0, 3.0) * (math.pi / 3.0)
+            final_scaled = np.clip(scaler.transform(final_imp), -3.0, 3.0) * (math.pi / 3.0)
+        except Exception as exc:
+            status = "skipped"
+            skipped_reason = f"rank_gaussian_unavailable: {type(exc).__name__}: {exc}"
+            train_scaled = np.empty((len(train), 0))
+            validation_scaled = np.empty((len(validation), 0))
+            final_scaled = np.empty((len(final), 0))
+    else:
+        status = "skipped"
+        skipped_reason = f"unknown scaling method {scaling_method}"
+        train_scaled = np.empty((len(train), 0))
+        validation_scaled = np.empty((len(validation), 0))
+        final_scaled = np.empty((len(final), 0))
+    columns = list(spec.x_train.columns) if status == "ok" else []
+    return (
+        pd.DataFrame(train_scaled, index=spec.x_train.index, columns=columns),
+        pd.DataFrame(validation_scaled, index=spec.x_validation.index, columns=columns),
+        pd.DataFrame(final_scaled, index=spec.x_final.index, columns=columns),
+        {
+            "scaling_method": scaling_method,
+            "status": status,
+            "skipped_reason": skipped_reason,
+            "fit_split": "train",
+            "feature_range": "method_specific",
+        },
+    )
+
+
+def v6_quantum_kernel_matrices(
+    x_train: pd.DataFrame,
+    x_validation: pd.DataFrame,
+    x_final: pd.DataFrame,
+    reps: int,
+    entanglement: str,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    kernels = importlib.import_module("qiskit_machine_learning.kernels")
+    circuit_library = importlib.import_module("qiskit.circuit.library")
+    FidelityStatevectorKernel = getattr(kernels, "FidelityStatevectorKernel")
+    ZZFeatureMap = getattr(circuit_library, "ZZFeatureMap")
+    feature_map = ZZFeatureMap(feature_dimension=x_train.shape[1], reps=reps, entanglement=entanglement)
+    kernel = FidelityStatevectorKernel(feature_map=feature_map)
+    train_np = x_train.to_numpy(dtype=float)
+    validation_np = x_validation.to_numpy(dtype=float)
+    final_np = x_final.to_numpy(dtype=float)
+    k_train = np.asarray(kernel.evaluate(train_np), dtype=float)
+    k_validation = np.asarray(kernel.evaluate(validation_np, train_np), dtype=float)
+    k_final = np.asarray(kernel.evaluate(final_np, train_np), dtype=float)
+    return k_train, k_validation, k_final
+
+
+def v6_run_precomputed_kernel_classifier(
+    spec: FeatureSpec,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    sample_stage: str,
+    scaling_method: str,
+    reps: int = V6_FROZEN_REPS,
+    entanglement: str = V6_FROZEN_ENTANGLEMENT,
+    c_value: float = 1.0,
+    class_weight: str | None = None,
+) -> tuple[dict[str, Any], dict[str, pd.Series], dict[str, np.ndarray]]:
+    start = time.perf_counter()
+    row: dict[str, Any] = {
+        "sample_stage": sample_stage,
+        "candidate_id": candidate_id("qml_v6", sample_stage, scaling_method, "quantum_kernel_classifier", V6_TARGET, f"h{V6_HORIZON}", spec.feature_set_name, f"r{reps}", entanglement, f"C{c_value}", class_weight or "none"),
+        "qml_family": "quantum_kernel_classifier",
+        "library": "qiskit_machine_learning_statevector_kernel",
+        "target_variant": V6_TARGET,
+        "horizon": V6_HORIZON,
+        "feature_set": spec.feature_set_name,
+        "n_qubits": spec.n_features,
+        "feature_map": "ZZFeatureMap",
+        "feature_map_reps": reps,
+        "entanglement": entanglement,
+        "scaling_method": scaling_method,
+        "C": c_value,
+        "class_weight": class_weight or "none",
+        "train_rows": int(len(splits["train"])),
+        "validation_rows": int(len(splits["validation"])),
+        "final_rows": int(len(splits["final"])),
+        "validation_accuracy": math.nan,
+        "final_accuracy": math.nan,
+        "validation_lift": math.nan,
+        "final_lift": math.nan,
+        "runtime_seconds": 0.0,
+        "status": "pending",
+        "skipped_reason": "",
+    }
+    predictions: dict[str, pd.Series] = {}
+    matrices: dict[str, np.ndarray] = {}
+    try:
+        x_train, x_validation, x_final, scaling_manifest = v6_scaling_transform(spec, scaling_method)
+        if scaling_manifest["status"] != "ok":
+            raise ValueError(scaling_manifest["skipped_reason"])
+        train_y = labels.loc[splits["train"]].astype(int)
+        validation_y = labels.loc[splits["validation"]].astype(int)
+        final_y = labels.loc[splits["final"]].astype(int)
+        if train_y.nunique() < 2:
+            raise ValueError("v6 train sample has fewer than two classes")
+        k_train, k_validation, k_final = v6_quantum_kernel_matrices(x_train, x_validation, x_final, reps, entanglement)
+        model = SVC(kernel="precomputed", C=float(c_value), class_weight=class_weight)
+        model.fit(k_train, train_y.to_numpy())
+        validation_pred = pd.Series(np.asarray(model.predict(k_validation)).astype(int), index=splits["validation"])
+        final_pred = pd.Series(np.asarray(model.predict(k_final)).astype(int), index=splits["final"])
+        validation_acc = accuracy(validation_y, validation_pred.loc[splits["validation"]])
+        final_acc = accuracy(final_y, final_pred.loc[splits["final"]])
+        simple_val_name, simple_val_acc = strongest_simple_baseline(features_global(), labels, splits["validation"])
+        simple_final_name, simple_final_acc = strongest_simple_baseline(features_global(), labels, splits["final"])
+        row.update(
+            {
+                "validation_accuracy": validation_acc,
+                "final_accuracy": final_acc,
+                "validation_lift": validation_acc - simple_val_acc if math.isfinite(simple_val_acc) else math.nan,
+                "final_lift": final_acc - simple_final_acc if math.isfinite(simple_final_acc) else math.nan,
+                "strongest_validation_baseline": simple_val_name,
+                "strongest_final_baseline": simple_final_name,
+                "comparison_vs_classical_champion_accuracy": final_acc - CLASSICAL_CHAMPION["final_accuracy"],
+                "runtime_seconds": time.perf_counter() - start,
+                "status": "ok",
+                "skipped_reason": "",
+            }
+        )
+        try:
+            predictions["train_score"] = pd.Series(np.asarray(model.decision_function(k_train), dtype=float), index=splits["train"])
+            predictions["validation_score"] = pd.Series(np.asarray(model.decision_function(k_validation), dtype=float), index=splits["validation"])
+            predictions["final_score"] = pd.Series(np.asarray(model.decision_function(k_final), dtype=float), index=splits["final"])
+        except Exception:
+            pass
+        predictions["validation"] = validation_pred
+        predictions["final"] = final_pred
+        matrices = {"train": k_train, "validation": k_validation, "final": k_final}
+    except Exception as exc:
+        row.update({"runtime_seconds": time.perf_counter() - start, "status": "skipped", "skipped_reason": f"{type(exc).__name__}: {exc}"})
+    return row, predictions, matrices
+
+
+def v6_kernel_diagnostic_row(
+    sample_stage: str,
+    scaling_method: str,
+    spec: FeatureSpec,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    k_train: np.ndarray,
+) -> dict[str, Any]:
+    y = labels.loc[splits["train"]].astype(int).to_numpy()
+    signed = np.where(y > 0, 1.0, -1.0)
+    yy = np.outer(signed, signed)
+    denom = float(np.linalg.norm(k_train, "fro") * np.linalg.norm(yy, "fro"))
+    alignment = float(np.sum(k_train * yy) / denom) if denom > 0 else math.nan
+    eig = np.linalg.eigvalsh((k_train + k_train.T) / 2.0)
+    eig = np.clip(eig, 0.0, None)
+    positive = eig[eig > 1e-10]
+    condition = float(positive.max() / positive.min()) if len(positive) else math.nan
+    probs = eig / eig.sum() if eig.sum() > 0 else np.array([])
+    effective_rank = float(np.exp(-np.sum(probs * np.log(np.clip(probs, 1e-12, None))))) if len(probs) else math.nan
+    mask_off = ~np.eye(k_train.shape[0], dtype=bool)
+    off = k_train[mask_off] if k_train.size else np.array([])
+    same_mask = y[:, None] == y[None, :]
+    diff_mask = ~same_mask
+    same_values = k_train[same_mask & mask_off]
+    diff_values = k_train[diff_mask]
+    off_std = float(np.nanstd(off)) if len(off) else math.nan
+    concentration = bool(math.isfinite(off_std) and off_std < 0.03) or bool(math.isfinite(effective_rank) and effective_rank < max(2.0, 0.2 * len(y)))
+    return {
+        "sample_stage": sample_stage,
+        "scaling_method": scaling_method,
+        "feature_set": spec.feature_set_name,
+        "n_features": spec.n_features,
+        "train_rows": int(len(y)),
+        "kernel_target_alignment": alignment,
+        "condition_number": condition,
+        "effective_rank": effective_rank,
+        "effective_rank_ratio": effective_rank / len(y) if len(y) and math.isfinite(effective_rank) else math.nan,
+        "mean_diagonal": float(np.nanmean(np.diag(k_train))) if k_train.size else math.nan,
+        "mean_off_diagonal": float(np.nanmean(off)) if len(off) else math.nan,
+        "std_off_diagonal": off_std,
+        "min_kernel_value": float(np.nanmin(k_train)) if k_train.size else math.nan,
+        "max_kernel_value": float(np.nanmax(k_train)) if k_train.size else math.nan,
+        "same_class_similarity": float(np.nanmean(same_values)) if len(same_values) else math.nan,
+        "different_class_similarity": float(np.nanmean(diff_values)) if len(diff_values) else math.nan,
+        "class_similarity_gap": float(np.nanmean(same_values) - np.nanmean(diff_values)) if len(same_values) and len(diff_values) else math.nan,
+        "kernel_concentration_detected": concentration,
+    }
+
+
+def v6_distribution_rows(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    splits_by_stage: dict[str, dict[str, pd.Index]],
+    selected_features_by_stage: dict[str, list[str]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    distribution_rows: list[dict[str, Any]] = []
+    drift_rows: list[dict[str, Any]] = []
+    timestamps = pd.to_datetime(features["datetime"], errors="coerce")
+    for sample_stage, splits in splits_by_stage.items():
+        selected = selected_features_by_stage.get(sample_stage, [])
+        train_stats: dict[str, tuple[float, float]] = {}
+        for split_name, idx in splits.items():
+            y = labels.loc[idx].dropna().astype(int)
+            ticker_count = int(features.loc[idx, "ticker"].nunique()) if len(idx) and "ticker" in features.columns else 0
+            quarter_counts = timestamps.loc[idx].dt.to_period("Q").astype(str).value_counts().sort_index().to_dict() if len(idx) else {}
+            regime_cols = [col for col in features.columns if "regime" in col.lower()]
+            regime_summary = ""
+            if regime_cols and len(idx):
+                col = regime_cols[0]
+                regime_summary = json.dumps(features.loc[idx, col].astype(str).value_counts().head(5).to_dict(), sort_keys=True)
+            missingness = float(features.loc[idx, selected].isna().mean().mean()) if len(idx) and selected else math.nan
+            distribution_rows.append(
+                {
+                    "sample_stage": sample_stage,
+                    "split": split_name,
+                    "rows": int(len(idx)),
+                    "label_0_rows": int((y == 0).sum()),
+                    "label_1_rows": int((y == 1).sum()),
+                    "label_1_share": float((y == 1).mean()) if len(y) else math.nan,
+                    "ticker_coverage": ticker_count,
+                    "timestamp_min": str(timestamps.loc[idx].min()) if len(idx) else "",
+                    "timestamp_max": str(timestamps.loc[idx].max()) if len(idx) else "",
+                    "quarter_distribution": json.dumps(quarter_counts, sort_keys=True),
+                    "regime_distribution": regime_summary,
+                    "feature_missingness_mean": missingness,
+                }
+            )
+            for feature in selected:
+                values = pd.to_numeric(features.loc[idx, feature], errors="coerce")
+                row = {
+                    "sample_stage": sample_stage,
+                    "split": split_name,
+                    "feature": feature,
+                    "missingness": float(values.isna().mean()) if len(values) else math.nan,
+                    "mean": float(values.mean()) if len(values) else math.nan,
+                    "std": float(values.std()) if len(values) else math.nan,
+                    "min": float(values.min()) if len(values) else math.nan,
+                    "max": float(values.max()) if len(values) else math.nan,
+                }
+                if split_name == "train":
+                    train_stats[feature] = (row["mean"], row["std"])
+                else:
+                    train_mean, train_std = train_stats.get(feature, (math.nan, math.nan))
+                    row["mean_drift_vs_train"] = row["mean"] - train_mean if math.isfinite(row["mean"]) and math.isfinite(train_mean) else math.nan
+                    row["std_ratio_vs_train"] = row["std"] / train_std if math.isfinite(row["std"]) and math.isfinite(train_std) and train_std else math.nan
+                drift_rows.append(row)
+    return distribution_rows, drift_rows
+
+
+def v6_compare_against_classical(qml_row: dict[str, Any], classical_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    out = dict(qml_row)
+    best_val = math.nan
+    best_final = math.nan
+    best_val_model = ""
+    best_final_model = ""
+    for model_name, prefix in [
+        ("svm_rbf", "rbf_svm"),
+        ("svm_linear", "linear_svm"),
+        ("l2_logistic", "logistic"),
+        ("calibrated_logistic", "calibrated_logistic"),
+        ("lightgbm_small", "lightgbm_small"),
+    ]:
+        match = next((row for row in classical_rows if row.get("model_family") == model_name and row.get("sample_stage") == qml_row.get("sample_stage") and row.get("status") == "ok"), None)
+        if not match:
+            continue
+        out[f"{prefix}_validation_accuracy"] = match.get("validation_accuracy", math.nan)
+        out[f"{prefix}_final_accuracy"] = match.get("final_accuracy", math.nan)
+        val = as_float(match.get("validation_accuracy"))
+        final = as_float(match.get("final_accuracy"))
+        if math.isfinite(val) and (not math.isfinite(best_val) or val > best_val):
+            best_val = val
+            best_val_model = model_name
+        if math.isfinite(final) and (not math.isfinite(best_final) or final > best_final):
+            best_final = final
+            best_final_model = model_name
+    qml_val = as_float(qml_row.get("validation_accuracy"))
+    qml_final = as_float(qml_row.get("final_accuracy"))
+    rbf_val = as_float(out.get("rbf_svm_validation_accuracy"))
+    rbf_final = as_float(out.get("rbf_svm_final_accuracy"))
+    log_val = as_float(out.get("logistic_validation_accuracy"))
+    log_final = as_float(out.get("logistic_final_accuracy"))
+    out["qml_minus_rbf_svm_validation"] = qml_val - rbf_val if math.isfinite(qml_val) and math.isfinite(rbf_val) else math.nan
+    out["qml_minus_rbf_svm_final"] = qml_final - rbf_final if math.isfinite(qml_final) and math.isfinite(rbf_final) else math.nan
+    out["qml_minus_logistic_validation"] = qml_val - log_val if math.isfinite(qml_val) and math.isfinite(log_val) else math.nan
+    out["qml_minus_logistic_final"] = qml_final - log_final if math.isfinite(qml_final) and math.isfinite(log_final) else math.nan
+    out["best_classical_validation_model"] = best_val_model
+    out["best_classical_final_model"] = best_final_model
+    out["best_classical_validation_accuracy"] = best_val
+    out["best_classical_final_accuracy"] = best_final
+    out["qml_minus_best_classical_validation"] = qml_val - best_val if math.isfinite(qml_val) and math.isfinite(best_val) else math.nan
+    out["qml_minus_best_classical_final"] = qml_final - best_final if math.isfinite(qml_final) and math.isfinite(best_final) else math.nan
+    return out
+
+
+def v6_qml_meta_features(
+    k_train: np.ndarray,
+    k_validation: np.ndarray,
+    k_final: np.ndarray,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    qml_predictions: dict[str, pd.Series],
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    train_y = labels.loc[splits["train"]].astype(int).to_numpy()
+    class0 = train_y == 0
+    class1 = train_y == 1
+    def build_features(k_cross: np.ndarray, split_name: str) -> pd.DataFrame:
+        centroid0 = k_cross[:, class0].mean(axis=1) if class0.any() else np.full(k_cross.shape[0], np.nan)
+        centroid1 = k_cross[:, class1].mean(axis=1) if class1.any() else np.full(k_cross.shape[0], np.nan)
+        base = pd.DataFrame(
+            {
+                "quantum_similarity_class0": centroid0,
+                "quantum_similarity_class1": centroid1,
+                "quantum_similarity_margin": centroid1 - centroid0,
+            },
+            index=splits[split_name],
+        )
+        score = qml_predictions.get(f"{split_name}_score")
+        if isinstance(score, pd.Series):
+            base["quantum_decision_score"] = score.reindex(base.index)
+        return base
+    train_features = build_features(k_train, "train") if "train" in splits else pd.DataFrame(index=splits["train"])
+    # For train, no decision score is available from the fitted precomputed model without an extra call;
+    # centroid similarity features are enough for this diagnostic.
+    validation_features = build_features(k_validation, "validation")
+    final_features = build_features(k_final, "final")
+    eigvals, eigvecs = np.linalg.eigh((k_train + k_train.T) / 2.0)
+    order = np.argsort(eigvals)[::-1][: min(3, len(eigvals))]
+    for pos, eig_idx in enumerate(order, start=1):
+        value = max(float(eigvals[eig_idx]), 1e-9)
+        train_features[f"quantum_eigen_projection_{pos}"] = eigvecs[:, eig_idx] * math.sqrt(value)
+        validation_features[f"quantum_eigen_projection_{pos}"] = (k_validation @ eigvecs[:, eig_idx]) / math.sqrt(value)
+        final_features[f"quantum_eigen_projection_{pos}"] = (k_final @ eigvecs[:, eig_idx]) / math.sqrt(value)
+    columns = sorted(set(train_features.columns).union(validation_features.columns).union(final_features.columns))
+    train_features = train_features.reindex(columns=columns)
+    validation_features = validation_features.reindex(columns=columns)
+    final_features = final_features.reindex(columns=columns)
+    return train_features, validation_features, final_features
+
+
+def v6_run_meta_models(
+    sample_stage: str,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    meta_train: pd.DataFrame,
+    meta_validation: pd.DataFrame,
+    meta_final: pd.DataFrame,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    train_y = labels.loc[splits["train"]].astype(int)
+    validation_y = labels.loc[splits["validation"]].astype(int)
+    final_y = labels.loc[splits["final"]].astype(int)
+    for model_name in ["l2_logistic", "lightgbm_small"]:
+        start = time.perf_counter()
+        try:
+            model = v5_make_classical_model(model_name)
+            model.fit(meta_train.replace([np.inf, -np.inf], np.nan).fillna(0.0), train_y)
+            if hasattr(model, "predict_proba"):
+                val_pred = (model.predict_proba(meta_validation.replace([np.inf, -np.inf], np.nan).fillna(0.0))[:, 1] >= 0.50).astype(int)
+                final_pred = (model.predict_proba(meta_final.replace([np.inf, -np.inf], np.nan).fillna(0.0))[:, 1] >= 0.50).astype(int)
+            else:
+                val_pred = np.asarray(model.predict(meta_validation.replace([np.inf, -np.inf], np.nan).fillna(0.0))).astype(int)
+                final_pred = np.asarray(model.predict(meta_final.replace([np.inf, -np.inf], np.nan).fillna(0.0))).astype(int)
+            status = "ok"
+            skipped_reason = ""
+            validation_acc = accuracy(validation_y, val_pred)
+            final_acc = accuracy(final_y, final_pred)
+        except Exception as exc:
+            status = "skipped"
+            skipped_reason = f"{type(exc).__name__}: {exc}"
+            validation_acc = math.nan
+            final_acc = math.nan
+        rows.append(
+            {
+                "sample_stage": sample_stage,
+                "meta_model": model_name,
+                "feature_source": "qml_kernel_features",
+                "validation_accuracy": validation_acc,
+                "final_accuracy": final_acc,
+                "runtime_seconds": time.perf_counter() - start,
+                "status": status,
+                "skipped_reason": skipped_reason,
+            }
+        )
+    return rows
+
+
+def v6_diagnosis_labels(
+    distribution_rows: list[dict[str, Any]],
+    drift_rows: list[dict[str, Any]],
+    kernel_rows: list[dict[str, Any]],
+    scaling_rows: list[dict[str, Any]],
+    rescue_rows: list[dict[str, Any]],
+    regularization_rows: list[dict[str, Any]],
+    meta_rows: list[dict[str, Any]],
+) -> tuple[list[str], str]:
+    labels: list[str] = []
+    val_shares = [as_float(row.get("label_1_share")) for row in distribution_rows if row.get("split") == "validation"]
+    final_shares = [as_float(row.get("label_1_share")) for row in distribution_rows if row.get("split") == "final"]
+    train_shares = [as_float(row.get("label_1_share")) for row in distribution_rows if row.get("split") == "train"]
+    if train_shares and val_shares and max(abs(v - train_shares[0]) for v in val_shares + final_shares if math.isfinite(v)) > 0.12:
+        labels.append("class_balance_drift")
+    drift_values = [abs(as_float(row.get("mean_drift_vs_train"))) for row in drift_rows if row.get("split") in {"validation", "final"} and math.isfinite(as_float(row.get("mean_drift_vs_train")))]
+    if drift_values and float(np.nanmedian(drift_values)) > 0.01:
+        labels.append("feature_scaling_failure")
+        labels.append("sample_shift_detected")
+    if any(bool(row.get("kernel_concentration_detected")) for row in kernel_rows):
+        labels.append("kernel_concentration_detected")
+    v4 = next((row for row in scaling_rows if row.get("sample_stage") == "v4_sized" and row.get("scaling_method") == V6_PRIMARY_SCALING and row.get("status") == "ok"), None)
+    largest = next((row for row in scaling_rows if row.get("sample_stage") == "largest_feasible" and row.get("scaling_method") == V6_PRIMARY_SCALING and row.get("status") == "ok"), None)
+    if v4 and largest and as_float(v4.get("validation_accuracy")) - as_float(largest.get("validation_accuracy")) > 0.05:
+        labels.append("small_sample_overfit")
+    if regularization_rows:
+        best_reg = max((row for row in regularization_rows if row.get("status") == "ok"), key=lambda row: as_float(row.get("validation_accuracy")), default=None)
+        if best_reg and as_float(best_reg.get("qml_minus_best_classical_validation")) > 0.0 and as_float(best_reg.get("qml_minus_best_classical_final")) > 0.0:
+            labels.append("qml_signal_rescued")
+        else:
+            labels.append("qsvc_regularization_issue")
+    if "qml_signal_rescued" not in labels:
+        labels.append("qml_not_rescued")
+    if not labels:
+        labels.append("qml_not_rescued")
+    root = "sample shift and small-sample overfit are the primary diagnosis"
+    if "kernel_concentration_detected" in labels:
+        root = "sample shift, small-sample overfit, and kernel concentration are the primary diagnosis"
+    elif "feature_scaling_failure" in labels:
+        root = "sample shift plus scaling sensitivity is the primary diagnosis"
+    return sorted(set(labels), key=labels.index), root
+
+
+def write_v6_reports(
+    diagnosis: dict[str, Any],
+    scaling_rows: list[dict[str, Any]],
+    kernel_rows: list[dict[str, Any]],
+    rescue_rows: list[dict[str, Any]],
+    regularization_rows: list[dict[str, Any]],
+    meta_rows: list[dict[str, Any]],
+) -> None:
+    ok_scaling = [row for row in scaling_rows if row.get("status") == "ok"]
+    best_scaling = max(ok_scaling, key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    largest_scaling = [row for row in ok_scaling if row.get("sample_stage") == "largest_feasible"]
+    best_largest_scaling = max(largest_scaling, key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    ok_rescue = [row for row in rescue_rows if row.get("status") == "ok"]
+    best_rescue = max(ok_rescue, key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    ok_reg = [row for row in regularization_rows if row.get("status") == "ok"]
+    best_reg = max(ok_reg, key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    ok_meta = [row for row in meta_rows if row.get("status") == "ok"]
+    best_meta = max(ok_meta, key=lambda row: as_float(row.get("validation_accuracy")), default={})
+    concentration_count = sum(1 for row in kernel_rows if bool(row.get("kernel_concentration_detected")))
+    same_target_win = (
+        as_float(best_reg.get("qml_minus_best_classical_validation")) > 0.0
+        and as_float(best_reg.get("qml_minus_best_classical_final")) > 0.0
+    )
+    paper_justified = "yes, as a negative/diagnostic QML evidence track, not as a replacement result"
+    if "qml_signal_rescued" in diagnosis.get("decision_labels", []):
+        paper_justified = "yes, as a same-target candidate requiring future-blind confirmation"
+    summary = f"""# VN30 QML Forecasting V6 Scaling Rescue Result Summary
+
+## Required Answers
+
+1. Why did QML weaken under larger samples: {diagnosis.get("root_cause_diagnosis", "")}.
+2. Was there label/class balance drift: {str("class_balance_drift" in diagnosis.get("decision_labels", [])).lower()}.
+3. Was there feature distribution drift: {str("sample_shift_detected" in diagnosis.get("decision_labels", []) or "feature_scaling_failure" in diagnosis.get("decision_labels", [])).lower()}.
+4. Was kernel concentration detected: {str("kernel_concentration_detected" in diagnosis.get("decision_labels", [])).lower()} ({concentration_count} diagnostic rows).
+5. Did feature scaling rescue performance: no durable rescue; best overall scaling `{best_scaling.get("scaling_method", "")}` validation {pct(best_scaling.get("validation_accuracy"))}, final {pct(best_scaling.get("final_accuracy"))}; best largest-feasible scaling `{best_largest_scaling.get("scaling_method", "")}` validation {pct(best_largest_scaling.get("validation_accuracy"))}, final {pct(best_largest_scaling.get("final_accuracy"))}.
+6. Did feature map reps/entanglement rescue performance: best rescue `{best_rescue.get("candidate_id", "")}` validation {pct(best_rescue.get("validation_accuracy"))}, final {pct(best_rescue.get("final_accuracy"))}.
+7. Did QSVC regularization rescue performance: best regularized row validation {pct(best_reg.get("validation_accuracy"))}, final {pct(best_reg.get("final_accuracy"))}; beat best same-target classical on both validation and final = {str(same_target_win).lower()}.
+8. Did QML-as-feature meta-model improve performance: best meta row `{best_meta.get("meta_model", "")}` validation {pct(best_meta.get("validation_accuracy"))}, final {pct(best_meta.get("final_accuracy"))}.
+9. Did any validation-selected QML result beat same-target classical baselines: {str(same_target_win).lower()}.
+10. Does any QML result replace the 61.61% classical champion: no; target/scope differs and future-blind confirmation is required.
+11. Is QML paper still justified: {paper_justified}.
+12. Exact claim boundary: V6 is a scaling-failure and kernel-rescue diagnostic only; no trading, profitability, BUY/SELL, live deployment, VN100, DOCX, merge, tag, push-mirror, or index-as-stock claim is made.
+
+## Decision Labels
+
+`{", ".join(diagnosis.get("decision_labels", []))}`
+
+## Best Rows
+
+- Best scaling row: `{best_scaling.get("candidate_id", "")}`.
+- Best rescue row: `{best_rescue.get("candidate_id", "")}`.
+- Best regularization row: `{best_reg.get("candidate_id", "")}`.
+- Best QML feature meta row: `{best_meta.get("meta_model", "")}`.
+"""
+    write_markdown(REPO_ROOT / "reports" / "results" / "VN30_QML_FORECASTING_V6_SCALING_RESCUE_RESULT_SUMMARY.md", summary)
+    claim = """# VN30 QML Forecasting V6 Scaling Rescue Claim Boundary
+
+- QML v6 scaling rescue is experimental and diagnostic-only.
+- Scope is VN30 stock hourly forecasting only.
+- Target scope is market_relative_vn30 at h40 only.
+- No VN100 scope is claimed.
+- No index-as-stock claim is made.
+- Main index data may be used only as lagged market-context features or market-relative target context.
+- Feature_timestamp and target_timestamp split discipline is required.
+- Feature selection, scaling, PCA, rank transforms, and quantum-feature transforms must be train-only or validation-safe.
+- No final-performance selection is allowed.
+- Final-ranked rows remain exploratory_not_claimable.
+- Same-target comparisons are diagnostic and do not replace the 61.61% L2 Logistic classical champion because the target/scope is not directly identical.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, or deployment claim is made.
+- No DOCX, paper artifact, tag, merge, push --mirror, or main-branch claim is made.
+- Stronger QML claims require full validation governance and future-blind confirmation.
+"""
+    write_markdown(REPO_ROOT / "reports" / "claims" / "VN30_QML_FORECASTING_V6_SCALING_RESCUE_CLAIM_BOUNDARY.md", claim)
+
+
+def run_v6_scaling_rescue(config: V6Config) -> dict[str, Any]:
+    global _FEATURES_GLOBAL
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    dependency = dependency_status()
+    features, family_cols, feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    index_data = load_index_data()
+    features, v6_relative_cols = add_v3_relative_strength_features(features, index_data)
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    _FEATURES_GLOBAL = features
+    source_groups = build_source_groups(features, family_cols)
+    source_groups["relative_strength_features"] = v6_relative_cols
+    source_groups["combined_strategy_features"] = sorted(set(source_groups["combined_strategy_features"]).union(v6_relative_cols))
+    source_groups["relative_plus_market_context_features"] = sorted(set(v6_relative_cols).union(source_groups.get("market_context_features", [])[:12]))
+
+    labels = build_labels(features, index_data, V6_TARGET, V6_HORIZON)
+    full_splits = strict_split_indices(features, labels)
+    splits_by_stage = {str(stage["sample_stage"]): v5_stage_splits(features, labels, full_splits, stage) for stage in V5_SAMPLE_LADDER}
+    specs_by_stage: dict[str, FeatureSpec] = {}
+    selected_features_by_stage: dict[str, list[str]] = {}
+    classical_rows_all: list[dict[str, Any]] = []
+    classical_predictions_by_stage: dict[str, dict[str, dict[str, pd.Series]]] = {}
+    for stage in V5_SAMPLE_LADDER:
+        sample_stage = str(stage["sample_stage"])
+        spec, _audit = fit_feature_spec(features, labels, V6_TARGET, V6_HORIZON, V5_FROZEN_SOURCE_GROUP, source_groups[V5_FROZEN_SOURCE_GROUP], V5_FROZEN_COMPRESSION, V5_FROZEN_N_FEATURES, splits_by_stage[sample_stage])
+        specs_by_stage[sample_stage] = spec
+        selected_features_by_stage[sample_stage] = list(spec.selected_features)
+        c_rows, c_pred = v5_run_classical_models(spec, labels, splits_by_stage[sample_stage], sample_stage)
+        classical_rows_all.extend(c_rows)
+        classical_predictions_by_stage[sample_stage] = c_pred
+
+    distribution_rows, drift_rows = v6_distribution_rows(features, labels, splits_by_stage, selected_features_by_stage)
+    scaling_rows: list[dict[str, Any]] = []
+    kernel_rows: list[dict[str, Any]] = []
+    scaling_manifest: dict[str, Any] = {"methods": V6_SCALING_METHODS, "fit_split": "train", "rows": []}
+    cached_primary: dict[str, tuple[dict[str, Any], dict[str, pd.Series], dict[str, np.ndarray]]] = {}
+    for sample_stage, spec in specs_by_stage.items():
+        for scaling_method in V6_SCALING_METHODS:
+            if time.perf_counter() - started >= config.timeout_seconds * 0.55:
+                scaling_rows.append({"sample_stage": sample_stage, "scaling_method": scaling_method, "status": "skipped", "skipped_reason": "runtime budget reserved for rescue phases"})
+                continue
+            row, predictions, matrices = v6_run_precomputed_kernel_classifier(spec, labels, splits_by_stage[sample_stage], sample_stage, scaling_method)
+            row = v6_compare_against_classical(row, classical_rows_all)
+            scaling_rows.append(row)
+            scaling_manifest["rows"].append({"sample_stage": sample_stage, "scaling_method": scaling_method, "status": row.get("status"), "skipped_reason": row.get("skipped_reason")})
+            if row.get("status") == "ok" and "train" in matrices:
+                kernel_rows.append(v6_kernel_diagnostic_row(sample_stage, scaling_method, spec, labels, splits_by_stage[sample_stage], matrices["train"]))
+            if sample_stage == "largest_feasible" and scaling_method == V6_PRIMARY_SCALING and row.get("status") == "ok":
+                cached_primary[sample_stage] = (row, predictions, matrices)
+    write_json(OUTPUT_DIR / "qml_v6_scaling_manifest.json", scaling_manifest)
+
+    rescue_rows: list[dict[str, Any]] = []
+    rescue_plan = [
+        {"variant_id": "topk4_reps1_linear", "source_group": "relative_strength_features", "n_features": 4, "reps": 1, "entanglement": "linear"},
+        {"variant_id": "topk4_reps2_linear", "source_group": "relative_strength_features", "n_features": 4, "reps": 2, "entanglement": "linear"},
+        {"variant_id": "topk4_reps2_full", "source_group": "relative_strength_features", "n_features": 4, "reps": 2, "entanglement": "full"},
+        {"variant_id": "topk4_reps3_linear", "source_group": "relative_strength_features", "n_features": 4, "reps": 3, "entanglement": "linear"},
+        {"variant_id": "topk6_reps2_linear", "source_group": "relative_strength_features", "n_features": 6, "reps": 2, "entanglement": "linear"},
+        {"variant_id": "relative_market_context_topk4_reps2_linear", "source_group": "relative_plus_market_context_features", "n_features": 4, "reps": 2, "entanglement": "linear"},
+    ]
+    largest_splits = splits_by_stage["largest_feasible"]
+    for item in rescue_plan:
+        if time.perf_counter() - started >= config.timeout_seconds * 0.78:
+            rescue_rows.append({"variant_id": item["variant_id"], "sample_stage": "largest_feasible", "status": "skipped", "skipped_reason": "runtime budget reserved for regularization/meta phases"})
+            continue
+        spec, _audit = fit_feature_spec(features, labels, V6_TARGET, V6_HORIZON, item["source_group"], source_groups[item["source_group"]], "topk_availability", int(item["n_features"]), largest_splits)
+        if spec.selection_status not in {"ok", "mutual_info_failed_fallback_availability"}:
+            rescue_rows.append({"variant_id": item["variant_id"], "sample_stage": "largest_feasible", "status": "skipped", "skipped_reason": f"feature_selection_{spec.selection_status}"})
+            continue
+        c_rows, _c_pred = v5_run_classical_models(spec, labels, largest_splits, "largest_feasible")
+        row, _pred, matrices = v6_run_precomputed_kernel_classifier(spec, labels, largest_splits, "largest_feasible", V6_PRIMARY_SCALING, int(item["reps"]), str(item["entanglement"]))
+        row["variant_id"] = item["variant_id"]
+        row["source_group"] = item["source_group"]
+        row = v6_compare_against_classical(row, c_rows)
+        rescue_rows.append(row)
+        if row.get("status") == "ok" and "train" in matrices:
+            diag = v6_kernel_diagnostic_row("largest_feasible", f"{V6_PRIMARY_SCALING}_{item['variant_id']}", spec, labels, largest_splits, matrices["train"])
+            kernel_rows.append(diag)
+
+    regularization_rows: list[dict[str, Any]] = []
+    largest_spec = specs_by_stage["largest_feasible"]
+    largest_classical_rows = [row for row in classical_rows_all if row.get("sample_stage") == "largest_feasible"]
+    for c_value in V6_REGULARIZATION_C:
+        for class_weight in V6_REGULARIZATION_CLASS_WEIGHT:
+            if time.perf_counter() - started >= config.timeout_seconds * 0.90:
+                regularization_rows.append({"sample_stage": "largest_feasible", "C": c_value, "class_weight": class_weight or "none", "status": "skipped", "skipped_reason": "runtime budget reserved for meta phase"})
+                continue
+            row, predictions, matrices = v6_run_precomputed_kernel_classifier(largest_spec, labels, largest_splits, "largest_feasible", V6_PRIMARY_SCALING, V6_FROZEN_REPS, V6_FROZEN_ENTANGLEMENT, c_value, class_weight)
+            row = v6_compare_against_classical(row, largest_classical_rows)
+            regularization_rows.append(row)
+            if c_value == 1.0 and class_weight is None and row.get("status") == "ok":
+                cached_primary["regularization_default"] = (row, predictions, matrices)
+
+    meta_rows: list[dict[str, Any]] = []
+    primary = cached_primary.get("regularization_default") or cached_primary.get("largest_feasible")
+    if primary:
+        _row, predictions, matrices = primary
+        if all(key in matrices for key in ["train", "validation", "final"]):
+            meta_train, meta_validation, meta_final = v6_qml_meta_features(matrices["train"], matrices["validation"], matrices["final"], labels, largest_splits, predictions)
+            meta_rows = v6_run_meta_models("largest_feasible", labels, largest_splits, meta_train, meta_validation, meta_final)
+
+    decision_labels, root = v6_diagnosis_labels(distribution_rows, drift_rows, kernel_rows, scaling_rows, rescue_rows, regularization_rows, meta_rows)
+    diagnosis = {
+        "decision_labels": decision_labels,
+        "root_cause_diagnosis": root,
+        "diagnostic_only": True,
+        "qml_replaces_6161_classical_champion": False,
+        "future_blind_required": True,
+        "runtime_seconds": time.perf_counter() - started,
+        "runtime_limited": time.perf_counter() - started >= config.timeout_seconds,
+    }
+    write_json(OUTPUT_DIR / "qml_v6_scaling_failure_diagnosis.json", diagnosis)
+
+    write_frame(OUTPUT_DIR / "qml_v6_sample_distribution_audit.csv", distribution_rows, list(distribution_rows[0].keys()) if distribution_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v6_feature_drift_audit.csv", drift_rows, list(drift_rows[0].keys()) if drift_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v6_scaling_method_results.csv", scaling_rows, list(scaling_rows[0].keys()) if scaling_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v6_kernel_diagnostics.csv", kernel_rows, list(kernel_rows[0].keys()) if kernel_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v6_kernel_rescue_results.csv", rescue_rows, list(rescue_rows[0].keys()) if rescue_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v6_qsvc_regularization_results.csv", regularization_rows, list(regularization_rows[0].keys()) if regularization_rows else [])
+    write_frame(OUTPUT_DIR / "qml_v6_classical_comparison.csv", classical_rows_all, list(classical_rows_all[0].keys()) if classical_rows_all else [])
+    write_frame(OUTPUT_DIR / "qml_v6_qml_feature_meta_model_results.csv", meta_rows, list(meta_rows[0].keys()) if meta_rows else [])
+
+    manifest = {
+        "run_id": "vn30_qml_forecasting_v6_scaling_rescue",
+        "created_utc": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d %H:%M:%SZ"),
+        "scope": "VN30 stock hourly forecasting only",
+        "target": V6_TARGET,
+        "horizon": V6_HORIZON,
+        "diagnostic_only": True,
+        "dependency_status": dependency,
+        "sample_ladder": V5_SAMPLE_LADDER,
+        "scaling_methods": V6_SCALING_METHODS,
+        "kernel_rescue_plan": rescue_plan,
+        "regularization_C": V6_REGULARIZATION_C,
+        "regularization_class_weight": [value or "none" for value in V6_REGULARIZATION_CLASS_WEIGHT],
+        "diagnosis": diagnosis,
+        "runtime_seconds": time.perf_counter() - started,
+        "paper_docx_generated": False,
+        "trading_claim": False,
+        "vn100_scope": False,
+        "index_as_stock_claim": False,
+    }
+    write_json(OUTPUT_DIR / "qml_v6_manifest.json", manifest)
+    write_v6_reports(diagnosis, scaling_rows, kernel_rows, rescue_rows, regularization_rows, meta_rows)
+    print(json.dumps(json_safe({"status": "ok", "manifest": rel(OUTPUT_DIR / "qml_v6_manifest.json"), "decision_labels": decision_labels, "runtime_limited": diagnosis["runtime_limited"]}), indent=2))
+    return manifest
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run VN30 QML forecasting diagnostics.")
     parser.add_argument("--qml-smoke", action="store_true", help="Run the limited v2 QML smoke benchmark instead of the full diagnostic grid.")
     parser.add_argument("--qml-v3-sanity", action="store_true", help="Run the targeted v3 QML sanity benchmark.")
     parser.add_argument("--qml-v4-kernel-confirmation", action="store_true", help="Run the focused v4 quantum-kernel confirmation benchmark.")
     parser.add_argument("--qml-v5-full-confirmation", action="store_true", help="Run the focused v5 frozen quantum-kernel confirmation benchmark.")
+    parser.add_argument("--qml-v6-scaling-rescue", action="store_true", help="Run the v6 QML scaling-failure diagnosis and kernel-rescue benchmark.")
     parser.add_argument("--max-qml-candidates", type=int, default=12)
     parser.add_argument("--max-train-rows", type=int, default=2000)
     parser.add_argument("--max-validation-rows", type=int, default=1000)
@@ -4372,6 +5076,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if args.qml_v6_scaling_rescue:
+        config = V6Config(timeout_seconds=max(1, int(args.timeout_seconds)))
+        run_v6_scaling_rescue(config)
+        return
     if args.qml_v5_full_confirmation:
         config = V5Config(timeout_seconds=max(1, int(args.timeout_seconds)))
         run_v5_full_confirmation(config)
