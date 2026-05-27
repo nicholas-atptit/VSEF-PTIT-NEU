@@ -37,7 +37,7 @@ from sklearn.ensemble import (
     RandomForestRegressor,
 )
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import ElasticNet, Lasso, LinearRegression, LogisticRegression, Ridge
+from sklearn.linear_model import ElasticNet, Lasso, LinearRegression, LogisticRegression, Ridge, RidgeClassifier
 from sklearn.metrics import (
     balanced_accuracy_score,
     brier_score_loss,
@@ -106,6 +106,8 @@ V4_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V4_BIL
 V4_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V4_BILSTM_RELOCK_CLAIM_BOUNDARY.md"
 V5_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V5_TARGET_METRIC_REPAIR_RESULT_SUMMARY.md"
 V5_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V5_TARGET_METRIC_REPAIR_CLAIM_BOUNDARY.md"
+V6_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V6_PRICE_RETURN_ABSOLUTE_CONFIRMATION_RESULT_SUMMARY.md"
+V6_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V6_PRICE_RETURN_ABSOLUTE_CONFIRMATION_CLAIM_BOUNDARY.md"
 
 QML_V8_CONTEXT_FINAL = 0.6444444444444445
 QML_V8_CONTEXT_VALIDATION = 0.6055555555555555
@@ -3513,6 +3515,785 @@ def run_target_metric_repair(timeout_seconds: int) -> dict[str, Any]:
     return result
 
 
+def v6_required_v5_artifacts() -> dict[str, pd.DataFrame]:
+    names = {
+        "class_balance": "v5_class_balance_audit.csv",
+        "metric_repair": "v5_metric_repair_results.csv",
+        "baseline_gated": "v5_baseline_gated_leaderboard.csv",
+        "bilstm_repair": "v5_bilstm_metric_repair.csv",
+        "target_repair": "v5_target_repair_results.csv",
+        "price_repair": "v5_price_return_metric_repair.csv",
+        "future_blind_registry": "v5_future_blind_candidate_registry.csv",
+    }
+    frames = {key: read_artifact(name) for key, name in names.items()}
+    missing = [names[key] for key, frame in frames.items() if frame.empty]
+    if missing:
+        raise FileNotFoundError("missing or empty V5 artifacts: " + ", ".join(missing))
+    return frames
+
+
+def v6_feature_drift(features: pd.DataFrame, splits: dict[str, pd.Index], selected: list[str]) -> dict[str, float]:
+    if not selected:
+        return {"feature_drift_validation_train": math.nan, "feature_drift_final_train": math.nan, "feature_drift_final_validation": math.nan}
+    train = features.loc[splits["train"], selected].replace([np.inf, -np.inf], np.nan)
+    validation = features.loc[splits["validation"], selected].replace([np.inf, -np.inf], np.nan)
+    final = features.loc[splits["final"], selected].replace([np.inf, -np.inf], np.nan)
+    train_mean = train.mean(numeric_only=True)
+    train_std = train.std(numeric_only=True).replace(0.0, np.nan)
+    val_mean = validation.mean(numeric_only=True)
+    final_mean = final.mean(numeric_only=True)
+
+    def mean_abs_shift(left: pd.Series, right: pd.Series) -> float:
+        shift = ((left - right) / train_std).replace([np.inf, -np.inf], np.nan).abs()
+        return float(shift.mean()) if shift.notna().any() else math.nan
+
+    return {
+        "feature_drift_validation_train": mean_abs_shift(val_mean, train_mean),
+        "feature_drift_final_train": mean_abs_shift(final_mean, train_mean),
+        "feature_drift_final_validation": mean_abs_shift(final_mean, val_mean),
+    }
+
+
+def v6_price_survivors(price_repair: pd.DataFrame) -> pd.DataFrame:
+    frame = price_repair.copy()
+    if "robustly_beats_random_walk_or_last_price" not in frame.columns:
+        return pd.DataFrame()
+    robust = frame["robustly_beats_random_walk_or_last_price"].astype(str).str.lower().eq("true")
+    return frame[robust].copy().reset_index(drop=True)
+
+
+def v6_price_model(model_family: str, params: dict[str, Any]) -> Any:
+    if model_family == "ridge":
+        return Ridge(alpha=float(params.get("alpha", 1.0)), random_state=SEED)
+    if model_family == "lasso":
+        return Lasso(alpha=float(params.get("alpha", 0.001)), max_iter=4000, random_state=SEED)
+    if model_family == "elasticnet":
+        return ElasticNet(alpha=float(params.get("alpha", 0.001)), l1_ratio=float(params.get("l1_ratio", 0.3)), max_iter=4000, random_state=SEED)
+    if model_family == "linear_regression":
+        return LinearRegression()
+    model, reason = price_model(model_family)
+    if model is None:
+        raise ValueError(reason)
+    return model
+
+
+def v6_price_param_grid(model_family: str) -> list[dict[str, Any]]:
+    if model_family == "ridge":
+        return [{"alpha": value} for value in [0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0]]
+    if model_family == "lasso":
+        return [{"alpha": value} for value in [0.00005, 0.0001, 0.0005, 0.001, 0.005]]
+    if model_family == "elasticnet":
+        return [{"alpha": alpha, "l1_ratio": ratio} for alpha in [0.00005, 0.0001, 0.0005, 0.001] for ratio in [0.1, 0.3, 0.7]]
+    return [{}]
+
+
+def v6_price_baseline_prediction(
+    baseline: str,
+    features: pd.DataFrame,
+    train_y: pd.Series,
+    idx: pd.Index,
+    target_variant: str,
+) -> np.ndarray:
+    close = pd.to_numeric(features.loc[idx, "close"], errors="coerce").ffill().bfill().to_numpy(dtype=float)
+    train_mean = float(pd.to_numeric(train_y, errors="coerce").replace([np.inf, -np.inf], np.nan).mean()) if len(train_y) else 0.0
+    if target_variant == "future_close_h":
+        if baseline in {"random_walk_price", "last_price"}:
+            return close
+        if baseline == "historical_mean_return":
+            return close * (1.0 + (train_mean if math.isfinite(train_mean) else 0.0))
+        if baseline == "rolling_mean_return":
+            col = "rolling_return_mean_20" if "rolling_return_mean_20" in features.columns else "return_1_lag_1"
+            ret = pd.to_numeric(features.loc[idx, col], errors="coerce").fillna(0.0).to_numpy(dtype=float) if col in features.columns else np.zeros(len(idx), dtype=float)
+            return close * (1.0 + ret)
+    if baseline in {"random_walk_price", "last_price"}:
+        return np.zeros(len(idx), dtype=float)
+    if baseline == "historical_mean_return":
+        return np.full(len(idx), train_mean if math.isfinite(train_mean) else 0.0, dtype=float)
+    if baseline == "rolling_mean_return":
+        col = "rolling_return_mean_20" if "rolling_return_mean_20" in features.columns else "return_1_lag_1"
+        return pd.to_numeric(features.loc[idx, col], errors="coerce").fillna(0.0).to_numpy(dtype=float) if col in features.columns else np.zeros(len(idx), dtype=float)
+    return np.zeros(len(idx), dtype=float)
+
+
+def v6_rank_ic(y_true: np.ndarray, pred: np.ndarray) -> float:
+    frame = pd.DataFrame({"actual": y_true, "pred": pred}).replace([np.inf, -np.inf], np.nan).dropna()
+    if len(frame) < 3 or frame["actual"].nunique() < 2 or frame["pred"].nunique() < 2:
+        return math.nan
+    return float(frame["actual"].rank(pct=True).corr(frame["pred"].rank(pct=True)))
+
+
+def v6_top_decile_actual(y_true: np.ndarray, pred: np.ndarray) -> tuple[float, float, int]:
+    frame = pd.DataFrame({"actual": y_true, "pred": pred}).replace([np.inf, -np.inf], np.nan).dropna()
+    if frame.empty:
+        return math.nan, math.nan, 0
+    threshold = float(frame["pred"].quantile(0.9))
+    top = frame[frame["pred"] >= threshold]
+    return float(top["actual"].mean()) if not top.empty else math.nan, float(frame["actual"].mean()), int(len(top))
+
+
+def v6_price_metrics_for_split(
+    target: pd.Series,
+    pred: np.ndarray,
+    baseline_preds: dict[str, np.ndarray],
+    features: pd.DataFrame,
+    idx: pd.Index,
+    target_variant: str,
+) -> dict[str, float]:
+    y = pd.to_numeric(target.loc[idx], errors="coerce").to_numpy(dtype=float)
+    pred = np.asarray(pred, dtype=float)
+    valid = np.isfinite(y) & np.isfinite(pred)
+    if not valid.any():
+        return {key: math.nan for key in [
+            "rmse", "mae", "smape", "mase", "correlation_pred_actual", "sign_accuracy", "directional_lift_over_sign_baseline",
+            "rank_ic", "top_decile_realized_return", "top_decile_lift_over_mean", "top_decile_count",
+            "improvement_vs_random_walk", "improvement_vs_last_price", "improvement_vs_historical_mean", "improvement_vs_rolling_mean",
+        ]}
+    yv = y[valid]
+    pv = pred[valid]
+    close = pd.to_numeric(features.loc[idx, "close"], errors="coerce").ffill().bfill().to_numpy(dtype=float)[valid]
+    if target_variant == "future_close_h":
+        actual_sign = np.sign(yv / np.clip(close, 1e-12, None) - 1.0)
+        pred_sign = np.sign(pv / np.clip(close, 1e-12, None) - 1.0)
+    else:
+        actual_sign = np.sign(yv)
+        pred_sign = np.sign(pv)
+    baseline_rmse: dict[str, float] = {}
+    baseline_sign: list[float] = []
+    for name, base_pred in baseline_preds.items():
+        bp = np.asarray(base_pred, dtype=float)[valid]
+        baseline_rmse[name] = rmse(yv, bp)
+        if target_variant == "future_close_h":
+            base_sign = np.sign(bp / np.clip(close, 1e-12, None) - 1.0)
+        else:
+            base_sign = np.sign(bp)
+        baseline_sign.append(float((actual_sign == base_sign).mean()) if len(actual_sign) else math.nan)
+    model_rmse = rmse(yv, pv)
+    corr = float(np.corrcoef(pv, yv)[0, 1]) if len(yv) > 2 and np.std(pv) > 0 and np.std(yv) > 0 else math.nan
+    sign_accuracy = float((actual_sign == pred_sign).mean()) if len(yv) else math.nan
+    strongest_sign = max([value for value in baseline_sign if math.isfinite(value)], default=math.nan)
+    top_mean, all_mean, top_count = v6_top_decile_actual(yv, pv)
+
+    def improvement(name: str) -> float:
+        base = baseline_rmse.get(name, math.nan)
+        return (base - model_rmse) / base if math.isfinite(base) and base > 1e-12 else math.nan
+
+    return {
+        "rmse": model_rmse,
+        "mae": float(mean_absolute_error(yv, pv)),
+        "smape": smape(yv, pv),
+        "mase": mase(yv, pv, np.asarray(baseline_preds.get("random_walk_price", np.zeros(len(idx))), dtype=float)[valid]),
+        "correlation_pred_actual": corr,
+        "sign_accuracy": sign_accuracy,
+        "directional_lift_over_sign_baseline": sign_accuracy - strongest_sign if math.isfinite(strongest_sign) and math.isfinite(sign_accuracy) else math.nan,
+        "rank_ic": v6_rank_ic(yv, pv),
+        "top_decile_realized_return": top_mean,
+        "top_decile_lift_over_mean": top_mean - all_mean if math.isfinite(top_mean) and math.isfinite(all_mean) else math.nan,
+        "top_decile_count": float(top_count),
+        "improvement_vs_random_walk": improvement("random_walk_price"),
+        "improvement_vs_last_price": improvement("last_price"),
+        "improvement_vs_historical_mean": improvement("historical_mean_return"),
+        "improvement_vs_rolling_mean": improvement("rolling_mean_return"),
+    }
+
+
+def v6_relock_price_candidates(
+    survivors: pd.DataFrame,
+    features: pd.DataFrame,
+    index_data: dict[str, pd.DataFrame],
+    feature_groups: dict[str, list[str]],
+    config: RunConfig,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    rows: list[dict[str, Any]] = []
+    baseline_rows: list[dict[str, Any]] = []
+    details: dict[str, dict[str, Any]] = {}
+    for _idx, survivor in survivors.iterrows():
+        model_family = str(survivor.get("model_family", ""))
+        target_variant = str(survivor.get("target_variant", ""))
+        horizon = safe_int(survivor.get("horizon"))
+        feature_group = str(survivor.get("feature_group", ""))
+        source_candidate_id = str(survivor.get("candidate_id", ""))
+        relock_id = candidate_id("v6_price_relock", model_family, target_variant, f"h{horizon}", feature_group)
+        try:
+            target = build_price_target(features, index_data, target_variant, horizon)
+            splits = split_sample(features, target, strict_split_for_target(features, target), config, classification=False)
+            split_guard = leakage_guard_for_target(features, target, splits)
+            x_train, x_val, x_final, selected, status = fit_matrix(features, splits, feature_groups.get(feature_group, []), 20)
+            if status != "ok":
+                raise ValueError(status)
+            train_y = pd.to_numeric(target.loc[splits["train"]], errors="coerce")
+            val_y = pd.to_numeric(target.loc[splits["validation"]], errors="coerce")
+            final_y = pd.to_numeric(target.loc[splits["final"]], errors="coerce")
+            baselines_val = {
+                name: v6_price_baseline_prediction(name, features, train_y, splits["validation"], target_variant)
+                for name in ["random_walk_price", "last_price", "historical_mean_return", "rolling_mean_return"]
+            }
+            baselines_final = {
+                name: v6_price_baseline_prediction(name, features, train_y, splits["final"], target_variant)
+                for name in ["random_walk_price", "last_price", "historical_mean_return", "rolling_mean_return"]
+            }
+            candidates: list[dict[str, Any]] = []
+            for params in v6_price_param_grid(model_family):
+                model = v6_price_model(model_family, params)
+                model.fit(x_train, train_y)
+                val_pred = np.asarray(model.predict(x_val), dtype=float)
+                metrics = v6_price_metrics_for_split(target, val_pred, baselines_val, features, splits["validation"], target_variant)
+                candidates.append({"params": params, "validation_pred": val_pred, **metrics})
+            selected_candidate = min(candidates, key=lambda item: (as_float(item.get("rmse")), -as_float(item.get("correlation_pred_actual")), -as_float(item.get("sign_accuracy"))))
+            selected_params = dict(selected_candidate.get("params", {}))
+            final_model = v6_price_model(model_family, selected_params)
+            final_model.fit(x_train, train_y)
+            final_pred = np.asarray(final_model.predict(x_final), dtype=float)
+            validation_pred = np.asarray(selected_candidate["validation_pred"], dtype=float)
+            validation_metrics = v6_price_metrics_for_split(target, validation_pred, baselines_val, features, splits["validation"], target_variant)
+            final_metrics = v6_price_metrics_for_split(target, final_pred, baselines_final, features, splits["final"], target_variant)
+            for split_name, idx2, baseline_map in [
+                ("validation", splits["validation"], baselines_val),
+                ("final", splits["final"], baselines_final),
+            ]:
+                for baseline_name, base_pred in baseline_map.items():
+                    metric_row = v6_price_metrics_for_split(target, base_pred, baseline_map, features, idx2, target_variant)
+                    baseline_rows.append(
+                        {
+                            "candidate_id": relock_id,
+                            "source_candidate_id": source_candidate_id,
+                            "split": split_name,
+                            "baseline": baseline_name,
+                            "target_variant": target_variant,
+                            "horizon": horizon,
+                            "feature_group": feature_group,
+                            "rmse": metric_row["rmse"],
+                            "mae": metric_row["mae"],
+                            "smape": metric_row["smape"],
+                            "sign_accuracy": metric_row["sign_accuracy"],
+                            "rank_ic": metric_row["rank_ic"],
+                        }
+                    )
+            survived = bool(
+                validation_metrics["improvement_vs_random_walk"] > 0
+                and validation_metrics["improvement_vs_last_price"] > 0
+                and final_metrics["improvement_vs_random_walk"] > 0
+                and final_metrics["improvement_vs_last_price"] > 0
+            )
+            row = {
+                "candidate_id": relock_id,
+                "source_candidate_id": source_candidate_id,
+                "task": "price_return",
+                "model_family": model_family,
+                "target_variant": target_variant,
+                "horizon": horizon,
+                "feature_group": feature_group,
+                "selected_hyperparameters": json.dumps(json_safe(selected_params), sort_keys=True),
+                "validation_selected": True,
+                "final_evaluated_once": True,
+                "split_guard_passed": bool(split_guard),
+                "train_rows": int(len(splits["train"])),
+                "validation_rows": int(len(splits["validation"])),
+                "final_rows": int(len(splits["final"])),
+                "selected_features": "|".join(selected),
+                "status": "ok",
+                "claimable": False,
+                "decision_label": "future_blind_required" if survived else "price_return_candidate_not_confirmed",
+                "survived_relock": survived,
+            }
+            for prefix, metrics in [("validation", validation_metrics), ("final", final_metrics)]:
+                for key, value in metrics.items():
+                    row[f"{prefix}_{key}"] = value
+            rows.append(row)
+            details[relock_id] = {
+                "row": row,
+                "target": target,
+                "splits": splits,
+                "validation_pred": validation_pred,
+                "final_pred": final_pred,
+                "selected_features": selected,
+                "baselines_validation": baselines_val,
+                "baselines_final": baselines_final,
+                "target_variant": target_variant,
+            }
+        except Exception as exc:
+            rows.append(
+                {
+                    "candidate_id": relock_id,
+                    "source_candidate_id": source_candidate_id,
+                    "task": "price_return",
+                    "model_family": model_family,
+                    "target_variant": target_variant,
+                    "horizon": horizon,
+                    "feature_group": feature_group,
+                    "status": "skipped",
+                    "skipped_reason": f"{type(exc).__name__}: {exc}",
+                    "claimable": False,
+                    "decision_label": "price_return_candidate_not_confirmed",
+                }
+            )
+    return rows, baseline_rows, details
+
+
+def v6_absolute_feature_groups(v5_leaderboard: pd.DataFrame) -> list[str]:
+    fallback = ["compact_stable_features", "relative_strength", "market_context", "combined_strategy_features"]
+    if v5_leaderboard.empty:
+        return fallback
+    frame = v5_leaderboard.copy()
+    frame = frame[frame.get("target_variant", "").eq("absolute_direction")].copy()
+    if frame.empty:
+        return fallback
+    frame["validation_balanced_accuracy"] = numeric_series(frame, "validation_balanced_accuracy")
+    groups = frame.sort_values("validation_balanced_accuracy", ascending=False)["feature_group"].dropna().astype(str).drop_duplicates().head(4).tolist()
+    return groups or fallback
+
+
+def v6_direction_model_predict(
+    model_name: str,
+    features: pd.DataFrame,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    feature_columns: list[str],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[str], str]:
+    train_y = labels.loc[splits["train"]].astype(int)
+    if model_name in {"always_up", "always_down", "lag1_direction", "random_same_class_balance", "simple_momentum", "simple_relative_strength"}:
+        val_pred, val_prob, reason = baseline_direction_prediction(model_name, features, train_y, splits["validation"])
+        final_pred, final_prob, reason2 = baseline_direction_prediction(model_name, features, train_y, splits["final"])
+        if val_pred is None or final_pred is None:
+            raise ValueError(reason or reason2)
+        return val_pred.astype(int), np.asarray(val_prob, dtype=float), final_pred.astype(int), np.asarray(final_prob, dtype=float), [], "ok"
+    x_train, x_val, x_final, selected, status = fit_matrix(features, splits, feature_columns, 20)
+    if status != "ok":
+        raise ValueError(status)
+    if model_name == "ridge_classifier":
+        model: Any = RidgeClassifier(alpha=1.0, class_weight="balanced")
+    else:
+        model, reason = direction_model(model_name)
+        if model is None:
+            raise ValueError(reason)
+    model.fit(x_train, train_y)
+    val_pred = np.asarray(model.predict(x_val), dtype=int)
+    final_pred = np.asarray(model.predict(x_final), dtype=int)
+    if hasattr(model, "predict_proba"):
+        val_prob = np.asarray(model.predict_proba(x_val)[:, 1], dtype=float)
+        final_prob = np.asarray(model.predict_proba(x_final)[:, 1], dtype=float)
+    elif hasattr(model, "decision_function"):
+        val_score = np.asarray(model.decision_function(x_val), dtype=float)
+        final_score = np.asarray(model.decision_function(x_final), dtype=float)
+        val_prob = 1.0 / (1.0 + np.exp(-np.clip(val_score, -30.0, 30.0)))
+        final_prob = 1.0 / (1.0 + np.exp(-np.clip(final_score, -30.0, 30.0)))
+    else:
+        val_prob = val_pred.astype(float)
+        final_prob = final_pred.astype(float)
+    return val_pred, val_prob, final_pred, final_prob, selected, "ok"
+
+
+def v6_group_accuracy_summary(features: pd.DataFrame, labels: pd.Series, idx: pd.Index, pred: np.ndarray, group_type: str) -> dict[str, float]:
+    frame = pd.DataFrame(
+        {
+            "ticker": features.loc[idx, "ticker"].astype(str).to_numpy(),
+            "datetime": pd.to_datetime(features.loc[idx, "datetime"], errors="coerce").to_numpy(),
+            "actual": labels.loc[idx].astype(int).to_numpy(),
+            "pred": np.asarray(pred, dtype=int),
+        }
+    )
+    if group_type == "ticker":
+        frame["group"] = frame["ticker"]
+    elif group_type == "month":
+        frame["group"] = pd.to_datetime(frame["datetime"], errors="coerce").dt.to_period("M").astype(str)
+    else:
+        frame["group"] = pd.to_datetime(frame["datetime"], errors="coerce").dt.to_period("Q").astype(str)
+    values = frame.groupby("group").apply(lambda group: float((group["actual"].to_numpy(dtype=int) == group["pred"].to_numpy(dtype=int)).mean()), include_groups=False)
+    return {
+        f"{group_type}_accuracy_mean": float(values.mean()) if len(values) else math.nan,
+        f"{group_type}_accuracy_min": float(values.min()) if len(values) else math.nan,
+        f"{group_type}_accuracy_std": float(values.std(ddof=0)) if len(values) else math.nan,
+    }
+
+
+def v6_run_absolute_direction_confirmation(
+    features: pd.DataFrame,
+    family_cols: dict[str, list[str]],
+    relative_cols: list[str],
+    index_data: dict[str, pd.DataFrame],
+    feature_groups: dict[str, list[str]],
+    v5_leaderboard: pd.DataFrame,
+    config: RunConfig,
+) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    del family_cols, relative_cols
+    rows: list[dict[str, Any]] = []
+    details: dict[str, dict[str, Any]] = {}
+    model_names = [
+        "always_up",
+        "always_down",
+        "lag1_direction",
+        "random_same_class_balance",
+        "simple_momentum",
+        "simple_relative_strength",
+        "logistic_regression",
+        "calibrated_logistic",
+        "hist_gradient_boosting",
+        "lightgbm_classifier",
+        "linear_svm",
+        "rbf_svm",
+        "ridge_classifier",
+    ]
+    simple_models = {"always_up", "always_down", "lag1_direction", "random_same_class_balance", "simple_momentum", "simple_relative_strength"}
+    for horizon in [20, 40, 60]:
+        labels = build_direction_target(features, index_data, "absolute_direction", horizon)
+        splits = split_sample(features, labels, strict_split_indices(features, labels), config, classification=True)
+        split_guard = leakage_guard_passed(features, labels, splits)
+        for feature_group in v6_absolute_feature_groups(v5_leaderboard):
+            feature_columns = feature_groups.get(feature_group, [])
+            simple_validation_metrics: list[dict[str, float]] = []
+            simple_final_metrics: list[dict[str, float]] = []
+            simple_cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[str], str]] = {}
+            for model_name in simple_models:
+                try:
+                    prediction = v6_direction_model_predict(model_name, features, labels, splits, feature_columns)
+                    simple_cache[model_name] = prediction
+                    val_metrics = v5_repaired_classification_metrics(labels.loc[splits["validation"]], prediction[0], prediction[1])
+                    final_metrics = v5_repaired_classification_metrics(labels.loc[splits["final"]], prediction[2], prediction[3])
+                    simple_validation_metrics.append(val_metrics)
+                    simple_final_metrics.append(final_metrics)
+                except Exception:
+                    continue
+            strongest_val_bal = max([item["balanced_accuracy"] for item in simple_validation_metrics if math.isfinite(item["balanced_accuracy"])], default=math.nan)
+            strongest_val_acc = max([item["accuracy"] for item in simple_validation_metrics if math.isfinite(item["accuracy"])], default=math.nan)
+            strongest_final_bal = max([item["balanced_accuracy"] for item in simple_final_metrics if math.isfinite(item["balanced_accuracy"])], default=math.nan)
+            strongest_final_acc = max([item["accuracy"] for item in simple_final_metrics if math.isfinite(item["accuracy"])], default=math.nan)
+            for model_name in model_names:
+                row = {
+                    "candidate_id": candidate_id("v6_absolute", model_name, "absolute_direction", f"h{horizon}", feature_group),
+                    "task": "direction",
+                    "model_family": model_name,
+                    "target_variant": "absolute_direction",
+                    "horizon": horizon,
+                    "feature_group": feature_group,
+                    "validation_selected_scope": True,
+                    "final_evaluated_once": True,
+                    "split_guard_passed": bool(split_guard),
+                    "train_rows": int(len(splits["train"])),
+                    "validation_rows": int(len(splits["validation"])),
+                    "final_rows": int(len(splits["final"])),
+                    "claimable": False,
+                }
+                try:
+                    prediction = simple_cache.get(model_name)
+                    if prediction is None:
+                        prediction = v6_direction_model_predict(model_name, features, labels, splits, feature_columns)
+                    val_pred, val_prob, final_pred, final_prob, selected, _status = prediction
+                    val_metrics = v5_repaired_classification_metrics(labels.loc[splits["validation"]], val_pred, val_prob)
+                    final_metrics = v5_repaired_classification_metrics(labels.loc[splits["final"]], final_pred, final_prob)
+                    ticker_summary = v6_group_accuracy_summary(features, labels, splits["final"], final_pred, "ticker")
+                    quarter_summary = v6_group_accuracy_summary(features, labels, splits["final"], final_pred, "quarter")
+                    row.update(
+                        {
+                            "status": "ok",
+                            "selected_features": "|".join(selected),
+                            "validation_accuracy": val_metrics["accuracy"],
+                            "validation_balanced_accuracy": val_metrics["balanced_accuracy"],
+                            "validation_macro_f1": val_metrics["macro_f1"],
+                            "validation_mcc": val_metrics["mcc"],
+                            "validation_auc": val_metrics["roc_auc"],
+                            "validation_prediction_positive_ratio": val_metrics["prediction_positive_ratio"],
+                            "validation_lift_over_strongest_simple_accuracy": val_metrics["accuracy"] - strongest_val_acc if math.isfinite(strongest_val_acc) else math.nan,
+                            "validation_lift_over_strongest_simple_balanced_accuracy": val_metrics["balanced_accuracy"] - strongest_val_bal if math.isfinite(strongest_val_bal) else math.nan,
+                            "final_accuracy": final_metrics["accuracy"],
+                            "final_balanced_accuracy": final_metrics["balanced_accuracy"],
+                            "final_macro_f1": final_metrics["macro_f1"],
+                            "final_mcc": final_metrics["mcc"],
+                            "final_auc": final_metrics["roc_auc"],
+                            "final_prediction_positive_ratio": final_metrics["prediction_positive_ratio"],
+                            "final_lift_over_strongest_simple_accuracy": final_metrics["accuracy"] - strongest_final_acc if math.isfinite(strongest_final_acc) else math.nan,
+                            "final_lift_over_strongest_simple_balanced_accuracy": final_metrics["balanced_accuracy"] - strongest_final_bal if math.isfinite(strongest_final_bal) else math.nan,
+                            "beats_6161_champion_comparable": horizon == 40 and final_metrics["accuracy"] > CLASSICAL_CHAMPION["final_accuracy"] and final_metrics["balanced_accuracy"] > 0.5,
+                            "class_imbalance_artifact": bool(final_metrics["balanced_accuracy"] <= 0.5 or final_metrics["class_balance_gap"] > 0.30),
+                            "decision_label": "future_blind_required"
+                            if model_name not in simple_models
+                            and val_metrics["balanced_accuracy"] > max(0.5, strongest_val_bal if math.isfinite(strongest_val_bal) else 0.5)
+                            and final_metrics["balanced_accuracy"] > 0.5
+                            else "absolute_direction_candidate_not_confirmed",
+                            **ticker_summary,
+                            **quarter_summary,
+                        }
+                    )
+                    rows.append(row)
+                    details[row["candidate_id"]] = {
+                        "row": row,
+                        "labels": labels,
+                        "splits": splits,
+                        "validation_pred": val_pred,
+                        "validation_prob": val_prob,
+                        "final_pred": final_pred,
+                        "final_prob": final_prob,
+                        "selected_features": selected,
+                    }
+                except Exception as exc:
+                    row.update({"status": "skipped", "skipped_reason": f"{type(exc).__name__}: {exc}", "decision_label": "absolute_direction_candidate_not_confirmed"})
+                    rows.append(row)
+    return rows, details
+
+
+def v6_price_group_error_summary(features: pd.DataFrame, target: pd.Series, idx: pd.Index, pred: np.ndarray, group_type: str) -> dict[str, float]:
+    frame = pd.DataFrame(
+        {
+            "ticker": features.loc[idx, "ticker"].astype(str).to_numpy(),
+            "datetime": pd.to_datetime(features.loc[idx, "datetime"], errors="coerce").to_numpy(),
+            "actual": pd.to_numeric(target.loc[idx], errors="coerce").to_numpy(dtype=float),
+            "pred": np.asarray(pred, dtype=float),
+        }
+    ).replace([np.inf, -np.inf], np.nan).dropna()
+    if group_type == "ticker":
+        frame["group"] = frame["ticker"]
+    elif group_type == "month":
+        frame["group"] = pd.to_datetime(frame["datetime"], errors="coerce").dt.to_period("M").astype(str)
+    else:
+        frame["group"] = pd.to_datetime(frame["datetime"], errors="coerce").dt.to_period("Q").astype(str)
+    values = frame.groupby("group").apply(lambda group: float(np.mean(np.abs(group["actual"].to_numpy(dtype=float) - group["pred"].to_numpy(dtype=float)))), include_groups=False)
+    return {
+        f"{group_type}_mae_mean": float(values.mean()) if len(values) else math.nan,
+        f"{group_type}_mae_max": float(values.max()) if len(values) else math.nan,
+        f"{group_type}_mae_std": float(values.std(ddof=0)) if len(values) else math.nan,
+    }
+
+
+def v6_split_by_time(features: pd.DataFrame, idx: pd.Index) -> tuple[pd.Index, pd.Index]:
+    ordered = ordered_index(features, idx)
+    if len(ordered) < 2:
+        return ordered, pd.Index([])
+    midpoint = len(ordered) // 2
+    return pd.Index(list(ordered)[:midpoint]), pd.Index(list(ordered)[midpoint:])
+
+
+def v6_stability_summary(
+    best_price: dict[str, Any],
+    price_details: dict[str, dict[str, Any]],
+    best_direction: dict[str, Any],
+    direction_details: dict[str, dict[str, Any]],
+    features: pd.DataFrame,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    price_detail = price_details.get(str(best_price.get("candidate_id", "")))
+    if price_detail:
+        target = price_detail["target"]
+        splits = price_detail["splits"]
+        validation_pred = np.asarray(price_detail["validation_pred"], dtype=float)
+        final_pred = np.asarray(price_detail["final_pred"], dtype=float)
+        validation_early, validation_late = v6_split_by_time(features, splits["validation"])
+        early_count = len(validation_early)
+        early_pred = validation_pred[:early_count]
+        late_pred = validation_pred[early_count:]
+        base_val = price_detail["baselines_validation"]
+        early_base = {name: np.asarray(pred, dtype=float)[:early_count] for name, pred in base_val.items()}
+        late_base = {name: np.asarray(pred, dtype=float)[early_count:] for name, pred in base_val.items()}
+        early_metrics = v6_price_metrics_for_split(target, early_pred, early_base, features, validation_early, price_detail["target_variant"]) if len(validation_early) else {}
+        late_metrics = v6_price_metrics_for_split(target, late_pred, late_base, features, validation_late, price_detail["target_variant"]) if len(validation_late) else {}
+        drift = v6_feature_drift(features, splits, price_detail.get("selected_features", []))
+        rows.append(
+            {
+                "candidate_id": best_price.get("candidate_id", ""),
+                "task": "price_return",
+                "validation_final_gap": as_float(best_price.get("validation_rmse")) - as_float(best_price.get("final_rmse")),
+                "rolling_origin_validation_early_metric": early_metrics.get("rmse", math.nan),
+                "rolling_origin_validation_late_metric": late_metrics.get("rmse", math.nan),
+                "rolling_origin_final_metric": best_price.get("final_rmse", math.nan),
+                "prediction_distribution_validation_mean": float(np.nanmean(validation_pred)) if len(validation_pred) else math.nan,
+                "prediction_distribution_validation_std": float(np.nanstd(validation_pred)) if len(validation_pred) else math.nan,
+                "prediction_distribution_final_mean": float(np.nanmean(final_pred)) if len(final_pred) else math.nan,
+                "prediction_distribution_final_std": float(np.nanstd(final_pred)) if len(final_pred) else math.nan,
+                **v6_price_group_error_summary(features, target, splits["final"], final_pred, "ticker"),
+                **v6_price_group_error_summary(features, target, splits["final"], final_pred, "quarter"),
+                **v6_price_group_error_summary(features, target, splits["final"], final_pred, "month"),
+                **drift,
+            }
+        )
+    direction_detail = direction_details.get(str(best_direction.get("candidate_id", "")))
+    if direction_detail:
+        labels = direction_detail["labels"]
+        splits = direction_detail["splits"]
+        validation_pred = np.asarray(direction_detail["validation_pred"], dtype=int)
+        validation_prob = np.asarray(direction_detail["validation_prob"], dtype=float)
+        final_pred = np.asarray(direction_detail["final_pred"], dtype=int)
+        validation_early, validation_late = v6_split_by_time(features, splits["validation"])
+        early_count = len(validation_early)
+        early_metrics = v5_repaired_classification_metrics(labels.loc[validation_early], validation_pred[:early_count], validation_prob[:early_count]) if len(validation_early) else {}
+        late_metrics = v5_repaired_classification_metrics(labels.loc[validation_late], validation_pred[early_count:], validation_prob[early_count:]) if len(validation_late) else {}
+        drift = v6_feature_drift(features, splits, direction_detail.get("selected_features", []))
+        rows.append(
+            {
+                "candidate_id": best_direction.get("candidate_id", ""),
+                "task": "direction",
+                "validation_final_gap": as_float(best_direction.get("validation_balanced_accuracy")) - as_float(best_direction.get("final_balanced_accuracy")),
+                "rolling_origin_validation_early_metric": early_metrics.get("balanced_accuracy", math.nan),
+                "rolling_origin_validation_late_metric": late_metrics.get("balanced_accuracy", math.nan),
+                "rolling_origin_final_metric": best_direction.get("final_balanced_accuracy", math.nan),
+                "prediction_distribution_validation_positive_ratio": float(np.mean(validation_pred)) if len(validation_pred) else math.nan,
+                "prediction_distribution_final_positive_ratio": float(np.mean(final_pred)) if len(final_pred) else math.nan,
+                **v6_group_accuracy_summary(features, labels, splits["final"], final_pred, "ticker"),
+                **v6_group_accuracy_summary(features, labels, splits["final"], final_pred, "quarter"),
+                **v6_group_accuracy_summary(features, labels, splits["final"], final_pred, "month"),
+                **drift,
+            }
+        )
+    return rows
+
+
+def v6_candidate_decision(
+    price_rows: list[dict[str, Any]],
+    absolute_rows: list[dict[str, Any]],
+    stability_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    price_ok = [row for row in price_rows if row.get("status") == "ok"]
+    abs_ok = [row for row in absolute_rows if row.get("status") == "ok" and row.get("model_family") not in {"always_up", "always_down", "lag1_direction", "random_same_class_balance", "simple_momentum", "simple_relative_strength"}]
+    best_price = max(price_ok, key=lambda row: (as_float(row.get("validation_improvement_vs_random_walk")), as_float(row.get("validation_rank_ic")), -as_float(row.get("validation_rmse"))), default={})
+    best_abs = max(abs_ok, key=lambda row: (as_float(row.get("validation_balanced_accuracy")), as_float(row.get("validation_macro_f1")), as_float(row.get("validation_mcc"))), default={})
+    stability_by_id = {str(row.get("candidate_id", "")): row for row in stability_rows}
+    price_stability = stability_by_id.get(str(best_price.get("candidate_id", "")), {})
+    abs_stability = stability_by_id.get(str(best_abs.get("candidate_id", "")), {})
+    price_confirmed = bool(
+        best_price
+        and as_float(best_price.get("validation_improvement_vs_random_walk")) > 0
+        and as_float(best_price.get("final_improvement_vs_random_walk")) > 0
+        and as_float(best_price.get("final_improvement_vs_last_price")) > 0
+        and (not math.isfinite(as_float(price_stability.get("quarter_mae_std"))) or as_float(price_stability.get("quarter_mae_std")) <= max(as_float(price_stability.get("quarter_mae_mean")), 1e-12))
+    )
+    abs_confirmed = bool(
+        best_abs
+        and as_float(best_abs.get("validation_lift_over_strongest_simple_balanced_accuracy")) > 0
+        and as_float(best_abs.get("final_lift_over_strongest_simple_balanced_accuracy")) > 0
+        and as_float(best_abs.get("final_balanced_accuracy")) > 0.5
+        and not bool(best_abs.get("class_imbalance_artifact"))
+        and as_float(abs_stability.get("quarter_accuracy_min")) >= 0.45
+    )
+    future_blind: list[dict[str, Any]] = []
+    if price_confirmed:
+        future_blind.append({"candidate_id": best_price.get("candidate_id", ""), "task": "price_return", "reason": "validation-selected relock has positive final random-walk and last-price improvement"})
+    if abs_confirmed:
+        future_blind.append({"candidate_id": best_abs.get("candidate_id", ""), "task": "direction", "reason": "validation-selected repaired absolute-direction candidate passes final simple-baseline and balance checks"})
+    return {
+        "price_return_decision_label": "price_return_candidate_confirmed" if price_confirmed else "price_return_candidate_not_confirmed",
+        "absolute_direction_decision_label": "absolute_direction_candidate_confirmed" if abs_confirmed else "absolute_direction_candidate_not_confirmed",
+        "future_blind_label": "future_blind_required" if future_blind else "not_claimable",
+        "claim_label": "not_claimable",
+        "best_price_return_candidate": best_price.get("candidate_id", ""),
+        "best_absolute_direction_candidate": best_abs.get("candidate_id", ""),
+        "future_blind_candidates": future_blind,
+        "claimable_results": 0,
+        "diagnostic_only": True,
+        "no_final_only_selection": True,
+        "no_trading_claim": True,
+    }
+
+
+def write_v6_reports(
+    survivors: pd.DataFrame,
+    price_rows: list[dict[str, Any]],
+    absolute_rows: list[dict[str, Any]],
+    decision: dict[str, Any],
+) -> None:
+    price_ok = [row for row in price_rows if row.get("status") == "ok"]
+    abs_ok = [row for row in absolute_rows if row.get("status") == "ok" and row.get("model_family") not in {"always_up", "always_down", "lag1_direction", "random_same_class_balance", "simple_momentum", "simple_relative_strength"}]
+    best_price = max(price_ok, key=lambda row: (as_float(row.get("validation_improvement_vs_random_walk")), as_float(row.get("validation_rank_ic")), -as_float(row.get("validation_rmse"))), default={})
+    best_abs = max(abs_ok, key=lambda row: (as_float(row.get("validation_balanced_accuracy")), as_float(row.get("validation_macro_f1")), as_float(row.get("validation_mcc"))), default={})
+    ridge_survived = any(row.get("model_family") == "ridge" and row.get("target_variant") == "volatility_adjusted_return_h" and int(row.get("horizon", 0)) == 20 and bool(row.get("survived_relock")) for row in price_ok)
+    robust_price_final = [
+        row for row in price_ok
+        if as_float(row.get("final_improvement_vs_random_walk")) > 0 and as_float(row.get("final_improvement_vs_last_price")) > 0
+    ]
+    usable_sign_rank = [
+        row for row in price_ok
+        if as_float(row.get("final_sign_accuracy")) > 0.5 or as_float(row.get("final_rank_ic")) > 0.0
+    ]
+    abs_h40_beats = [
+        row for row in abs_ok
+        if int(row.get("horizon", 0)) == 40 and bool(row.get("beats_6161_champion_comparable"))
+    ]
+    future_blind = decision.get("future_blind_candidates", [])
+    relocked_ids = ", ".join(str(value) for value in survivors.get("candidate_id", pd.Series(dtype=str)).tolist())
+    summary = f"""# VN30 Model Universe V6 Price/Return and Absolute-Direction Confirmation Result Summary
+
+## Required Answers
+
+1. V5 price/return candidates relocked: {relocked_ids}.
+2. Ridge volatility_adjusted_return_h h20 survived relock: {safe_bool_text(ridge_survived)}.
+3. Did any price/return model robustly beat random walk / last price on final: {safe_bool_text(bool(robust_price_final))}. Best validation-selected price row `{best_price.get("candidate_id", "")}` final random-walk improvement {pp(best_price.get("final_improvement_vs_random_walk"))}, final last-price improvement {pp(best_price.get("final_improvement_vs_last_price"))}.
+4. Did any price/return model show usable sign accuracy or rank IC: {safe_bool_text(bool(usable_sign_rank))}. Best price row final sign accuracy {pct(best_price.get("final_sign_accuracy"))}, final rank IC {as_float(best_price.get("final_rank_ic")):.4f}.
+5. Best absolute_direction candidate under repaired metrics: `{best_abs.get("candidate_id", "")}` with validation balanced accuracy {pct(best_abs.get("validation_balanced_accuracy"))}, macro F1 {pct(best_abs.get("validation_macro_f1"))}, MCC {as_float(best_abs.get("validation_mcc")):.4f}.
+6. Does any absolute_direction candidate beat the 61.61 champion on comparable scope: {safe_bool_text(bool(abs_h40_beats))}.
+7. Candidates that remain future-blind worthy: {len(future_blind)} rows in `v6_candidate_decision.json`.
+8. Is any result claimable: no.
+9. Exact claim boundary: offline diagnostic-only VN30 stock hourly relock; validation-governed selection only; final rows are scoring-only and exploratory_not_claimable; no trading, profitability, BUY/SELL, recommendation, live deployment, daily T+1 system, VN100, index-as-stock, DOCX, tag, merge, push --mirror, main-branch, or champion-replacement claim is made.
+
+## Decision Labels
+
+- Price/return: `{decision.get("price_return_decision_label", "")}`.
+- Absolute direction: `{decision.get("absolute_direction_decision_label", "")}`.
+- Future blind: `{decision.get("future_blind_label", "")}`.
+- Claim: `{decision.get("claim_label", "")}`.
+"""
+    write_markdown(V6_RESULT_PATH, summary)
+    claim = """# VN30 Model Universe V6 Price/Return and Absolute-Direction Claim Boundary
+
+- V6 is an offline diagnostic-only relock and confirmation audit for VN30 stock hourly forecasting.
+- V6 uses V5 artifacts as inputs and does not run broad model search.
+- Price/return relock freezes V5 survivor model family, target, horizon, and feature group; hyperparameters are selected on validation only; final is evaluated once.
+- Absolute-direction confirmation is validation-governed under repaired metrics: raw accuracy, balanced accuracy, macro F1, MCC, AUC where available, prediction balance, and simple-baseline lift.
+- feature_timestamp and target_timestamp split discipline is required for all rows.
+- Final-ranked rows remain exploratory_not_claimable and cannot select claimable rows.
+- No result is claimable now; future-blind-worthy candidates require a pre-registered future-blind test before stronger claims.
+- Scope is VN30 stock hourly only; VN100 is out of scope.
+- Index data may be used only as lagged market context or market-relative context; no index-as-stock claim is made.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, daily T+1 system, production, DOCX, tag, merge, push --mirror, history rewrite, main-branch, or champion-replacement claim is made.
+"""
+    write_markdown(V6_CLAIM_PATH, claim)
+
+
+def run_price_absolute_relock(timeout_seconds: int) -> dict[str, Any]:
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    artifacts = v6_required_v5_artifacts()
+    features, family_cols, _feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    index_data = load_index_data()
+    features, relative_cols = add_v3_relative_strength_features(features, index_data)
+    feature_groups = build_feature_groups(features, family_cols, relative_cols)
+    config = RunConfig("price_absolute_relock", timeout_seconds, 1600, 700, 700, 220, 40)
+
+    survivors = v6_price_survivors(artifacts["price_repair"])
+    price_rows, price_baselines, price_details = v6_relock_price_candidates(survivors, features, index_data, feature_groups, config)
+    absolute_rows, direction_details = v6_run_absolute_direction_confirmation(features, family_cols, relative_cols, index_data, feature_groups, artifacts["baseline_gated"], config)
+    price_ok = [row for row in price_rows if row.get("status") == "ok"]
+    abs_ok = [row for row in absolute_rows if row.get("status") == "ok" and row.get("model_family") not in {"always_up", "always_down", "lag1_direction", "random_same_class_balance", "simple_momentum", "simple_relative_strength"}]
+    best_price = max(price_ok, key=lambda row: (as_float(row.get("validation_improvement_vs_random_walk")), as_float(row.get("validation_rank_ic")), -as_float(row.get("validation_rmse"))), default={})
+    best_abs = max(abs_ok, key=lambda row: (as_float(row.get("validation_balanced_accuracy")), as_float(row.get("validation_macro_f1")), as_float(row.get("validation_mcc"))), default={})
+    stability_rows = v6_stability_summary(best_price, price_details, best_abs, direction_details, features)
+    decision = v6_candidate_decision(price_rows, absolute_rows, stability_rows)
+    leaderboard = sorted(
+        [row for row in absolute_rows if row.get("status") == "ok"],
+        key=lambda row: (row.get("model_family") not in {"always_up", "always_down", "lag1_direction", "random_same_class_balance", "simple_momentum", "simple_relative_strength"}, as_float(row.get("validation_balanced_accuracy")), as_float(row.get("validation_macro_f1")), as_float(row.get("validation_mcc"))),
+        reverse=True,
+    )
+
+    write_frame(OUTPUT_DIR / "v6_price_relock_results.csv", price_rows, sorted(set().union(*(row.keys() for row in price_rows))) if price_rows else [])
+    write_frame(OUTPUT_DIR / "v6_price_baseline_comparison.csv", price_baselines, sorted(set().union(*(row.keys() for row in price_baselines))) if price_baselines else [])
+    write_frame(OUTPUT_DIR / "v6_absolute_direction_repaired_results.csv", absolute_rows, sorted(set().union(*(row.keys() for row in absolute_rows))) if absolute_rows else [])
+    write_frame(OUTPUT_DIR / "v6_absolute_direction_leaderboard.csv", leaderboard, sorted(set().union(*(row.keys() for row in leaderboard))) if leaderboard else [])
+    write_frame(OUTPUT_DIR / "v6_stability_summary.csv", stability_rows, sorted(set().union(*(row.keys() for row in stability_rows))) if stability_rows else [])
+    write_json(OUTPUT_DIR / "v6_candidate_decision.json", decision)
+    write_v6_reports(survivors, price_rows, absolute_rows, decision)
+
+    result = {
+        "status": "ok",
+        "mode": "price_absolute_relock",
+        "runtime_seconds": time.perf_counter() - started,
+        "v5_price_survivors": int(len(survivors)),
+        "price_rows": len(price_rows),
+        "absolute_rows": len(absolute_rows),
+        "best_price_return_candidate": decision.get("best_price_return_candidate", ""),
+        "best_absolute_direction_candidate": decision.get("best_absolute_direction_candidate", ""),
+        "claimable_results": 0,
+        "diagnostic_only": True,
+    }
+    print(json.dumps(json_safe(result), indent=2))
+    return result
+
+
 def run_benchmark(config: RunConfig) -> dict[str, Any]:
     started = time.perf_counter()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -3697,6 +4478,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--enable-skipped-families", action="store_true", help="Run V3 bounded benchmark for previously skipped families.")
     parser.add_argument("--bilstm-relock", action="store_true", help="Run V4 BiLSTM relock and stability confirmation.")
     parser.add_argument("--target-metric-repair", action="store_true", help="Run V5 target and metric repair audit.")
+    parser.add_argument("--price-absolute-relock", action="store_true", help="Run V6 price/return relock and absolute-direction repaired confirmation.")
     parser.add_argument("--timeout-seconds", type=int, default=7200)
     return parser.parse_args()
 
@@ -3714,6 +4496,9 @@ def main() -> None:
         return
     if args.target_metric_repair:
         run_target_metric_repair(max(1, int(args.timeout_seconds)))
+        return
+    if args.price_absolute_relock:
+        run_price_absolute_relock(max(1, int(args.timeout_seconds)))
         return
     if args.smoke:
         config = RunConfig("smoke", max(1, int(args.timeout_seconds)), 500, 250, 250, 80, 80)
