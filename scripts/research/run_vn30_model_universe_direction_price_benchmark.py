@@ -42,6 +42,7 @@ from sklearn.metrics import (
     balanced_accuracy_score,
     brier_score_loss,
     f1_score,
+    matthews_corrcoef,
     mean_absolute_error,
     mean_squared_error,
     precision_score,
@@ -103,6 +104,8 @@ V3_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V3_SKI
 V3_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V3_SKIPPED_FAMILIES_CLAIM_BOUNDARY.md"
 V4_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V4_BILSTM_RELOCK_RESULT_SUMMARY.md"
 V4_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V4_BILSTM_RELOCK_CLAIM_BOUNDARY.md"
+V5_RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_MODEL_UNIVERSE_V5_TARGET_METRIC_REPAIR_RESULT_SUMMARY.md"
+V5_CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_MODEL_UNIVERSE_V5_TARGET_METRIC_REPAIR_CLAIM_BOUNDARY.md"
 
 QML_V8_CONTEXT_FINAL = 0.6444444444444445
 QML_V8_CONTEXT_VALIDATION = 0.6055555555555555
@@ -2866,6 +2869,650 @@ def run_bilstm_relock(timeout_seconds: int) -> dict[str, Any]:
     return result
 
 
+def safe_int(value: Any, default: int = 0) -> int:
+    number = as_float(value)
+    return int(number) if math.isfinite(number) else default
+
+
+def safe_bool_text(value: bool) -> str:
+    return "yes" if bool(value) else "no"
+
+
+def v5_direction_frame() -> pd.DataFrame:
+    frames: list[pd.DataFrame] = []
+    for name, source in [
+        ("direction_validation_results.csv", "v1_v2_validation_screening"),
+        ("v3_direction_validation_results.csv", "v3_skipped_families"),
+        ("v3_ensemble_results.csv", "v3_ensembles"),
+        ("v3_qml_integration_results.csv", "v3_qml_integration"),
+        ("v4_bilstm_comparison_summary.csv", "v4_bilstm_relock"),
+    ]:
+        frame = read_artifact(name)
+        if frame.empty:
+            continue
+        frame = frame.copy()
+        frame["source_artifact"] = name
+        frame["source_stage"] = source
+        if "task" in frame.columns:
+            frame = frame[(frame["task"].fillna("direction") == "direction") | frame["task"].isna()].copy()
+        frames.append(frame)
+    if not frames:
+        return pd.DataFrame()
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    combined = combined[combined.get("candidate_id", "").astype(str).ne("")].copy()
+    combined = combined.drop_duplicates("candidate_id", keep="last")
+    return combined.reset_index(drop=True)
+
+
+def v5_price_frame() -> pd.DataFrame:
+    frames: list[pd.DataFrame] = []
+    for name, source in [
+        ("price_validation_results.csv", "v1_v2_validation_screening"),
+        ("v3_price_validation_results.csv", "v3_skipped_families"),
+        ("v3_deep_sequence_results.csv", "v3_deep_sequence"),
+    ]:
+        frame = read_artifact(name)
+        if frame.empty:
+            continue
+        frame = frame.copy()
+        frame["source_artifact"] = name
+        frame["source_stage"] = source
+        if "task" in frame.columns:
+            frame = frame[frame["task"].fillna("").eq("price_return")].copy()
+        frames.append(frame)
+    if not frames:
+        return pd.DataFrame()
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    combined = combined[combined.get("candidate_id", "").astype(str).ne("")].copy()
+    combined = combined.drop_duplicates("candidate_id", keep="last")
+    return combined.reset_index(drop=True)
+
+
+def v5_direction_predictions_for_candidate(
+    candidate: pd.Series,
+    features: pd.DataFrame,
+    family_cols: dict[str, list[str]],
+    relative_cols: list[str],
+    index_data: dict[str, pd.DataFrame],
+    feature_groups: dict[str, list[str]],
+    config: RunConfig,
+) -> dict[str, Any]:
+    model = str(candidate.get("model_family", ""))
+    feature_group = str(candidate.get("feature_group", ""))
+    target_variant = str(candidate.get("target_variant", ""))
+    horizon = safe_int(candidate.get("horizon"))
+    labels = build_direction_target(features, index_data, target_variant, horizon)
+    splits = split_sample(features, labels, strict_split_indices(features, labels), config, classification=True)
+    if str(candidate.get("source_stage", "")).startswith("v4") or str(candidate.get("candidate_id", "")).startswith("v4__"):
+        row, outputs, _selected = v4_eval_architecture(
+            features,
+            labels,
+            splits["train"],
+            splits["validation"],
+            splits["final"],
+            feature_groups.get(feature_group, []),
+            feature_group,
+            model if model in {"LSTM", "GRU", "BiLSTM", "BiLSTM_small", "BiLSTM_dropout"} else "BiLSTM",
+            safe_int(candidate.get("seed"), SEED),
+            safe_int(candidate.get("hidden_size"), 12),
+            as_float(candidate.get("dropout")) if math.isfinite(as_float(candidate.get("dropout"))) else 0.0,
+        )
+        return {"row": row, "outputs": outputs, "splits": splits, "labels": labels}
+    row, _final_pred = evaluate_direction_candidate(model, feature_group, features, family_cols, relative_cols, index_data, labels, splits, feature_groups.get(feature_group, []))
+    return {"row": row, "outputs": {}, "splits": splits, "labels": labels}
+
+
+def v5_repaired_classification_metrics(y_true: pd.Series, pred: np.ndarray | None, prob: np.ndarray | None = None) -> dict[str, float]:
+    if pred is None:
+        return {
+            "accuracy": math.nan,
+            "balanced_accuracy": math.nan,
+            "macro_f1": math.nan,
+            "positive_f1": math.nan,
+            "mcc": math.nan,
+            "roc_auc": math.nan,
+            "label_positive_ratio": math.nan,
+            "prediction_positive_ratio": math.nan,
+            "class_balance_gap": math.nan,
+            "majority_baseline_accuracy": math.nan,
+        }
+    y = y_true.astype(int).to_numpy()
+    p = np.asarray(pred, dtype=int)
+    prob_arr = np.asarray(prob, dtype=float) if prob is not None else p.astype(float)
+    if not len(y):
+        return {
+            "accuracy": math.nan,
+            "balanced_accuracy": math.nan,
+            "macro_f1": math.nan,
+            "positive_f1": math.nan,
+            "mcc": math.nan,
+            "roc_auc": math.nan,
+            "label_positive_ratio": math.nan,
+            "prediction_positive_ratio": math.nan,
+            "class_balance_gap": math.nan,
+            "majority_baseline_accuracy": math.nan,
+        }
+    label_pos = float(np.mean(y))
+    pred_pos = float(np.mean(p)) if len(p) else math.nan
+    return {
+        "accuracy": float(np.mean(y == p)),
+        "balanced_accuracy": float(balanced_accuracy_score(y, p)) if len(np.unique(y)) > 1 else math.nan,
+        "macro_f1": float(f1_score(y, p, average="macro", zero_division=0)),
+        "positive_f1": float(f1_score(y, p, zero_division=0)),
+        "mcc": float(matthews_corrcoef(y, p)) if len(np.unique(y)) > 1 and len(np.unique(p)) > 1 else 0.0,
+        "roc_auc": safe_auc(y, prob_arr),
+        "label_positive_ratio": label_pos,
+        "prediction_positive_ratio": pred_pos,
+        "class_balance_gap": abs(label_pos - pred_pos) if math.isfinite(pred_pos) else math.nan,
+        "majority_baseline_accuracy": max(label_pos, 1.0 - label_pos),
+    }
+
+
+def v5_baseline_metric_rows(
+    features: pd.DataFrame,
+    labels: pd.Series,
+    splits: dict[str, pd.Index],
+    target_variant: str,
+    horizon: int,
+    feature_group: str,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    train_y = labels.loc[splits["train"]].astype(int)
+    for baseline in ["always_up", "always_down", "lag1_direction", "random_same_class_balance", "simple_momentum", "simple_relative_strength"]:
+        val_pred, val_prob, reason = baseline_direction_prediction(baseline, features, train_y, splits["validation"])
+        fin_pred, fin_prob, reason2 = baseline_direction_prediction(baseline, features, train_y, splits["final"])
+        if val_pred is None or fin_pred is None:
+            rows.append(
+                {
+                    "candidate_id": candidate_id("v5_baseline", baseline, target_variant, f"h{horizon}", feature_group),
+                    "model_family": baseline,
+                    "target_variant": target_variant,
+                    "horizon": horizon,
+                    "feature_group": feature_group,
+                    "status": "skipped",
+                    "skipped_reason": reason or reason2,
+                }
+            )
+            continue
+        val_metrics = v5_repaired_classification_metrics(labels.loc[splits["validation"]], val_pred, val_prob)
+        final_metrics = v5_repaired_classification_metrics(labels.loc[splits["final"]], fin_pred, fin_prob)
+        rows.append(
+            {
+                "candidate_id": candidate_id("v5_baseline", baseline, target_variant, f"h{horizon}", feature_group),
+                "model_family": baseline,
+                "target_variant": target_variant,
+                "horizon": horizon,
+                "feature_group": feature_group,
+                "status": "ok",
+                "validation_accuracy": val_metrics["accuracy"],
+                "validation_balanced_accuracy": val_metrics["balanced_accuracy"],
+                "validation_macro_f1": val_metrics["macro_f1"],
+                "validation_mcc": val_metrics["mcc"],
+                "final_accuracy": final_metrics["accuracy"],
+                "final_balanced_accuracy": final_metrics["balanced_accuracy"],
+                "final_macro_f1": final_metrics["macro_f1"],
+                "final_mcc": final_metrics["mcc"],
+                "validation_prediction_positive_ratio": val_metrics["prediction_positive_ratio"],
+                "final_prediction_positive_ratio": final_metrics["prediction_positive_ratio"],
+            }
+        )
+    return rows
+
+
+def v5_class_balance_audit(features: pd.DataFrame, index_data: dict[str, pd.DataFrame], config: RunConfig) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for target_variant in DIRECTION_TARGETS:
+        for horizon in HORIZONS:
+            labels = build_direction_target(features, index_data, target_variant, horizon)
+            splits = split_sample(features, labels, strict_split_indices(features, labels), config, classification=True)
+            for split_name, idx in splits.items():
+                y = labels.loc[idx].dropna().astype(int)
+                positive_ratio = float(y.mean()) if len(y) else math.nan
+                majority = max(positive_ratio, 1.0 - positive_ratio) if math.isfinite(positive_ratio) else math.nan
+                rows.append(
+                    {
+                        "target_variant": target_variant,
+                        "horizon": horizon,
+                        "split": split_name,
+                        "rows": int(len(y)),
+                        "positive_ratio": positive_ratio,
+                        "negative_ratio": 1.0 - positive_ratio if math.isfinite(positive_ratio) else math.nan,
+                        "majority_class_accuracy": majority,
+                        "imbalance_gap": abs(positive_ratio - 0.5) if math.isfinite(positive_ratio) else math.nan,
+                        "least_contaminated_score": 1.0 - abs(positive_ratio - 0.5) if math.isfinite(positive_ratio) else math.nan,
+                    }
+                )
+    return rows
+
+
+def v5_target_repair_results(class_balance_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    frame = pd.DataFrame(class_balance_rows)
+    if frame.empty:
+        return []
+    results: list[dict[str, Any]] = []
+    for target_variant, group in frame.groupby("target_variant", sort=True):
+        weights = numeric_series(group, "rows").replace(0, np.nan)
+        gaps = numeric_series(group, "imbalance_gap")
+        weighted_gap = float(np.nansum(gaps * weights) / np.nansum(weights)) if np.nansum(weights) > 0 else math.nan
+        max_gap = float(gaps.max()) if gaps.notna().any() else math.nan
+        final_group = group[group["split"].eq("final")]
+        final_gap = float(numeric_series(final_group, "imbalance_gap").mean()) if not final_group.empty else math.nan
+        results.append(
+            {
+                "target_variant": target_variant,
+                "weighted_split_imbalance_gap": weighted_gap,
+                "max_split_imbalance_gap": max_gap,
+                "final_imbalance_gap": final_gap,
+                "least_contaminated_rank_score": 1.0 - weighted_gap if math.isfinite(weighted_gap) else math.nan,
+                "repair_verdict": "least_contaminated" if math.isfinite(weighted_gap) else "not_available",
+            }
+        )
+    results = sorted(results, key=lambda row: as_float(row.get("weighted_split_imbalance_gap")))
+    for rank, row in enumerate(results, start=1):
+        row["least_contaminated_rank"] = rank
+        row["repair_verdict"] = "least_contaminated" if rank == 1 else "usable_with_balance_reporting"
+    return results
+
+
+def v5_normalize_direction_row(row: pd.Series, source_row: dict[str, Any]) -> dict[str, Any]:
+    validation_bal = as_float(row.get("validation_balanced_accuracy"))
+    if not math.isfinite(validation_bal):
+        validation_bal = as_float(row.get("balanced_accuracy"))
+    validation_macro_f1 = as_float(row.get("validation_macro_f1"))
+    if not math.isfinite(validation_macro_f1):
+        source_f1 = as_float(row.get("validation_f1"))
+        if not math.isfinite(source_f1):
+            source_f1 = as_float(row.get("f1"))
+        validation_macro_f1 = source_f1
+    final_bal = as_float(row.get("final_balanced_accuracy"))
+    final_macro_f1 = as_float(row.get("final_macro_f1"))
+    if not math.isfinite(final_macro_f1):
+        final_macro_f1 = as_float(row.get("final_f1"))
+    return {
+        "candidate_id": str(row.get("candidate_id", source_row.get("candidate_id", ""))),
+        "source_stage": str(row.get("source_stage", source_row.get("source_stage", ""))),
+        "model_family": str(row.get("model_family", source_row.get("model_family", ""))),
+        "feature_group": str(row.get("feature_group", source_row.get("feature_group", ""))),
+        "target_variant": str(row.get("target_variant", source_row.get("target_variant", ""))),
+        "horizon": safe_int(row.get("horizon", source_row.get("horizon"))),
+        "validation_accuracy": as_float(row.get("validation_accuracy")),
+        "validation_balanced_accuracy": validation_bal,
+        "validation_macro_f1": validation_macro_f1,
+        "validation_mcc": as_float(row.get("validation_mcc")),
+        "validation_roc_auc": as_float(row.get("validation_roc_auc", row.get("roc_auc"))),
+        "validation_lift_over_strongest_accuracy_baseline": as_float(row.get("validation_lift_over_strongest_baseline", row.get("lift_over_strongest_baseline"))),
+        "final_accuracy": as_float(row.get("final_accuracy")),
+        "final_balanced_accuracy": final_bal,
+        "final_macro_f1": final_macro_f1,
+        "final_mcc": as_float(row.get("final_mcc")),
+        "final_roc_auc": as_float(row.get("final_roc_auc")),
+        "status": str(row.get("status", "ok")),
+        "claim_label": str(row.get("claim_label", "diagnostic_only")),
+    }
+
+
+def v5_direction_repair_results(
+    direction_candidates: pd.DataFrame,
+    features: pd.DataFrame,
+    family_cols: dict[str, list[str]],
+    relative_cols: list[str],
+    index_data: dict[str, pd.DataFrame],
+    feature_groups: dict[str, list[str]],
+    config: RunConfig,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    if direction_candidates.empty:
+        return [], [], []
+    frame = direction_candidates.copy()
+    for column in ["validation_accuracy", "validation_balanced_accuracy", "balanced_accuracy", "final_accuracy", "final_balanced_accuracy", "validation_lift_over_strongest_baseline", "lift_over_strongest_baseline"]:
+        frame[column] = numeric_series(frame, column)
+    frame = frame[frame.get("status", "ok").fillna("ok").eq("ok")].copy()
+    priorities = []
+    bilstm = frame[frame["candidate_id"].astype(str).str.contains("BiLSTM", case=False, na=False)]
+    if not bilstm.empty:
+        priorities.extend(bilstm.sort_values(["final_accuracy", "validation_accuracy"], ascending=False).head(6)["candidate_id"].tolist())
+    for target_variant in ["absolute_direction", "market_relative_vn30"]:
+        subset = frame[(frame["target_variant"] == target_variant) & (numeric_series(frame, "horizon") == 40)]
+        priorities.extend(subset.sort_values(["validation_balanced_accuracy", "validation_accuracy"], ascending=False).head(8)["candidate_id"].tolist())
+        priorities.extend(subset.sort_values(["final_accuracy", "validation_accuracy"], ascending=False).head(5)["candidate_id"].tolist())
+    priorities.extend(frame.sort_values(["validation_balanced_accuracy", "validation_accuracy"], ascending=False).head(12)["candidate_id"].tolist())
+    seen: set[str] = set()
+    selected_ids = []
+    for cid in priorities:
+        key = str(cid)
+        if key not in seen:
+            seen.add(key)
+            selected_ids.append(key)
+
+    repair_rows: list[dict[str, Any]] = []
+    baseline_rows: list[dict[str, Any]] = []
+    bilstm_rows: list[dict[str, Any]] = []
+    for cid in selected_ids:
+        source = frame[frame["candidate_id"].astype(str).eq(cid)]
+        if source.empty:
+            continue
+        candidate = source.iloc[0]
+        target_variant = str(candidate.get("target_variant", ""))
+        horizon = safe_int(candidate.get("horizon"))
+        feature_group = str(candidate.get("feature_group", ""))
+        try:
+            labels = build_direction_target(features, index_data, target_variant, horizon)
+            splits = split_sample(features, labels, strict_split_indices(features, labels), config, classification=True)
+            baseline_metrics = v5_baseline_metric_rows(features, labels, splits, target_variant, horizon, feature_group)
+            baseline_rows.extend(baseline_metrics)
+            baseline_ok = [row for row in baseline_metrics if row.get("status") == "ok"]
+            strongest_accuracy = max([as_float(row.get("validation_accuracy")) for row in baseline_ok], default=math.nan)
+            strongest_balanced = max([as_float(row.get("validation_balanced_accuracy")) for row in baseline_ok], default=math.nan)
+            strongest_macro_f1 = max([as_float(row.get("validation_macro_f1")) for row in baseline_ok], default=math.nan)
+            strongest_mcc = max([as_float(row.get("validation_mcc")) for row in baseline_ok], default=math.nan)
+            recomputed = v5_direction_predictions_for_candidate(candidate, features, family_cols, relative_cols, index_data, feature_groups, config)
+            row = v5_normalize_direction_row(pd.Series(recomputed["row"]), candidate.to_dict())
+            if recomputed.get("outputs"):
+                outputs = recomputed["outputs"]
+                if "validation" in outputs:
+                    vm = v5_repaired_classification_metrics(labels.loc[splits["validation"]], outputs["validation"].get("pred"), outputs["validation"].get("prob"))
+                    row.update({"validation_macro_f1": vm["macro_f1"], "validation_mcc": vm["mcc"], "validation_roc_auc": vm["roc_auc"], "validation_prediction_positive_ratio": vm["prediction_positive_ratio"], "validation_class_balance_gap": vm["class_balance_gap"]})
+                if "final" in outputs:
+                    fm = v5_repaired_classification_metrics(labels.loc[splits["final"]], outputs["final"].get("pred"), outputs["final"].get("prob"))
+                    row.update({"final_macro_f1": fm["macro_f1"], "final_mcc": fm["mcc"], "final_roc_auc": fm["roc_auc"], "final_prediction_positive_ratio": fm["prediction_positive_ratio"], "final_class_balance_gap": fm["class_balance_gap"]})
+            else:
+                row.setdefault("validation_prediction_positive_ratio", math.nan)
+                row.setdefault("validation_class_balance_gap", math.nan)
+                row.setdefault("final_prediction_positive_ratio", math.nan)
+                row.setdefault("final_class_balance_gap", math.nan)
+            baseline_gate_passed = bool(
+                math.isfinite(row["validation_balanced_accuracy"])
+                and row["validation_balanced_accuracy"] > max(0.5, strongest_balanced if math.isfinite(strongest_balanced) else 0.5)
+                and row["validation_macro_f1"] > (strongest_macro_f1 if math.isfinite(strongest_macro_f1) else 0.0)
+                and (not math.isfinite(row["validation_mcc"]) or row["validation_mcc"] > (strongest_mcc if math.isfinite(strongest_mcc) else 0.0))
+            )
+            row.update(
+                {
+                    "strongest_validation_accuracy_baseline": strongest_accuracy,
+                    "strongest_validation_balanced_accuracy_baseline": strongest_balanced,
+                    "strongest_validation_macro_f1_baseline": strongest_macro_f1,
+                    "strongest_validation_mcc_baseline": strongest_mcc,
+                    "validation_lift_over_strongest_balanced_accuracy_baseline": row["validation_balanced_accuracy"] - strongest_balanced if math.isfinite(strongest_balanced) else math.nan,
+                    "validation_lift_over_strongest_macro_f1_baseline": row["validation_macro_f1"] - strongest_macro_f1 if math.isfinite(strongest_macro_f1) else math.nan,
+                    "validation_lift_over_strongest_mcc_baseline": row["validation_mcc"] - strongest_mcc if math.isfinite(row["validation_mcc"]) and math.isfinite(strongest_mcc) else math.nan,
+                    "baseline_gate_passed": baseline_gate_passed,
+                    "comparable_absolute_champion_scope": target_variant == "absolute_direction" and horizon == 40,
+                    "beats_6161_champion_repaired_comparable": target_variant == "absolute_direction" and horizon == 40 and as_float(row.get("final_accuracy")) > CLASSICAL_CHAMPION["final_accuracy"] and as_float(row.get("final_balanced_accuracy")) > 0.5,
+                    "comparable_qml_v8_scope": target_variant == "market_relative_vn30" and horizon == 40,
+                    "beats_qml_v8_repaired_comparable": target_variant == "market_relative_vn30" and horizon == 40 and as_float(row.get("final_accuracy")) > QML_V8_CONTEXT_FINAL and as_float(row.get("final_balanced_accuracy")) > 0.5,
+                    "claimable": False,
+                    "claim_boundary_label": "diagnostic_only_future_blind_required" if baseline_gate_passed else "diagnostic_only_not_repaired_baseline_gated",
+                }
+            )
+            repair_rows.append(row)
+            if "bilstm" in str(row.get("model_family", "")).lower() or "bilstm" in str(row.get("candidate_id", "")).lower():
+                bilstm_rows.append(row)
+        except Exception as exc:
+            repair_rows.append(
+                {
+                    "candidate_id": cid,
+                    "source_stage": str(candidate.get("source_stage", "")),
+                    "model_family": str(candidate.get("model_family", "")),
+                    "feature_group": str(candidate.get("feature_group", "")),
+                    "target_variant": str(candidate.get("target_variant", "")),
+                    "horizon": safe_int(candidate.get("horizon")),
+                    "status": "skipped",
+                    "skipped_reason": f"{type(exc).__name__}: {exc}",
+                    "claimable": False,
+                }
+            )
+    return repair_rows, baseline_rows, bilstm_rows
+
+
+def v5_price_repair_results(price_candidates: pd.DataFrame) -> list[dict[str, Any]]:
+    if price_candidates.empty:
+        return []
+    frame = price_candidates.copy()
+    frame = frame[frame.get("status", "ok").fillna("ok").eq("ok")].copy()
+    rows: list[dict[str, Any]] = []
+    for column in ["validation_rmse", "final_rmse", "validation_error_improvement_over_baseline", "error_improvement_over_baseline", "final_error_improvement_over_baseline", "validation_sign_accuracy", "final_sign_accuracy", "validation_correlation_pred_actual", "final_correlation_pred_actual"]:
+        frame[column] = numeric_series(frame, column)
+    frame["validation_repaired_improvement"] = frame["validation_error_improvement_over_baseline"]
+    missing_validation = ~frame["validation_repaired_improvement"].notna()
+    frame.loc[missing_validation, "validation_repaired_improvement"] = frame.loc[missing_validation, "error_improvement_over_baseline"]
+    frame["final_repaired_improvement"] = frame["final_error_improvement_over_baseline"]
+    missing_final = ~frame["final_repaired_improvement"].notna()
+    frame.loc[missing_final, "final_repaired_improvement"] = frame.loc[missing_final, "error_improvement_over_baseline"]
+    priority = pd.concat(
+        [
+            frame.sort_values("validation_repaired_improvement", ascending=False).head(25),
+            frame.sort_values("final_repaired_improvement", ascending=False).head(25),
+            frame[frame["target_variant"].isin(["forward_log_return_h", "forward_simple_return_h", "market_excess_return_h"])].sort_values("validation_repaired_improvement", ascending=False).head(20),
+        ],
+        ignore_index=True,
+    ).drop_duplicates("candidate_id")
+    for _idx, row in priority.iterrows():
+        validation_imp = as_float(row.get("validation_repaired_improvement"))
+        final_imp = as_float(row.get("final_repaired_improvement"))
+        robust = bool(validation_imp > 0.0 and final_imp > 0.0 and as_float(row.get("validation_correlation_pred_actual")) >= 0.0 and as_float(row.get("final_correlation_pred_actual")) >= 0.0)
+        rows.append(
+            {
+                "candidate_id": str(row.get("candidate_id", "")),
+                "source_stage": str(row.get("source_stage", "")),
+                "model_family": str(row.get("model_family", "")),
+                "feature_group": str(row.get("feature_group", "")),
+                "target_variant": str(row.get("target_variant", "")),
+                "horizon": safe_int(row.get("horizon")),
+                "validation_rmse": as_float(row.get("validation_rmse")),
+                "final_rmse": as_float(row.get("final_rmse")),
+                "validation_error_improvement_over_random_walk_or_last_price": validation_imp,
+                "final_error_improvement_over_random_walk_or_last_price": final_imp,
+                "validation_sign_accuracy": as_float(row.get("validation_sign_accuracy")),
+                "final_sign_accuracy": as_float(row.get("final_sign_accuracy")),
+                "validation_correlation_pred_actual": as_float(row.get("validation_correlation_pred_actual")),
+                "final_correlation_pred_actual": as_float(row.get("final_correlation_pred_actual")),
+                "robustly_beats_random_walk_or_last_price": robust,
+                "claimable": False,
+                "claim_boundary_label": "future_blind_required" if robust else "diagnostic_only_not_robust",
+            }
+        )
+    return rows
+
+
+def unique_rows_by_candidate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    unique: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = str(row.get("candidate_id", ""))
+        if key and key not in unique:
+            unique[key] = row
+    return list(unique.values())
+
+
+def v5_future_blind_registry(
+    direction_rows: list[dict[str, Any]],
+    price_rows: list[dict[str, Any]],
+    target_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    registry: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in direction_rows:
+        if row.get("status") != "ok" or not bool(row.get("baseline_gate_passed")):
+            continue
+        cid = str(row.get("candidate_id", ""))
+        if cid in seen:
+            continue
+        seen.add(cid)
+        registry.append(
+            {
+                "candidate_id": cid,
+                "task": "direction",
+                "target_variant": row.get("target_variant", ""),
+                "horizon": row.get("horizon", ""),
+                "why_promising": f"baseline-gated repaired validation balanced accuracy {pct(row.get('validation_balanced_accuracy'))}, macro F1 {pct(row.get('validation_macro_f1'))}, MCC {as_float(row.get('validation_mcc')):.4f}",
+                "why_not_claimable_now": "V5 repairs reuse diagnostic artifacts and final rows are scoring-only",
+                "future_blind_test_needed": "pre-register target/model/features/threshold and evaluate on a future-blind post-final VN30 hourly window",
+                "claimable_now": False,
+            }
+        )
+    for row in price_rows:
+        if not bool(row.get("robustly_beats_random_walk_or_last_price")):
+            continue
+        cid = str(row.get("candidate_id", ""))
+        if cid in seen:
+            continue
+        seen.add(cid)
+        registry.append(
+            {
+                "candidate_id": cid,
+                "task": "price_return",
+                "target_variant": row.get("target_variant", ""),
+                "horizon": row.get("horizon", ""),
+                "why_promising": f"validation and final RMSE improvement over random-walk/last-price baselines; final improvement {pp(row.get('final_error_improvement_over_random_walk_or_last_price'))}",
+                "why_not_claimable_now": "price/return repair is diagnostic and requires pre-registered future-blind transfer",
+                "future_blind_test_needed": "compare against random walk/last price on a future-blind window with unchanged transforms and metrics",
+                "claimable_now": False,
+            }
+        )
+    best_target = min(target_rows, key=lambda row: as_float(row.get("weighted_split_imbalance_gap")), default={})
+    if best_target:
+        cid = f"target_repair__{best_target.get('target_variant', '')}"
+        registry.append(
+            {
+                "candidate_id": cid,
+                "task": "target_repair",
+                "target_variant": best_target.get("target_variant", ""),
+                "horizon": "all",
+                "why_promising": f"least class-imbalance contamination under weighted split imbalance gap {as_float(best_target.get('weighted_split_imbalance_gap')):.4f}",
+                "why_not_claimable_now": "target selection must be pre-registered before future-blind scoring",
+                "future_blind_test_needed": "lock the repaired target before any future-blind evaluation",
+                "claimable_now": False,
+            }
+        )
+    return registry
+
+
+def write_v5_reports(
+    class_rows: list[dict[str, Any]],
+    direction_rows: list[dict[str, Any]],
+    bilstm_rows: list[dict[str, Any]],
+    target_rows: list[dict[str, Any]],
+    price_rows: list[dict[str, Any]],
+    registry: list[dict[str, Any]],
+) -> None:
+    class_frame = pd.DataFrame(class_rows)
+    ok_bilstm_rows = [row for row in bilstm_rows if row.get("status") == "ok" and math.isfinite(as_float(row.get("final_accuracy")))]
+    bilstm_best = max(ok_bilstm_rows, key=lambda row: (as_float(row.get("final_accuracy")), as_float(row.get("validation_balanced_accuracy"))), default={})
+    best_direction = max([row for row in direction_rows if row.get("status") == "ok" and bool(row.get("baseline_gate_passed"))], key=lambda row: (as_float(row.get("validation_balanced_accuracy")), as_float(row.get("validation_macro_f1")), as_float(row.get("validation_mcc"))), default={})
+    if not best_direction:
+        best_direction = max([row for row in direction_rows if row.get("status") == "ok"], key=lambda row: (as_float(row.get("validation_balanced_accuracy")), as_float(row.get("validation_macro_f1"))), default={})
+    best_target = min(target_rows, key=lambda row: as_float(row.get("weighted_split_imbalance_gap")), default={})
+    abs_beat = any(bool(row.get("beats_6161_champion_repaired_comparable")) and bool(row.get("baseline_gate_passed")) for row in direction_rows)
+    mr_beat = any(bool(row.get("beats_qml_v8_repaired_comparable")) and bool(row.get("baseline_gate_passed")) for row in direction_rows)
+    robust_price = [row for row in price_rows if bool(row.get("robustly_beats_random_walk_or_last_price"))]
+    price_pool = robust_price if robust_price else price_rows
+    best_price = max(price_pool, key=lambda row: (as_float(row.get("validation_error_improvement_over_random_walk_or_last_price")), as_float(row.get("final_error_improvement_over_random_walk_or_last_price"))), default={})
+    bilstm_class_driven = bool(as_float(bilstm_best.get("final_accuracy")) >= 0.70 and as_float(bilstm_best.get("final_balanced_accuracy")) <= 0.50 and as_float(bilstm_best.get("final_prediction_positive_ratio")) < 0.15)
+    bilstm_strong_repaired = bool(
+        as_float(bilstm_best.get("validation_balanced_accuracy")) > 0.5
+        and as_float(bilstm_best.get("validation_macro_f1")) > as_float(bilstm_best.get("strongest_validation_macro_f1_baseline"))
+        and as_float(bilstm_best.get("validation_mcc")) > as_float(bilstm_best.get("strongest_validation_mcc_baseline"))
+        and as_float(bilstm_best.get("validation_lift_over_strongest_balanced_accuracy_baseline")) > 0
+        and as_float(bilstm_best.get("final_balanced_accuracy")) > 0.5
+    )
+    final_balance = class_frame[(class_frame.get("target_variant", "") == bilstm_best.get("target_variant", "")) & (class_frame.get("horizon", 0) == bilstm_best.get("horizon", 0)) & (class_frame.get("split", "") == "final")] if not class_frame.empty and bilstm_best else pd.DataFrame()
+    final_majority = as_float(final_balance.iloc[0].get("majority_class_accuracy")) if not final_balance.empty else math.nan
+    summary = f"""# VN30 Model Universe V5 Target and Metric Repair Result Summary
+
+## Required Answers
+
+1. Was the BiLSTM 72.50% final result mostly class-imbalance driven: {safe_bool_text(bilstm_class_driven)}. Best BiLSTM repaired row `{bilstm_best.get("candidate_id", "")}` has final accuracy {pct(bilstm_best.get("final_accuracy"))}, final balanced accuracy {pct(bilstm_best.get("final_balanced_accuracy"))}, final macro F1 {pct(bilstm_best.get("final_macro_f1"))}, final MCC {as_float(bilstm_best.get("final_mcc")):.4f}, final predicted-positive ratio {pct(bilstm_best.get("final_prediction_positive_ratio"))}, and same split majority baseline {pct(final_majority)}.
+2. Does BiLSTM still look strong under balanced accuracy, macro F1, MCC, and lift over strongest baseline: {safe_bool_text(bilstm_strong_repaired)}. Validation balanced-accuracy lift is {pp(bilstm_best.get("validation_lift_over_strongest_balanced_accuracy_baseline"))}, macro-F1 lift is {pp(bilstm_best.get("validation_lift_over_strongest_macro_f1_baseline"))}, and MCC lift is {as_float(bilstm_best.get("validation_lift_over_strongest_mcc_baseline")):.4f}.
+3. Best direction candidate under baseline-gated repaired metrics: `{best_direction.get("candidate_id", "")}` with validation balanced accuracy {pct(best_direction.get("validation_balanced_accuracy"))}, macro F1 {pct(best_direction.get("validation_macro_f1"))}, MCC {as_float(best_direction.get("validation_mcc")):.4f}, baseline gate `{str(best_direction.get("baseline_gate_passed", False)).lower()}`.
+4. Least class-imbalance-contaminated target: `{best_target.get("target_variant", "")}` with weighted split imbalance gap {as_float(best_target.get("weighted_split_imbalance_gap")):.4f}.
+5. Does any candidate beat the 61.61% absolute-direction champion on comparable scope under repaired metrics: {safe_bool_text(abs_beat)}.
+6. Does any market-relative candidate beat QML V8 64.44 on comparable scope under repaired metrics: {safe_bool_text(mr_beat)}.
+7. Does any price/return model beat random walk / last price robustly: {safe_bool_text(bool(robust_price))}. Best repaired price/return row `{best_price.get("candidate_id", "")}` has validation improvement {pp(best_price.get("validation_error_improvement_over_random_walk_or_last_price"))} and final improvement {pp(best_price.get("final_error_improvement_over_random_walk_or_last_price"))}.
+8. Which candidates remain future-blind worthy: {len(registry)} rows are listed in `v5_future_blind_candidate_registry.csv`.
+9. Exact claim boundary: offline diagnostic-only VN30 stock hourly repair audit; no result is claimable now; no trading, profitability, BUY/SELL, investment recommendation, live deployment, VN100, index-as-stock, DOCX, tag, merge, push --mirror, main-branch, or champion-replacement claim is made.
+
+## Artifact Index
+
+- `v5_class_balance_audit.csv`
+- `v5_metric_repair_results.csv`
+- `v5_baseline_gated_leaderboard.csv`
+- `v5_bilstm_metric_repair.csv`
+- `v5_target_repair_results.csv`
+- `v5_price_return_metric_repair.csv`
+- `v5_future_blind_candidate_registry.csv`
+"""
+    write_markdown(V5_RESULT_PATH, summary)
+    claim = """# VN30 Model Universe V5 Target and Metric Repair Claim Boundary
+
+- V5 is an offline diagnostic-only target and metric repair audit for VN30 stock hourly forecasting.
+- V5 repairs interpretation of prior model-universe direction and price/return diagnostics; it does not create a trading system or live deployment.
+- Direction metrics are repaired with balanced accuracy, macro F1, MCC, class-balance audit, and lift over strongest same-target baselines.
+- Price/return metrics are evaluated separately against random-walk / last-price or return baselines; direction accuracy is not mixed with RMSE, MAE, MAPE, or return metrics.
+- Candidate selection remains validation-governed; final rows are scoring-only.
+- No V5 result replaces the 61.61% absolute-direction classical champion.
+- No V5 result replaces or supersedes the 64.44% QML V8 market_relative_vn30 context result.
+- Future-blind-worthy rows are candidates for pre-registered confirmation only and are not claimable now.
+- Scope is VN30 stock hourly only; no VN100 scope is claimed.
+- Index data may be used only as lagged market-context or market-relative target context; no index-as-stock claim is made.
+- No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, production, DOCX, tag, merge, push --mirror, history rewrite, main-branch, or paper artifact claim is made.
+"""
+    write_markdown(V5_CLAIM_PATH, claim)
+
+
+def run_target_metric_repair(timeout_seconds: int) -> dict[str, Any]:
+    started = time.perf_counter()
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    features, family_cols, _feature_manifest = build_feature_families()
+    features = features.sort_values(["ticker", "datetime"]).reset_index(drop=True).copy()
+    features["feature_timestamp"] = pd.to_datetime(features["datetime"], errors="coerce")
+    index_data = load_index_data()
+    features, relative_cols = add_v3_relative_strength_features(features, index_data)
+    feature_groups = build_feature_groups(features, family_cols, relative_cols)
+    config = RunConfig("target_metric_repair", timeout_seconds, 800, 320, 320, 120, 120)
+
+    class_rows = v5_class_balance_audit(features, index_data, config)
+    target_rows = v5_target_repair_results(class_rows)
+    direction_rows, baseline_rows, bilstm_rows = v5_direction_repair_results(v5_direction_frame(), features, family_cols, relative_cols, index_data, feature_groups, config)
+    price_rows = v5_price_repair_results(v5_price_frame())
+    direction_rows = unique_rows_by_candidate(direction_rows)
+    bilstm_rows = unique_rows_by_candidate(bilstm_rows)
+    price_rows = unique_rows_by_candidate(price_rows)
+    registry = v5_future_blind_registry(direction_rows, price_rows, target_rows)
+    leaderboard = sorted(
+        [row for row in direction_rows if row.get("status") == "ok"],
+        key=lambda row: (bool(row.get("baseline_gate_passed")), as_float(row.get("validation_balanced_accuracy")), as_float(row.get("validation_macro_f1")), as_float(row.get("validation_mcc"))),
+        reverse=True,
+    )
+
+    write_frame(OUTPUT_DIR / "v5_class_balance_audit.csv", class_rows, sorted(set().union(*(row.keys() for row in class_rows))) if class_rows else [])
+    write_frame(OUTPUT_DIR / "v5_metric_repair_results.csv", direction_rows, sorted(set().union(*(row.keys() for row in direction_rows))) if direction_rows else [])
+    write_frame(OUTPUT_DIR / "v5_baseline_gated_leaderboard.csv", leaderboard, sorted(set().union(*(row.keys() for row in leaderboard))) if leaderboard else [])
+    write_frame(OUTPUT_DIR / "v5_bilstm_metric_repair.csv", bilstm_rows, sorted(set().union(*(row.keys() for row in bilstm_rows))) if bilstm_rows else [])
+    write_frame(OUTPUT_DIR / "v5_target_repair_results.csv", target_rows, sorted(set().union(*(row.keys() for row in target_rows))) if target_rows else [])
+    write_frame(OUTPUT_DIR / "v5_price_return_metric_repair.csv", price_rows, sorted(set().union(*(row.keys() for row in price_rows))) if price_rows else [])
+    write_frame(OUTPUT_DIR / "v5_future_blind_candidate_registry.csv", registry, sorted(set().union(*(row.keys() for row in registry))) if registry else [])
+    write_frame(OUTPUT_DIR / "v5_repaired_baseline_metrics.csv", baseline_rows, sorted(set().union(*(row.keys() for row in baseline_rows))) if baseline_rows else [])
+    write_v5_reports(class_rows, direction_rows, bilstm_rows, target_rows, price_rows, registry)
+
+    best_direction = leaderboard[0] if leaderboard else {}
+    best_target = target_rows[0] if target_rows else {}
+    robust_price_count = sum(1 for row in price_rows if bool(row.get("robustly_beats_random_walk_or_last_price")))
+    result = {
+        "status": "ok",
+        "mode": "target_metric_repair",
+        "runtime_seconds": time.perf_counter() - started,
+        "direction_rows": len(direction_rows),
+        "price_rows": len(price_rows),
+        "future_blind_registry_rows": len(registry),
+        "best_baseline_gated_direction_candidate": best_direction.get("candidate_id", ""),
+        "best_repaired_target": best_target.get("target_variant", ""),
+        "robust_price_return_rows": robust_price_count,
+        "claimable_results": 0,
+        "diagnostic_only": True,
+        "no_trading_claim": True,
+    }
+    print(json.dumps(json_safe(result), indent=2))
+    return result
+
+
 def run_benchmark(config: RunConfig) -> dict[str, Any]:
     started = time.perf_counter()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -3049,6 +3696,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--promotion-relock", action="store_true", help="Run V2 promotion relock audit for high-performing exploratory final rows.")
     parser.add_argument("--enable-skipped-families", action="store_true", help="Run V3 bounded benchmark for previously skipped families.")
     parser.add_argument("--bilstm-relock", action="store_true", help="Run V4 BiLSTM relock and stability confirmation.")
+    parser.add_argument("--target-metric-repair", action="store_true", help="Run V5 target and metric repair audit.")
     parser.add_argument("--timeout-seconds", type=int, default=7200)
     return parser.parse_args()
 
@@ -3063,6 +3711,9 @@ def main() -> None:
         return
     if args.bilstm_relock:
         run_bilstm_relock(max(1, int(args.timeout_seconds)))
+        return
+    if args.target_metric_repair:
+        run_target_metric_repair(max(1, int(args.timeout_seconds)))
         return
     if args.smoke:
         config = RunConfig("smoke", max(1, int(args.timeout_seconds)), 500, 250, 250, 80, 80)
