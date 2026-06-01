@@ -11,9 +11,11 @@ VSEF is built strictly for **research and diagnostic purposes**. It does **not**
 This research project is conducted by:
 
 * **Luong Minh Quan** — Posts and Telecommunications Institute of Technology
+
   Contact: [luongminhquan.working.research@gmail.com](mailto:luongminhquan.working.research@gmail.com)
 
 * **Nguyen Nguyet Ha** — National Economics University
+
   Contact: [nghnguyetha.workspace@gmail.com](mailto:nghnguyetha.workspace@gmail.com)
 
 The project is developed in collaboration with, and financially supported by, the **Risk Management Department — Viettel Global**.
