@@ -27,7 +27,7 @@
 - DOCX rendering: Pandoc 3.9.0.2.
 - HTML rendering: Pandoc 3.9.0.2, standalone HTML5 with MathML.
 - PDF rendering: Microsoft Edge headless print-to-PDF from the generated HTML file.
-- PDF render note: Edge print-to-PDF required an approved escalated run because the sandboxed browser invocation exited without writing the PDF.
+- PDF render note: the final math-fix rerender used the same Microsoft Edge headless print-to-PDF route from the generated MathML HTML file.
 - Formatting: A4 print CSS, 12pt Georgia/Times-compatible academic serif font, academic margins, controlled line spacing.
 - LaTeX was not used.
 
@@ -54,6 +54,7 @@
   - FRD equation.
 - Empty display-equation check: pass.
 - Broken placeholder search for `for:`: no matches.
+- Math-render fix: Section 3.2 and Section 3.6 display math delimiters were changed from `\[ ... \]` to `$$ ... $$` and rerendered with Pandoc dollar-math support.
 
 ## Claim-Boundary Confirmation
 
@@ -75,8 +76,8 @@
 
 - Exact title check: pass.
 - 40P Markdown exists: pass.
-- DOCX exists and is nonzero: pass, 289551 bytes.
-- PDF exists and is nonzero: pass, 610907 bytes.
+- DOCX exists and is nonzero: pass, 290803 bytes.
+- PDF exists and is nonzero: pass, 713258 bytes.
 - PDF page count: 39.
 - Page count 38-42: pass.
 - Abstract word count 300-400: pass, 339.

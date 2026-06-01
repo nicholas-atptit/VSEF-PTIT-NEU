@@ -164,21 +164,28 @@ In this paper, conditional predictability is not interpreted as a direct violati
 
 Regime-conditional forecasting assumes that the mapping from observed features to future direction may differ by reconstructed market state. Let \(R_t\) denote the reconstructed latent regime at time \(t\), \(X_t\) the feature vector, \(Y_{t+h}\) the directional target at horizon \(h\), and \(p_{i,t+h}\) the regime-conditional probability of a positive direction.
 
-\[
-p_{i,t+h} = \Pr(Y_{t+h}=1 \mid X_t, R_t=i)
-\]
+$$
+p_{i,t+h}
+=
+\Pr(Y_{t+h}=1 \mid X_t, R_t=i)
+$$
 
 The regime-conditional forecasting proposition allows at least one pair of regimes to have different conditional forecast relationships:
 
-\[
-\exists i \neq j: \Pr(Y_{t+h}=1 \mid X_t, R_t=i) \neq \Pr(Y_{t+h}=1 \mid X_t, R_t=j)
-\]
+$$
+\exists i \neq j:
+\Pr(Y_{t+h}=1 \mid X_t, R_t=i)
+\neq
+\Pr(Y_{t+h}=1 \mid X_t, R_t=j)
+$$
 
 The observed forecast score can then be represented as a function of the model, features, reconstructed regime, and available historical data:
 
-\[
-FS_{t+h} = g(M, X_t, R_t, \mathcal{D}_t)
-\]
+$$
+FS_{t+h}
+=
+g(M, X_t, R_t, \mathcal{D}_t)
+$$
 
 These equations are conceptual definitions rather than structural claims. They state what it means for a forecast relationship to be regime-conditional. The empirical sections test whether validation evidence is consistent with this proposition through RIG and correctness association.
 
@@ -204,45 +211,84 @@ This boundary is essential. A positive association between distance and transfer
 
 The Regime Information Gain compares global log-loss with regime-conditioned log-loss:
 
-\[
-RIG = LogLoss_{global} - LogLoss_{regime}
-\]
+$$
+\mathrm{RIG}
+=
+\mathrm{LogLoss}_{global}
+-
+\mathrm{LogLoss}_{regime}
+$$
 
 Log-loss is defined as:
 
-\[
-LogLoss = -\frac{1}{N}\sum_{n=1}^{N}\left[y_n \log(\hat{p}_n) + (1-y_n)\log(1-\hat{p}_n)\right]
-\]
+$$
+\mathrm{LogLoss}
+=
+-\frac{1}{N}
+\sum_{n=1}^{N}
+\left[
+y_n \log(\hat{p}_n)
++
+(1-y_n)\log(1-\hat{p}_n)
+\right]
+$$
 
 Transfer-retention ratio compares cross-regime performance with same-regime reference performance:
 
-\[
-TRR_{ij} = \frac{Accuracy_{cross}(i \rightarrow j)}{Accuracy_{same}(i \rightarrow i)}
-\]
+$$
+\mathrm{TRR}_{ij}
+=
+\frac{
+\mathrm{Accuracy}_{cross}(i \rightarrow j)
+}{
+\mathrm{Accuracy}_{same}(i \rightarrow i)
+}
+$$
 
 Transfer gap measures the same comparison as a difference:
 
-\[
-TG_{ij} = Accuracy_{same}(i \rightarrow i) - Accuracy_{cross}(i \rightarrow j)
-\]
+$$
+\mathrm{TG}_{ij}
+=
+\mathrm{Accuracy}_{same}(i \rightarrow i)
+-
+\mathrm{Accuracy}_{cross}(i \rightarrow j)
+$$
 
 Regime Distance is computed as standardized centroid distance over the selected lagged state columns:
 
-\[
-RD_{ij} = \lVert \mu_i^{std} - \mu_j^{std} \rVert_2
-\]
+$$
+\mathrm{RD}_{ij}
+=
+\left\|
+\mu_i^{std}
+-
+\mu_j^{std}
+\right\|_2
+$$
 
 Cosine-based Regime Distance is computed as:
 
-\[
-RD\_cosine_{ij} = 1 - \frac{\mu_i^{std} \cdot \mu_j^{std}}{\lVert \mu_i^{std} \rVert_2 \lVert \mu_j^{std} \rVert_2}
-\]
+$$
+\mathrm{RD}^{cosine}_{ij}
+=
+1
+-
+\frac{
+(\mu_i^{std})^\top \mu_j^{std}
+}{
+\left\|\mu_i^{std}\right\|_2
+\left\|\mu_j^{std}\right\|_2
+}
+$$
 
 Forecast Relationship Distance is represented generically as a distance between regime-specific forecast relationship summaries:
 
-\[
-FRD_{ij} = d(\theta_i,\theta_j)
-\]
+$$
+\mathrm{FRD}_{ij}
+=
+d(\theta_i,\theta_j)
+$$
 
 Positive RIG indicates lower validation log-loss when regime conditioning is used. TRR below 1 indicates weaker cross-regime retention than same-regime reference performance. Positive TG indicates a transfer gap. Larger RD or RD_cosine indicates greater separation between reconstructed latent-regime centroids under the chosen distance definition. FRD summarizes differences between forecast relationships, such as coefficient distance, coefficient cosine distance, predicted probability distribution distance, Brier score gap, or calibration error gap where feasible.
 
