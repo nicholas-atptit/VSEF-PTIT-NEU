@@ -87,8 +87,14 @@ No forecast results were invented.
 - `config/` and `configs/` remain separate roots.
 - Historical scripts contain additional duplicated metric/feature/baseline
   logic; migrating them requires evidence-specific regression tests.
-- The required GitHub remote push stalled while transmitting the repository's
-  large history and must be retried after the final commit.
+- QML and Model Universe runner decomposition remains incremental because their
+  protected evidence contracts require dedicated regression coverage.
+
+## Push status
+
+- Safety snapshot branch pushed to `vsef/safety/pre-refactor-dirty-work-snapshot-v1`.
+- Refactor branch pushed to `vsef/refactor/repository-code-cleanup-v1`.
+- Remote `main` was not touched.
 
 ## Exact claim boundary
 
