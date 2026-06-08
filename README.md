@@ -1,52 +1,165 @@
-# VN Forecast Research Lab
+# VSEF — Vietnam Stock Evaluation and Forecasting Framework
 
-VN Forecast Research Lab is an offline historical/local-data-only research
-system for VN30 stocks and explicitly configured Vietnamese indices.
+**VSEF** is a deterministic decision-diagnostic framework designed for Vietnamese stock market research. The framework produces structured diagnostics across forecasting, scenario evaluation, risk governance, decision-lane generation, portfolio allocation, and routing.
 
-Target repository: <https://github.com/nicholas-atptit/VSEF-PTIT-NEU>
+VSEF is built strictly for **research and diagnostic purposes**. It does **not** issue BUY or SELL recommendations, execute trades, or provide production trading authority.
+
+---
+
+## Research Attribution
+
+This research project is conducted by:
+
+* **Luong Minh Quan** — Posts and Telecommunications Institute of Technology
+
+  Contact: [luongminhquan.working.research@gmail.com](mailto:luongminhquan.working.research@gmail.com)
+
+* **Nguyen Nguyet Ha** — National Economics University
+
+  Contact: [nghnguyetha.workspace@gmail.com](mailto:nghnguyetha.workspace@gmail.com)
+
+The project is developed in collaboration with, and financially supported by, the **Risk Management Department — Viettel Global**.
+
+Market data is connected and retrieved through **Vnstock**, a Python package for Vietnamese stock market analysis.
+
+> Vnstock by thinh-vu on GitHub. Copyright © 2022–2026.
+
+---
+
+## Proprietary Notice and Access Restrictions
+
+VSEF is a proprietary research framework. It is **not an open-source project** and is not released under any open-source license.
+
+All source code, documentation, schemas, diagnostic logic, research workflows, generated structures, naming conventions, and related project materials are protected intellectual property unless explicitly stated otherwise in writing.
+
+Access to this repository, documentation, or any part of the project does **not** grant any license, ownership right, reuse right, redistribution right, publication right, or commercial usage right.
+
+The following actions are strictly prohibited without prior written permission from the project owners:
+
+* copying, cloning, or redistributing the framework;
+* reusing the source code, architecture, diagnostic chain, schemas, or governance logic in another project;
+* modifying and republishing the framework as a derivative system;
+* using the framework for commercial, production, advisory, or trading services;
+* extracting project materials for external publication, benchmarking, or model training;
+* reverse engineering, reproducing, or imitating the protected design of the framework.
+
+All rights are reserved by the project authors and authorized institutional collaborators.
+
+Any unauthorized use, reproduction, redistribution, or derivative implementation of VSEF may constitute a violation of intellectual property rights and may be subject to legal action.
+
+For permission requests, research inquiries, or institutional correspondence, contact:
+
+* Luong Minh Quan: [luongminhquan.working.research@gmail.com](mailto:luongminhquan.working.research@gmail.com)
+* Nguyen Nguyet Ha: [nghnguyetha.workspace@gmail.com](mailto:nghnguyetha.workspace@gmail.com)
+
+---
+
+## 1. System Overview
+
+VSEF implements a deterministic diagnostic chain that transforms market inputs into governed research outputs. The current diagnostic pipeline is:
 
 ## 1. Repository Purpose
 
-The repository supports reproducible research on:
+Each layer has a clearly defined role and output contract.
 
-- direction forecasting
-- return and price forecasting
-- price-range and interval forecasting
-- ranking and relative-strength diagnostics
-- Quantum Machine Learning (QML) diagnostics
-- Model Universe benchmark audits
+### Quant Core
 
-The repository is not a trading system, investment recommendation engine, live
-deployment, or daily T+1 production system. It makes no BUY/SELL,
-profitability, portfolio-allocation, or broker-execution claim.
+The Quant Core produces the primary forecasting and analytical outputs, including:
 
-## 2. What This Repo Contains
+* model forecasts
+* model consensus
+* model health diagnostics
+* risk, regime, and strategy diagnostics
+* analysis packets
+* initial decision-lane candidates
 
-- Offline forecast-engine components under `src/forecasting/`
-- Split, claim-boundary, and artifact governance under `src/governance/`
-- Reusable metrics and baselines under `src/evaluation/`
-- Point-in-time-safe feature builders under `src/features/`
-- Local provider contracts, adapters, and loaders under `src/data/`
-- QML diagnostic runner and preserved evidence
-- Model Universe V1-V7 audit evidence
-- VN30 and configured-index research evidence where locally available
-- Active evidence indexes and paper-source materials
+### Scenario Evaluation Engine v1
 
-The QML paper-package path and project-review master-index package named in
-older plans are not present on this branch; see **Known missing or optional
-files** below.
+The Scenario Evaluation Engine generates scenario-level diagnostics, including:
 
-## 3. What This Repo Does Not Do
+* scenario probability
+* dominance analysis
+* uncertainty diagnostics
+* calibration diagnostics
 
-- No live-data fetch by default
-- No provider/API pull unless an explicit protocol authorizes it
-- No production scheduler, trading dashboard, API service, or broker workflow
-- No BUY/SELL signal or investment advice
-- No profitability guarantee
-- No live prediction ledger
-- No daily T+1 production system
+### Risk Governance Layer v1
+
+The Risk Governance Layer applies rule-based risk controls and governance diagnostics, including:
+
+* `risk_score`
+* `risk_level`
+* `risk_action`
+* confidence adjustment
+* block flags
+* force-hold flags
+
+### Decision Lane v2
+
+Decision Lane v2 enriches diagnostic candidates with additional structured information required for downstream allocation and routing.
+
+### Portfolio Allocator v1
+
+The Portfolio Allocator converts governed diagnostic candidates into allocation-level outputs, including:
+
+* `allocation_candidate`
+* `no_allocation`
+* exposure constraints
+* cash management rules
+
+### Phase 3 Router v1
+
+The Phase 3 Router produces the final routing diagnostic, including:
+
+* `route_allocation_candidate`
+* `hold`
+* `reject`
+* `no_candidate`
+
+---
+
+## 2. Authority Boundary
+
+VSEF is not a trading system. It is a research framework with strict authority limits.
+
+### Allowed Outputs
+
+The framework may produce:
+
+* forecast diagnostics
+* scenario diagnostics
+* risk diagnostics
+* diagnostic candidates
+* `allocation_candidate`
+* `no_allocation`
+* `route_allocation_candidate`
+* `hold`
+* `reject`
+* `no_candidate`
+
+### Prohibited Outputs
+
+The framework must not produce:
+
+* BUY recommendations
+* SELL recommendations
+* live execution instructions
+* production trading authority
+* learned meta-model authority
+* investment advice presented as actionable trading instruction
+
+The system is designed to support research interpretation, validation, and governance — not direct trading execution.
+
+---
+
+## 3. Quick Start
+
+Run the following commands from the repository root using PowerShell.
+
+### Runtime Preflight Check
 
 ## 4. Quick Start
+
+### Smoke Run for the Full Diagnostic Chain
 
 ```powershell
 git clone https://github.com/nicholas-atptit/VSEF-PTIT-NEU.git
@@ -56,9 +169,13 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-QML-specific optional dependencies are listed in `requirements-qml.txt`.
+Generated files under `artifacts/` are runtime outputs and must not be committed to the repository.
 
-## 5. Safe Validation
+---
+
+## 4. Validation Commands
+
+Use the following commands to validate the main runtime and diagnostic modules:
 
 ```powershell
 python scripts/check_repo_hygiene.py
@@ -70,173 +187,126 @@ python -m pytest tests/ml/test_directional_accuracy_metrics.py -q
 python -m pytest tests/governance tests/evaluation tests/features tests/forecasting -q
 ```
 
-These commands validate repository policy and focused contracts. They should not
-fetch live data or run new heavy model training.
+Before claiming end-to-end runtime readiness, run the full relevant validation suite locally.
 
-## 6. How to Rerun Offline Diagnostic Simulations
+---
 
-All commands below use existing local historical/cache data only.
+## 5. Main Artifact Groups
 
-### 6.1 Forecast latest local cache
+VSEF generates structured artifacts by pipeline layer.
 
-```powershell
-python scripts/research/run_vn_forecast_engine_v1.py --offline-historical-only --forecast-latest --frequency hourly --horizons 5 --index-codes VNINDEX,VN30,HNXINDEX,HNX30,UPCOMINDEX,VNXALL
+### Base Quant Core
+
+* `run_manifest.json`
+* `full_model_predictions.csv`
+* `forecast_summary.csv`
+* `model_consensus_summary.csv`
+* `model_health_summary.csv`
+* `analysis_packets.jsonl`
+* `decision_lane_candidates.csv`
+
+### Scenario Evaluation
+
+* `scenario_probability.csv`
+* `scenario_dominance_summary.csv`
+* `scenario_uncertainty_summary.csv`
+* `scenario_calibration_summary.csv`
+
+### Risk Governance
+
+* `risk_governance_summary.csv`
+* `risk_adjusted_candidates.csv`
+* `risk_override_log.csv`
+
+### Decision Lane
+
+* `decision_lane_enriched_candidates.csv`
+
+### Portfolio Allocator
+
+* `portfolio_allocation.csv`
+* `portfolio_summary.csv`
+* `portfolio_risk_summary.csv`
+
+### Router
+
+* `router_decisions.csv`
+* `router_summary.csv`
+* `router_manifest.json`
+
+---
+
+## 6. Documentation Map
+
+The active documentation source is located under `docs/`.
+
+* [System Overview](docs/SYSTEM_OVERVIEW.md)
+* [Decision Diagnostic Chain](docs/DECISION_DIAGNOSTIC_CHAIN.md)
+* [Authority Boundary](docs/AUTHORITY_BOUNDARY.md)
+* [Pipeline Contracts](docs/governance/PIPELINE_CONTRACTS.md)
+* [Quant Core Output Schema](docs/governance/QUANT_CORE_OUTPUT_SCHEMA.md)
+* [Risk Governance Output Schema](docs/governance/RISK_GOVERNANCE_OUTPUT_SCHEMA.md)
+* [Portfolio Allocator Output Schema](docs/governance/PORTFOLIO_ALLOCATOR_OUTPUT_SCHEMA.md)
+* [Phase 3 Router Output Schema](docs/governance/PHASE3_ROUTER_OUTPUT_SCHEMA.md)
+* [Full Decision Chain Smoke Runbook](docs/runbooks/RUN_FULL_DECISION_CHAIN_SMOKE.md)
+* [Troubleshooting](docs/runbooks/TROUBLESHOOTING.md)
+* [Documentation Inventory](docs/DOCS_INVENTORY.md)
+* [Command Registry](docs/COMMAND_REGISTRY.md)
+* [Reports Governance](docs/REPORTS_GOVERNANCE.md)
+* [Docs README](docs/README.md)
+
+---
+
+## 7. Repository Structure
+
+```text
+src/        Core framework packages and diagnostic layers
+scripts/    CLI entry points and local workflow runners
+tests/      Unit tests and smoke-style validation suites
+docs/       Active source of truth for architecture, schemas, runbooks, and roadmap
+reports/    Historical snapshots and controlled remediation evidence
+artifacts/  Generated workflow outputs; do not commit
 ```
 
-This uses the latest locally cached timestamp and writes artifacts to
-`reports/generated/vn_forecast_engine_v1/`. It does not fetch live data.
+### Documentation Governance
 
-### 6.2 Forecast from historical as-of timestamp
+`docs/` is the active source of truth for architecture, schemas, command usage, and operational runbooks.
 
-```powershell
-python scripts/research/run_vn_forecast_engine_v1.py --offline-historical-only --forecast-asof "2025-01-02 10:00:00" --frequency hourly --horizons 5,10,20,40,60 --index-codes VNINDEX,VN30,HNXINDEX,HNX30,UPCOMINDEX,VNXALL
-```
+Most content under `reports/` should be treated as historical snapshot material. Controlled audit-remediation evidence under `reports/` is canonical only for remediation status and verification.
 
-This simulates forecasts from a historical cutoff. Evaluation fields may be
-filled when later local rows exist; otherwise actual fields remain null.
+For details, see:
 
-### 6.3 Full offline forecast-engine run
+* [Reports Governance](docs/REPORTS_GOVERNANCE.md)
 
-```powershell
-python scripts/research/run_vn_forecast_engine_v1.py --offline-historical-only --full-run --frequency hourly --horizons 5,10,20,40,60 --index-codes VNINDEX,VN30,HNXINDEX,HNX30,UPCOMINDEX,VNXALL --timeout-seconds 14400
-```
+---
 
-This builds the dataset, evaluates bounded models, selects by validation only,
-writes forecast panels, and writes evaluation summaries. It performs no live
-data fetch.
+## 8. Current Status
 
-### 6.4 Evaluation-only run
+The deterministic decision-diagnostic chain has been implemented. Documentation inventory and legacy governance archives have been normalized.
 
-```powershell
-python scripts/research/run_vn_forecast_engine_v1.py --offline-historical-only --build-evaluate --frequency hourly --horizons 5,10,20,40,60 --index-codes VNINDEX,VN30,HNXINDEX,HNX30,UPCOMINDEX,VNXALL --timeout-seconds 14400
-```
+Before claiming full end-to-end runtime readiness, the full smoke validation process should be executed locally and verified through generated artifacts, manifests, and test results.
 
-This evaluates available local historical data. It does not create a live
-prediction or production system.
+---
 
-## 7. Heavy Research Runners
+## 9. Development Rules
 
-These runners are heavy and should run only under a written protocol:
+All development should follow the governance rules below:
 
-```powershell
-python scripts/research/run_vn30_qml_forecasting.py --help
-python scripts/research/run_vn30_model_universe_direction_price_benchmark.py --help
-```
+1. Keep diagnostics separate from recommendations.
+2. Preserve the authority boundary between research outputs and trading actions.
+3. Keep canonical artifact names and schemas stable.
+4. Update documentation whenever output schemas or runtime contracts change.
+5. Do not commit generated artifacts under `artifacts/`.
+6. Archive stale documentation instead of deleting it without review.
+7. Validate runtime changes through tests, manifests, and reproducible commands.
+8. Do not introduce learned meta-model authority unless explicitly governed and documented.
 
-Do not run them during ordinary validation, rerun benchmark experiments without
-a protocol, or use final-period rows for model selection.
+---
 
-## 8. Main Research Findings
+## 10. Disclaimer
 
-| Track | Existing evidence | Status / boundary |
-|---|---|---|
-| Classical absolute-direction champion | L2 Logistic, `feature_set_C_closest`, h40, 61.61% final accuracy context | Separate existing benchmark claim; not replaced by QML, Model Universe, or current forecast-engine diagnostics |
-| QML V4 | Validation-selected `market_relative_vn30` h40 bounded-sample candidate reached 69.44% final accuracy | Focused QML discovery; `qml_diagnostic_only`; broader QML expansion not justified and later checks weakened generalization |
-| QML V8 | Drift-aware kernel-feature architecture reached 64.44% final diagnostic accuracy on `market_relative_vn30` h40 | Strongest QML architecture result; diagnostic-only; `future_blind_required`; does not replace the classical champion |
-| BiLSTM | `market_relative_vn30` h40 reached 72.50% raw final accuracy | Demoted and not claimable: class imbalance, 79.69% always-down/majority baseline, weak repaired metrics, and seed instability |
-| 74.57% market-relative artifact | Model Universe exploratory final-ranked market-relative row | Class-imbalance/final-ranked artifact, not confirmed model edge, `exploratory_not_claimable` |
-| Model Universe V1-V7 | Broad model-family audit and negative evidence | No claimable replacement; useful for robustness, failure analysis, and negative evidence |
-| VN30 + index-group price-range lab | Requested result/claim files and generated package are absent on this branch | Do not cite the requested 79.84% coverage or 0.040533 width as repository evidence; current forecast-engine interval evidence is separate and diagnostic-only |
-| Ranking / relative strength | Validation diagnostics and positive signals exist | Useful diagnostic; final transfer remains weak; not claimable as an overall directional result |
-| Return/price point forecast | Model Universe relock and Forecast Engine v1 did not robustly beat random walk / last close | Weak under current evidence; Forecast Engine v1 selects the random-walk return baseline |
+VSEF is a research and diagnostic framework. Its outputs are intended for structured analysis, validation, and governance review. They should not be interpreted as financial advice, investment recommendations, or trading instructions.
 
-Primary sources include:
+Nothing in this repository constitutes investment advice, financial advice, trading advice, or a recommendation to buy, sell, hold, allocate, or execute any financial instrument.
 
-- `reports/results/VN30_FULL_MODEL_TUNING_V3_RESULT_SUMMARY.md`
-- `reports/results/VN30_QML_FORECASTING_V4_KERNEL_CONFIRMATION_RESULT_SUMMARY.md`
-- `reports/results/VN30_QML_FORECASTING_V8_DRIFT_AWARE_KERNEL_FEATURE_RESULT_SUMMARY.md`
-- `reports/results/VN30_MODEL_UNIVERSE_V1_V6_CLOSEOUT_REPORT.md`
-- `reports/results/VN30_MODEL_UNIVERSE_DIRECTION_PRICE_RESULT_SUMMARY.md`
-- `reports/results/VN_FORECAST_ENGINE_V1_EVALUATION_SUMMARY.md`
-
-## 9. Output Artifacts
-
-- `reports/generated/vn_forecast_engine_v1/`
-- `reports/generated/vn30_qml_forecasting/`
-- `reports/generated/vn30_model_universe_direction_price/`
-- `reports/generated/vn30_model_universe_benchmark/`
-- `reports/results/`
-- `reports/claims/`
-- `reports/protocols/`
-- `reports/paper/`
-
-Treat generated outputs as preserved evidence, not disposable build output.
-
-## 10. Evidence Navigation
-
-Start with:
-
-- `reports/_index/ACTIVE_EVIDENCE_INDEX.md`
-- `reports/_index/ACTIVE_CODE_MAP.md`
-- `reports/results/VN_FORECAST_ENGINE_V1_EVALUATION_SUMMARY.md`
-- `reports/results/VN_FORECAST_ENGINE_V1_LATEST_FORECAST_REPORT.md`
-- `reports/claims/VN_FORECAST_ENGINE_V1_CLAIM_BOUNDARY.md`
-- `reports/results/VN30_MODEL_UNIVERSE_V1_V6_CLOSEOUT_REPORT.md`
-- `reports/results/VN30_QML_FORECASTING_V8_DRIFT_AWARE_KERNEL_FEATURE_RESULT_SUMMARY.md`
-
-### Known missing or optional files
-
-The following requested navigation/evidence paths are not present on this
-branch. Do not invent or cite them as available evidence:
-
-- `reports/project_review/MASTER_EVIDENCE_INDEX.md`
-- `reports/project_review/VN30_QML_MODEL_UNIVERSE_FULL_PROGRESS_REVIEW.md`
-- `reports/project_review/VN30_QML_MODEL_UNIVERSE_EVIDENCE_MATRIX.csv`
-- `reports/project_review/VN30_QML_MODEL_UNIVERSE_CLAIM_STATUS_REGISTER.csv`
-- `reports/project_review/VN30_QML_MODEL_UNIVERSE_NEXT_ACTION_ROADMAP.md`
-- `reports/paper/qml_kernel_feature_vn30/`
-- `reports/generated/vn30_index_group_range_forecast/`
-- `reports/results/VN30_INDEX_GROUP_PRICE_RANGE_FORECAST_RESULT_SUMMARY.md`
-- `reports/claims/VN30_INDEX_GROUP_PRICE_RANGE_FORECAST_CLAIM_BOUNDARY.md`
-- `reports/results/VN30_MODEL_UNIVERSE_V7_EXHAUSTIVE_EXPANSION_RESULT_SUMMARY.md`
-
-## 11. Claim Boundary
-
-- Offline diagnostic research only
-- Final rows are scoring-only
-- Model selection uses validation only
-- No trading, profitability, BUY/SELL, recommendation, or investment advice
-- No live deployment, production, or daily T+1 operation
-- No VN100 assumption unless explicitly configured and locally available
-- No index-as-stock claim
-- No champion replacement without comparable future-blind evidence
-
-See `docs/governance/CLAIM_BOUNDARY_POLICY.md`.
-
-## 12. Repository Structure
-
-| Path | Purpose |
-|---|---|
-| `src/data/` | Local data contracts, adapters, loaders, and validation |
-| `src/features/` | Point-in-time-safe reusable feature construction |
-| `src/evaluation/` | Metrics, baselines, stability, and evaluation logic |
-| `src/forecasting/` | Offline forecast engine, panels, and selectors |
-| `src/governance/` | Split, claim-boundary, and artifact policies |
-| `scripts/research/` | One-off research and orchestration runners |
-| `tests/` | Automated contracts and validation |
-| `reports/` | Results, claims, protocols, generated evidence, and paper sources |
-| `docs/` | Architecture, usage, workflows, and governance |
-| `configs/` | Research, feature, policy, and universe configuration |
-| `data/`, `outputs/`, `archive/` | Protected local data and evidence roots |
-
-## 13. Development / Git Policy
-
-- Work on normal branches; do not touch or merge `main`
-- Do not create tags by default
-- Do not use `git push --mirror`
-- Do not generate DOCX during cleanup/documentation work
-- Do not fetch live data without an explicit protocol
-- Do not delete active evidence, raw/cache data, outputs, or archives
-- Commit and push normal branches only
-
-## 14. Known Limitations
-
-- No live forecast or daily T+1 production system
-- Return/price point forecasting remains weak
-- Ranking final transfer remains weak
-- QML remains diagnostic-only
-- Model Universe did not replace the existing champion
-- Index coverage depends on local cache availability
-- `VNXALL` may be skipped when its local cache is missing
-- Project-review master-index, dedicated QML paper-package, and index-group
-  price-range-lab paths listed above are absent on this branch
+Use of this framework is restricted by the proprietary notice and access restrictions stated above.
