@@ -48,6 +48,8 @@ from scripts.research.vn30_hourly_dual_track_common import (  # noqa: E402
     active_stock_tickers,
     load_index_data,
 )
+from src.governance.split_policy import FINAL_START, TRAIN_END, VAL_END, VAL_START  # noqa: E402
+from src.utils.research_io import as_float, json_safe, rel, write_frame, write_json, write_markdown  # noqa: E402
 
 warnings.filterwarnings("ignore", message="Skipping features without any observed values.*")
 warnings.filterwarnings("ignore", message="X does not have valid feature names.*")
@@ -59,10 +61,6 @@ RESULT_PATH = REPO_ROOT / "reports" / "results" / "VN30_QML_FORECASTING_RESULT_S
 CLAIM_PATH = REPO_ROOT / "reports" / "claims" / "VN30_QML_FORECASTING_CLAIM_BOUNDARY.md"
 
 SEED = 42
-TRAIN_END = pd.Timestamp("2023-12-31 23:59:59")
-VAL_START = pd.Timestamp("2024-01-01 00:00:00")
-VAL_END = pd.Timestamp("2024-12-31 23:59:59")
-FINAL_START = pd.Timestamp("2025-01-01 00:00:00")
 
 TARGET_VARIANTS = ["absolute_direction", "market_relative_vn30", "market_relative_vnindex"]
 HORIZONS = [20, 40, 50, 60]
@@ -104,65 +102,6 @@ class FeatureSpec:
     x_validation: pd.DataFrame
     x_final: pd.DataFrame
     selection_status: str
-
-
-def json_safe(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {str(key): json_safe(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [json_safe(item) for item in value]
-    if isinstance(value, tuple):
-        return [json_safe(item) for item in value]
-    if isinstance(value, (np.integer,)):
-        return int(value)
-    if isinstance(value, (np.floating,)):
-        number = float(value)
-        return number if math.isfinite(number) else None
-    if isinstance(value, float):
-        return value if math.isfinite(value) else None
-    if isinstance(value, (np.bool_,)):
-        return bool(value)
-    if isinstance(value, pd.Timestamp):
-        return value.strftime("%Y-%m-%d %H:%M:%S")
-    return value
-
-
-def write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(json_safe(payload), ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
-
-
-def write_frame(path: Path, rows: list[dict[str, Any]], columns: list[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    frame = pd.DataFrame(rows)
-    if frame.empty:
-        frame = pd.DataFrame(columns=columns)
-    else:
-        for col in columns:
-            if col not in frame.columns:
-                frame[col] = np.nan
-        frame = frame[columns]
-    frame.to_csv(path, index=False)
-
-
-def write_markdown(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text.rstrip() + "\n", encoding="utf-8")
-
-
-def rel(path: Path) -> str:
-    try:
-        return path.resolve().relative_to(REPO_ROOT).as_posix()
-    except ValueError:
-        return path.as_posix()
-
-
-def as_float(value: Any) -> float:
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return math.nan
-    return number if math.isfinite(number) else math.nan
 
 
 def pct(value: Any) -> str:

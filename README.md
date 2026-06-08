@@ -1,111 +1,74 @@
-# VN Market Directional Benchmark Lab
+# VN Forecast Research Lab
 
-A research repository for Vietnamese market directional forecasting benchmarks, provider-standardized OHLCV data access, evidence tracking, and claim governance.
+Target repository: <https://github.com/nicholas-atptit/VSEF-PTIT-NEU>
 
-## What This Repo Is
+VN Forecast Research Lab is an offline historical/local-data-only research
+system for VN30 stocks and explicitly configured Vietnamese indices. It
+preserves benchmark evidence, claim boundaries, QML diagnostics, and reusable
+forecast research components.
 
-- A benchmark lab for stock and index directional forecasting experiments.
-- A provider gateway/API adapter layer for governed VN OHLCV access.
-- A data forensics and reproducibility workspace.
-- A stock/index directional research workspace with preserved evidence artifacts.
+## Research scope
 
-## What This Repo Is Not
+- Offline direction, return/price, price-range/interval, and ranking research.
+- Reusable forecast engine components under `src/forecasting/`.
+- QML diagnostics and paper evidence.
+- Model Universe V1-V7 negative audit evidence; it is not a champion-replacement
+  claim.
+- VN30 and configured-index joint-panel/range research where local evidence is
+  available.
+- Provider-governed local data access through `src/data/providers/` and
+  `src/data/adapters/`.
 
-- Not a live trading system.
-- Not an investment recommendation engine.
-- Not a profitability guarantee.
-- Not a full 2015-start hourly stock benchmark.
-- Not the old VSEF project identity anymore.
+## Claim boundary
 
-## Active Tracks
+This is not a trading system. It makes no profitability, BUY/SELL,
+recommendation, investment-advice, live-deployment, production, or daily T+1
+operation claim. Final rows are scoring-only. Candidate selection must be
+future-blind and validation-only.
 
-- Stock hourly available-window benchmark.
-- Stock daily 2015 benchmark.
-- Index directional benchmark.
-- Data forensics and provider diagnostics.
-- Top-k ranking as a separate metric family.
+See:
 
-Start with:
-
+- `docs/governance/CLAIM_BOUNDARY_POLICY.md`
+- `docs/governance/DATA_AND_ARTIFACT_POLICY.md`
 - `reports/_index/ACTIVE_EVIDENCE_INDEX.md`
-- `reports/_index/ACTIVE_CODE_MAP.md`
-- `docs/REPOSITORY_STRUCTURE.md`
-- `reports/cleanup/REPO_RENAME_CLEANUP_INVENTORY.md`
-- `reports/_index/REPO_CLEANUP_INVENTORY.md`
-- `reports/cleanup/CODE_CLEANUP_CHANGES.md`
 
-## Claim Boundary
+## Current runner status
 
-- Stock hourly available-window has baseline60 evidence, but final65 is not established.
-- Stock daily 2015 is 30/30 usable but below 60.
-- Index benchmark has exact pass60 results, separate from stock.
-- Top-k ranking is not overall directional accuracy.
-- No trading, profitability, live-deployment, or investment-recommendation claim is made.
+- QML diagnostics: `scripts/research/run_vn30_qml_forecasting.py`
+- Model Universe direction/price audit:
+  `scripts/research/run_vn30_model_universe_direction_price_benchmark.py`
+- Offline forecast-engine runner: `scripts/research/run_vn_forecast_engine_v1.py`
+  is currently missing; do not invent forecast results.
+- Index-group price-range runner:
+  `scripts/research/run_vn30_index_group_price_range_forecast_lab.py` is
+  currently missing.
 
-Current selected-candidate and paper-source files use explicit VN30 hourly names, including:
-
-- `reports/results/VN30_HOURLY_SELECTED_CANDIDATE_ROLLING_STABILITY_RESULT.md`
-- `reports/claims/VN30_HOURLY_SELECTED_CANDIDATE_CLAIM_BOUNDARY.md`
-- `reports/claims/VN30_RESEARCH_CLAIM_REGISTER.md`
-- `reports/paper/VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md`
-- `reports/results/VN30_DAILY_2015_RESULT_SUMMARY.md`
-- `reports/results/VN30_INDEX_BENCHMARK_RESULT_SUMMARY.md`
-
-## Provider/API Adapter
-
-Normal fetch and benchmark code should go through:
-
-- `src/data/providers/vn_price_gateway.py`
-- `src/data/providers/vn_provider_contract.py`
-- `src/data/adapters/vnstock_adapter.py`
-- `scripts/check_provider_usage_policy.py`
-
-Raw `vnstock` or `vnstock_data` imports are allowed only in approved adapter, probe, diagnostic, or test locations.
-
-## Data And Artifact Policy
-
-- `data/`, `outputs/`, `reports/generated/`, and `archive/generated_data_snapshots/` are preserved.
-- Data and generated artifacts are tracked with Git LFS where applicable after the repository backup.
-- Do not delete data, output artifacts, market cache, raw fetch data, or archive snapshots.
-- Do not force-add secrets, raw `.env` files, credentials, tokens, virtual environments, or local caches.
+The QML and Model Universe runners are heavy research runners. Do not execute
+them during ordinary cleanup or validation.
 
 ## Validation
-
-Preferred task runner:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/dev_tasks.ps1 -Task validate-all
-```
-
-If `make` is available:
-
-```powershell
-make validate-all
-```
-
-Raw commands:
 
 ```powershell
 python scripts/check_repo_hygiene.py
 python scripts/check_runtime_preflight.py
-<repo-approved-venv>\Scripts\python.exe scripts\check_runtime_preflight.py
-<repo-approved-venv>\Scripts\python.exe scripts\check_provider_usage_policy.py
-<repo-approved-venv>\Scripts\python.exe -m pytest tests\data\test_provider_usage_policy.py -q
-<repo-approved-venv>\Scripts\python.exe -m pytest tests\data\test_vn_price_gateway_contract.py -q
-<repo-approved-venv>\Scripts\python.exe -m pytest tests\ml\test_directional_accuracy_metrics.py -q
+python scripts/check_provider_usage_policy.py
+python -m pytest tests/data/test_provider_usage_policy.py -q
+python -m pytest tests/data/test_vn_price_gateway_contract.py -q
+python -m pytest tests/ml/test_directional_accuracy_metrics.py -q
+python -m pytest tests/governance tests/evaluation tests/features tests/forecasting -q
 ```
 
-These commands are validation only. They do not run benchmarks, fetch market data, train models, or generate paper/DOCX artifacts.
+These commands do not fetch live data or run new model training.
 
-## Development Rules
+## Operating policy
 
-- No tags by default.
-- No `git push --mirror` for normal branch work.
-- No benchmark rerun without a written protocol.
-- No data fetch without a written protocol.
-- No final-label tuning.
-- No paper/DOCX generation unless explicitly requested.
-- No claim without artifact support.
-- Keep active research work on the current research branch unless explicitly directed otherwise.
+- Work on branches; do not touch or merge `main` during refactors.
+- Push normal branches only. Do not use `git push --mirror`.
+- Do not create tags by default.
+- Do not fetch data or rerun benchmarks without an explicit protocol.
+- Do not delete raw/cache data, generated evidence, paper evidence exports, or
+  protected active evidence.
+- Do not generate DOCX during cleanup.
 
-See `docs/USAGE.md` and `docs/RESEARCH_WORKFLOW.md` for operating details.
+Start with `docs/usage/RUNBOOK.md`, `docs/architecture/REPOSITORY_STRUCTURE.md`,
+and `docs/workflows/RESEARCH_WORKFLOW.md`.

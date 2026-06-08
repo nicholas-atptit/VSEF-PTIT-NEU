@@ -63,21 +63,17 @@ if str(REPO_ROOT_BOOTSTRAP) not in sys.path:
 
 from scripts.research.run_vn30_hourly_validation_safe_improvement_tracks import build_feature_families  # noqa: E402
 from scripts.research.vn30_hourly_dual_track_common import REPO_ROOT, load_index_data  # noqa: E402
+from src.governance.split_policy import FINAL_START, TRAIN_END, VAL_END, VAL_START  # noqa: E402
+from src.utils.research_io import as_float, json_safe, write_frame, write_json, write_markdown  # noqa: E402
 from scripts.research.run_vn30_qml_forecasting import (  # noqa: E402
     CLASSICAL_CHAMPION,
-    FINAL_START,
     SEED,
-    TRAIN_END,
-    VAL_END,
-    VAL_START,
     FeatureSpec,
     add_v3_relative_strength_features,
-    as_float,
     build_labels,
     build_source_groups,
     candidate_id,
     fit_feature_spec,
-    json_safe,
     leakage_guard_passed,
     numeric_existing,
     ordered_index,
@@ -87,9 +83,6 @@ from scripts.research.run_vn30_qml_forecasting import (  # noqa: E402
     v6_quantum_kernel_matrices,
     v6_scaling_transform,
     v8_kernel_feature_frames,
-    write_frame,
-    write_json,
-    write_markdown,
 )
 
 warnings.filterwarnings("ignore", category=FutureWarning)

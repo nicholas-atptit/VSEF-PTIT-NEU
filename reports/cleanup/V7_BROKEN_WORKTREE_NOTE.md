@@ -1,6 +1,6 @@
 # V7 Broken Worktree Note
 
-- Broken worktree path: `K:/Repos/VSEF-PTIT-NEU-v7-exhaustive`
+- Broken worktree path: former local `VSEF-PTIT-NEU-v7-exhaustive` worktree
 - Branch: `research/vn30-model-universe-exhaustive-v7-v1`
 - HEAD: `54991e37`
 - Status: locked / partial checkout / not used for V7
