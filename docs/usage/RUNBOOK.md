@@ -1,13 +1,13 @@
 # Offline Research Runbook
 
-## Default Mode
+This runbook reproduces VSEF diagnostics from existing local historical/cache data. It does not authorize live-data fetches, provider API calls, heavy benchmark reruns, BUY/SELL output, or production operation.
 
-Use local historical/cached data only. Do not call provider APIs, fetch live
-data, run schedulers, create broker workflows, or create live prediction
-ledgers.
+## Default Mode and Authority
 
-All forecast-engine output is offline diagnostic evidence. Final rows are
-scoring-only, and model selection must use validation rows only.
+- Use `--offline-historical-only` for the forecast-engine workflows below.
+- Model selection uses validation rows only; final rows are scoring-only.
+- Output is offline diagnostic evidence, not investment advice or trading authority.
+- Index coverage depends on local cache. `VNXALL` is skipped and recorded when no local cache exists.
 
 ## Safe Validation
 
@@ -25,76 +25,64 @@ These commands should not fetch live data or run heavy research benchmarks.
 
 ## Offline Forecast Engine
 
-The runner reads existing local caches and writes to
-`reports/generated/vn_forecast_engine_v1/`, with summaries under
-`reports/results/` and a claim boundary under `reports/claims/`.
+The runner reads existing local caches and writes forecast panels and evaluations to `reports/generated/vn_forecast_engine_v1/`, with summaries under `reports/results/` and a claim boundary under `reports/claims/`.
 
-### Forecast latest local cache
+### Forecast Latest Local Cache
 
 ```powershell
 python scripts/research/run_vn_forecast_engine_v1.py --offline-historical-only --forecast-latest --frequency hourly --horizons 5 --index-codes VNINDEX,VN30,HNXINDEX,HNX30,UPCOMINDEX,VNXALL
 ```
 
-### Forecast from a historical as-of timestamp
+Generates a latest-cache offline forecast panel. It does not fetch live data or emit BUY/SELL output.
+
+### Forecast From a Historical As-Of Timestamp
 
 ```powershell
 python scripts/research/run_vn_forecast_engine_v1.py --offline-historical-only --forecast-asof "2025-01-02 10:00:00" --frequency hourly --horizons 5,10,20,40,60 --index-codes VNINDEX,VN30,HNXINDEX,HNX30,UPCOMINDEX,VNXALL
 ```
 
-Historical-asof mode simulates the information cutoff. Actual fields are filled
-only when later local rows exist.
+Simulates the information available at the historical cutoff. Actual fields are filled only when later local rows exist; otherwise they remain pending/offline.
 
-### Full offline run
+### Full Offline Run
 
 ```powershell
 python scripts/research/run_vn_forecast_engine_v1.py --offline-historical-only --full-run --frequency hourly --horizons 5,10,20,40,60 --index-codes VNINDEX,VN30,HNXINDEX,HNX30,UPCOMINDEX,VNXALL --timeout-seconds 14400
 ```
 
-This builds local datasets, evaluates bounded candidates, selects using
-validation only, and writes forecast panels and evaluation reports.
+Builds local panel data, evaluates direction/return-price/range/ranking diagnostics, selects using validation only, and writes forecast panels and evaluation reports.
 
-### Evaluation-only run
+### Evaluation-Only Run
 
 ```powershell
 python scripts/research/run_vn_forecast_engine_v1.py --offline-historical-only --build-evaluate --frequency hourly --horizons 5,10,20,40,60 --index-codes VNINDEX,VN30,HNXINDEX,HNX30,UPCOMINDEX,VNXALL --timeout-seconds 14400
 ```
 
-Evaluation-only mode does not create a live prediction or production system.
+Evaluates available local historical data. It does not create a live or production system.
 
 ## Heavy Research Runners
 
-QML and Model Universe runners are available but heavy. Run them only under an
-approved written protocol:
+Run these only under an approved written protocol:
 
 ```powershell
 python scripts/research/run_vn30_qml_forecasting.py --help
 python scripts/research/run_vn30_model_universe_direction_price_benchmark.py --help
 ```
 
-Do not run these during ordinary validation, rerun benchmarks casually, or use
-final-period results for selection.
+Do not run them during ordinary validation, rerun benchmarks casually, or use final-period results for selection.
 
 ## Output Navigation
 
-- Forecast engine: `reports/generated/vn_forecast_engine_v1/`
-- Forecast engine reports: `reports/results/VN_FORECAST_ENGINE_V1_*`
-- Forecast engine claim boundary: `reports/claims/VN_FORECAST_ENGINE_V1_CLAIM_BOUNDARY.md`
-- QML evidence: `reports/generated/vn30_qml_forecasting/`
-- Model Universe evidence: `reports/generated/vn30_model_universe_direction_price/`
+- Forecast Engine: `reports/generated/vn_forecast_engine_v1/`
+- Forecast Engine reports: `reports/results/VN_FORECAST_ENGINE_V1_*`
+- Forecast Engine claim boundary: `reports/claims/VN_FORECAST_ENGINE_V1_CLAIM_BOUNDARY.md`
+- QML diagnostics: `reports/generated/vn30_qml_forecasting/`
+- Model Universe: `reports/generated/vn30_model_universe_direction_price/`
 - Active evidence index: `reports/_index/ACTIVE_EVIDENCE_INDEX.md`
 
-`VNXALL` is skipped and recorded in coverage audits when no local cache exists.
-The dedicated index-group price-range-lab runner/evidence package is not present
-on this branch.
+The dedicated project-review package, QML kernel-feature paper package, and index-group price-range-lab package named in the main README are not present on this branch.
 
-## Split Discipline
+## Split and Claim Discipline
 
-Use `src/governance/split_policy.py`. Both feature and target timestamps must be
-inside the same period. Boundary-crossing rows are unassigned. Final rows are
-scoring-only and never used for selection.
+Use `src/governance/split_policy.py`. Feature and target timestamps must be inside the same period; boundary-crossing rows are unassigned. Final rows are scoring-only.
 
-## Claim Boundary
-
-Offline diagnostic research only. No trading, profitability, BUY/SELL,
-recommendation, investment advice, live deployment, production, or daily T+1
-claim is permitted.
+All outputs remain offline diagnostic research. No trading, profitability, BUY/SELL, recommendation, investment advice, live deployment, production, daily T+1, or VN100 claim is permitted without explicit evidence and governance.
