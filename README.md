@@ -38,7 +38,7 @@ See:
 - Model Universe direction/price audit:
   `scripts/research/run_vn30_model_universe_direction_price_benchmark.py`
 - Offline forecast-engine runner: `scripts/research/run_vn_forecast_engine_v1.py`
-  is currently missing; do not invent forecast results.
+  supports local-cache latest, historical-asof, evaluation-only, and full runs.
 - Index-group price-range runner:
   `scripts/research/run_vn30_index_group_price_range_forecast_lab.py` is
   currently missing.

@@ -27,9 +27,15 @@ python scripts/research/run_vn30_qml_forecasting.py --help
 python scripts/research/run_vn30_model_universe_direction_price_benchmark.py --help
 ```
 
-The requested offline forecast-engine and index-group range-lab runner files are
-currently missing. No forecast smoke should be claimed until an actual
-local-data-only runner exists and is validated.
+The offline forecast-engine runner is available:
+
+```powershell
+python scripts/research/run_vn_forecast_engine_v1.py --offline-historical-only --forecast-latest --frequency hourly --horizons 5 --index-codes VNINDEX,VN30,HNXINDEX,HNX30,UPCOMINDEX,VNXALL
+```
+
+It uses local caches only and writes offline diagnostic evidence under
+`reports/generated/vn_forecast_engine_v1/`. The index-group range-lab runner
+remains missing.
 
 ## Split discipline
 

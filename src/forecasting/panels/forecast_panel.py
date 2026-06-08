@@ -7,22 +7,40 @@ import pandas as pd
 from src.governance.claim_boundary import claim_label
 
 FORECAST_PANEL_COLUMNS = (
+    "forecast_id",
+    "run_timestamp",
+    "asof_timestamp",
     "asset_code",
     "asset_type",
-    "asof_timestamp",
-    "target_timestamp",
     "horizon",
+    "target_timestamp",
+    "direction_model_id",
+    "direction_target",
     "direction_probability",
     "predicted_direction",
+    "direction_confidence_label",
+    "return_model_id",
     "predicted_return",
-    "predicted_close_low",
+    "predicted_log_return",
     "predicted_close_mid",
+    "range_model_id",
+    "predicted_return_p10",
+    "predicted_return_p50",
+    "predicted_return_p90",
+    "predicted_close_low",
     "predicted_close_high",
+    "predicted_low_price",
+    "predicted_high_price",
     "predicted_range_pct",
+    "ranking_model_id",
     "rank_score",
-    "actual_direction",
+    "cross_sectional_rank",
     "actual_return",
     "actual_close",
+    "actual_high",
+    "actual_low",
+    "correct_direction",
+    "interval_hit",
     "claim_label",
 )
 
@@ -32,7 +50,7 @@ def build_forecast_panel(rows: pd.DataFrame | list[dict[str, object]]) -> pd.Dat
     for column in FORECAST_PANEL_COLUMNS:
         if column not in panel:
             panel[column] = pd.NA
-    panel["claim_label"] = panel["claim_label"].fillna(claim_label())
+    panel["claim_label"] = panel["claim_label"].fillna("offline_diagnostic_forecast_only")
     panel["asof_timestamp"] = pd.to_datetime(panel["asof_timestamp"], errors="coerce")
     panel["target_timestamp"] = pd.to_datetime(panel["target_timestamp"], errors="coerce")
     panel = panel[list(FORECAST_PANEL_COLUMNS)]

@@ -1,4 +1,5 @@
 import pytest
+import pandas as pd
 
 from src.evaluation.metrics import direction_metrics, interval_metrics, ranking_metrics, return_price_metrics
 
@@ -9,6 +10,13 @@ def test_direction_metrics_include_repaired_metrics_and_probability_metrics():
     assert metrics["balanced_accuracy"] == pytest.approx(0.75)
     assert metrics["prediction_balance"] == pytest.approx(0.75)
     assert metrics["auc"] == pytest.approx(1.0)
+
+
+def test_metrics_pair_series_positionally_not_by_source_index():
+    truth = pd.Series([0, 1, 1], index=[100, 200, 300])
+    metrics = direction_metrics(truth, [0, 1, 0], [0.1, 0.8, 0.4])
+    assert metrics["rows"] == 3
+    assert metrics["raw_accuracy"] == pytest.approx(2 / 3)
 
 
 def test_return_price_metrics_include_rank_and_sign_accuracy():

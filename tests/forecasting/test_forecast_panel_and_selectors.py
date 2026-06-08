@@ -20,7 +20,7 @@ def test_forecast_panel_applies_schema_and_claim_label():
             }
         ]
     )
-    assert panel.loc[0, "claim_label"] == "offline_diagnostic_only"
+    assert panel.loc[0, "claim_label"] == "offline_diagnostic_forecast_only"
 
 
 def test_direction_selector_uses_validation_only_and_rejects_collapse():
