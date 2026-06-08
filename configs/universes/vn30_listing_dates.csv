@@ -1,34 +1,3 @@
-ticker,company_name,first_trading_date,exchange_first_traded,current_exchange,source_note,note
-ACB,Ngân hàng TMCP Á Châu,2006-11-21,HNX,HOSE,user_provided,Traded on HNX before HOSE transfer
-BCM,,,,,needs_verification,active in VN30 January 2025 universe; effective_start defaults to 2015-01-01 or provider first timestamp
-BID,Ngân hàng TMCP Đầu tư và Phát triển Việt Nam,2014-01-24,HOSE,HOSE,user_provided,
-BSR,CTCP Lọc hóa dầu Bình Sơn,2018-03-01,UPCoM,HOSE,user_provided,UPCoM before HOSE; inactive/excluded from active VN30 January 2025 benchmark universe
-BVH,,,,,needs_verification,active in VN30 January 2025 universe; effective_start defaults to 2015-01-01 or provider first timestamp
-CTG,Ngân hàng TMCP Công thương Việt Nam,2009-07-16,HOSE,HOSE,user_provided,
-DGC,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp; inactive/excluded from active VN30 January 2025 benchmark universe
-FPT,CTCP FPT,2006-12-13,HOSE,HOSE,user_provided,
-GAS,Tổng Công ty Khí Việt Nam,2012-05-21,HOSE,HOSE,user_provided,
-GVR,Tập đoàn Công nghiệp Cao su Việt Nam,2018-03-21,UPCoM/HNX,HOSE,user_provided,UPCoM/HNX before HOSE
-HDB,Ngân hàng TMCP Phát triển TP.HCM,2018-01-05,HOSE,HOSE,user_provided,
-HPG,CTCP Tập đoàn Hòa Phát,2007-11-15,HOSE,HOSE,user_provided,
-LPB,Ngân hàng TMCP Lộc Phát Việt Nam,2017-10-05,UPCoM,HOSE,user_provided,UPCoM before HOSE
-MBB,Ngân hàng TMCP Quân đội,2011-11-01,HOSE,HOSE,user_provided,
-MSN,CTCP Tập đoàn Masan,2009-11-05,HOSE,HOSE,user_provided,
-MWG,CTCP Đầu tư Thế Giới Di Động,2014-07-14,HOSE,HOSE,user_provided,
-PLX,Tập đoàn Xăng dầu Việt Nam,2017-04-21,HOSE,HOSE,user_provided,
-SAB,Tổng CTCP Bia - Rượu - Nước giải khát Sài Gòn,2016-12-06,HOSE,HOSE,user_provided,
-SHB,Ngân hàng TMCP Sài Gòn - Hà Nội,2009-04-20,HNX,HOSE,user_provided,HNX before HOSE
-SSB,Ngân hàng TMCP Đông Nam Á,2021-03-24,HOSE,HOSE,user_provided,
-SSI,CTCP Chứng khoán SSI,2006-12-15,HNX,HOSE,user_provided,HNX before HOSE
-STB,Ngân hàng TMCP Sài Gòn Thương Tín,2006-07-12,HOSE,HOSE,user_provided,
-TCB,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
-TPB,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
-VCB,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
-VHM,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
-VIB,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
-VIC,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
-VJC,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
-VNM,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
-VPB,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
-VPL,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp; inactive/excluded from active VN30 January 2025 benchmark universe
-VRE,,,,,needs_verification,effective start will fall back to 2015-01-01 or provider first timestamp
+version https://git-lfs.github.com/spec/v1
+oid sha256:d544cdc6f3499fabfa25496a5430afc48f87421048c37002f5e6e1c9da618c72
+size 3357

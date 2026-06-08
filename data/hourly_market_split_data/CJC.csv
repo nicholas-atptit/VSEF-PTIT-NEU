@@ -1,5 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2025-06-03 10:00:00,24.0,24.0,24.0,24.0,300,CJC,"At 2025-06-03 10:00:00, the stock CJC opened at 24.00 VND, reached a high of 24.00 VND, a low of 24.00 VND, and closed the hour at 24.00 VND with a trading volume of 300 shares."
-2025-12-24 11:00:00,21.6,21.6,21.6,21.6,310000,CJC,"At 2025-12-24 11:00:00, the stock CJC opened at 21.60 VND, reached a high of 21.60 VND, a low of 21.60 VND, and closed the hour at 21.60 VND with a trading volume of 310,000 shares."
-2026-01-12 13:00:00,19.5,19.5,19.5,19.5,200,CJC,"At 2026-01-12 13:00:00, the stock CJC opened at 19.50 VND, reached a high of 19.50 VND, a low of 19.50 VND, and closed the hour at 19.50 VND with a trading volume of 200 shares."
-2026-01-13 14:00:00,18.0,18.0,18.0,18.0,400,CJC,"At 2026-01-13 14:00:00, the stock CJC opened at 18.00 VND, reached a high of 18.00 VND, a low of 18.00 VND, and closed the hour at 18.00 VND with a trading volume of 400 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:ab13d669f3c0c7540b5092aef403c35070abfa3b45e3be31d1b210cb45288303
+size 975

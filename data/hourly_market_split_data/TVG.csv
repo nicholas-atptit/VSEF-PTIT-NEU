@@ -1,13 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-09-22 14:00:00,3.5,3.5,3.5,3.5,100,TVG,"At 2023-09-22 14:00:00, the stock TVG opened at 3.50 VND, reached a high of 3.50 VND, a low of 3.50 VND, and closed the hour at 3.50 VND with a trading volume of 100 shares."
-2024-05-24 13:00:00,4.87,4.87,4.87,4.87,100,TVG,"At 2024-05-24 13:00:00, the stock TVG opened at 4.87 VND, reached a high of 4.87 VND, a low of 4.87 VND, and closed the hour at 4.87 VND with a trading volume of 100 shares."
-2024-06-14 13:00:00,5.55,5.55,5.55,5.55,100,TVG,"At 2024-06-14 13:00:00, the stock TVG opened at 5.55 VND, reached a high of 5.55 VND, a low of 5.55 VND, and closed the hour at 5.55 VND with a trading volume of 100 shares."
-2024-06-21 10:00:00,6.32,6.32,6.32,6.32,100,TVG,"At 2024-06-21 10:00:00, the stock TVG opened at 6.32 VND, reached a high of 6.32 VND, a low of 6.32 VND, and closed the hour at 6.32 VND with a trading volume of 100 shares."
-2024-06-28 13:00:00,7.26,7.26,7.26,7.26,100,TVG,"At 2024-06-28 13:00:00, the stock TVG opened at 7.26 VND, reached a high of 7.26 VND, a low of 7.26 VND, and closed the hour at 7.26 VND with a trading volume of 100 shares."
-2024-07-05 10:00:00,8.29,8.29,8.29,8.29,100,TVG,"At 2024-07-05 10:00:00, the stock TVG opened at 8.29 VND, reached a high of 8.29 VND, a low of 8.29 VND, and closed the hour at 8.29 VND with a trading volume of 100 shares."
-2025-04-18 09:00:00,8.54,8.54,8.54,8.54,100,TVG,"At 2025-04-18 09:00:00, the stock TVG opened at 8.54 VND, reached a high of 8.54 VND, a low of 8.54 VND, and closed the hour at 8.54 VND with a trading volume of 100 shares."
-2025-05-16 13:00:00,9.74,9.74,9.74,9.74,100,TVG,"At 2025-05-16 13:00:00, the stock TVG opened at 9.74 VND, reached a high of 9.74 VND, a low of 9.74 VND, and closed the hour at 9.74 VND with a trading volume of 100 shares."
-2025-05-23 09:00:00,11.19,11.19,11.19,11.19,400,TVG,"At 2025-05-23 09:00:00, the stock TVG opened at 11.19 VND, reached a high of 11.19 VND, a low of 11.19 VND, and closed the hour at 11.19 VND with a trading volume of 400 shares."
-2025-05-30 13:00:00,12.39,12.39,12.39,12.39,100,TVG,"At 2025-05-30 13:00:00, the stock TVG opened at 12.39 VND, reached a high of 12.39 VND, a low of 12.39 VND, and closed the hour at 12.39 VND with a trading volume of 100 shares."
-2025-06-06 13:00:00,14.1,14.1,14.1,14.1,100,TVG,"At 2025-06-06 13:00:00, the stock TVG opened at 14.10 VND, reached a high of 14.10 VND, a low of 14.10 VND, and closed the hour at 14.10 VND with a trading volume of 100 shares."
-2025-07-04 10:00:00,16.0,16.0,16.0,16.0,200,TVG,"At 2025-07-04 10:00:00, the stock TVG opened at 16.00 VND, reached a high of 16.00 VND, a low of 16.00 VND, and closed the hour at 16.00 VND with a trading volume of 200 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:19cf99b5e109a97291f45597580ecddc2e40c47670946aae585ad0ee4ca7551f
+size 2772

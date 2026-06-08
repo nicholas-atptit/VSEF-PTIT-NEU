@@ -1,3 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-09-11 09:00:00,7.5,7.5,7.5,7.5,400,TVW,"At 2023-09-11 09:00:00, the stock TVW opened at 7.50 VND, reached a high of 7.50 VND, a low of 7.50 VND, and closed the hour at 7.50 VND with a trading volume of 400 shares."
-2023-09-12 09:00:00,6.4,6.7,6.4,6.5,5400,TVW,"At 2023-09-12 09:00:00, the stock TVW opened at 6.40 VND, reached a high of 6.70 VND, a low of 6.40 VND, and closed the hour at 6.50 VND with a trading volume of 5,400 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:5db00bc67673584f453e25385035773b2592c822d35843bb699da54669cfbf25
+size 497

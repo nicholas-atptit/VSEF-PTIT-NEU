@@ -1,8 +1,3 @@
-﻿"source_path","archive_path","action","reason"
-"reports/generated/index_hourly_2015/fetch","archive/generated_data_snapshots/vn30_hourly_2015_failed_forward_fetch_20260514_220617/reports/generated/index_hourly_2015/fetch","archived_removed","failed forward-fetch output/cache cleared before listing-aware reverse fetch"
-"reports/generated/index_hourly_2015/validation","archive/generated_data_snapshots/vn30_hourly_2015_failed_forward_fetch_20260514_220617/reports/generated/index_hourly_2015/validation","archived_removed","failed forward-fetch output/cache cleared before listing-aware reverse fetch"
-"reports/generated/vn30_hourly_2015/fetch","archive/generated_data_snapshots/vn30_hourly_2015_failed_forward_fetch_20260514_220617/reports/generated/vn30_hourly_2015/fetch","archived_removed","failed forward-fetch output/cache cleared before listing-aware reverse fetch"
-"reports/generated/vn30_hourly_2015/validation","archive/generated_data_snapshots/vn30_hourly_2015_failed_forward_fetch_20260514_220617/reports/generated/vn30_hourly_2015/validation","archived_removed","failed forward-fetch output/cache cleared before listing-aware reverse fetch"
-"reports/generated/vn30_hourly_2015_benchmark_readiness","archive/generated_data_snapshots/vn30_hourly_2015_failed_forward_fetch_20260514_220617/reports/generated/vn30_hourly_2015_benchmark_readiness","archived_removed","failed forward-fetch output/cache cleared before listing-aware reverse fetch"
-"data/market_cache/vnstock_data/indices/hourly_2015","archive/generated_data_snapshots/vn30_hourly_2015_failed_forward_fetch_20260514_220617/data/market_cache/vnstock_data/indices/hourly_2015","skipped_missing","source path missing"
-"data/market_cache/vnstock_data/vn30/hourly_2015","archive/generated_data_snapshots/vn30_hourly_2015_failed_forward_fetch_20260514_220617/data/market_cache/vnstock_data/vn30/hourly_2015","skipped_missing","source path missing"
+version https://git-lfs.github.com/spec/v1
+oid sha256:0ebd7c91ea94670db1f15cdccf626bde4434cdf78a7bb99ee5ff220ce004687b
+size 1925

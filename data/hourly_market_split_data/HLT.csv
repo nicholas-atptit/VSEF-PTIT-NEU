@@ -1,21 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-09-15 14:00:00,10.9,10.9,10.9,10.9,100,HLT,"At 2023-09-15 14:00:00, the stock HLT opened at 10.90 VND, reached a high of 10.90 VND, a low of 10.90 VND, and closed the hour at 10.90 VND with a trading volume of 100 shares."
-2023-09-22 14:00:00,9.3,9.3,9.3,9.3,100,HLT,"At 2023-09-22 14:00:00, the stock HLT opened at 9.30 VND, reached a high of 9.30 VND, a low of 9.30 VND, and closed the hour at 9.30 VND with a trading volume of 100 shares."
-2023-10-09 11:00:00,9.3,9.3,9.3,9.3,3100,HLT,"At 2023-10-09 11:00:00, the stock HLT opened at 9.30 VND, reached a high of 9.30 VND, a low of 9.30 VND, and closed the hour at 9.30 VND with a trading volume of 3,100 shares."
-2023-11-16 14:00:00,5.7,5.7,5.7,5.7,100,HLT,"At 2023-11-16 14:00:00, the stock HLT opened at 5.70 VND, reached a high of 5.70 VND, a low of 5.70 VND, and closed the hour at 5.70 VND with a trading volume of 100 shares."
-2023-12-06 10:00:00,6.5,6.5,6.5,6.5,100,HLT,"At 2023-12-06 10:00:00, the stock HLT opened at 6.50 VND, reached a high of 6.50 VND, a low of 6.50 VND, and closed the hour at 6.50 VND with a trading volume of 100 shares."
-2023-12-22 14:00:00,7.4,7.4,7.4,7.4,100,HLT,"At 2023-12-22 14:00:00, the stock HLT opened at 7.40 VND, reached a high of 7.40 VND, a low of 7.40 VND, and closed the hour at 7.40 VND with a trading volume of 100 shares."
-2024-02-07 11:00:00,9.0,9.0,9.0,9.0,1000,HLT,"At 2024-02-07 11:00:00, the stock HLT opened at 9.00 VND, reached a high of 9.00 VND, a low of 9.00 VND, and closed the hour at 9.00 VND with a trading volume of 1,000 shares."
-2024-02-07 13:00:00,8.5,8.5,8.5,8.5,1000,HLT,"At 2024-02-07 13:00:00, the stock HLT opened at 8.50 VND, reached a high of 8.50 VND, a low of 8.50 VND, and closed the hour at 8.50 VND with a trading volume of 1,000 shares."
-2024-03-06 14:00:00,7.5,7.5,7.5,7.5,100,HLT,"At 2024-03-06 14:00:00, the stock HLT opened at 7.50 VND, reached a high of 7.50 VND, a low of 7.50 VND, and closed the hour at 7.50 VND with a trading volume of 100 shares."
-2024-03-07 10:00:00,6.4,6.4,6.4,6.4,1100,HLT,"At 2024-03-07 10:00:00, the stock HLT opened at 6.40 VND, reached a high of 6.40 VND, a low of 6.40 VND, and closed the hour at 6.40 VND with a trading volume of 1,100 shares."
-2024-03-08 13:00:00,8.0,8.0,8.0,8.0,100,HLT,"At 2024-03-08 13:00:00, the stock HLT opened at 8.00 VND, reached a high of 8.00 VND, a low of 8.00 VND, and closed the hour at 8.00 VND with a trading volume of 100 shares."
-2024-03-11 13:00:00,7.0,7.0,7.0,7.0,400,HLT,"At 2024-03-11 13:00:00, the stock HLT opened at 7.00 VND, reached a high of 7.00 VND, a low of 7.00 VND, and closed the hour at 7.00 VND with a trading volume of 400 shares."
-2024-03-12 13:00:00,8.0,8.0,8.0,8.0,100,HLT,"At 2024-03-12 13:00:00, the stock HLT opened at 8.00 VND, reached a high of 8.00 VND, a low of 8.00 VND, and closed the hour at 8.00 VND with a trading volume of 100 shares."
-2024-03-13 10:00:00,8.6,8.6,8.6,8.6,1000,HLT,"At 2024-03-13 10:00:00, the stock HLT opened at 8.60 VND, reached a high of 8.60 VND, a low of 8.60 VND, and closed the hour at 8.60 VND with a trading volume of 1,000 shares."
-2024-03-15 13:00:00,8.8,8.8,8.8,8.8,1000,HLT,"At 2024-03-15 13:00:00, the stock HLT opened at 8.80 VND, reached a high of 8.80 VND, a low of 8.80 VND, and closed the hour at 8.80 VND with a trading volume of 1,000 shares."
-2024-04-16 14:00:00,10.1,10.1,10.1,10.1,100,HLT,"At 2024-04-16 14:00:00, the stock HLT opened at 10.10 VND, reached a high of 10.10 VND, a low of 10.10 VND, and closed the hour at 10.10 VND with a trading volume of 100 shares."
-2024-06-12 14:00:00,12.0,12.0,11.8,11.8,2100,HLT,"At 2024-06-12 14:00:00, the stock HLT opened at 12.00 VND, reached a high of 12.00 VND, a low of 11.80 VND, and closed the hour at 11.80 VND with a trading volume of 2,100 shares."
-2024-06-25 14:00:00,12.0,12.5,12.0,12.5,200,HLT,"At 2024-06-25 14:00:00, the stock HLT opened at 12.00 VND, reached a high of 12.50 VND, a low of 12.00 VND, and closed the hour at 12.50 VND with a trading volume of 200 shares."
-2024-12-06 10:00:00,10.6,10.6,10.6,10.6,200,HLT,"At 2024-12-06 10:00:00, the stock HLT opened at 10.60 VND, reached a high of 10.60 VND, a low of 10.60 VND, and closed the hour at 10.60 VND with a trading volume of 200 shares."
-2024-12-06 14:00:00,10.6,10.6,10.6,10.6,100,HLT,"At 2024-12-06 14:00:00, the stock HLT opened at 10.60 VND, reached a high of 10.60 VND, a low of 10.60 VND, and closed the hour at 10.60 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:d9407463dba2cdc6ad245850d782ae2799fa23d89b8a6d69abd70a946fd23a26
+size 4541

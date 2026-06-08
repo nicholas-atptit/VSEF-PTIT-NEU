@@ -1,12 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-09-22 10:00:00,4.0,4.0,4.0,4.0,200,TNM,"At 2023-09-22 10:00:00, the stock TNM opened at 4.00 VND, reached a high of 4.00 VND, a low of 4.00 VND, and closed the hour at 4.00 VND with a trading volume of 200 shares."
-2023-10-06 14:00:00,4.0,4.0,4.0,4.0,7000,TNM,"At 2023-10-06 14:00:00, the stock TNM opened at 4.00 VND, reached a high of 4.00 VND, a low of 4.00 VND, and closed the hour at 4.00 VND with a trading volume of 7,000 shares."
-2023-10-20 10:00:00,4.3,4.3,4.3,4.3,600,TNM,"At 2023-10-20 10:00:00, the stock TNM opened at 4.30 VND, reached a high of 4.30 VND, a low of 4.30 VND, and closed the hour at 4.30 VND with a trading volume of 600 shares."
-2023-10-20 14:00:00,3.4,3.4,3.4,3.4,1000,TNM,"At 2023-10-20 14:00:00, the stock TNM opened at 3.40 VND, reached a high of 3.40 VND, a low of 3.40 VND, and closed the hour at 3.40 VND with a trading volume of 1,000 shares."
-2023-10-27 13:00:00,4.0,4.0,4.0,4.0,1000,TNM,"At 2023-10-27 13:00:00, the stock TNM opened at 4.00 VND, reached a high of 4.00 VND, a low of 4.00 VND, and closed the hour at 4.00 VND with a trading volume of 1,000 shares."
-2023-10-27 14:00:00,4.2,4.2,4.2,4.2,2000,TNM,"At 2023-10-27 14:00:00, the stock TNM opened at 4.20 VND, reached a high of 4.20 VND, a low of 4.20 VND, and closed the hour at 4.20 VND with a trading volume of 2,000 shares."
-2023-11-03 10:00:00,4.6,4.6,4.6,4.6,3000,TNM,"At 2023-11-03 10:00:00, the stock TNM opened at 4.60 VND, reached a high of 4.60 VND, a low of 4.60 VND, and closed the hour at 4.60 VND with a trading volume of 3,000 shares."
-2023-11-03 14:00:00,4.0,4.7,4.0,4.7,900,TNM,"At 2023-11-03 14:00:00, the stock TNM opened at 4.00 VND, reached a high of 4.70 VND, a low of 4.00 VND, and closed the hour at 4.70 VND with a trading volume of 900 shares."
-2023-11-17 11:00:00,4.6,4.6,4.6,4.6,100,TNM,"At 2023-11-17 11:00:00, the stock TNM opened at 4.60 VND, reached a high of 4.60 VND, a low of 4.60 VND, and closed the hour at 4.60 VND with a trading volume of 100 shares."
-2023-11-17 14:00:00,4.6,4.6,4.6,4.6,100,TNM,"At 2023-11-17 14:00:00, the stock TNM opened at 4.60 VND, reached a high of 4.60 VND, a low of 4.60 VND, and closed the hour at 4.60 VND with a trading volume of 100 shares."
-2023-12-01 14:00:00,4.1,4.1,4.1,4.1,100,TNM,"At 2023-12-01 14:00:00, the stock TNM opened at 4.10 VND, reached a high of 4.10 VND, a low of 4.10 VND, and closed the hour at 4.10 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:8e254d94f02aa78722255c180507ea42cb5827c3b0a056195790de5302a05958
+size 2498

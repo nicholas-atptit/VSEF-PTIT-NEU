@@ -1,14 +1,3 @@
-# Index Hourly 2015 Gateway Validation
-
-- Usable index codes: 6/6.
-- Daily data used: no.
-- Resampling used: no.
-
-| index_code | usable | rows | first | last | missing_reason |
-|---|---:|---:|---|---|---|
-| `VNINDEX` | true | 995 | 2022-05-19 00:00:00 | 2026-05-15 00:00:00 |  |
-| `HNXINDEX` | true | 994 | 2022-05-19 00:00:00 | 2026-05-14 00:00:00 |  |
-| `UPCOMINDEX` | true | 994 | 2022-05-19 00:00:00 | 2026-05-15 00:00:00 |  |
-| `VN30` | true | 995 | 2022-05-19 00:00:00 | 2026-05-15 00:00:00 |  |
-| `HNX30` | true | 962 | 2022-07-04 00:00:00 | 2026-05-15 00:00:00 |  |
-| `VN100` | true | 1570 | 2023-09-11 10:00:00 | 2026-05-15 00:00:00 |  |
+version https://git-lfs.github.com/spec/v1
+oid sha256:f67e2c30308cdd7587a58e6d9e4f8e91a1363f2bc0b342c5b7a210a3804fbb6e
+size 661

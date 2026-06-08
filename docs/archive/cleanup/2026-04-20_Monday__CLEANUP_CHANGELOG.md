@@ -21,7 +21,7 @@ Detailed summary of file-level changes during the three-phase cleanup and refact
 | `k-aware benchmark...` | DELETE | Corrupted/dead junk file. |
 | `k-regime-upgrade` | MOVE | Archived root history. |
 | `sponsor_after_upgrade.txt` | MOVE | Archived root history. |
-| `reports/stress_test_report.md` | MODIFY | Cleaned absolute `H:\` paths. |
+| `reports/superseded/stress_test_report.md` | MODIFY | Cleaned absolute `H:\` paths. |
 | `docs/archive/root/REFACTOR_LOG.md` | MODIFY | Cleaned absolute `H:\` path from runtime trace. |
 | `docs/archive/root/STRUCTURE_FINAL.md` | MODIFY | Cleaned absolute root path in structure tree. |
 

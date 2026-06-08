@@ -18,7 +18,7 @@ REPORT_ROOT = REPO_ROOT / "reports" / "generated" / "vn30_daily_2015"
 AUDIT_DIR = REPORT_ROOT / "audit"
 AUDIT_CSV_PATH = AUDIT_DIR / "vn30_daily_2015_benchmark_audit.csv"
 AUDIT_MD_PATH = AUDIT_DIR / "vn30_daily_2015_benchmark_audit.md"
-SUMMARY_REPORT_PATH = REPO_ROOT / "reports" / "VN30_DAILY_2015_BENCHMARK_RESULT_SUMMARY.md"
+SUMMARY_REPORT_PATH = REPO_ROOT / "reports" / "results" / "VN30_DAILY_2015_RESULT_SUMMARY.md"
 
 TRAIN_END_TEXT = "2023-12-31 23:59:59"
 VAL_START_TEXT = "2024-01-01"

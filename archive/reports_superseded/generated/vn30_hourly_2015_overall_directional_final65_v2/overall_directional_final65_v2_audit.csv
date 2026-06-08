@@ -1,17 +1,3 @@
-check,status
-canonical_evaluator_used,PASS
-metric_overall_directional,PASS
-no_ranking_topk_metric,PASS
-no_confidence_abstention,FAIL
-no_ticker_subset,PASS
-all_30_tickers,PASS
-full_final_coverage,FAIL
-no_daily_data,PASS
-no_resampling,PASS
-rolling_validation_selection,PASS
-final_eval_only_scoring,PASS
-leakage_detected,PASS
-final65_pass,FAIL
-search_completed,PASS
-candidates_completed,10
-best_final_accuracy,0.584917
+version https://git-lfs.github.com/spec/v1
+oid sha256:ec31691bcc7016101b547b12ec92b54a46d4d227272e1391b21fce1362ce711a
+size 433

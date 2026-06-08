@@ -1,19 +1,25 @@
-# Reports Directory
+# Reports
 
-Reports in this directory are historical snapshots, smoke summaries, or
-investigation outputs. They are not canonical governance docs.
+Root `reports/` is a pointer area. Active Markdown reports should live in the category folders below, not in the root.
 
-The active source of truth for the deterministic decision-diagnostic chain lives
-under `docs/`, especially:
+## Current Structure
 
-- `docs/SYSTEM_OVERVIEW.md`
-- `docs/DECISION_DIAGNOSTIC_CHAIN.md`
-- `docs/AUTHORITY_BOUNDARY.md`
-- `docs/governance/PIPELINE_CONTRACTS.md`
-- `docs/governance/QUANT_CORE_OUTPUT_SCHEMA.md`
+- [`_index/`](./_index/) - active navigation, evidence indexes, and code maps.
+- [`claims/`](./claims/) - claim registers, claim notes, and claim-boundary files.
+- [`results/`](./results/) - current result summaries, audits, diagnoses, and evidence reports.
+- [`protocols/`](./protocols/) - protocols, designs, decisions, guides, and next-action notes.
+- [`paper/`](./paper/) - VN30 hourly paper-source support, table/figure captions, and TODO indexes.
+- [`cleanup/`](./cleanup/) - repository cleanup, rename, push, audit-remediation, and governance reports.
+- [`manual_review/`](./manual_review/) - unresolved notes that still need human classification.
+- [`superseded/`](./superseded/) - preserved historical root reports that are not active evidence entry points.
+- [`generated/`](./generated/) - generated evidence and artifact summaries. Do not move this folder casually.
 
-Do not treat reports as BUY or SELL recommendation authority, live execution
-authority, production trading readiness, or learned meta-model authority.
+## Entry Points
 
-Generated report packs should remain local unless a specific review task asks
-for them to be curated and committed.
+- [`_index/ACTIVE_EVIDENCE_INDEX.md`](./_index/ACTIVE_EVIDENCE_INDEX.md)
+- [`_index/ACTIVE_CODE_MAP.md`](./_index/ACTIVE_CODE_MAP.md)
+- [`_index/REPO_CLEANUP_INVENTORY.md`](./_index/REPO_CLEANUP_INVENTORY.md)
+- [`cleanup/REPO_REPORTS_CLEANUP_INVENTORY.md`](./cleanup/REPO_REPORTS_CLEANUP_INVENTORY.md)
+- [`cleanup/REPORTS_STRUCTURE_CLEANUP_RESULT.md`](./cleanup/REPORTS_STRUCTURE_CLEANUP_RESULT.md)
+
+Generated reports, raw data, outputs, and archive snapshots are preserved evidence. Do not rename or move them during documentation cleanup.

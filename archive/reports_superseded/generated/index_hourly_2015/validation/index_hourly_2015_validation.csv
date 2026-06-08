@@ -1,7 +1,3 @@
-index_code,cache_path,file_exists,row_count,first_datetime,last_datetime,sorted_datetime,duplicate_datetime_count,frequency_1h,ohlcv_numeric,positive_prices,volume_nonnegative,ohlc_consistent,usable,missing_reason
-VNINDEX,data/market_cache/vnstock_data/indices/hourly_2015/VNINDEX.csv,true,995,2022-05-19 00:00:00,2026-05-15 00:00:00,true,0,true,true,true,true,true,true,
-HNXINDEX,data/market_cache/vnstock_data/indices/hourly_2015/HNXINDEX.csv,true,994,2022-05-19 00:00:00,2026-05-14 00:00:00,true,0,true,true,true,true,true,true,
-UPCOMINDEX,data/market_cache/vnstock_data/indices/hourly_2015/UPCOMINDEX.csv,true,994,2022-05-19 00:00:00,2026-05-15 00:00:00,true,0,true,true,true,true,true,true,
-VN30,data/market_cache/vnstock_data/indices/hourly_2015/VN30.csv,true,995,2022-05-19 00:00:00,2026-05-15 00:00:00,true,0,true,true,true,true,true,true,
-HNX30,data/market_cache/vnstock_data/indices/hourly_2015/HNX30.csv,true,962,2022-07-04 00:00:00,2026-05-15 00:00:00,true,0,true,true,true,true,true,true,
-VN100,data/market_cache/vnstock_data/indices/hourly_2015/VN100.csv,true,1570,2023-09-11 10:00:00,2026-05-15 00:00:00,true,0,true,true,true,true,true,true,
+version https://git-lfs.github.com/spec/v1
+oid sha256:7eaea65fd24ad37f2e413dea46d51d4517bb1b69c5e4567f5aaa4d2072b700d1
+size 1164

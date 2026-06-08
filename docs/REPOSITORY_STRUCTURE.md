@@ -1,121 +1,141 @@
-# VSEF Repository Structure
-## Document Metadata
+# Repository Structure
 
-| Field | Value |
+This repository is the VN Market Directional Benchmark Lab. Its active identity is VN30 directional forecasting research, provider-governed Vietnamese OHLCV access, evidence tracking, and claim-boundary control.
+
+## Top-Level Folders
+
+| Path | Meaning |
 | --- | --- |
-| Document type | Architecture note |
-| Created / authored | Sunday, 2026-04-26 15:48:16 ICT (UTC+07:00) |
-| Last updated | Tuesday, 2026-04-28 22:51:14 ICT (UTC+07:00) |
-| Timezone | Asia/Ho_Chi_Minh / ICT (UTC+07:00) |
-| Branch | `vsef-doc-datetime-metadata-standardization` |
-| Commit | `ef20ce73b466d75a61ca4768d4f4129405df7fb0` |
-| Timestamp source | Git history |
-| Status | Active |
+| `src/` | Importable source code, including provider contracts, adapters, metrics, and reusable platform modules. |
+| `scripts/` | Runnable entry points for validation, audits, fetch/readiness work, benchmarks, and research diagnostics. |
+| `scripts/research/` | Active research scripts. Some are safe validators; benchmark/fetch/train scripts require a written protocol before use. |
+| `scripts/legacy/` | Preserved superseded scripts, failed experiments, old paper builders, and compatibility material. Do not delete for cleanup convenience. |
+| `tests/` | Automated tests. `tests/data/` and `tests/ml/` are protected because they enforce provider policy and metric contracts. |
+| `docs/` | Human-facing usage, workflow, repository structure, governance, runbooks, and archived documentation. |
+| `reports/` | Report navigation root. Root Markdown should normally be limited to `reports/README.md`; active reports belong in category folders. |
+| `reports/_index/` | Active evidence indexes, code maps, and current navigation files. |
+| `reports/claims/` | Claim registers, claim notes, and claim-boundary files. |
+| `reports/results/` | Current result summaries, audits, diagnoses, and evidence reports. |
+| `reports/protocols/` | Current protocols, designs, decisions, guides, and next-action notes. |
+| `reports/paper/` | VN30 hourly paper-source support files, table/figure captions, and TODO indexes. |
+| `reports/cleanup/` | Repository cleanup, rename, push, audit-remediation, and governance reports. |
+| `reports/manual_review/` | Unresolved notes that need human classification. |
+| `reports/superseded/` | Preserved historical root reports that are not active evidence entry points. |
+| `reports/generated/` | Generated reports, generated figures/tables, and diagnostic output summaries. Treat as preserved evidence and do not move casually. |
+| `data/` | Raw, cached, or curated market data and local data workspaces. |
+| `outputs/` | Benchmark, prediction, model-run, and diagnostic output artifacts. |
+| `archive/` | Historical snapshots and superseded reports retained for provenance. |
+| `artifacts/`, `models/`, `tmp/`, `tmp_reports/` | Runtime or local artifact areas. Avoid adding new tracked files unless a protocol requires it. |
+| `config/`, `configs/`, `infra/`, `alembic/`, `tools/` | Configuration, infrastructure, migrations, and supporting utilities. |
 
-## Purpose
+## Protected Paths
 
-This document records the intended repository layout for VSEF. The goal is to keep source code, tests, documentation, generated artifacts, and local data separated without disrupting existing research workflows.
+These paths may be read for inventory and validation, but they must not be reorganized, deleted, or renamed during cleanup unless the change is a small report/index document and the reason is documented:
 
-VSEF is private and proprietary. This structure document does not grant any right to copy, distribute, deploy, or reuse the repository.
-
-## Root Files
-
-Root files should be limited to project entry points and core metadata:
-
-- `README.md`: project positioning and primary navigation
-- `LICENSE`: proprietary all-rights-reserved license notice
-- `SECURITY.md`: private security reporting policy
-- `pyproject.toml`: Python package metadata and dependencies
-- `requirements.txt`: environment dependency snapshot
-- `.gitignore`: generated-file and local-cache exclusion rules
-- `alembic.ini`, `conftest.py`, and core config files needed by tooling
-
-Historical root markdown files should live under `docs/archive/root/`.
-
-## Source Code
-
-`src/` contains importable project code. Keep model, feature, risk, regime, reporting, API, and evaluation modules under their existing package boundaries unless a separate refactor explicitly updates imports and tests.
-
-Do not place generated outputs, notebooks, local caches, or ad hoc scratch scripts inside `src/`.
-
-## Scripts
-
-`scripts/` contains runnable CLI entry points. The current script surface is broad, and this cleanup does not move scripts to avoid breaking documented commands.
-
-Preferred future grouping:
-
-- `scripts/audit/`: audit and verification runners
-- `scripts/backtest/`: backtest, walk-forward, benchmark, and evaluation runners
-- `scripts/data/`: ingestion, sync, extraction, and cache preparation scripts
-- `scripts/tools/`: one-off utility scripts
-- `scripts/legacy/`: superseded scripts retained for traceability
-
-Before moving scripts, update README commands, docs commands, tests, and any import assumptions.
-
-## Tests
-
-`tests/` contains automated tests. Active tests should stay under domain folders such as:
-
+- `data/`
+- `outputs/`
+- `archive/generated_data_snapshots/`
+- `archive/reports_superseded/`
+- `reports/generated/`
+- `src/data/providers/`
+- `src/data/adapters/`
+- `tests/data/`
 - `tests/ml/`
-- `tests/quant_core/`
-- `tests/phase1/`
-- `tests/tools/`
 
-Broken or excluded test files should not remain mixed with active tests. If a test is not runnable but should be retained for context, move it to `tests/archive/` and document why it is excluded.
+## Active Evidence
 
-## Documentation
+Start with these files when checking current evidence and allowed claims:
 
-`docs/` is grouped as follows:
+- `reports/_index/ACTIVE_EVIDENCE_INDEX.md`
+- `reports/_index/ACTIVE_CODE_MAP.md`
+- `reports/results/VN30_HOURLY_SELECTED_CANDIDATE_ROLLING_STABILITY_RESULT.md`
+- `reports/claims/VN30_HOURLY_SELECTED_CANDIDATE_CLAIM_BOUNDARY.md`
+- `reports/claims/VN30_RESEARCH_CLAIM_REGISTER.md`
+- `reports/results/VN30_DAILY_2015_RESULT_SUMMARY.md`
+- `reports/results/VN30_INDEX_BENCHMARK_RESULT_SUMMARY.md`
+- `reports/claims/VN30_INDEX_BENCHMARK_CLAIM_REGISTER.md`
 
-- `docs/architecture/`: active architecture maps and codebase-structure notes
-- `docs/governance/`: governance and diagnostic policy notes
-- `docs/audits/`: audit reports and validation notes
-- `docs/reports/`: polished technical reports and empirical summaries
-- `docs/usage/`: command and workflow reference guides
-- `docs/roadmap/`: conservative development sequencing
-- `docs/archive/cleanup/`: historical cleanup, refactor, changelog, and summary notes
-- `docs/archive/phases/`: historical phase maps, decisions, audits, and phase review notes
-- `docs/archive/retrieval/`: superseded retrieval/RAG notes
-- `docs/archive/vn100/`: superseded VN100 pipeline notes
-- `docs/archive/root/`: root-level historical or loose documents retained for traceability
-- root `docs/*.md`: stable canonical docs only
+## Reports Structure
 
-See `docs/README.md` for the documentation map.
+Root `reports/` should contain only `README.md` and high-level pointers. New active reports should go into category folders:
 
-Historical and archived documents should use `YYYY-MM-DD_Day__Original_Slug.md`. Active canonical docs may keep stable names to avoid broken references.
+- Use `reports/_index/` for navigation and active evidence indexes.
+- Use `reports/claims/` for claim registers and claim boundaries.
+- Use `reports/results/` for result summaries, audits, diagnoses, and evidence reports.
+- Use `reports/protocols/` for protocols, decisions, run designs, and operating guides.
+- Use `reports/paper/` for paper-source support and table/figure documentation.
+- Use `reports/cleanup/` for repository-management, rename, cleanup, and validation reports.
+- Use `reports/manual_review/` when the file cannot be confidently classified.
+- Use `reports/superseded/` for preserved historical reports that are not active evidence.
+- Keep `reports/generated/` in place as generated evidence.
 
-The root docs folder should contain only active canonical navigation/workflow documents. Historical phase notes, cleanup notes, and loose root notes belong under `docs/archive/`.
+## Generated Artifacts
 
-## Data, Artifacts, Outputs, And Tmp
+Generated folders are evidence outputs, not a naming playground. Current generated evidence includes:
 
-`data/` contains local/cache market and context data. A large amount of curated CSV cache data is currently tracked, so this cleanup does not globally untrack `data/`.
+- `reports/generated/vn30_hourly_selected_candidate_rolling/`
+- `reports/generated/paper_tables_current/`
+- `reports/generated/paper_figures_current/`
+- `reports/generated/vn30_daily_2015/`
+- `reports/generated/index_benchmark/`
+- `outputs/`
 
-`artifacts/`, `outputs/`, `models/`, and `tmp/` are generated or local runtime locations and should not receive new tracked files by default. Existing tracked generated files should be removed only when they are clearly reproducible or temporary and no tests depend on them.
+Where folder names are historically useful but not ideal, prefer a small index document over folder renames.
 
-Daily OHLCV cache coverage can be audited with `scripts/audit_ohlcv_cache_coverage.py`. New or refreshed large OHLCV cache files should be staged in ignored scratch space and validated before replacing tracked files under `data/daily_market_split_data/`. The all-model walk-forward runner can read staged per-ticker OHLCV files directly with `--ohlcv-data-dir`, which avoids overwriting tracked cache files for empirical audits such as `docs/audits/VSEF_15Y_DAILY_WALKFORWARD_AUDIT.md`.
+## Safe Validation Scripts
 
-Foreign-flow artifacts require separate governance before interpretation. See `docs/governance/VSEF_FOREIGN_FLOW_ARTIFACT_POLICY.md` for schema, provenance, and fixture-vs-curated artifact rules. For audits that intentionally exclude foreign-flow because no governed long-window artifact exists, use the documented `--foreign-flow-mode disabled` workflow in `docs/governance/VSEF_FOREIGN_FLOW_DISABLE_MODE.md`.
+These are safe validation commands and do not fetch data, run benchmarks, train models, or generate paper/DOCX artifacts:
 
-## Tracking Rules
+- `python scripts/check_repo_hygiene.py`
+- `python scripts/check_runtime_preflight.py`
+- `<repo-approved-venv>\Scripts\python.exe scripts\check_runtime_preflight.py`
+- `<repo-approved-venv>\Scripts\python.exe scripts\check_provider_usage_policy.py`
+- `<repo-approved-venv>\Scripts\python.exe -m pytest tests/data/test_provider_usage_policy.py -q`
+- `<repo-approved-venv>\Scripts\python.exe -m pytest tests/data/test_vn_price_gateway_contract.py -q`
+- `<repo-approved-venv>\Scripts\python.exe -m pytest tests/ml/test_directional_accuracy_metrics.py -q`
+- `powershell -ExecutionPolicy Bypass -File scripts/dev_tasks.ps1 -Task validate-all`
 
-Track:
+## Research And Benchmark Scripts
 
-- source code
-- tests
-- curated documentation
-- small configuration and schema files
-- intentionally curated sample data only when necessary for tests or reproducible examples
+Do not run these casually. They can fetch data, run benchmarks, train/refit models, or generate result artifacts depending on the script:
 
-Do not track:
+- `scripts/research/fetch_*.py`
+- `scripts/research/refetch_*.py`
+- `scripts/research/run_*benchmark*.py`
+- `scripts/research/run_vn30_*target*.py`
+- `scripts/research/run_vn30_hourly_*comparison*.py`
+- `scripts/research/run_vn30_hourly_*stacking*.py`
+- `scripts/research/build_vn30_hourly_paper_empirical_tables.py`
+- `scripts/research/build_vn30_hourly_paper_empirical_figures.py`
 
-- `__pycache__/`
-- `.pytest_cache/`
-- ad hoc `tmp/` output
-- generated walk-forward outputs
-- model training artifacts
-- local logs
-- backup files such as `*.bak`, `*.tmp`, or `*.broken`
+Audit scripts under `scripts/research/audit_*.py` are usually read-only over existing artifacts, but check the protocol and output path before running them.
 
-## Cleanup Notes
+## Paper And Source Artifacts
 
-This cleanup intentionally avoids large script moves and broad `data/` changes. Those areas need separate review because many commands and tests reference established paths.
+Paper/source index files use explicit VN30 hourly names:
+
+- `reports/paper/VN30_HOURLY_PAPER_FIGURE_DATA_SOURCE_INVENTORY.md`
+- `reports/paper/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_EN.md`
+- `reports/paper/VN30_HOURLY_PAPER_TABLE_FIGURE_CAPTIONS_VI.md`
+- `reports/paper/VN30_HOURLY_PAPER_MISSING_METRICS_TODO.md`
+- `reports/paper/VN30_HOURLY_PAPER_ROW_LEVEL_FIGURE_TODO.md`
+- `reports/paper/VN30_HOURLY_PAPER_LITERATURE_DATA_TODO.md`
+- `reports/paper/VN30_HOURLY_PAPER_DOCX_MISSING_FOR_FIGURE_INSERTION.md`
+- `reports/paper/VN30_HOURLY_PAPER_WITH_FIGURES_LAYOUT_QA.md`
+
+Paper/DOCX drafts are not generated during cleanup. Builders must read existing repository artifacts only.
+
+## Naming Convention
+
+Future active files should use stable, descriptive names:
+
+- Reports: use the appropriate category folder, such as `reports/results/VN30_HOURLY_SELECTED_CANDIDATE_<SUBJECT>.md`, `reports/results/VN30_DAILY_2015_<SUBJECT>.md`, or `reports/results/VN30_INDEX_BENCHMARK_<SUBJECT>.md`.
+- Claim registers: place under `reports/claims/` and end with `_CLAIM_REGISTER.md` or `_CLAIM_BOUNDARY.md`.
+- Protocols: place under `reports/protocols/` and end with `_PROTOCOL.md` when possible.
+- Results: place under `reports/results/` and end with `_RESULT.md` or `_RESULT_SUMMARY.md`.
+- Scripts: use action names such as `audit_...`, `rerun_...`, `build_...`, `validate_...`, `fetch_...`, or `run_...`.
+- Avoid vague active names such as `CURRENT`, `PAPER_READY`, `RESULT_V1`, `TARGET62`, or `FINAL65` unless that phrase is the actual protocol scope being preserved.
+
+## Do Not Rename Data/Output/Archive Artifacts Casually
+
+Data, output, generated, and archive paths are often referenced by manifests, reports, tests, Git LFS tracking, and external review notes. Renaming them without a protocol can break provenance even when metric values are unchanged.

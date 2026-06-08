@@ -58,14 +58,7 @@ For permission requests, research inquiries, or institutional correspondence, co
 
 VSEF implements a deterministic diagnostic chain that transforms market inputs into governed research outputs. The current diagnostic pipeline is:
 
-```text
-Quant Core
--> Scenario Evaluation Engine v1
--> Risk Governance Layer v1
--> Decision Lane v2
--> Portfolio Allocator v1
--> Phase 3 Router v1
-```
+## 1. Repository Purpose
 
 Each layer has a clearly defined role and output contract.
 
@@ -164,14 +157,16 @@ Run the following commands from the repository root using PowerShell.
 
 ### Runtime Preflight Check
 
-```powershell
-python scripts/check_runtime_preflight.py
-```
+## 4. Quick Start
 
 ### Smoke Run for the Full Diagnostic Chain
 
 ```powershell
-python scripts/run_quant_core.py --preset smoke --run-mode research_core --enable-scenario-engine --enable-risk-governance --enable-portfolio-allocator --enable-phase3-router --output-dir artifacts/quant_core_router_smoke
+git clone https://github.com/nicholas-atptit/VSEF-PTIT-NEU.git
+cd VSEF-PTIT-NEU
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 Generated files under `artifacts/` are runtime outputs and must not be committed to the repository.
@@ -183,13 +178,13 @@ Generated files under `artifacts/` are runtime outputs and must not be committed
 Use the following commands to validate the main runtime and diagnostic modules:
 
 ```powershell
-python -m compileall src/phase3_router
-pytest tests/phase3_router -q
-pytest tests/portfolio_allocator -q
-pytest tests/decision_lane -q
-pytest tests/risk_governance -q
-pytest tests/scenario -q
-pytest tests/quant_core -q
+python scripts/check_repo_hygiene.py
+python scripts/check_runtime_preflight.py
+python scripts/check_provider_usage_policy.py
+python -m pytest tests/data/test_provider_usage_policy.py -q
+python -m pytest tests/data/test_vn_price_gateway_contract.py -q
+python -m pytest tests/ml/test_directional_accuracy_metrics.py -q
+python -m pytest tests/governance tests/evaluation tests/features tests/forecasting -q
 ```
 
 Before claiming end-to-end runtime readiness, run the full relevant validation suite locally.

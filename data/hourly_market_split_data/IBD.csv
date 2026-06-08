@@ -1,21 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-10-06 14:00:00,8.33,8.33,8.33,8.33,1000,IBD,"At 2023-10-06 14:00:00, the stock IBD opened at 8.33 VND, reached a high of 8.33 VND, a low of 8.33 VND, and closed the hour at 8.33 VND with a trading volume of 1,000 shares."
-2023-11-28 11:00:00,8.33,8.33,8.33,8.33,1800,IBD,"At 2023-11-28 11:00:00, the stock IBD opened at 8.33 VND, reached a high of 8.33 VND, a low of 8.33 VND, and closed the hour at 8.33 VND with a trading volume of 1,800 shares."
-2024-01-17 13:00:00,8.24,8.24,8.24,8.24,1700,IBD,"At 2024-01-17 13:00:00, the stock IBD opened at 8.24 VND, reached a high of 8.24 VND, a low of 8.24 VND, and closed the hour at 8.24 VND with a trading volume of 1,700 shares."
-2024-05-29 13:00:00,9.15,9.15,9.15,9.15,200,IBD,"At 2024-05-29 13:00:00, the stock IBD opened at 9.15 VND, reached a high of 9.15 VND, a low of 9.15 VND, and closed the hour at 9.15 VND with a trading volume of 200 shares."
-2024-05-29 14:00:00,9.15,9.15,9.15,9.15,200,IBD,"At 2024-05-29 14:00:00, the stock IBD opened at 9.15 VND, reached a high of 9.15 VND, a low of 9.15 VND, and closed the hour at 9.15 VND with a trading volume of 200 shares."
-2024-06-07 10:00:00,9.15,9.15,9.15,9.15,100,IBD,"At 2024-06-07 10:00:00, the stock IBD opened at 9.15 VND, reached a high of 9.15 VND, a low of 9.15 VND, and closed the hour at 9.15 VND with a trading volume of 100 shares."
-2024-06-10 13:00:00,10.07,10.07,10.07,10.07,100,IBD,"At 2024-06-10 13:00:00, the stock IBD opened at 10.07 VND, reached a high of 10.07 VND, a low of 10.07 VND, and closed the hour at 10.07 VND with a trading volume of 100 shares."
-2024-06-12 10:00:00,9.15,9.15,9.15,9.15,100,IBD,"At 2024-06-12 10:00:00, the stock IBD opened at 9.15 VND, reached a high of 9.15 VND, a low of 9.15 VND, and closed the hour at 9.15 VND with a trading volume of 100 shares."
-2024-07-08 14:00:00,9.61,9.61,9.61,9.61,100,IBD,"At 2024-07-08 14:00:00, the stock IBD opened at 9.61 VND, reached a high of 9.61 VND, a low of 9.61 VND, and closed the hour at 9.61 VND with a trading volume of 100 shares."
-2024-08-12 14:00:00,10.53,10.53,10.53,10.53,100,IBD,"At 2024-08-12 14:00:00, the stock IBD opened at 10.53 VND, reached a high of 10.53 VND, a low of 10.53 VND, and closed the hour at 10.53 VND with a trading volume of 100 shares."
-2024-08-19 14:00:00,10.8,10.8,10.8,10.8,100,IBD,"At 2024-08-19 14:00:00, the stock IBD opened at 10.80 VND, reached a high of 10.80 VND, a low of 10.80 VND, and closed the hour at 10.80 VND with a trading volume of 100 shares."
-2024-08-21 09:00:00,9.25,9.25,9.25,9.25,100,IBD,"At 2024-08-21 09:00:00, the stock IBD opened at 9.25 VND, reached a high of 9.25 VND, a low of 9.25 VND, and closed the hour at 9.25 VND with a trading volume of 100 shares."
-2024-08-23 09:00:00,7.87,7.87,7.87,7.87,100,IBD,"At 2024-08-23 09:00:00, the stock IBD opened at 7.87 VND, reached a high of 7.87 VND, a low of 7.87 VND, and closed the hour at 7.87 VND with a trading volume of 100 shares."
-2024-10-14 10:00:00,10.53,10.53,10.53,10.53,100,IBD,"At 2024-10-14 10:00:00, the stock IBD opened at 10.53 VND, reached a high of 10.53 VND, a low of 10.53 VND, and closed the hour at 10.53 VND with a trading volume of 100 shares."
-2025-01-06 10:00:00,6.5,6.5,6.5,6.5,1200,IBD,"At 2025-01-06 10:00:00, the stock IBD opened at 6.50 VND, reached a high of 6.50 VND, a low of 6.50 VND, and closed the hour at 6.50 VND with a trading volume of 1,200 shares."
-2025-07-28 10:00:00,6.5,6.5,6.5,6.5,100,IBD,"At 2025-07-28 10:00:00, the stock IBD opened at 6.50 VND, reached a high of 6.50 VND, a low of 6.50 VND, and closed the hour at 6.50 VND with a trading volume of 100 shares."
-2025-12-12 10:00:00,9.1,9.1,9.1,9.1,100,IBD,"At 2025-12-12 10:00:00, the stock IBD opened at 9.10 VND, reached a high of 9.10 VND, a low of 9.10 VND, and closed the hour at 9.10 VND with a trading volume of 100 shares."
-2025-12-15 09:00:00,10.4,10.4,10.4,10.4,100,IBD,"At 2025-12-15 09:00:00, the stock IBD opened at 10.40 VND, reached a high of 10.40 VND, a low of 10.40 VND, and closed the hour at 10.40 VND with a trading volume of 100 shares."
-2026-01-09 13:00:00,9.0,9.0,9.0,9.0,100,IBD,"At 2026-01-09 13:00:00, the stock IBD opened at 9.00 VND, reached a high of 9.00 VND, a low of 9.00 VND, and closed the hour at 9.00 VND with a trading volume of 100 shares."
-2026-03-09 13:00:00,5.4,5.4,5.4,5.4,100,IBD,"At 2026-03-09 13:00:00, the stock IBD opened at 5.40 VND, reached a high of 5.40 VND, a low of 5.40 VND, and closed the hour at 5.40 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:5e43ea028525c00446ae3d290e7f3ad2c8bf3fd9a0ae7309c7d9870f74888008
+size 4576

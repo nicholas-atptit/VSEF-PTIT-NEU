@@ -1,20 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-10-02 13:00:00,12.89,12.89,12.89,12.89,100,DTH,"At 2023-10-02 13:00:00, the stock DTH opened at 12.89 VND, reached a high of 12.89 VND, a low of 12.89 VND, and closed the hour at 12.89 VND with a trading volume of 100 shares."
-2023-11-09 09:00:00,14.79,14.79,14.79,14.79,1000,DTH,"At 2023-11-09 09:00:00, the stock DTH opened at 14.79 VND, reached a high of 14.79 VND, a low of 14.79 VND, and closed the hour at 14.79 VND with a trading volume of 1,000 shares."
-2023-12-22 09:00:00,12.89,12.89,12.89,12.89,1800,DTH,"At 2023-12-22 09:00:00, the stock DTH opened at 12.89 VND, reached a high of 12.89 VND, a low of 12.89 VND, and closed the hour at 12.89 VND with a trading volume of 1,800 shares."
-2024-01-25 09:00:00,14.79,14.79,14.79,14.79,1100,DTH,"At 2024-01-25 09:00:00, the stock DTH opened at 14.79 VND, reached a high of 14.79 VND, a low of 14.79 VND, and closed the hour at 14.79 VND with a trading volume of 1,100 shares."
-2024-02-23 10:00:00,12.89,12.89,12.89,12.89,100,DTH,"At 2024-02-23 10:00:00, the stock DTH opened at 12.89 VND, reached a high of 12.89 VND, a low of 12.89 VND, and closed the hour at 12.89 VND with a trading volume of 100 shares."
-2024-03-25 09:00:00,14.79,14.79,14.79,14.79,1100,DTH,"At 2024-03-25 09:00:00, the stock DTH opened at 14.79 VND, reached a high of 14.79 VND, a low of 14.79 VND, and closed the hour at 14.79 VND with a trading volume of 1,100 shares."
-2024-05-16 13:00:00,12.89,12.89,12.89,12.89,400,DTH,"At 2024-05-16 13:00:00, the stock DTH opened at 12.89 VND, reached a high of 12.89 VND, a low of 12.89 VND, and closed the hour at 12.89 VND with a trading volume of 400 shares."
-2024-05-17 09:00:00,12.89,12.89,12.89,12.89,900,DTH,"At 2024-05-17 09:00:00, the stock DTH opened at 12.89 VND, reached a high of 12.89 VND, a low of 12.89 VND, and closed the hour at 12.89 VND with a trading volume of 900 shares."
-2024-07-08 10:00:00,12.89,12.89,12.89,12.89,100,DTH,"At 2024-07-08 10:00:00, the stock DTH opened at 12.89 VND, reached a high of 12.89 VND, a low of 12.89 VND, and closed the hour at 12.89 VND with a trading volume of 100 shares."
-2024-09-10 11:00:00,14.73,14.73,14.73,14.73,100,DTH,"At 2024-09-10 11:00:00, the stock DTH opened at 14.73 VND, reached a high of 14.73 VND, a low of 14.73 VND, and closed the hour at 14.73 VND with a trading volume of 100 shares."
-2024-09-16 14:00:00,13.18,13.18,13.18,13.18,6000,DTH,"At 2024-09-16 14:00:00, the stock DTH opened at 13.18 VND, reached a high of 13.18 VND, a low of 13.18 VND, and closed the hour at 13.18 VND with a trading volume of 6,000 shares."
-2024-11-01 11:00:00,13.18,13.18,13.18,13.18,14500,DTH,"At 2024-11-01 11:00:00, the stock DTH opened at 13.18 VND, reached a high of 13.18 VND, a low of 13.18 VND, and closed the hour at 13.18 VND with a trading volume of 14,500 shares."
-2024-12-30 10:00:00,15.12,15.12,15.12,15.12,500,DTH,"At 2024-12-30 10:00:00, the stock DTH opened at 15.12 VND, reached a high of 15.12 VND, a low of 15.12 VND, and closed the hour at 15.12 VND with a trading volume of 500 shares."
-2025-02-28 10:00:00,12.6,12.6,12.6,12.6,1100,DTH,"At 2025-02-28 10:00:00, the stock DTH opened at 12.60 VND, reached a high of 12.60 VND, a low of 12.60 VND, and closed the hour at 12.60 VND with a trading volume of 1,100 shares."
-2025-04-22 14:00:00,12.6,12.6,12.6,12.6,100,DTH,"At 2025-04-22 14:00:00, the stock DTH opened at 12.60 VND, reached a high of 12.60 VND, a low of 12.60 VND, and closed the hour at 12.60 VND with a trading volume of 100 shares."
-2025-06-11 09:00:00,15.0,15.0,15.0,15.0,7600,DTH,"At 2025-06-11 09:00:00, the stock DTH opened at 15.00 VND, reached a high of 15.00 VND, a low of 15.00 VND, and closed the hour at 15.00 VND with a trading volume of 7,600 shares."
-2025-07-24 09:00:00,13.6,13.6,13.6,13.6,1200,DTH,"At 2025-07-24 09:00:00, the stock DTH opened at 13.60 VND, reached a high of 13.60 VND, a low of 13.60 VND, and closed the hour at 13.60 VND with a trading volume of 1,200 shares."
-2025-09-17 10:00:00,14.0,14.0,14.0,14.0,500,DTH,"At 2025-09-17 10:00:00, the stock DTH opened at 14.00 VND, reached a high of 14.00 VND, a low of 14.00 VND, and closed the hour at 14.00 VND with a trading volume of 500 shares."
-2025-12-11 09:00:00,15.0,15.0,15.0,15.0,1000,DTH,"At 2025-12-11 09:00:00, the stock DTH opened at 15.00 VND, reached a high of 15.00 VND, a low of 15.00 VND, and closed the hour at 15.00 VND with a trading volume of 1,000 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:575f6c005b621ef9b0c1b338f8060e19f89e6c5aaf46683c6e3d573771ba86ba
+size 4487

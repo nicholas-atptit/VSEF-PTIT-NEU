@@ -1,7 +1,3 @@
-index_code,cache_path,status,rows,first_timestamp,last_timestamp,provider,source,error
-VNINDEX,data/market_cache/vnstock_data/indices/daily_2015/VNINDEX.csv,skipped_existing_usable,2830,2015-01-05 07:00:00,2026-05-15 07:00:00,vnstock_data,KBS,
-HNXINDEX,data/market_cache/vnstock_data/indices/daily_2015/HNXINDEX.csv,skipped_existing_usable,2835,2015-01-05 00:00:00,2026-05-15 00:00:00,repo_adapter,KBS,
-UPCOMINDEX,data/market_cache/vnstock_data/indices/daily_2015/UPCOMINDEX.csv,skipped_existing_usable,2834,2015-01-05 07:00:00,2026-05-15 07:00:00,legacy_vnstock,KBS,
-VN30,data/market_cache/vnstock_data/indices/daily_2015/VN30.csv,skipped_existing_usable,2819,2015-01-05 07:00:00,2026-05-15 07:00:00,vnstock_data,KBS,
-HNX30,data/market_cache/vnstock_data/indices/daily_2015/HNX30.csv,skipped_existing_usable,2822,2015-01-05 07:00:00,2026-05-15 07:00:00,vnstock_data,KBS,
-VN100,data/market_cache/vnstock_data/indices/daily_2015/VN100.csv,success,1,2026-05-15 00:00:00,2026-05-15 00:00:00,repo_adapter,gateway,
+version https://git-lfs.github.com/spec/v1
+oid sha256:6814519ade488f4a6193a24886cbfeef50049a41c9dcc6527979e573ea5cbd25
+size 1017

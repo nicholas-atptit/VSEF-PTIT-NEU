@@ -1,8 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2023-12-12 13:00:00,9.22,9.22,9.22,9.22,1700,QNU,"At 2023-12-12 13:00:00, the stock QNU opened at 9.22 VND, reached a high of 9.22 VND, a low of 9.22 VND, and closed the hour at 9.22 VND with a trading volume of 1,700 shares."
-2024-01-26 09:00:00,9.22,9.22,9.22,9.22,1000,QNU,"At 2024-01-26 09:00:00, the stock QNU opened at 9.22 VND, reached a high of 9.22 VND, a low of 9.22 VND, and closed the hour at 9.22 VND with a trading volume of 1,000 shares."
-2025-05-22 13:00:00,9.6,9.6,9.6,9.6,100000,QNU,"At 2025-05-22 13:00:00, the stock QNU opened at 9.60 VND, reached a high of 9.60 VND, a low of 9.60 VND, and closed the hour at 9.60 VND with a trading volume of 100,000 shares."
-2025-07-02 11:00:00,10.0,10.0,10.0,10.0,100,QNU,"At 2025-07-02 11:00:00, the stock QNU opened at 10.00 VND, reached a high of 10.00 VND, a low of 10.00 VND, and closed the hour at 10.00 VND with a trading volume of 100 shares."
-2025-08-11 09:00:00,10.0,10.0,10.0,10.0,800,QNU,"At 2025-08-11 09:00:00, the stock QNU opened at 10.00 VND, reached a high of 10.00 VND, a low of 10.00 VND, and closed the hour at 10.00 VND with a trading volume of 800 shares."
-2025-10-08 09:00:00,10.0,10.0,10.0,10.0,500,QNU,"At 2025-10-08 09:00:00, the stock QNU opened at 10.00 VND, reached a high of 10.00 VND, a low of 10.00 VND, and closed the hour at 10.00 VND with a trading volume of 500 shares."
-2025-11-24 09:00:00,10.0,10.0,10.0,10.0,500,QNU,"At 2025-11-24 09:00:00, the stock QNU opened at 10.00 VND, reached a high of 10.00 VND, a low of 10.00 VND, and closed the hour at 10.00 VND with a trading volume of 500 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:ee9994fb880f1beb31b61fc3bba2b3093ca0b7dec5bd65a8762caaa843ac3eb2
+size 1652

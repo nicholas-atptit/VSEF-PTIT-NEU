@@ -5,10 +5,17 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import ast
 from pathlib import PurePosixPath
 
 
-ROOT_FORBIDDEN_DIRS = {"outputs", "artifacts", "models", "tmp"}
+ROOT_FORBIDDEN_DIRS = {"artifacts", "models", "tmp"}
+FULL_DATA_BACKUP_ROOTS = {"data", "outputs"}
+FULL_DATA_BACKUP_PREFIXES = {
+    "archive/generated_data_snapshots/",
+    "archive/reports_superseded/",
+    "reports/generated/",
+}
 GENERATED_COMPONENTS = {"__pycache__", "node_modules"}
 PYTHON_BYTECODE_SUFFIXES = {".pyc", ".pyo", ".pyd"}
 INVALID_FILENAME_CHARS = set('<>:"|?*')
@@ -17,8 +24,8 @@ LOCAL_PATH_RE = re.compile(r"(?<![A-Za-z])\b[A-Za-z]:[\\/]")
 
 
 CONTENT_ALLOWLIST_PATHS = {
-    "reports/CODE_AUDIT_REPORT.md": "Phase 0 immutable baseline records the local execution environment.",
-    "reports/CODE_AUDIT_REMEDIATION_PLAN.md": "Phase 0 immutable baseline records the local execution environment.",
+    "reports/cleanup/CODE_AUDIT_REPORT.md": "Phase 0 immutable baseline records the local execution environment.",
+    "reports/cleanup/CODE_AUDIT_REMEDIATION_PLAN.md": "Phase 0 immutable baseline records the local execution environment.",
 }
 
 CONTENT_ALLOWLIST_PREFIXES = {
@@ -32,13 +39,16 @@ CONTENT_ALLOWLIST_PREFIXES = {
 }
 
 CONTENT_ALLOWLIST_FILES = {
-    "reports/VNSTOCK_AGENT_DATA_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
-    "reports/VNSTOCK_AGENT_DATA_GUIDE_SUMMARY.md": "documents exact approved local provider interpreter for future agents.",
-    "reports/VNSTOCK_PROVIDER_STANDARDIZATION_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
-    "reports/VNSTOCK_DATA_INTERPRETER_FIX_PLAN.md": "documents exact local interpreter remediation commands requested for environment repair.",
-    "reports/VSEF_1000_SEED_SMOKE_STABILITY_REPORT.md": "historical benchmark evidence retained.",
-    "reports/stress_test_report.md": "historical benchmark evidence retained until report migration is approved.",
-    "reports/system_benchmark.md": "historical benchmark evidence retained until report migration is approved.",
+    "docs/USAGE.md": "documents exact approved local interpreter requested for repository usage.",
+    "reports/protocols/VNSTOCK_AGENT_DATA_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
+    "reports/protocols/VNSTOCK_AGENT_DATA_GUIDE_SUMMARY.md": "documents exact approved local provider interpreter for future agents.",
+    "reports/cleanup/VNSTOCK_PROVIDER_STANDARDIZATION_GUIDE.md": "documents exact approved local provider interpreter for future agents.",
+    "reports/cleanup/VNSTOCK_DATA_INTERPRETER_FIX_PLAN.md": "documents exact local interpreter remediation commands requested for environment repair.",
+    "reports/cleanup/REPO_RENAME_CLEANUP_RESULT.md": "documents exact local validation commands from the prior rename cleanup.",
+    "reports/cleanup/REPORTS_STRUCTURE_CLEANUP_RESULT.md": "documents exact local validation commands from the reports structure cleanup.",
+    "reports/superseded/VSEF_1000_SEED_SMOKE_STABILITY_REPORT.md": "historical benchmark evidence retained.",
+    "reports/superseded/stress_test_report.md": "historical benchmark evidence retained until report migration is approved.",
+    "reports/superseded/system_benchmark.md": "historical benchmark evidence retained until report migration is approved.",
 }
 
 
@@ -59,6 +69,40 @@ def is_content_allowlisted(path: str) -> bool:
     return any(path.startswith(prefix) for prefix in CONTENT_ALLOWLIST_PREFIXES)
 
 
+def is_full_data_backup_path(path: str) -> bool:
+    parts = PurePosixPath(path).parts
+    if parts and parts[0] in FULL_DATA_BACKUP_ROOTS:
+        return True
+    return any(path.startswith(prefix) for prefix in FULL_DATA_BACKUP_PREFIXES)
+
+
+def lfs_filter_paths(paths: list[str]) -> set[str]:
+    if not paths:
+        return set()
+    result = subprocess.run(
+        ["git", "check-attr", "--stdin", "filter"],
+        check=False,
+        input="\n".join(paths),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if result.returncode != 0:
+        return set()
+
+    lfs_paths: set[str] = set()
+    for line in result.stdout.splitlines():
+        path, separator, value = line.partition(": filter: ")
+        if separator and value.strip() == "lfs":
+            if path.startswith('"') and path.endswith('"'):
+                try:
+                    path = ast.literal_eval(path)
+                except (SyntaxError, ValueError):
+                    path = path.strip('"')
+            lfs_paths.add(path.rstrip("\r\n"))
+    return lfs_paths
+
+
 def filename_violations(path: str) -> list[tuple[str, str]]:
     violations: list[tuple[str, str]] = []
     for component in PurePosixPath(path).parts:
@@ -75,7 +119,7 @@ def filename_violations(path: str) -> list[tuple[str, str]]:
     return violations
 
 
-def tracked_artifact_violations(path: str) -> list[tuple[str, str]]:
+def tracked_artifact_violations(path: str, lfs_paths: set[str]) -> list[tuple[str, str]]:
     parts = PurePosixPath(path).parts
     if not parts:
         return []
@@ -86,6 +130,13 @@ def tracked_artifact_violations(path: str) -> list[tuple[str, str]]:
 
     if root in ROOT_FORBIDDEN_DIRS:
         violations.append(("tracked_generated_artifact", f"root generated directory is tracked: {root}/"))
+    if is_full_data_backup_path(path) and path not in lfs_paths:
+        violations.append(
+            (
+                "tracked_backup_without_lfs",
+                "full-data-backup artifact is tracked without Git LFS filter",
+            )
+        )
     if any(part in GENERATED_COMPONENTS for part in parts):
         category = "tracked_node_modules" if "node_modules" in parts else "tracked_python_cache"
         violations.append((category, "generated dependency/cache directory is tracked"))
@@ -119,8 +170,10 @@ def scan_content(path: str) -> list[tuple[str, str]]:
 
 def main() -> int:
     violations: list[tuple[str, str, str]] = []
-    for path in git_ls_files():
-        for category, message in tracked_artifact_violations(path):
+    paths = git_ls_files()
+    lfs_paths = lfs_filter_paths(paths)
+    for path in paths:
+        for category, message in tracked_artifact_violations(path, lfs_paths):
             violations.append((category, path, message))
         for category, message in filename_violations(path):
             violations.append((category, path, message))

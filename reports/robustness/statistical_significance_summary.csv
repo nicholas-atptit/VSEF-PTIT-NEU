@@ -1,8 +1,3 @@
-section,item,value,note
-dm_test,comparison_count,464,Model/baseline/loss comparisons attempted.
-dm_test,significant_05_count,354,Significant at p < 0.05; interpret with sample and multiple-comparison caution.
-dm_test,significant_10_count,360,Significant at p < 0.10; weaker evidence than 5%.
-dm_test,non_significant_10_count,64,The observed difference is not statistically significant under this test; it should not be treated as robust evidence of superiority.
-dm_test,warning_count,40,"Warnings include missing aligned rows, small samples, or invalid variance."
-bootstrap,ci_rows,108,Bootstrap intervals computed from basket period returns.
-bootstrap,wide_or_overlapping_key_ci_rows,31,"The confidence interval is wide, so the estimate is uncertain and should be interpreted cautiously."
+version https://git-lfs.github.com/spec/v1
+oid sha256:1da46ae46dcb191f35433df33b2551bae973ccc173a2050182866080988d5e31
+size 798

@@ -166,7 +166,7 @@ recommendation authority.
 | `docs/prompt_runs/archive/**` | legacy | historical prompt/run archive | no | not active runtime source of truth |
 | `reports/**` historical outputs | research | historical reports and generated evidence packs | no | see `docs/REPORTS_GOVERNANCE.md` |
 | `reports/PHASE*_EVIDENCE.md` | maintenance | controlled remediation evidence | yes | canonical only for remediation status and verification |
-| `reports/AUDIT_REMEDIATION_CHECKLIST.md` | maintenance | remediation tracking checklist | yes | controlled audit-remediation status record |
+| `reports/cleanup/AUDIT_REMEDIATION_CHECKLIST.md` | maintenance | remediation tracking checklist | yes | controlled audit-remediation status record |
 | `tests/**` | test_support | unit, integration, smoke, and governance tests | yes | validation only |
 | `tests/fixtures/**` | test_support | controlled test fixtures | yes | validation fixtures only |
 | `scripts/check_repo_hygiene.py` | test_support | repository hygiene verification | yes | validation-only check |

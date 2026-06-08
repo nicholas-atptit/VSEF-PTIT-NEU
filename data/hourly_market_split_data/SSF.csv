@@ -1,3 +1,3 @@
-﻿time,open,high,low,close,volume,ticker,llm_text
-2024-03-01 10:00:00,20.1,20.1,20.1,20.1,100,SSF,"At 2024-03-01 10:00:00, the stock SSF opened at 20.10 VND, reached a high of 20.10 VND, a low of 20.10 VND, and closed the hour at 20.10 VND with a trading volume of 100 shares."
-2026-03-13 14:00:00,28.1,28.1,28.1,28.1,100,SSF,"At 2026-03-13 14:00:00, the stock SSF opened at 28.10 VND, reached a high of 28.10 VND, a low of 28.10 VND, and closed the hour at 28.10 VND with a trading volume of 100 shares."
+version https://git-lfs.github.com/spec/v1
+oid sha256:69d36080dc64245f6c1f5281454cac2e358cb92ec93e51a7ad0ac4b7237afe17
+size 510

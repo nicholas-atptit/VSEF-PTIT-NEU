@@ -1,0 +1,586 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{makecell}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{longtable}
+\usepackage{threeparttable}
+\usepackage{xcolor}
+\usepackage[authoryear,round]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\onehalfspacing
+\setlength{\parskip}{0.35em}
+\setlength{\parindent}{1.25em}
+\graphicspath{{../figures/}}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\title{Regime-Dependent Transferability of Machine Learning Forecasts in an Emerging Equity Market: Evidence from VN30 Walk-Forward Benchmarks}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper examines whether machine-learning forecasts for VN30 constituent stocks transfer across reconstructed latent market regimes. The design treats the benchmark as a discovery and diagnostic engine rather than as evidence of a trading system or proof that the reconstructed regimes are structural economic states. The primary latent-regime evidence is evaluated at the h40 horizon with a train-only 3-regime GaussianMixture fit on 259 train timestamps and lagged state features covering return, volatility, breadth, dispersion, and volume-shock context. Model, feature, and threshold selection are governed by validation evidence; final-window outputs are retained only as descriptive scoring context. The bounded h40 benchmark result is Logistic L2 with the C-closest reference feature set, validation-selected threshold 0.55, final accuracy 61.63\%, and full 30-stock coverage. H1 is diagnostically supported because validation Regime Information Gain is positive, with RIG = 0.403333. H2 is diagnostically supported because validation forecast correctness differs across reconstructed regimes, with accuracy gap = 0.085666, chi-square = 121.98, and p = 3.25e-27. H3 is mixed and partially supported because cross-regime transfer behavior is non-identical, with TRR = 0.826009 to 1.169407 and TG = -0.074978 to 0.090714, but transfer loss is not uniform. H4 receives only narrow partial support: the strengthening audit reports 3 supported, 294 weak, 557 not supported, and 196 inconclusive tests, with support appearing only for K=4 train-only GMM, ticker-level observations, RD\_cosine, balanced-accuracy transfer metrics, and log-loss gaps. The paper therefore separates three layers of interpretation: validation-governed regime evidence, descriptive final-window scoring, and theoretical motivation from adaptive-market and distribution-shift literature. This separation prevents stronger claims from being inferred from final-window rows or from international evidence that is only contextual for VN30. The contribution is therefore a bounded diagnostic audit of regime-conditioned transfer behavior. RD and FRD remain diagnostic distances, final-window outputs remain descriptive, and the paper does not infer causal distance mechanisms, trading performance, production deployment, or broad generalization from the reported benchmark.
+\end{abstract}
+
+\tableofcontents
+\clearpage
+
+\section{Introduction}
+
+Machine-learning studies in equity forecasting often face a transfer problem. A model can appear useful in one validation period, one market state, one horizon, or one group of securities, yet weaken when evaluated under a later state or a different conditional environment. This problem is central to the practical interpretation of forecast evidence because financial data are time ordered, noisy, and exposed to changes in liquidity, participation, volatility, regulation, and information diffusion. It is especially relevant in emerging equity markets, where turnover, transaction frictions, and investor behavior can vary meaningfully across periods and across stocks \citep{Rouwenhorst1999,ChangChengKhorana2000,Lesmond2005,BekaertHarveyLundblad2007}.
+
+This paper studies that problem through VN30 stock-level directional forecasting. The question is not whether a single model can produce the highest final-window score. The question is whether forecast relationships and forecast transferability vary across reconstructed latent regimes, and whether distance between those regimes is associated with weaker transfer. This distinction matters because a model can be locally informative while still failing to carry its skill across market states. It also matters because an apparent final-window improvement can be misleading if it is chosen after looking at the final window.
+
+The benchmark is therefore used as a diagnostic engine. It helps identify and test candidate regime-transferability patterns, but it does not prove that the reconstructed regimes are structural economic states. The primary empirical evidence for the latent-regime claims comes from validation. Final-window outputs are used only as descriptive scoring context and cannot replace the validation-governed h40 result. This separation between claim-eligible validation evidence and descriptive final scoring is one of the central safeguards of the paper.
+
+The central contribution is a claim-bounded regime-transferability audit for VN30. The paper reports four hypothesis tests. H1 asks whether regime information adds predictive value. H2 asks whether forecasting skill differs across regimes. H3 asks whether forecast skill is imperfectly transferable across regimes. H4 asks whether transferability decreases as regime distance increases. The results support H1 and H2 diagnostically, support H3 only in a mixed and partial sense, and support H4 only under a narrow K=4 ticker-level robustness design rather than as a general monotonic distance-transfer law.
+
+The headline h40 benchmark result remains deliberately conservative: Logistic L2 using the C-closest reference feature set, validation-selected threshold 0.55, final accuracy 61.63\%, and full coverage of the 30 VN30 constituents. This result is a historical diagnostic finding, not a trading system, profitability result, investment recommendation, production-deployment claim, or general claim outside the reported VN30 benchmark.
+
+The paper proceeds as follows. Section 2 reviews efficient-market, adaptive-market, time-varying predictability, machine-learning, validation, latent-state, probability-evaluation, and distribution-shift literature. Section 3 defines the conceptual framework and diagnostic metrics. Section 4 states the hypotheses. Section 5 describes the data, walk-forward design, regime construction, transfer tests, and H4 strengthening audit. Section 6 reports the empirical results. Sections 7 through 9 discuss interpretation, limitations, and conclusions. The appendices restate the claim boundary, metric definitions, hypothesis evidence, H4 robustness interpretation, and table and figure notes.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figure1_research_design_flow.png}
+\caption{Figure 1. Research Design Flow. The empirical design moves from a VN30 walk-forward benchmark through latent-regime tests and ends with an explicit claim boundary.}
+\label{fig:design-flow}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Table 1. Study Design and Claim Boundary}
+\label{tab:claim-boundary}
+\small
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{L{0.20\textwidth} L{0.45\textwidth} L{0.30\textwidth}}
+\toprule
+Element & Claim-safe statement & Boundary \\
+\midrule
+Benchmark role & Discovery and diagnostic engine only & Does not prove economic regimes or general market inefficiency. \\
+Main h40 claim & The bounded h40 benchmark result is 61.63\% final accuracy under validation-only selection and full VN30 stock coverage. & Validation-only selection; full 30-stock coverage. \\
+Router 63.33\% & The 63.33\% router score is reported only as descriptive final-window context. & Descriptive final-window context only. \\
+Soft voting near 62\% & Soft-voting results near 62\% are context for cooperation diagnostics, not claim-eligible evidence. & Cooperation diagnostic only. \\
+Forbidden scope & No trading, profitability, investment recommendation, production-deployment, unreported score-target, or broad generalization claim. & Claim boundary preserved. \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\section{Literature Review}
+
+\subsection{Efficient Markets and the Benchmark for Prediction}
+
+Financial forecasting research starts from a demanding benchmark: if markets are efficient, persistent return prediction from public market information should be difficult. \citet{Fama1970} frames efficient capital markets as settings in which prices reflect available information. In the weak-form case, historical price and trading information should not provide stable exploitable predictability. This benchmark does not rule out finite-sample diagnostic patterns, but it does require caution before interpreting prediction accuracy as durable market inefficiency.
+
+The present paper uses efficient-market logic as a discipline rather than as a claim that prediction is impossible. A diagnostic benchmark can identify historical patterns that are worth studying, but such patterns are not automatically evidence of stable inefficiency. The distinction is important for the VN30 setting. A model may classify a final window with nontrivial accuracy, but the interpretive question is whether that evidence was selected fairly, whether the predictive relationship appears in validation, and whether the relationship is stable across reconstructed market states.
+
+\subsection{Adaptive Markets and Time-Varying Predictability}
+
+Adaptive-market theory provides the main motivation for treating predictability as conditional rather than fixed. \citet{Lo2004} argues that market efficiency can evolve with market ecology, competition, learning, and changing institutional conditions. In that view, predictability is not expected to be constant across all periods. Instead, the same model may perform differently across states that reflect volatility, breadth, dispersion, volume shock, trend, liquidity, or participation conditions.
+
+Empirical AMH evidence supports this time-varying perspective without proving that any specific VN30 result must hold. \citet{KimShamsuddinLim2011} document time-varying return predictability in century-long U.S. data. \citet{LimBrooks2011} survey evidence on the evolution of stock-market efficiency over time. \citet{UrquhartHudson2013} provide long-run evidence from major U.S., U.K., and Japanese equity markets that is consistent with an adaptive-market interpretation. These studies motivate the paper's focus on changing predictive relationships while leaving the VN30 evidence to be established by the paper's own validation design.
+
+The literature therefore supports a conditional framing, not an automatic conclusion. If market efficiency evolves, then a forecasting model should be evaluated not only by an aggregate score but also by its behavior across market states. This paper adopts that framing by reconstructing latent regimes from lagged information and asking whether those regimes are information-bearing for forecast diagnostics.
+
+\subsection{Asian, Emerging-Market, and Vietnam Context}
+
+Evidence from Asian and emerging-market settings further motivates a conditional approach. \citet{XiongMengLiShen2019} examine calendar effects in China through an AMH lens, showing that strategy effects can vary over time. The Vietnam AMH study by \citet{DzungPhanTranTrungPhamQuang2019} provides Vietnamese market-context motivation using HSX and HNX index evidence. That Vietnam evidence is used here only as market-context motivation; it is not a substitute for this paper's VN30 stock-level regime-transferability tests.
+
+Emerging-market studies also show why market context can matter for prediction stability. \citet{Rouwenhorst1999} studies local return factors and turnover in emerging stock markets. \citet{ChangChengKhorana2000} examine herd behavior internationally, \citet{Lesmond2005} studies liquidity in emerging markets, and \citet{BekaertHarveyLundblad2007} link liquidity and expected returns in emerging-market settings. These references support the general premise that liquidity, turnover, costs, and participation patterns can shape return dynamics. They do not establish the VN30 hypotheses by themselves.
+
+\subsection{Machine Learning, Validation, and Forecast Evaluation}
+
+Machine-learning methods have also been widely applied to equity forecasting tasks. \citet{FischerKrauss2018} provide general evidence that LSTM models can be used for S\&P 500 constituent forecasting, which motivates machine-learning relevance in equity prediction. This paper uses that source only as general ML forecasting context. It does not use LSTM evidence from another market to claim that the VN30 benchmark is profitable, production deployable, or externally generalizable.
+
+Time-series validation literature emphasizes that forecast evaluation should respect temporal dependence and out-of-sample ordering, while financial machine-learning practice adds leakage controls for model selection and backtesting \citep{BergmeirBenitez2012,LopezDePrado2018}. However, temporal splitting alone does not solve all selection problems. If model families, thresholds, regime routers, or headline claims are chosen after inspecting final scores, the final window stops being an independent transfer assessment. This paper therefore distinguishes validation-governed evidence from descriptive final-window scoring.
+
+Probability forecast evaluation is also relevant when models produce scores or probabilities rather than only hard labels. The Brier score originates in probability-forecast verification \citep{Brier1950}, proper scoring rules provide a general framework for evaluating probabilistic forecasts \citep{GneitingRaftery2007}, and supervised-learning calibration research shows that predicted probabilities may require separate calibration assessment \citep{NiculescuMizilCaruana2005}. These references motivate the use of log-loss, Brier-related diagnostics, and calibration-oriented checks as forecast-evaluation tools, while the paper's claim boundary remains tied to the reported validation evidence.
+
+\subsection{Latent States, Transferability, and Distribution Shift}
+
+Regime-aware financial modeling also motivates this study. \citet{Hamilton1989} provides a classic Markov-switching framework for latent regime changes in economic time series, and \citet{AngBekaert2002} apply regime-shift modeling to international asset allocation. Bull, bear, sideway, high-volatility, low-liquidity, and drawdown states may change feature-outcome relationships. In this paper, the regimes are not manually labeled economic states. They are reconstructed latent states from lagged market and stock-context features. This distinction matters because the paper tests whether those reconstructed states carry diagnostic information; it does not claim that they are definitive economic regimes.
+
+Finally, transferability and distribution shift remain important issues in financial machine learning. General dataset-shift literature defines the problem of differing train and test distributions \citep{QuinoneroCandelaEtAl2008}, while financial prediction studies document instability and weak out-of-sample behavior in return-prediction models \citep{PayeTimmermann2006,WelchGoyal2008}. A model trained under one conditional state may not retain its skill in another state. This paper operationalizes that issue with same-regime and cross-regime transfer cells, transfer-retention ratios, transfer gaps, and diagnostic distance measures. The diagnostic distances used here are not interpreted as causal mechanisms, and the literature reviewed above does not provide general support for H4.
+
+\begin{table}[H]
+\centering
+\caption{Table 7. References and Literature Role}
+\label{tab:literature-role}
+\small
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{L{0.25\textwidth} L{0.36\textwidth} L{0.34\textwidth}}
+\toprule
+Literature role & Verified citation(s) & Use in this paper \\
+\midrule
+EMH / weak-form efficiency & Fama (1970) & Benchmark for difficulty of persistent prediction. \\
+AMH & Lo (2004) & Motivates time-varying efficiency and conditional predictability. \\
+Time-varying predictability & Kim, Shamsuddin, and Lim (2011); Lim and Brooks (2011) & Supports evolving return predictability. \\
+International AMH evidence & Urquhart and Hudson (2013) & Motivates but does not prove VN30 findings. \\
+China and Vietnam context & Xiong et al. (2019); Dzung Phan Tran Trung and Hung Pham Quang (2019) & Context only; not substitute VN30 evidence. \\
+ML equity forecasting & Fischer and Krauss (2018) & General ML forecasting context only. \\
+Validation discipline & Bergmeir and Benitez (2012); Lopez de Prado (2018) & Supports temporal and leakage-aware evaluation. \\
+Latent-state finance & Hamilton (1989); Ang and Bekaert (2002) & Precedent for state-dependent financial dynamics. \\
+Probability evaluation & Brier (1950); Gneiting and Raftery (2007); Niculescu-Mizil and Caruana (2005) & Supports scoring and calibration evaluation. \\
+Dataset shift / instability & Quinonero-Candela et al. (2008); Paye and Timmermann (2006); Welch and Goyal (2008) & Motivates transferability caution. \\
+Emerging-market context & Rouwenhorst (1999); Chang, Cheng, and Khorana (2000); Lesmond (2005); Bekaert, Harvey, and Lundblad (2007) & Motivates liquidity, turnover, cost, and behavior context. \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\section{Conceptual Framework}
+
+\subsection{Market Efficiency, Adaptation, and Conditional Predictability}
+
+Efficient-market logic implies that unconditional, persistent directional predictability should be difficult. Adaptive-market logic allows predictability to vary with market ecology, liquidity, participation, and state transitions. The two views are not treated as mutually exclusive here. Instead, they motivate a conditional question: if predictive relationships exist in this VN30 benchmark, are they stable across reconstructed regimes?
+
+The paper does not argue that regime conditioning defeats market efficiency. It asks whether latent state information improves diagnostic forecast evidence in validation and whether forecast relationships transfer across state boundaries. This framing is intentionally modest. A regime label that improves a validation diagnostic is not the same thing as a confirmed economic state. It is evidence that a particular reconstruction has diagnostic content under the benchmark rules.
+
+\subsection{Regime-Conditional Forecasting}
+
+Regime-conditional forecasting assumes that the mapping from features to future direction may differ by state. Let \(Y_{t+h}\) denote the directional target at horizon \(h\), \(X_t\) the feature vector available at time \(t\), and \(R_t\) the reconstructed latent regime at time \(t\). The regime-specific forecast probability is defined as
+
+\[
+p_{i,t+h} = \Pr(Y_{t+h}=1 \mid X_t, R_t=i).
+\]
+
+A regime-conditional forecast allows the following condition for at least one pair of regimes:
+
+\[
+\exists i \neq j:
+\Pr(Y_{t+h}=1 \mid X_t, R_t=i)
+\neq
+\Pr(Y_{t+h}=1 \mid X_t, R_t=j).
+\]
+
+Forecasting skill can then be represented as a function of the model, features, reconstructed regime, and available information set:
+
+\[
+FS_{t+h} = g(M, X_t, R_t, \mathcal{D}_t).
+\]
+
+The symbols have the following interpretation. \(Y_{t+h}\) is the directional target at horizon \(h\). \(X_t\) is the feature vector available at time \(t\). \(R_t\) is the reconstructed latent regime. \(M\) is the forecasting model. \(\mathcal{D}_t\) is the information set available at forecast time. \(FS_{t+h}\) is forecasting skill at the target horizon. The empirical question is whether conditioning on \(R_t\) improves validation diagnostics or reveals forecast-correctness differences across reconstructed regimes.
+
+\subsection{Forecast Relationship Shift}
+
+Forecast relationship shift means that the learned relation between predictors and future direction differs across regimes. In this paper, relationship shift is assessed through diagnostic evidence such as same-regime log-loss relative to global log-loss, cross-regime transfer behavior, and forecast relationship distance. These diagnostics can be consistent with shifting relationships, but they are not a formal structural-break proof.
+
+The idea is deliberately operational. The paper does not attempt to identify a full economic model of why relationships shift. Instead, it asks whether the benchmark's reconstructed states separate observations in a way that changes forecast diagnostics. This makes the evidence useful for evaluating conditional predictability while limiting the strength of the conclusion.
+
+\subsection{Transferability Loss}
+
+Transferability loss occurs when a model or relationship learned in one regime performs worse when evaluated in another regime. For regimes \(i\) and \(j\), the audit compares same-regime performance for \(i \rightarrow i\) with cross-regime performance for \(i \rightarrow j\). Loss is not assumed to be universal. A cross-regime cell can improve, weaken, or behave similarly depending on the specific pair.
+
+This definition allows H3 to be tested without requiring every cross-regime cell to deteriorate. A mixed pattern is theoretically informative because it indicates that transferability depends on the source-target pair. In other words, the relevant object is not a single average transfer penalty but a transfer map across reconstructed states.
+
+\subsection{Regime Distance and Forecast Relationship Distance}
+
+Regime Distance (RD) measures standardized latent-regime centroid distance over lagged state columns. Forecast Relationship Distance (FRD) measures distance between regime-specific forecast relationships using coefficient L2 distance, coefficient cosine distance, and predicted probability distribution distance. Where probabilities are available, the audit also examines Brier score gaps and calibration error gaps.
+
+RD and FRD are diagnostic distances. They are not causal mechanisms. A positive association between distance and transfer loss would support H4 only if it meets the pre-specified statistical criteria. It would not establish that distance generates transfer loss. This distinction is essential because reconstructed latent-state separation can reflect many forces, including volatility, breadth, dispersion, liquidity, and sample composition.
+
+\subsection{Diagnostic Metrics}
+
+Regime Information Gain compares validation log-loss from the global benchmark and the regime-conditioned diagnostic construction:
+
+\[
+\mathrm{RIG}
+=
+\mathcal{L}^{val}_{global}
+-
+\mathcal{L}^{val}_{regime}.
+\]
+
+The log-loss used for probability forecasts is
+
+\[
+\mathcal{L}
+=
+-\frac{1}{N}
+\sum_{n=1}^{N}
+\left[
+y_n \log(\hat{p}_n)
++
+(1-y_n)\log(1-\hat{p}_n)
+\right].
+\]
+
+The Transfer Retention Ratio for a model or relationship trained in regime \(i\) and evaluated in regime \(j\) is
+
+\[
+\mathrm{TRR}_{i \rightarrow j}
+=
+\frac{
+\mathrm{Acc}_{i \rightarrow j}
+}{
+\mathrm{Acc}_{i \rightarrow i}
+}.
+\]
+
+The corresponding Transfer Gap is
+
+\[
+\mathrm{TG}_{i \rightarrow j}
+=
+\mathrm{Acc}_{i \rightarrow i}
+-
+\mathrm{Acc}_{i \rightarrow j}.
+\]
+
+The Euclidean version of Regime Distance is
+
+\[
+\mathrm{RD}_{ij}
+=
+\left\lVert
+\bar{z}_i - \bar{z}_j
+\right\rVert_2.
+\]
+
+The cosine version of Regime Distance is
+
+\[
+\mathrm{RD}^{cos}_{ij}
+=
+1 -
+\frac{
+\bar{z}_i^\top \bar{z}_j
+}{
+\left\lVert\bar{z}_i\right\rVert_2
+\left\lVert\bar{z}_j\right\rVert_2
+}.
+\]
+
+The coefficient-based Forecast Relationship Distance is
+
+\[
+\mathrm{FRD}^{coef}_{ij}
+=
+\left\lVert
+\hat{\beta}_i - \hat{\beta}_j
+\right\rVert_2.
+\]
+
+The symbols have the following interpretation. \(\mathcal{L}^{val}_{global}\) is validation log-loss for the global reference model. \(\mathcal{L}^{val}_{regime}\) is validation log-loss under the regime-conditioned diagnostic construction. \(y_n\) is the realized binary target for observation \(n\). \(\hat{p}_n\) is the predicted probability assigned to the positive class. \(\mathrm{Acc}_{i \rightarrow j}\) is accuracy when a source-regime \(i\) relationship is evaluated on target regime \(j\). \(\bar{z}_i\) and \(\bar{z}_j\) are standardized latent-regime centroid vectors. \(\hat{\beta}_i\) and \(\hat{\beta}_j\) are regime-specific forecast relationship coefficient vectors.
+
+Positive RIG indicates lower validation log-loss when regime information is used. TRR below 1 indicates weaker cross-regime transfer than same-regime performance. Positive TG indicates an accuracy loss when moving from same-regime to cross-regime evaluation. Larger RD indicates greater standardized separation between latent-regime centroids. These metrics are diagnostic summaries rather than economic primitives.
+
+\section{Hypotheses}
+
+H1 states that regime information adds predictive value. This hypothesis is supported if validation regime conditioning reduces log-loss relative to the global model. The final status is diagnostically supported. The word diagnostic is important: support means the reconstructed state is information-bearing under the validation design, not that the state is an externally proven market regime.
+
+H2 states that forecasting skill differs across regimes. This hypothesis is supported if forecast correctness differs across reconstructed latent regimes in validation. The final status is diagnostically supported. H2 is a direct test of regime-conditional forecast behavior because it asks whether the same benchmark's correctness rate is homogeneous across reconstructed states.
+
+H3 states that forecasting skill is not perfectly transferable across regimes. This hypothesis is supported if cross-regime transfer cells differ from same-regime reference behavior. Because transfer losses are mixed in sign and magnitude, the final status is mixed and partially supported. The evidence is not a universal deterioration claim. It is a regime-pair heterogeneity claim.
+
+H4 states that forecasting transferability decreases as regime distance increases. This hypothesis is supported only when distance-transfer tests show the expected direction, \(p < 0.05\), and consistency across at least two related metrics or two horizons. The final status is partial support under a narrow robustness design and not general support. H4 is therefore the most constrained hypothesis in the paper.
+
+The four hypotheses form a hierarchy. H1 and H2 ask whether reconstructed regimes matter diagnostically. H3 asks whether skill transfers perfectly across those regimes. H4 asks whether a specific distance mechanism is associated with transfer decay. The evidence can support the lower-level regime-conditioning claims without establishing the stronger distance-transfer claim. That is exactly the pattern found in the benchmark.
+
+\section{Data and Methodology}
+
+\subsection{VN30 Walk-Forward Benchmark}
+
+The empirical setting is VN30 stock-level directional prediction. The benchmark covers full 30-stock headline coverage and evaluates multiple forecast horizons, including h20, h40, h60, and h80. The main bounded result is reported at h40. The h40 focus is retained because the reported latent-regime evidence and headline benchmark row are governed by validation evidence for that horizon.
+
+The design separates training, validation, and final scoring. Training data are used to fit models, preprocessing, and latent-regime construction. Validation data govern model selection, threshold selection, and hypothesis testing. Final-window scores are descriptive scoring-only outputs. This split discipline is important because the final window cannot be both the place where decisions are made and the place where independent claim strength is assessed.
+
+The headline h40 benchmark row is Logistic L2 using the C-closest reference feature set, with threshold 0.55 selected on validation evidence. Its final-window accuracy is 61.63\% with full 30-stock coverage. The score is reported because it is the bounded benchmark result under validation-governed selection. It is not used to infer profitability, production deployment, or generalization beyond the reported historical benchmark.
+
+\subsection{Latent-Regime Construction}
+
+The primary latent-regime analysis uses a train-only 3-regime GaussianMixture for h40. The fit uses 259 train unique timestamps. The state features are lagged and cover return, volatility, breadth, dispersion, and volume-shock context. These features are used to reconstruct local diagnostic states from information available prior to the target outcome.
+
+The regime labels are reconstructed from local lagged features. They are not external bull, bear, sideway, crisis, or macroeconomic labels. The feature audit reports no future regime labels, no future return features, no same-row target leakage, and no final-window-derived features. This does not make the regimes economically definitive, but it helps preserve the diagnostic interpretation.
+
+\begin{table}[H]
+\centering
+\caption{Table 2. Latent-Regime Construction Audit}
+\label{tab:regime-construction}
+\small
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{L{0.23\textwidth} L{0.32\textwidth} L{0.40\textwidth}}
+\toprule
+Audit item & Value & Interpretation \\
+\midrule
+Method & train-only 3-regime GaussianMixture & Fit on training timestamps only. \\
+Horizon & h40 & Primary latent-regime diagnostics in this pack. \\
+Training timestamps & 259 & Unique training dates used for GMM fit. \\
+State features & Lagged return, volatility, breadth, dispersion, and volume-shock context. & No external economic labels. \\
+Lagged variables & yes & State columns are ex-ante or lagged. \\
+Leakage audit & no target leakage flags in feature-family audit & No target, future, or final-window leakage flags reported. \\
+Final outputs & yes & Scoring-only; not used for selection. \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{Validation-Only Selection and Leakage Control}
+
+The methodological boundary is validation-only selection. Model family, feature-set choice, and threshold selection are not promoted from final-window inspection. This principle is consistent with the validation discipline emphasized in time-series and financial machine-learning evaluation \citep{BergmeirBenitez2012,LopezDePrado2018}. The benchmark can still report final-window scores, but those scores are descriptive unless the selection rule was fixed before the final window was inspected.
+
+Leakage control is treated as a necessary condition for interpreting the diagnostic evidence. The latent-regime construction uses train-only fitting and lagged state features. The paper does not claim that this removes every modeling risk, but it prevents the most direct forms of target leakage, final-window leakage, and same-row future information leakage in the reported regime construction.
+
+\subsection{Regime-Transfer Tests}
+
+The transfer analysis compares same-regime and cross-regime cells. For each source-target regime pair, the audit computes transfer-retention and transfer-gap diagnostics. Same-regime cells provide the \(i \rightarrow i\) reference. Cross-regime cells provide the \(i \rightarrow j\) transfer evidence.
+
+The analysis emphasizes validation because validation is the primary empirical window for the latent-regime evidence. Final-window latent-regime outputs are descriptive and are not used to promote stronger claims. This distinction applies directly to the router and soft-voting rows: they may be useful diagnostics, but they do not replace the validation-governed headline result.
+
+\subsection{H4 Strengthening Audit}
+
+The H4 strengthening audit tests whether distance-linked transfer decay receives stronger legitimate support under pre-specified additional designs. It uses existing local artifacts and local feature builders only. The audit adds FRD variants: coefficient L2 distance, coefficient cosine distance, predicted probability distribution distance, Brier score gap where probabilities are available, and calibration error gap where feasible.
+
+For regime-count robustness, the audit computes train-only K=2 and K=4 GMM assignments when lightweight fitting is feasible. For each K, it recomputes RD variants, transfer cells, TRR, TG, and log-loss gap tests. The K=4 design is the only design that produces supported H4 rows, and the support is limited to ticker-level RD\_cosine against balanced-accuracy TRR/TG and logloss\_gap. K=2 mostly produces inconclusive or degenerate-distance tests.
+
+The statistical criteria are conservative. A test is supported only when it has the expected direction, \(p < 0.05\), and consistency across at least two related metrics or two horizons. Expected-direction but nonsignificant rows, or isolated significant rows in one narrow metric, are weak. Wrong-direction or near-zero relationships are not supported. Insufficient or unstable estimates are inconclusive.
+
+\section{Results}
+
+\subsection{Hypothesis Evidence}
+
+Table~\ref{tab:hypothesis-evidence} summarizes the hypothesis-level evidence. H1 and H2 are diagnostically supported in validation. H3 is mixed and partially supported because transfer behavior differs across regime pairs but does not show uniform cross-regime deterioration. H4 receives partial support only under a narrow K=4 ticker-level robustness design and is not established as a general distance-transfer law.
+
+\begin{table}[H]
+\centering
+\caption{Table 3. Hypothesis Evidence Summary}
+\label{tab:hypothesis-evidence}
+\small
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{L{0.11\textwidth} L{0.26\textwidth} L{0.20\textwidth} L{0.38\textwidth}}
+\toprule
+Hypothesis & Key evidence & Final status & Claim-safe wording \\
+\midrule
+H1 & validation RIG = 0.403333 & diagnostically supported & H1 is diagnostically supported in validation by positive RIG; this is diagnostic evidence, not proof of economic regime existence. \\
+H2 & accuracy gap = 0.085666; chi-square = 121.98; p = 3.25e-27 & diagnostically supported & H2 is diagnostically supported: validation forecast correctness differs across reconstructed latent regimes. \\
+H3 & TRR range = 0.826009 to 1.169407; TG range = -0.074978 to 0.090714 & mixed / partially supported & H3 is mixed/partially supported: transfer behavior differs by regime pair, but cross-regime loss is not uniform. \\
+H4 & Original K=3 validation RD tests nonsignificant; strengthening audit: 3 supported, 294 weak, 557 not supported, 196 inconclusive. & partially supported under narrow robustness design; not general support & H4 is partially supported only under a narrow robustness design using K=4 train-only GMM, ticker-level observations, cosine-based regime distance, and balanced-accuracy/log-loss transfer metrics. It is not established as a general distance-transfer law. \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figure2_hypothesis_status_panel.png}
+\caption{Figure 2. Hypothesis Evidence Status Panel. H1 and H2 are diagnostically supported; H3 is mixed and partially supported; H4 is narrow partial support only.}
+\label{fig:hypothesis-panel}
+\end{figure}
+
+\subsection{H1: Regime Information Gain}
+
+H1 is diagnostically supported in validation. The Regime Information Gain is 0.403333, indicating that same-regime validation log-loss is lower than global validation log-loss under the diagnostic construction. This supports the interpretation that the reconstructed latent regime state is information-bearing for validation diagnostics.
+
+This result does not prove the existence of economic regimes. It shows that the reconstructed state variable is associated with improved validation log-loss in this benchmark. The distinction between association and regime proof is central to the paper's claim boundary. The state variable may summarize useful lagged market information without corresponding to a stable, externally named economic regime.
+
+\subsection{H2: Regime-Conditional Forecasting Skill}
+
+H2 is diagnostically supported. Forecast correctness differs across reconstructed latent regimes in validation. The validation accuracy gap is 0.085666, with chi-square = 121.98 and p = 3.25e-27. This is strong diagnostic evidence that forecast correctness is not uniform across latent regimes.
+
+The result is interpreted as regime-conditional diagnostic evidence. It is not a full conditional-distribution proof and does not establish a tradable edge. The finding supports the narrower proposition that forecast correctness varies with the reconstructed state labels in the validation window.
+
+\begin{table}[H]
+\centering
+\caption{Table 4. Regime Information and Regime-Conditional Accuracy}
+\label{tab:rig-accuracy}
+\small
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{L{0.22\textwidth} L{0.24\textwidth} L{0.14\textwidth} L{0.35\textwidth}}
+\toprule
+Diagnostic & Value & Role & Interpretation \\
+\midrule
+RIG (validation) & 0.403333 & primary & Primary diagnostic evidence: same-regime log-loss is lower than global log-loss, giving positive validation RIG. \\
+RIG (final) & 0.429032 & descriptive only & Descriptive final-window scoring only; not selection evidence and not promoted beyond context. \\
+Accuracy association (validation) & gap 0.085666; chi-square 121.98; p 3.25e-27 & primary & Primary diagnostic evidence: global-model correctness differs across latent regimes in validation. \\
+Accuracy association (final) & gap 0.118453; chi-square 44.28; p 2.4232e-10 & descriptive only & Descriptive final-window scoring only; not selection evidence. \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\subsection{H3: Transferability Across Regimes}
+
+H3 is mixed and partially supported. Cross-regime transfer cells are not identical. TRR ranges from 0.826009 to 1.169407, and TG ranges from -0.074978 to 0.090714. These ranges show both deterioration and improvement across different regime pairs.
+
+The correct interpretation is regime-pair heterogeneity. Some cross-regime transfers lose accuracy relative to same-regime references, but transfer loss is not uniform. The paper therefore avoids a claim that all cross-regime transfers deteriorate. The final-window transfer ranges, TRR = 0.682257 to 1.263797 and TG = -0.138643 to 0.212575, are retained as descriptive context only.
+
+\begin{table}[H]
+\centering
+\caption{Table 5. Transferability Summary}
+\label{tab:transfer-summary}
+\small
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{L{0.15\textwidth} L{0.20\textwidth} L{0.22\textwidth} C{0.10\textwidth} L{0.28\textwidth}}
+\toprule
+Split & TRR range & TG range & TG signs & Interpretation \\
+\midrule
+validation & 0.826009 to 1.169407 & -0.074978 to 0.090714 & +3 / -3 & Cross-regime TG has mixed signs, so H3 is mixed/partially supported rather than uniformly supported. \\
+final & 0.682257 to 1.263797 & -0.138643 to 0.212575 & +4 / -2 & Descriptive final-window context only; cross-regime signs are not selection evidence. \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figure3_transfer_matrix_heatmap.png}
+\caption{Figure 3. Transfer Matrix Heatmap. Validation transfer-retention ratios show mixed cross-regime behavior and are diagnostic only.}
+\label{fig:transfer-heatmap}
+\end{figure}
+
+\subsection{H4: Distance-Linked Transferability}
+
+H4 receives only bounded partial support. The original K=3 validation RD-vs-TRR and RD-vs-TG tests are nonsignificant. The strengthening audit finds 3 supported rows, 294 weak rows, 557 not supported rows, and 196 inconclusive rows.
+
+The supported rows appear only under a narrow robustness design: K=4 train-only GMM, ticker-level observations, RD\_cosine, TRR\_balanced\_accuracy, TG\_balanced\_accuracy, and logloss\_gap. The supported K=4 rows have expected directions and \(p < 0.05\) across related metric families. K=2 mostly produces inconclusive or degenerate-distance tests.
+
+FRD and multi-horizon tests do not reach supported status. FRD variants report 0 supported, 15 weak, 27 not supported, and 14 inconclusive tests. Multi-horizon tests report 0 supported, 256 weak, 458 not supported, and 56 inconclusive tests.
+
+The claim-safe conclusion is that H4 has partial support only in a narrow K=4 ticker-level robustness design. The broader evidence does not establish a general monotonic distance-transfer mechanism. RD and FRD remain diagnostic, not causal.
+
+\begin{table}[H]
+\centering
+\caption{Table 6. H4 Strengthening Audit Summary}
+\label{tab:h4-summary}
+\small
+\begin{threeparttable}
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{L{0.16\textwidth} C{0.10\textwidth} C{0.10\textwidth} C{0.13\textwidth} C{0.13\textwidth} L{0.30\textwidth}}
+\toprule
+Scope & Supported & Weak & Not supported & Inconclusive & Claim-safe wording \\
+\midrule
+overall & 3 & 294 & 557 & 196 & H4 is partially supported under specific robustness designs, not established as a general law. \\
+regime count & 3 & 23 & 72 & 126 & H4 is partially supported under specific robustness designs, not established as a general law. \\
+FRD & 0 & 15 & 27 & 14 & H4 is partially supported under specific robustness designs, not established as a general law. \\
+multi-horizon & 0 & 256 & 458 & 56 & H4 is partially supported under specific robustness designs, not established as a general law. \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\begin{tablenotes}
+\small
+\item Supported rows appear only for K=4 train-only GMM, ticker-level observations, RD\_cosine, TRR\_balanced\_accuracy, TG\_balanced\_accuracy, and logloss\_gap. FRD and multi-horizon tests do not reach supported status.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figure4_h4_robustness_count_panel.png}
+\caption{Figure 4. H4 Robustness Count Panel. The strengthening audit has 3 supported rows, while most tests are weak, not supported, or inconclusive.}
+\label{fig:h4-counts}
+\end{figure}
+
+\subsection{Main h40 Benchmark Result and Descriptive Final-Window Context}
+
+The main bounded h40 benchmark result remains Logistic L2 using the C-closest reference feature set, validation-selected threshold 0.55, final accuracy 61.63\%, and full 30-stock coverage. This result remains the claim-eligible h40 benchmark row because it follows the validation-governed selection boundary.
+
+The bull/bear/sideway router reaches 63.33\% final-window accuracy at h40, but it is not claim-eligible because it is descriptive final-window context. Soft-voting accuracy near 62.00\% is also descriptive context only. These rows can motivate further research but do not replace the main bounded h40 result. Market-index evidence is treated as context only. It does not substitute for stock-level VN30 evidence.
+
+\section{Discussion}
+
+The results show that regime information matters diagnostically in this VN30 benchmark. H1 and H2 provide validation evidence that reconstructed latent regimes contain information relevant to forecast log-loss and forecast correctness. This supports the use of latent regimes as diagnostic state variables.
+
+The transfer results are more cautious. H3 indicates that transfer behavior differs across regime pairs, but the direction is mixed. Some pairs show lower cross-regime retention and positive transfer gaps, while others show equal or improved transfer. This is consistent with regime-pair heterogeneity rather than universal deterioration.
+
+The H4 result is the most limited. The original K=3 validation tests do not support a distance-linked transfer decay claim. The strengthening audit improves the status only within a narrow K=4 ticker-level design using RD\_cosine and balanced-accuracy or log-loss transfer metrics. Because FRD and multi-horizon tests fail to reach supported status, the evidence should be described as a bounded robustness finding, not as a general distance-transfer law.
+
+\subsection{Theoretical Interpretation of Partial Support}
+
+The pattern of evidence should be interpreted as partial theoretical support rather than as rejection of the proposed framework. H1 and H2 provide the strongest support because they are both grounded in validation evidence. H1 indicates that reconstructed latent regimes contain additional predictive diagnostic information: same-regime validation log-loss is lower than the global reference, producing positive Regime Information Gain. This does not mean that the reconstructed states are proven economic regimes. It means that, within the reported VN30 benchmark, the locally reconstructed state variable is information-bearing for forecast diagnostics.
+
+H2 strengthens this interpretation by showing that forecast correctness differs across reconstructed regimes in validation. This supports the Regime-Conditional Forecasting Proposition: predictive performance is not fully invariant across market-state contexts. The result is still diagnostic rather than structural. It does not prove that the conditional data-generating process has been fully identified, but it does show that the same global forecasting relationship behaves differently across the reconstructed states used in this paper.
+
+H3 adds a more nuanced implication. Mixed and partial support means that transferability loss is heterogeneous across regime pairs, not absent. Some cross-regime cells show weaker transfer relative to same-regime references, while others behave similarly or improve. The theoretical implication is that transferability cannot be reduced to a simple all-or-nothing claim. Forecast relationships appear partly state-dependent, but the direction and magnitude of transfer loss depend on the source-target regime pair and the metric used to summarize transfer behavior.
+
+H4 is the narrowest result and should be read as a bounded robustness finding. Market State Distance may explain part of transferability loss under specific conditions, especially in the K=4 train-only GMM, ticker-level robustness design using RD\_cosine and balanced-accuracy or log-loss transfer metrics. However, it is not a complete, general, or causal mechanism. The original K=3 validation tests are nonsignificant, FRD variants do not reach supported status, and multi-horizon tests do not reach supported status. The distance-based hypothesis therefore remains theoretically plausible but empirically incomplete.
+
+Taken together, H3 and H4 suggest that forecasting transferability is more complex than the initial distance mechanism. A richer account may need to separate several channels that are only indirectly represented by the current latent-state features. Future extensions could examine liquidity shocks, investor sentiment, macroeconomic conditions, algorithm-specific sensitivity, richer distance measures, and future-blind validation windows. These extensions would test whether the observed transfer heterogeneity reflects broader market-state dynamics or narrower sample-specific interactions.
+
+This interpretation also explains why partial support is scientifically informative. A fully uniform transfer-loss pattern would imply a simple regime-separation story, while the observed mixed pattern suggests that some market states may share usable predictive structure despite being distinct under the reconstruction. The framework therefore points toward conditional transfer maps rather than a single universal transfer penalty.
+
+The overall theoretical contribution remains bounded but meaningful. The evidence indicates that forecasting relationships are not fully invariant across reconstructed market regimes and that forecasting skill is partly conditional on market state. The paper therefore supports a regime-aware diagnostic perspective while preserving the claim boundary: latent regimes remain reconstructed diagnostic states, RD and FRD remain diagnostic distances, final-window outputs remain descriptive scoring context, and the benchmark does not imply trading, profitability, production deployment, or broad generalization.
+
+This interpretation also clarifies the role of the broader benchmark. The benchmark can identify candidate patterns and motivate formal diagnostic testing. It does not, by itself, prove regime existence, structural breaks, or tradable economic mechanisms. The final-window router and soft-voting rows are useful diagnostics but remain outside the claim-eligible headline result.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figure5_rd_frd_claim_boundary.png}
+\caption{Figure 5. RD/FRD Claim Boundary Diagram. Diagnostic distances are not causal mechanisms, and descriptive final-window outputs do not create trading, profitability, or production-deployment claims.}
+\label{fig:distance-boundary}
+\end{figure}
+
+\section{Limitations and Future Work}
+
+Several limitations follow directly from the design. First, the regimes are reconstructed from local lagged features rather than externally validated economic labels. They should therefore be interpreted as latent diagnostic states. The paper does not assign them macroeconomic names, does not treat them as definitive bull or bear states, and does not claim that they would be identical under a different sample or feature set.
+
+Second, final-window latent-regime outputs are descriptive scoring-only evidence. They should not be used to strengthen claims that are not already governed by validation evidence. This limitation applies to the final RIG value of 0.429032, the final descriptive accuracy gap of 0.118453 with chi-square = 44.28 and p = 2.4232e-10, the router score of 63.33\%, and soft voting near 62.00\%.
+
+Third, H4 support is narrow. K=4 ticker-level RD\_cosine evidence supports H4 under the audit criteria, but K=3 validation tests, FRD variants, and multi-horizon tests do not provide broad support. Future work should pre-specify distance metrics, regime-count choices, and transfer metrics before applying them to new future-blind windows.
+
+Fourth, the paper does not test a trading strategy. It does not include transaction costs, liquidity constraints, turnover, risk limits, slippage, portfolio construction, or execution. Accuracy diagnostics should not be interpreted as profitability.
+
+Future work should evaluate whether the K=4 ticker-level finding survives in later windows, alternative markets, externally defined market states, and unchanged data and model rules. Future work should also examine whether forecast relationship distance can be stabilized through richer calibration diagnostics, larger samples, or independent validation cohorts.
+
+\section{Conclusion}
+
+This paper provides a bounded VN30 regime-transferability audit. H1 and H2 are diagnostically supported in validation: regime information improves log-loss diagnostics, and forecast correctness differs across reconstructed latent regimes. H3 is mixed and partially supported: transfer behavior differs across regime pairs, but transfer loss is not uniform. H4 receives partial support only under a narrow K=4 ticker-level robustness design and remains not general support.
+
+The main claim-eligible h40 benchmark result remains Logistic L2 using the C-closest reference feature set, validation-selected threshold 0.55, final accuracy 61.63\%, and full 30-stock coverage. Higher descriptive final-window rows, including the 63.33\% router and soft-voting near 62.00\%, do not replace that result.
+
+The paper's contribution is therefore diagnostic and bounded. It shows that reconstructed latent regimes are useful for understanding validation performance and transfer heterogeneity in the VN30 benchmark, while avoiding claims about trading profitability, production deployment, causal distance mechanisms, unreported score-target performance, or generalization beyond the reported historical setting.
+
+\clearpage
+\section*{References}
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\clearpage
+\appendix
+
+\section{Claim Boundary}
+
+The claim boundary is part of the paper's design rather than a post-estimation disclaimer. The benchmark evidence is discovery and diagnostic only. H1 is diagnostically supported. H2 is diagnostically supported. H3 is mixed and partially supported. H4 is partially supported only under a narrow K=4 ticker-level robustness design and is not general support.
+
+RD and FRD are diagnostic distances, not causal mechanisms. Final-window outputs are descriptive scoring-only. The router accuracy of 63.33\% is not claim-eligible. Soft voting near 62.00\% is not claim-eligible. The main bounded h40 result remains Logistic L2 using the C-closest reference feature set, validation-selected threshold 0.55, final accuracy 61.63\%, and full 30-stock coverage.
+
+Vietnam AMH evidence is contextual motivation only and does not replace this paper's VN30 stock-level evidence. International AMH evidence motivates time-varying predictability only and does not prove VN30 H4. The paper does not infer trading profitability, investment recommendations, production deployment, unreported score-target performance, or broad generalization from the reported benchmark.
+
+\section{Metric Definitions}
+
+The main metric definitions are stated in Section 3.6 and are repeated here for interpretive clarity. RIG measures the improvement in validation log-loss associated with regime conditioning. TRR compares cross-regime accuracy with same-regime accuracy. TG measures the absolute accuracy gap between same-regime and cross-regime evaluation. RD measures distance between standardized latent-regime centroids. RD\_cosine measures angular separation between centroids. FRD measures distance between forecast relationships, such as coefficient vectors.
+
+These definitions are diagnostic. They do not by themselves establish structural breaks, economic regime labels, or causal channels. The metrics are designed to summarize whether forecast evidence changes across reconstructed states and whether cross-state transfer differs from same-state reference performance.
+
+\section{Hypothesis Evidence Table}
+
+The hypothesis evidence table is Table~\ref{tab:hypothesis-evidence}. It is not duplicated here to avoid adding an additional table beyond the seven production tables. The core interpretation is that H1 and H2 receive validation-based diagnostic support, H3 receives mixed and partial support because transfer behavior is heterogeneous, and H4 receives only narrow partial support under K=4 ticker-level robustness conditions.
+
+\section{H4 Robustness Summary}
+
+The H4 robustness summary is Table~\ref{tab:h4-summary}. The audit reports 3 supported, 294 weak, 557 not supported, and 196 inconclusive rows overall. The supported rows appear only for K=4 train-only GMM, ticker-level observations, RD\_cosine, TRR\_balanced\_accuracy, TG\_balanced\_accuracy, and logloss\_gap. FRD variants report 0 supported, 15 weak, 27 not supported, and 14 inconclusive tests. Multi-horizon tests report 0 supported, 256 weak, 458 not supported, and 56 inconclusive tests. K=2 mostly produced inconclusive or degenerate-distance tests.
+
+The appendix restates these facts to prevent overinterpretation. H4 is not treated as a general law. It remains a narrow robustness result that motivates future work on richer distance measures, regime definitions, and future-blind validation.
+
+\section{Table and Figure Notes}
+
+The LaTeX manuscript includes seven tables and five figures from the final complete paper package. Table~\ref{tab:claim-boundary} records the claim boundary. Table~\ref{tab:literature-role} records the role of each verified reference group. Table~\ref{tab:regime-construction} records the latent-regime construction audit. Table~\ref{tab:hypothesis-evidence} records hypothesis status. Table~\ref{tab:rig-accuracy} records RIG and accuracy association diagnostics. Table~\ref{tab:transfer-summary} records transferability ranges. Table~\ref{tab:h4-summary} records the H4 strengthening audit summary.
+
+Figure~\ref{fig:design-flow} summarizes the research design. Figure~\ref{fig:hypothesis-panel} summarizes the hypothesis status. Figure~\ref{fig:transfer-heatmap} visualizes transfer-retention heterogeneity. Figure~\ref{fig:h4-counts} visualizes the H4 robustness count pattern. Figure~\ref{fig:distance-boundary} summarizes the RD/FRD claim boundary. The tables and figures are presentation aids for the reported diagnostic facts; they do not add empirical claims beyond the manuscript text.
+
+\end{document}
