@@ -20,8 +20,6 @@ Nguyen Nguyet Ha — National Economics University
 
 Contact: [nghnguyetha.workspace@gmail.com](mailto:nghnguyetha.workspace@gmail.com)
 
-The project is developed in collaboration with, and financially supported by, the Risk Management Department — Viettel Global.
-
 Market data is connected and retrieved through Vnstock, a Python package for Vietnamese stock market analysis.
 
 > Vnstock by thinh-vu on GitHub. Copyright © 2022–2026.
